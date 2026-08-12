@@ -2127,11 +2127,45 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-4 mt-2">
+                  <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
                     <div className="flex items-center justify-between text-[11px] text-slate-500">
                       <span className="font-bold text-slate-700">Eventos Monitorados:</span>
-                      <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">order.paid • charge.refunded</span>
+                      <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">order.paid • charge.refunded • order.created</span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!pagarmeSecretKey) {
+                          alert("Por favor, cole a sua Secret Key do Pagar.me e salve antes de sincronizar o histórico.");
+                          return;
+                        }
+                        try {
+                          const res = await fetch("/api/integrations/sync-pagarme", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              secretKey: pagarmeSecretKey,
+                              createdSince: "2026-08-01T00:00:00Z"
+                            })
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            alert(`Sincronização concluída com sucesso!\n\nForam importadas ${data.syncedOrdersCount} vendas realizadas a partir de 01/08/2026.\nTotal faturado: R$ ${data.totalRevenueSynced.toFixed(2)}.`);
+                            window.location.reload();
+                          } else {
+                            alert(data.error || "Aviso ao sincronizar dados com a API do Pagar.me.");
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          alert("Erro ao conectar à API do Pagar.me para sincronização.");
+                        }
+                      }}
+                      className="w-full py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Sincronizar Vendas do Mês (Desde 01/Ago/2026)</span>
+                    </button>
                   </div>
                 </div>
 
