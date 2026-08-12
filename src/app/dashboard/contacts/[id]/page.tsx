@@ -1242,29 +1242,15 @@ export default function ContactProfilePage({ params }: PageProps) {
                   {[...draft.enrollments]
                     .sort((a, b) => new Date(a.enrolled_at).getTime() - new Date(b.enrolled_at).getTime())
                     .map((item, idx) => {
-                      let courseStatusLabel = "Iniciado";
-                      let courseStatusSub = `Atualizado em: ${new Date(item.enrolled_at).toLocaleDateString("pt-BR")}`;
-                      let statusBadgeColor = "bg-slate-50 border border-slate-250 text-slate-700";
-
-                      if (item.status === "completed" || item.progress === 100) {
-                        courseStatusLabel = "Concluído";
-                        const completedDate = item.completed_at ? new Date(item.completed_at).toLocaleDateString("pt-BR") : "17/06/2026";
-                        courseStatusSub = `Concluído em: ${completedDate}`;
-                        statusBadgeColor = "bg-emerald-50 border border-emerald-250 text-emerald-700";
-                      } else if (item.progress > 0) {
-                        courseStatusLabel = "Em Andamento";
-                        courseStatusSub = `Último acesso: ${new Date(item.enrolled_at).toLocaleDateString("pt-BR")}`;
-                        statusBadgeColor = "bg-blue-50/60 border border-blue-200/60 text-blue-700";
-                      }
+                      // Clean course name
+                      const cleanCourseName = (item.course_name || "Curso Realizzare")
+                        .replace(/^Certificado de Conclusão - /i, "")
+                        .replace(/^Curso de /i, "");
 
                       const certStatus = item.certificate_issued ? "Emitido" : "Não Emitido";
-                      const certDate = item.completed_at 
-                        ? new Date(item.completed_at)
-                        : new Date(new Date(item.enrolled_at).getTime() + 1000 * 60 * 60 * 24 * 30);
-                        
                       const certSub = item.certificate_issued 
-                        ? `Emissão: ${certDate.toLocaleDateString("pt-BR")} às 14:30`
-                        : "Aguardando conclusão";
+                        ? `Emissão: ${item.enrolled_at ? new Date(item.enrolled_at).toLocaleDateString("pt-BR") : "08/08/2026"}`
+                        : "Aguardando solicitação";
 
                       return (
                         <tr key={idx} className="hover:bg-slate-50/40 transition-colors group">
@@ -1273,19 +1259,13 @@ export default function ContactProfilePage({ params }: PageProps) {
                           </td>
                           <td className="py-3 px-3">
                             <div className="flex flex-col text-left">
-                              <span className="font-semibold text-slate-800">{item.course_name}</span>
-                              <span className="text-[10px] text-slate-400 mt-0.5">
-                                Iniciado em: {new Date(item.enrolled_at).toLocaleDateString("pt-BR")}
-                              </span>
+                              <span className="font-bold text-slate-800 text-xs">{cleanCourseName}</span>
                             </div>
                           </td>
                           <td className="py-3 px-3">
                             <div className="flex flex-col items-start text-left">
-                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusBadgeColor}`}>
-                                {courseStatusLabel}
-                              </span>
-                              <span className="text-[10px] text-slate-450 mt-1">
-                                {courseStatusSub}
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 border border-slate-200 text-slate-600">
+                                Aguardando LMS
                               </span>
                             </div>
                           </td>
@@ -1296,7 +1276,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                               }`}>
                                 {item.certificate_issued ? "✓ " : ""} {certStatus}
                               </span>
-                              <span className="text-[10px] text-slate-450 mt-1">
+                              <span className="text-[10px] text-slate-450 mt-0.5">
                                 {certSub}
                               </span>
                             </div>
@@ -1382,26 +1362,29 @@ export default function ContactProfilePage({ params }: PageProps) {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="text-slate-400 uppercase font-black text-[10px] border-b border-slate-200 pb-2.5">
-                    <th className="pb-2.5">Produto / Curso</th>
-                    <th className="pb-2.5">Valor</th>
-                    <th className="pb-2.5 text-right">Status</th>
+                    <th className="pb-2.5 py-2 px-1">Produto / Curso</th>
+                    <th className="pb-2.5 py-2 px-3">Data da Transação</th>
+                    <th className="pb-2.5 py-2 px-3">Valor</th>
+                    <th className="pb-2.5 py-2 px-1 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-650">
                   {draft.purchases.map((purchase: any, idx: number) => (
-                    <tr key={idx} className="group">
-                      <td className="py-4 pr-2 min-w-0">
-                        <div className="font-bold text-slate-800 truncate max-w-[240px]" title={purchase.product_name}>
+                    <tr key={idx} className="group hover:bg-slate-50/40 transition-colors">
+                      <td className="py-3 px-1">
+                        <div className="font-bold text-slate-850 text-xs leading-relaxed break-words">
                           {purchase.product_name}
                         </div>
-                        <div className="text-xs text-slate-400 mt-1 font-medium">
-                          {new Date(purchase.paid_at).toLocaleDateString("pt-BR")} • {purchase.product_type === "course" ? "Cartão de Crédito" : "PIX"}
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="text-xs text-slate-600 font-semibold whitespace-nowrap">
+                          {purchase.paid_at || "08/08/2026"} • {purchase.product_type === "course" ? "Cartão de Crédito" : "PIX"}
                         </div>
                       </td>
-                      <td className="py-4 font-extrabold text-slate-850">
+                      <td className="py-3 px-3 font-black text-emerald-700 text-xs whitespace-nowrap">
                         {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(purchase.amount)}
                       </td>
-                      <td className="py-4 text-right">
+                      <td className="py-3 px-1 text-right">
                         <span className="px-2.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase">
                           Pago
                         </span>
