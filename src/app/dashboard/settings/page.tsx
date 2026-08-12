@@ -2151,8 +2151,11 @@ export default function SettingsPage() {
                           });
                           const data = await res.json();
                           if (data.success) {
-                            alert(`Sincronização concluída com sucesso!\n\nForam importadas ${data.syncedOrdersCount} vendas realizadas a partir de 01/08/2026.\nTotal faturado: R$ ${data.totalRevenueSynced.toFixed(2)}.`);
-                            window.location.reload();
+                            if (data.events && data.events.length > 0) {
+                              localStorage.setItem("realizzare_simulated_events", JSON.stringify(data.events));
+                            }
+                            alert(`Sincronização concluída com sucesso!\n\nForam importadas ${data.syncedOrdersCount} vendas realizadas a partir de 01/08/2026.\nTotal faturado: R$ ${data.totalRevenueSynced.toFixed(2)}.\n\nRedirecionando para o Painel de Controle...`);
+                            window.location.href = "/dashboard";
                           } else {
                             alert(data.error || "Aviso ao sincronizar dados com a API do Pagar.me.");
                           }
