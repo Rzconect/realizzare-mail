@@ -21,7 +21,12 @@ export async function POST(req: Request) {
 
     // Extract transaction items and amount
     const items = data?.items || [];
-    const itemTitle = items[0]?.description || items[0]?.name || data?.description || "Certificado / Curso Realizzare";
+    const itemTitle = data?.metadata?.course_name || 
+                      data?.metadata?.course || 
+                      items[0]?.description || 
+                      items[0]?.name || 
+                      data?.description || 
+                      "Certificado / Curso Realizzare";
     const amountInCents = data?.amount || data?.total_amount || 4990;
     const amountInReais = (amountInCents / 100).toFixed(2);
 

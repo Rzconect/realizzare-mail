@@ -79,7 +79,12 @@ export async function POST(req: Request) {
       const name = customer?.name || item?.name || "Aluno Realizzare";
       const phone = customer?.phones?.mobile_phone?.number || customer?.phone || "";
       
-      const itemTitle = item?.items?.[0]?.description || item?.description || "Certificado de Conclusão - Realizzare Cursos";
+      const itemTitle = item?.metadata?.course_name || 
+                        item?.metadata?.course || 
+                        item?.items?.[0]?.description || 
+                        item?.items?.[0]?.name || 
+                        item?.description || 
+                        "Certificado de Conclusão - Realizzare Cursos";
       const amountInCents = item?.amount || item?.total_amount || item?.charge?.amount || 4848;
       const amountInReais = amountInCents / 100;
 
