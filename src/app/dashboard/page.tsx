@@ -100,9 +100,9 @@ const getCourseIconInfo = (iconName: string) => {
 };
 
 export default function DashboardPage() {
-  const [period, setPeriod] = useState<"today" | "7" | "30" | "90" | "custom">("30");
-  const [customStartDate, setCustomStartDate] = useState("2026-06-08");
-  const [customEndDate, setCustomEndDate] = useState("2026-07-08");
+  const [period, setPeriod] = useState<"today" | "7" | "30" | "90" | "current_month" | "custom">("current_month");
+  const [customStartDate, setCustomStartDate] = useState("2026-08-01");
+  const [customEndDate, setCustomEndDate] = useState("2026-08-12");
 
   const [activeFlows, setActiveFlows] = useState<any[]>([]);
   const [flows, setFlows] = useState<any[]>([]);
@@ -111,6 +111,7 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
   const [recentEventsList, setRecentEventsList] = useState<any[]>([]);
+  const [selectedEventModal, setSelectedEventModal] = useState<any>(null);
 
   // Load KPI Metrics & Live Webhook Events
   useEffect(() => {
@@ -130,6 +131,9 @@ export default function DashboardPage() {
           start.setDate(start.getDate() - 30);
         } else if (period === "90") {
           start.setDate(start.getDate() - 90);
+        } else if (period === "current_month") {
+          start = new Date("2026-08-01T00:00:00Z");
+          end = new Date("2026-08-12T23:59:59Z");
         } else if (period === "custom") {
           start = new Date(customStartDate);
           end = new Date(customEndDate);
@@ -624,6 +628,16 @@ export default function DashboardPage() {
               7 Dias
             </button>
             <button
+              onClick={() => setPeriod("current_month")}
+              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                period === "current_month"
+                  ? "bg-indigo-600 text-white shadow"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              Mês Atual
+            </button>
+            <button
               onClick={() => setPeriod("30")}
               className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                 period === "30"
@@ -881,26 +895,29 @@ export default function DashboardPage() {
                 recentEventsList.map((evt) => (
                   <div
                     key={evt.id}
-                    className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors"
+                    onClick={() => setSelectedEventModal(evt)}
+                    className="flex items-start justify-between bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/20 transition-all cursor-pointer group shadow-2xs relative"
                   >
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-black shrink-0">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
                         {evt.name.split(" ").map((n: string) => n[0]).join("")}
                       </div>
-                      <div className="flex flex-col overflow-hidden text-left">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-slate-850 truncate">{evt.name}</span>
-                          <span className="bg-emerald-50 text-emerald-700 text-[9px] font-extrabold px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
-                            Pagar.me V5
-                          </span>
+                      <div className="flex flex-col text-left space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{evt.name}</span>
                         </div>
-                        <span className="text-[10px] text-slate-500 truncate">{evt.email}</span>
-                        <span className="text-[10px] truncate mt-0.5 font-bold text-emerald-700">{evt.eventLabel}</span>
+                        <span className="text-[10px] text-slate-500 font-medium">{evt.email}</span>
+                        <span className="text-[11px] font-bold text-emerald-700 block pt-0.5 leading-snug">
+                          {evt.itemTitle || evt.eventLabel}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0 ml-2">
-                      <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 font-medium">
+                    <div className="flex flex-col items-end shrink-0 ml-3 space-y-1.5">
+                      <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-md border border-emerald-200">
+                        Pagar.me
+                      </span>
+                      <div className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
                         <Clock className="h-3 w-3 text-slate-400" />
                         <span>{evt.date} às {evt.time}</span>
                       </div>
@@ -1004,6 +1021,91 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* Transaction Event Details Modal */}
+      {selectedEventModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 relative">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-extrabold text-base">
+                  💳
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">Detalhes da Transação Pagar.me</h3>
+                  <span className="text-[10px] text-slate-500 font-semibold">Integrado via Webhook Pagar.me V5</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedEventModal(null)}
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Dados do Aluno / Comprador</span>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-slate-800 text-sm">{selectedEventModal.name}</span>
+                  <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
+                    Compra Aprovada
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600 font-medium">
+                  <span>E-mail:</span>
+                  <strong className="text-slate-800 font-mono">{selectedEventModal.email}</strong>
+                </div>
+                {selectedEventModal.phone && (
+                  <div className="flex justify-between text-slate-600 font-medium">
+                    <span>Telefone / WhatsApp:</span>
+                    <strong className="text-slate-800 font-mono">{selectedEventModal.phone}</strong>
+                  </div>
+                )}
+              </div>
+
+              <div className="border border-slate-200 rounded-2xl p-4 space-y-2.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Resumo do Item Adquirido</span>
+                <div className="text-slate-900 font-bold text-xs leading-relaxed">
+                  {selectedEventModal.itemTitle || selectedEventModal.eventLabel}
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-slate-700 font-medium">
+                  <span>Valor Total Transacionado:</span>
+                  <strong className="text-emerald-700 font-black text-base">R$ {selectedEventModal.amount ? selectedEventModal.amount.toFixed(2) : "49.90"}</strong>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 font-medium">
+                  <span>Método de Pagamento:</span>
+                  <span className="bg-slate-100 text-slate-800 font-bold text-[10px] px-2 py-0.5 rounded-md uppercase">
+                    {selectedEventModal.paymentMethod || "Cartão / PIX"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-slate-500 text-[11px]">
+                  <span>Data e Hora do Evento:</span>
+                  <span>{selectedEventModal.date} às {selectedEventModal.time}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3">
+              <Link
+                href="/dashboard/contacts"
+                className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all text-center shadow-sm"
+              >
+                Ver Ficha do Contato
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelectedEventModal(null)}
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
