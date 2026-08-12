@@ -1640,6 +1640,62 @@ export default function ContactsPage() {
                   course: "Nenhum curso iniciado",
                   courseStatus: "Não informado"
                 }));
+              
+              // Also merge Pagar.me transactions as contacts
+              const storedSims = localStorage.getItem("realizzare_simulated_events");
+              if (storedSims) {
+                try {
+                  const simEvents = JSON.parse(storedSims);
+                  simEvents.forEach((evt: any) => {
+                    const cEmail = (evt.email || "").toLowerCase().trim();
+                    if (!cEmail) return;
+                    const exists = cleaned.some((c: any) => c.email.toLowerCase().trim() === cEmail);
+                    if (!exists) {
+                      const nameParts = (evt.name || "Aluno Realizzare").split(" ");
+                      const fName = nameParts[0] || "Aluno";
+                      const lName = nameParts.slice(1).join(" ") || "Realizzare";
+                      const newC = {
+                        id: `c_pagarme_${cEmail.replace(/[^a-z0-9]/gi, "")}`,
+                        first_name: fName,
+                        last_name: lName,
+                        email: cEmail,
+                        phone: evt.phone || "(11) 98765-4321",
+                        status: "unsubscribed", // Not subscribed to marketing lists
+                        created_at: evt.date || "01/08/2026",
+                        tags: ["Pagar.me", "Cliente Realizzare"],
+                        course: evt.itemTitle || evt.eventLabel || "Certificado / Curso Realizzare",
+                        courseStatus: "Ativo",
+                        total_spent: evt.amount || 49.90
+                      };
+                      cleaned.unshift(newC);
+
+                      // Create rich profile for contact
+                      const profileKey = `realizzare_profile_${newC.id}`;
+                      if (!localStorage.getItem(profileKey)) {
+                        localStorage.setItem(profileKey, JSON.stringify({
+                          first_name: fName,
+                          last_name: lName,
+                          email: cEmail,
+                          phone: evt.phone || "(11) 98765-4321",
+                          birth_date: "1995-01-01",
+                          gender: "Não informado",
+                          status: "unsubscribed",
+                          created_at: evt.date || "2026-08-01",
+                          location: { country: "Brasil", state: "SP", city: "São Paulo" },
+                          tags: ["Pagar.me", "Cliente Realizzare"],
+                          custom_fields: [{ name: "Origem Lead", type: "text", value: "Pagar.me V5 Checkout" }],
+                          lists: [],
+                          enrollments: [{ course_name: evt.itemTitle || "Certificado / Curso Realizzare", price: `R$ ${evt.amount ? evt.amount.toFixed(2) : "49.90"}`, status: "active", progress: 100, enrolled_at: evt.date || "2026-08-01", certificate_issued: true, completed_at: evt.date || "2026-08-01" }],
+                          purchases: [{ product_type: "certificado", product_name: evt.itemTitle || "Certificado / Curso Realizzare", amount: evt.amount || 49.90, paid_at: evt.date || "2026-08-01", status: "paid", sku: "PAGARME-V5" }],
+                          flows: [],
+                          timeline: [{ id: `evt-${Math.random()}`, type: "purchase", label: "Compra Aprovada via Pagar.me", details: `${evt.itemTitle || "Certificado / Curso Realizzare"} - R$ ${evt.amount ? evt.amount.toFixed(2) : "49.90"}`, timestamp: evt.date || "2026-08-01" }]
+                        }));
+                      }
+                    }
+                  });
+                } catch (e) { console.error(e); }
+              }
+
               setContacts(cleaned);
               localStorage.setItem("realizzare_contacts", JSON.stringify(cleaned));
             } else {

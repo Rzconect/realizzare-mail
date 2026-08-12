@@ -30,7 +30,8 @@ import {
   ShoppingBag,
   Eye,
   GitBranch,
-  Play
+  Play,
+  RotateCcw
 } from "lucide-react";
 import {
   AreaChart,
@@ -112,126 +113,151 @@ export default function DashboardPage() {
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
   const [recentEventsList, setRecentEventsList] = useState<any[]>([]);
   const [selectedEventModal, setSelectedEventModal] = useState<any>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string>("Agora (12/08 às 19:40)");
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Load KPI Metrics & Live Webhook Events
-  useEffect(() => {
-    const loadMetrics = async () => {
-      setIsLoadingMetrics(true);
-      const supabase = createClient();
+  // Load KPI Metrics & Live Webhook Events with Strict Date Range Filtering
+  const loadMetrics = async () => {
+    setIsLoadingMetrics(true);
+    const supabase = createClient();
+    
+    try {
+      let start = new Date();
+      let end = new Date();
       
-      try {
-        let start = new Date();
-        let end = new Date();
-        
-        if (period === "today") {
-          start.setHours(0, 0, 0, 0);
-        } else if (period === "7") {
-          start.setDate(start.getDate() - 7);
-        } else if (period === "30") {
-          start.setDate(start.getDate() - 30);
-        } else if (period === "90") {
-          start.setDate(start.getDate() - 90);
-        } else if (period === "current_month") {
-          start = new Date("2026-08-01T00:00:00Z");
-          end = new Date("2026-08-12T23:59:59Z");
-        } else if (period === "custom") {
-          start = new Date(customStartDate);
-          end = new Date(customEndDate);
-          end.setHours(23, 59, 59, 999);
-        }
-
-        // Fetch live transaction events from reporting_events
-        const { data: eventsData } = await supabase
-          .from("reporting_events")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(20);
-
-        let liveEvents: any[] = [];
-        let calculatedRevenue = 0;
-        let calculatedCerts = 0;
-        let calculatedSubs = 0;
-
-        if (eventsData && eventsData.length > 0) {
-          liveEvents = eventsData.map((e: any) => {
-            const meta = e.metadata || {};
-            const amt = meta.amount || 0;
-            calculatedRevenue += amt;
-            if (meta.category === "certificado") calculatedCerts += 1;
-            if (meta.category === "assinatura") calculatedSubs += 1;
-
-            const dateObj = new Date(e.created_at || Date.now());
-            return {
-              id: e.id || Math.random().toString(),
-              name: meta.customer_name || "Aluno Realizzare",
-              email: e.contact_email || "aluno@realizzare.com.br",
-              date: dateObj.toLocaleDateString("pt-BR"),
-              time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-              eventLabel: `${meta.item_title || "Compra de Certificado"} - R$ ${amt.toFixed(2)}`,
-              type: "purchase",
-              provider: meta.provider || "pagarme"
-            };
-          });
-        }
-
-        // Also check localStorage simulated events
-        const storedSims = localStorage.getItem("realizzare_simulated_events");
-        if (storedSims) {
-          try {
-            const simList = JSON.parse(storedSims);
-            simList.forEach((s: any) => {
-              calculatedRevenue += s.amount || 0;
-              if (s.category === "certificado") calculatedCerts += 1;
-              if (s.category === "assinatura") calculatedSubs += 1;
-              liveEvents.unshift(s);
-            });
-          } catch (e) {
-            console.error(e);
-          }
-        }
-
-        setRecentEventsList(liveEvents);
-
-        const { data, error } = await supabase.rpc("get_dashboard_summary", {
-          p_start_date: start.toISOString(),
-          p_end_date: end.toISOString()
-        });
-
-        if (error || !data) {
-          setMetrics({
-            active_leads: liveEvents.length > 0 ? liveEvents.length : 0,
-            students_count: liveEvents.length > 0 ? liveEvents.length : 0,
-            enrolled_period: 0,
-            certificates_issued: calculatedCerts,
-            total_paid: calculatedRevenue,
-            active_subscriptions: calculatedSubs,
-            changes: { leads: "+0%", students: "+0%", enrolled: "+0%", certs: "+0%", revenue: "+0%", subs: "+0%" }
-          });
-        } else {
-          setMetrics({
-            ...data,
-            total_paid: calculatedRevenue > 0 ? calculatedRevenue : data.total_paid,
-            certificates_issued: calculatedCerts > 0 ? calculatedCerts : data.certificates_issued,
-            active_subscriptions: calculatedSubs > 0 ? calculatedSubs : data.active_subscriptions,
-            changes: { leads: "+0%", students: "+0%", enrolled: "+0%", certs: "+0%", revenue: "+0%", subs: "+0%" }
-          });
-        }
-      } catch (err) {
-        console.error(err);
-        setMetrics({
-          active_leads: 0,
-          students_count: 0,
-          enrolled_period: 0,
-          certificates_issued: 0,
-          total_paid: 0,
-          active_subscriptions: 0,
-          changes: { leads: "0%", students: "0%", enrolled: "0%", certs: "0%", revenue: "0%", subs: "0%" }
-        });
-      } finally {
-        setIsLoadingMetrics(false);
+      if (period === "today") {
+        start.setHours(0, 0, 0, 0);
+      } else if (period === "7") {
+        start.setDate(start.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+      } else if (period === "30") {
+        start.setDate(start.getDate() - 30);
+        start.setHours(0, 0, 0, 0);
+      } else if (period === "90") {
+        start.setDate(start.getDate() - 90);
+        start.setHours(0, 0, 0, 0);
+      } else if (period === "current_month") {
+        start = new Date("2026-08-01T00:00:00Z");
+        end = new Date("2026-08-12T23:59:59Z");
+      } else if (period === "custom") {
+        start = new Date(customStartDate);
+        end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
       }
-    };
 
+      const startMs = start.getTime();
+      const endMs = end.getTime();
+
+      // Fetch live transaction events from reporting_events
+      const { data: eventsData } = await supabase
+        .from("reporting_events")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      let allEventsPool: any[] = [];
+
+      if (eventsData && eventsData.length > 0) {
+        eventsData.forEach((e: any) => {
+          const meta = e.metadata || {};
+          const amt = meta.amount || 0;
+          const dateObj = new Date(e.created_at || Date.now());
+
+          allEventsPool.push({
+            id: e.id || Math.random().toString(),
+            name: meta.customer_name || "Aluno Realizzare",
+            email: e.contact_email || "aluno@realizzare.com.br",
+            phone: meta.phone || "(11) 98765-4321",
+            date: dateObj.toLocaleDateString("pt-BR"),
+            time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+            eventLabel: meta.item_title || "Compra de Certificado",
+            itemTitle: meta.item_title || "Certificado de Conclusão - Realizzare Cursos",
+            amount: amt,
+            category: meta.category || "certificado",
+            paymentMethod: "Cartão / PIX",
+            timestampMs: dateObj.getTime(),
+            type: "purchase",
+            provider: meta.provider || "pagarme"
+          });
+        });
+      }
+
+      // Also check localStorage simulated events
+      const storedSims = localStorage.getItem("realizzare_simulated_events");
+      if (storedSims) {
+        try {
+          const simList = JSON.parse(storedSims);
+          simList.forEach((s: any) => {
+            let tMs = Date.now();
+            if (s.date) {
+              const parts = s.date.split("/");
+              if (parts.length === 3) {
+                tMs = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+              }
+            }
+            allEventsPool.unshift({
+              ...s,
+              timestampMs: s.timestampMs || tMs
+            });
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Deduplicate events by id
+      const uniqueEventsMap = new Map();
+      allEventsPool.forEach(evt => uniqueEventsMap.set(evt.id, evt));
+      const deduplicatedPool = Array.from(uniqueEventsMap.values());
+
+      // Filter events by period date bounds
+      const filteredPeriodEvents = deduplicatedPool.filter(evt => {
+        return evt.timestampMs >= startMs && evt.timestampMs <= endMs;
+      });
+
+      let calculatedRevenue = 0;
+      let calculatedCerts = 0;
+      let calculatedSubs = 0;
+
+      filteredPeriodEvents.forEach(evt => {
+        calculatedRevenue += evt.amount || 0;
+        if (evt.category === "certificado") calculatedCerts += 1;
+        if (evt.category === "assinatura") calculatedSubs += 1;
+      });
+
+      setRecentEventsList(filteredPeriodEvents.slice(0, 25));
+
+      // LEADS ATIVOS and ALUNOS ATIVOS set strictly to 0 as requested by user until platform launch!
+      setMetrics({
+        active_leads: 0,
+        students_count: 0,
+        enrolled_period: 0,
+        certificates_issued: calculatedCerts,
+        total_paid: calculatedRevenue,
+        active_subscriptions: calculatedSubs,
+        changes: { leads: "0%", students: "0%", enrolled: "0%", certs: "+0%", revenue: "+0%", subs: "+0%" }
+      });
+
+      const nowStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setLastSyncTime(`Hoje às ${nowStr}`);
+
+    } catch (err) {
+      console.error(err);
+      setMetrics({
+        active_leads: 0,
+        students_count: 0,
+        enrolled_period: 0,
+        certificates_issued: 0,
+        total_paid: 0,
+        active_subscriptions: 0,
+        changes: { leads: "0%", students: "0%", enrolled: "0%", certs: "0%", revenue: "0%", subs: "0%" }
+      });
+    } finally {
+      setIsLoadingMetrics(false);
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
     loadMetrics();
   }, [period, customStartDate, customEndDate]);
 
@@ -667,6 +693,23 @@ export default function DashboardPage() {
             >
               Personalizado
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSyncing(true);
+                loadMetrics();
+              }}
+              disabled={isSyncing}
+              className="text-xs px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 ml-1"
+              title="Atualizar métricas e transações"
+            >
+              <RotateCcw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              <span>{isSyncing ? "Sincronizando..." : "Atualizar Dados"}</span>
+            </button>
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium text-right sm:text-left self-end sm:self-auto">
+            Última sincronização: <span className="font-bold text-slate-700">{lastSyncTime}</span>
           </div>
         </div>
       </div>
@@ -896,29 +939,38 @@ export default function DashboardPage() {
                   <div
                     key={evt.id}
                     onClick={() => setSelectedEventModal(evt)}
-                    className="flex items-start justify-between bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/20 transition-all cursor-pointer group shadow-2xs relative"
+                    className="flex flex-col space-y-1.5 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50/20 transition-all cursor-pointer group w-full overflow-hidden shadow-2xs"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
-                        {evt.name.split(" ").map((n: string) => n[0]).join("")}
-                      </div>
-                      <div className="flex flex-col text-left space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{evt.name}</span>
+                    {/* Top Row: Avatar + Name + Pagar.me Badge */}
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                        <div className="h-7 w-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0">
+                          {evt.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2)}
                         </div>
-                        <span className="text-[10px] text-slate-500 font-medium">{evt.email}</span>
-                        <span className="text-[11px] font-bold text-emerald-700 block pt-0.5 leading-snug">
-                          {evt.itemTitle || evt.eventLabel}
+                        <span className="text-xs font-extrabold text-slate-850 truncate group-hover:text-indigo-600 transition-colors">
+                          {evt.name}
                         </span>
                       </div>
-                    </div>
-
-                    <div className="flex flex-col items-end shrink-0 ml-3 space-y-1.5">
-                      <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-md border border-emerald-200">
+                      <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
                         Pagar.me
                       </span>
-                      <div className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
-                        <Clock className="h-3 w-3 text-slate-400" />
+                    </div>
+
+                    {/* Email line */}
+                    <span className="text-[10px] text-slate-500 font-medium truncate block w-full pl-9">
+                      {evt.email}
+                    </span>
+
+                    {/* Item Description line */}
+                    <span className="text-[11px] font-bold text-emerald-700 block w-full pl-9 leading-snug line-clamp-2">
+                      {evt.itemTitle || evt.eventLabel}
+                    </span>
+
+                    {/* Bottom row: Timestamp */}
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-100/80 w-full">
+                      <span className="font-bold text-slate-700">R$ {evt.amount ? evt.amount.toFixed(2) : "49.90"}</span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-slate-400 shrink-0" />
                         <span>{evt.date} às {evt.time}</span>
                       </div>
                     </div>
