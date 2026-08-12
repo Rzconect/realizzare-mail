@@ -38,34 +38,20 @@ export default function LoginPage() {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       
-      let userName = "Realizzare Cursos";
-      let userEmail = inputEmail;
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: inputEmail,
+        password: password,
+      });
 
-      // Check official admin login credentials
-      if (
-        (inputEmail === "contato@realizzarecursos.com.br" && password === "RZconect2026@") ||
-        (inputEmail === "admin@realizzare.com.br" && password === "senha123")
-      ) {
-        userName = inputEmail.includes("realizzarecursos") ? "Realizzare Cursos" : "Leonardo Christian";
-      } else {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
-          email: inputEmail,
-          password: password,
-        });
-
-        if (authError) {
-          setError("Credenciais inválidas. Verifique seu e-mail e senha.");
-          setIsLoading(false);
-          return;
-        }
-
-        userName = data.user?.user_metadata?.name || "Administrador Realizzare";
-        userEmail = data.user?.email || inputEmail;
+      if (authError) {
+        setError("Credenciais inválidas. Verifique seu e-mail e senha.");
+        setIsLoading(false);
+        return;
       }
 
       const userSession = {
-        name: userName,
-        email: userEmail,
+        name: data.user?.user_metadata?.name || "Realizzare Cursos",
+        email: data.user?.email || inputEmail,
         role: "Administrador",
         isNewUser: false
       };
