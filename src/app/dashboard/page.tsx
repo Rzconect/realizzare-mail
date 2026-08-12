@@ -614,102 +614,103 @@ export default function DashboardPage() {
         </div>
 
         {/* Period Selector Dropdown Wrapper */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {period === "custom" && (
-            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 animate-fadeIn shadow-sm">
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
-              />
-              <span className="text-[10px] text-slate-400 font-bold uppercase select-none">até</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          )}
-          <div className="bg-slate-100 border border-slate-200 rounded-lg p-1 flex items-center gap-1.5 shadow-sm">
-            <button
-              onClick={() => setPeriod("today")}
-              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-                period === "today"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              Hoje
-            </button>
-            <button
-              onClick={() => setPeriod("7")}
-              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-                period === "7"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              7 Dias
-            </button>
-            <button
-              onClick={() => setPeriod("current_month")}
-              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-                period === "current_month"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              Mês Atual
-            </button>
-            <button
-              onClick={() => setPeriod("30")}
-              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-                period === "30"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              30 Dias
-            </button>
-            <button
-              onClick={() => setPeriod("90")}
-              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-                period === "90"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              90 Dias
-            </button>
-            <button
-              onClick={() => setPeriod("custom")}
-              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-                period === "custom"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              Personalizado
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsSyncing(true);
-                loadMetrics();
-              }}
-              disabled={isSyncing}
-              className="text-xs px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 ml-1"
-              title="Atualizar métricas e transações"
-            >
-              <RotateCcw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-              <span>{isSyncing ? "Sincronizando..." : "Atualizar Dados"}</span>
-            </button>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="text-[10px] text-slate-400 font-medium">
+            Última sincronização: <span className="font-bold text-slate-600">{lastSyncTime}</span>
           </div>
-          <div className="text-[11px] text-slate-500 font-medium text-right sm:text-left self-end sm:self-auto">
-            Última sincronização: <span className="font-bold text-slate-700">{lastSyncTime}</span>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {period === "custom" && (
+              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 animate-fadeIn shadow-sm">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
+                />
+                <span className="text-[10px] text-slate-400 font-bold uppercase select-none">até</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            )}
+            <div className="bg-slate-100 border border-slate-200 rounded-lg p-1 flex items-center gap-1.5 shadow-sm">
+              <button
+                onClick={() => setPeriod("today")}
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  period === "today"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                Hoje
+              </button>
+              <button
+                onClick={() => setPeriod("7")}
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  period === "7"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                7 Dias
+              </button>
+              <button
+                onClick={() => setPeriod("current_month")}
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  period === "current_month"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                Mês Atual
+              </button>
+              <button
+                onClick={() => setPeriod("30")}
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  period === "30"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                30 Dias
+              </button>
+              <button
+                onClick={() => setPeriod("90")}
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  period === "90"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                90 Dias
+              </button>
+              <button
+                onClick={() => setPeriod("custom")}
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  period === "custom"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                Personalizado
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSyncing(true);
+                  loadMetrics();
+                }}
+                disabled={isSyncing}
+                className="h-7 w-7 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50 shrink-0 ml-0.5"
+                title="Sincronizar e atualizar dados"
+              >
+                <RotateCcw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

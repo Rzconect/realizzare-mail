@@ -385,35 +385,77 @@ export default function ContactProfilePage({ params }: PageProps) {
         const created_at = foundContact?.created_at || "01/07/2026";
         const tags = foundContact?.tags || ["Importado ActiveCampaign"];
 
-        // Check for simulated Pagar.me / PagBank custom transactions
+        // Check for simulated Pagar.me / PagBank custom transactions & events pool
         let customTxList: any[] = [];
         try {
+          const rawSims = localStorage.getItem("realizzare_simulated_events");
+          if (rawSims) {
+            const parsedSims = JSON.parse(rawSims);
+            parsedSims.forEach((s: any) => {
+              const sEmail = (s.email || "").toLowerCase().trim();
+              if (sEmail && (sEmail === email.toLowerCase().trim() || email.toLowerCase().includes(sEmail.split("@")[0]))) {
+                customTxList.push({
+                  id: s.id || `sim-${Math.random()}`,
+                  product_type: s.category || "certificado",
+                  product_name: s.itemTitle || s.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
+                  amount: s.amount || 49.90,
+                  paid_at: s.date || "01/08/2026",
+                  status: "paid",
+                  provider: s.provider || "pagarme"
+                });
+              }
+            });
+          }
+
           const rawCustomTx = localStorage.getItem("realizzare_custom_transactions");
           if (rawCustomTx) {
-            customTxList = JSON.parse(rawCustomTx);
+            const parsedCtx = JSON.parse(rawCustomTx);
+            parsedCtx.forEach((tx: any) => {
+              if (!tx.customer_email || tx.customer_email.toLowerCase() === email.toLowerCase()) {
+                customTxList.push(tx);
+              }
+            });
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error(e);
+        }
 
-        const matchedCustomTx = customTxList.filter((tx: any) => 
-          !tx.customer_email || tx.customer_email.toLowerCase() === email.toLowerCase() || email.toLowerCase().includes(tx.customer_email.toLowerCase().split("@")[0])
-        );
-
-        const customPurchases = matchedCustomTx.map((tx: any) => ({
+        const customPurchases = customTxList.map((tx: any) => ({
           product_type: tx.product_type || "certificate",
           product_name: tx.product_name,
-          amount: tx.amount,
-          paid_at: tx.paid_at,
+          amount: Number(tx.amount || 49.90),
+          paid_at: tx.paid_at || "01/08/2026",
           status: tx.status || "paid",
-          sku: tx.sku || "PAGARME-01"
+          sku: tx.sku || "PAGARME-V5"
         }));
 
-        const customTimelineEvents = matchedCustomTx.map((tx: any) => ({
-          id: tx.id,
+        const customTimelineEvents = customTxList.map((tx: any) => ({
+          id: tx.id || `timeline-${Math.random()}`,
           type: "purchase",
           label: `Compra Aprovada (${tx.provider === "pagbank" ? "PagBank" : "Pagar.me"})`,
-          details: `Comprou '${tx.product_name}' - R$ ${Number(tx.amount).toFixed(2).replace(".", ",")}`,
-          timestamp: tx.paid_at
+          details: `Comprou '${tx.product_name}' - R$ ${Number(tx.amount || 49.90).toFixed(2).replace(".", ",")}`,
+          timestamp: tx.paid_at || "01/08/2026"
         }));
+
+        // Default Pagar.me fallback event if user is a Pagar.me contact
+        if (customPurchases.length === 0 && (tags.includes("Pagar.me") || foundContact?.id?.startsWith("c_pagarme_"))) {
+          customPurchases.push({
+            product_type: "certificado",
+            product_name: foundContact?.course || "Certificado de Conclusão - Realizzare Cursos",
+            amount: Number(foundContact?.total_spent || 49.90),
+            paid_at: created_at || "01/08/2026",
+            status: "paid",
+            sku: "PAGARME-V5"
+          });
+
+          customTimelineEvents.push({
+            id: `evt-pagarme-def`,
+            type: "purchase",
+            label: "Compra Aprovada via Pagar.me",
+            details: `Comprou '${foundContact?.course || "Certificado de Conclusão - Realizzare Cursos"}' - R$ ${Number(foundContact?.total_spent || 49.90).toFixed(2).replace(".", ",")}`,
+            timestamp: created_at || "01/08/2026"
+          });
+        }
 
         const fallbackProfileObj = {
           first_name,
@@ -426,23 +468,33 @@ export default function ContactProfilePage({ params }: PageProps) {
           created_at,
           location: {
             country: "Brasil",
-            state: "Mato Grosso",
-            city: "Cuiabá"
+            state: "São Paulo",
+            city: "São Paulo"
           },
           tags,
           custom_fields: [
-            { name: "Área de Interesse", type: "text", value: "Cursos Livres" },
-            { name: "Origem Lead", type: "text", value: "Importação ActiveCampaign" }
+            { name: "Área de Interesse", type: "text", value: "Cursos Livres Realizzare" },
+            { name: "Origem Lead", type: "text", value: "Pagar.me V5 Checkout" }
           ],
           lists: [
             { name: "Lista Geral de Alunos", status: status === "unsubscribed" ? "unsubscribed" : "subscribed", updated_at: created_at }
           ],
-          enrollments: [],
+          enrollments: [
+            {
+              course_name: foundContact?.course || "Certificado de Conclusão - Realizzare Cursos",
+              price: `R$ ${Number(foundContact?.total_spent || 49.90).toFixed(2).replace(".", ",")}`,
+              status: "active",
+              progress: 100,
+              enrolled_at: created_at || "01/08/2026",
+              certificate_issued: true,
+              completed_at: created_at || "01/08/2026"
+            }
+          ],
           purchases: customPurchases,
           flows: [],
           timeline: [
             ...customTimelineEvents,
-            { id: "t1", type: "import", label: "Contato Importado", details: "Importado via planilha CSV (ActiveCampaign)", timestamp: created_at }
+            { id: "t1", type: "import", label: "Contato Mapeado", details: "Mapeado via Pagar.me V5 Integration", timestamp: created_at }
           ]
         };
 
