@@ -1,0 +1,725 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  Mail,
+  GitBranch,
+  BarChart3,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Bell,
+  Search,
+  Clock,
+  User,
+  GraduationCap,
+  BookOpen,
+  Settings,
+  Image,
+  Lock,
+  Building2
+} from "lucide-react";
+
+interface SidebarItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [userAccount, setUserAccount] = useState({
+    first_name: "Leonardo",
+    last_name: "Christian",
+    email: "leonardo@realizzare.com.br"
+  });
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showNewPasswordModal, setShowNewPasswordModal] = useState(false);
+  const [newAuthPassword, setNewAuthPassword] = useState("");
+  const [confirmAuthPassword, setConfirmAuthPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [showUsagePopover, setShowUsagePopover] = useState(false);
+  const [usage, setUsage] = useState({
+    profilesLimit: 5000,
+    profilesUsed: 4585,
+    emailsLimit: 50000,
+    emailsUsed: 30972,
+    mobileLimit: 5.00,
+    mobileUsed: 0.00
+  });
+
+  useEffect(() => {
+    const checkAuthSession = () => {
+      if (typeof window !== "undefined") {
+        const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
+        if (!sessionStr) {
+          router.push("/login");
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(sessionStr);
+          setCurrentUser(parsed);
+          setUserAccount({
+            first_name: parsed.name ? parsed.name.split(" ")[0] : "Leonardo",
+            last_name: parsed.name ? parsed.name.split(" ").slice(1).join(" ") : "Christian",
+            email: parsed.email
+          });
+
+          // Show password modal if it's a first login
+          if (parsed.isNewUser) {
+            setShowNewPasswordModal(true);
+          }
+        } catch (e) {
+          console.error(e);
+          router.push("/login");
+        }
+      }
+    };
+    checkAuthSession();
+    window.addEventListener("storage", checkAuthSession);
+    return () => window.removeEventListener("storage", checkAuthSession);
+  }, [pathname, router]);
+
+  useEffect(() => {
+    const loadNotifications = () => {
+      const stored = localStorage.getItem("realizzare_mock_campaigns");
+      if (stored) {
+        try {
+          const list = JSON.parse(stored);
+          const scheduled = list.filter((c: any) => c.status === "Agendado" || c.status === "Enviando");
+          setScheduledNotifications(scheduled);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    loadNotifications();
+    window.addEventListener("storage", loadNotifications);
+    return () => window.removeEventListener("storage", loadNotifications);
+  }, [pathname]);
+
+  // Reset dropdowns on route changes
+  useEffect(() => {
+    setShowSettingsDropdown(false);
+    setShowNotifications(false);
+    setShowUsagePopover(false);
+  }, [pathname]);
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".settings-dropdown-container")) {
+        setShowSettingsDropdown(false);
+      }
+      if (!target.closest(".notifications-dropdown-container")) {
+        setShowNotifications(false);
+      }
+      if (!target.closest(".usage-popover-container") && !target.closest(".usage-trigger-btn")) {
+        setShowUsagePopover(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  // Load account usage statistics
+  useEffect(() => {
+    const loadUsage = () => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("realizzare_account_usage");
+        if (stored) {
+          try {
+            setUsage(JSON.parse(stored));
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          const defaults = {
+            profilesLimit: 5000,
+            profilesUsed: 4585,
+            emailsLimit: 50000,
+            emailsUsed: 30972,
+            mobileLimit: 5.00,
+            mobileUsed: 0.00
+          };
+          localStorage.setItem("realizzare_account_usage", JSON.stringify(defaults));
+          setUsage(defaults);
+        }
+      }
+    };
+    loadUsage();
+    window.addEventListener("storage", loadUsage);
+    return () => window.removeEventListener("storage", loadUsage);
+  }, [pathname]);
+
+  const navigation: SidebarItem[] = [
+    { name: "Início", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Contatos", href: "/dashboard/contacts", icon: Users },
+    { name: "Campanhas", href: "/dashboard/campaigns", icon: Mail },
+    { name: "Automações", href: "/dashboard/automations", icon: GitBranch },
+    { name: "Conteúdos", href: "/dashboard/contents", icon: Image },
+    { name: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },
+    { name: "Cursos", href: "/dashboard/courses", icon: BookOpen },
+  ];
+
+  const handleLogout = async () => {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Erro ao deslogar do Supabase:", e);
+    }
+    localStorage.removeItem("realizzare_current_session");
+    sessionStorage.removeItem("realizzare_current_session");
+    router.push("/login");
+  };
+
+  const handleUpdateNewUserPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+
+    if (newAuthPassword.length < 6) {
+      setPasswordError("A senha deve ter no mínimo 6 caracteres.");
+      return;
+    }
+    if (newAuthPassword !== confirmAuthPassword) {
+      setPasswordError("As senhas não coincidem.");
+      return;
+    }
+
+    // Update in database list
+    const storedUsers = localStorage.getItem("realizzare_auth_users");
+    if (storedUsers) {
+      try {
+        const usersList = JSON.parse(storedUsers);
+        const updatedList = usersList.map((u: any) => {
+          if (u.email.toLowerCase() === currentUser.email.toLowerCase()) {
+            return { ...u, password: newAuthPassword, isNewUser: false };
+          }
+          return u;
+        });
+        localStorage.setItem("realizzare_auth_users", JSON.stringify(updatedList));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Update session storage
+    const updatedSession = { ...currentUser, isNewUser: false };
+    if (localStorage.getItem("realizzare_current_session")) {
+      localStorage.setItem("realizzare_current_session", JSON.stringify(updatedSession));
+    } else {
+      sessionStorage.setItem("realizzare_current_session", JSON.stringify(updatedSession));
+    }
+
+    setCurrentUser(updatedSession);
+    setShowNewPasswordModal(false);
+    alert("Sua senha foi alterada com sucesso! Aproveite o painel.");
+  };
+
+  return (
+    <div className="flex h-screen bg-slate-50 text-slate-800 overflow-hidden font-sans">
+      {/* 1. Mobile Topbar Header */}
+      <header className="flex md:hidden w-full h-16 bg-white border-b border-slate-200 items-center justify-between px-4 absolute top-0 left-0 z-40">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 shrink-0 relative overflow-hidden rounded-lg">
+            <img src="/logo.png" alt="Realizzare Logo" className="h-full w-full object-cover" />
+          </div>
+          <span className="font-bold text-lg text-slate-900">Realizzare Mail</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Notifications Bell Dropdown */}
+          <div className="relative notifications-dropdown-container">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-50 border border-slate-200 relative hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
+            >
+              <Bell className="h-4 w-4" />
+              {scheduledNotifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-indigo-600 text-white text-[8px] font-black flex items-center justify-center animate-pulse">
+                  {scheduledNotifications.length}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowNotifications(false)} />
+                <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-202 rounded-2xl shadow-xl p-4 z-40 space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 select-none">
+                    <span className="text-[10px] font-black uppercase text-slate-400">Atividades</span>
+                    {scheduledNotifications.length > 0 && (
+                      <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
+                        {scheduledNotifications.length} Ativas
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto space-y-2.5 pr-1 text-left">
+                    {scheduledNotifications.length === 0 ? (
+                      <div className="text-xs text-slate-400 py-6 text-center select-none">
+                        Nenhuma campanha agendada ou em envio.
+                      </div>
+                    ) : (
+                      scheduledNotifications.map((camp) => (
+                        <div key={camp.id} className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                          <span className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${
+                            camp.status === "Enviando" ? "bg-amber-500 animate-pulse" : "bg-indigo-650"
+                          }`} />
+                          <div className="text-xs flex-1">
+                            <p className="font-semibold text-slate-700 leading-relaxed">
+                              Campanha <strong className="text-slate-900">"{camp.name}"</strong> foi agendada.
+                            </p>
+                            <span className="text-[10px] text-slate-450 mt-1 block flex items-center gap-1 font-medium">
+                              <Clock className="h-3 w-3" />
+                              {camp.status === "Enviando" ? "Envio em curso" : `Para: ${camp.dateStr}`}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Settings Dropdown Cog */}
+          <div className="relative settings-dropdown-container">
+            <button
+              onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-805 bg-slate-50 border border-slate-202 hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
+              title="Opções"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+
+            {showSettingsDropdown && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowSettingsDropdown(false)} />
+                <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
+                  <Link
+                    href="/dashboard/settings"
+                    onClick={() => setShowSettingsDropdown(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors w-full text-left"
+                  >
+                    <Settings className="h-4 w-4 text-slate-455" />
+                    <span>Configurações</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setShowSettingsDropdown(false);
+                      handleLogout();
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-650 hover:bg-red-50 transition-colors w-full text-left cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4 text-red-400" />
+                    <span>Encerrar Sessão</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <Link
+            href="/dashboard/settings?sub=pessoal"
+            className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200/80 transition-all cursor-pointer relative overflow-hidden shrink-0"
+            title="Meu Perfil"
+          >
+            <User className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-1 rounded-lg text-slate-500 hover:text-slate-850 focus:outline-none cursor-pointer"
+        >
+          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </header>
+
+      {/* 2. Mobile Drawer Navigation Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-30 flex md:hidden">
+          {/* Overlay Background */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          {/* Menu Drawer */}
+          <div className="relative flex flex-col w-64 max-w-xs bg-white border-r border-slate-200 h-full p-4 space-y-6 pt-20">
+            <nav className="flex-1 space-y-2">
+              {navigation.map((item) => {
+                const isActive = item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname === item.href || pathname.startsWith(item.href + "/");
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                        : "text-slate-650 hover:bg-slate-100 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Desktop Sidebar */}
+      <aside
+        className={`hidden md:flex flex-col shrink-0 border-r border-slate-200 bg-white transition-all duration-300 relative ${
+          isSidebarOpen ? "w-64" : "w-16"
+        }`}
+      >
+        {/* Sidebar Header Logo */}
+        <div className={`flex h-16 items-center border-b border-slate-200 justify-between ${
+          isSidebarOpen ? "px-6" : "px-0 justify-center"
+        }`}>
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="h-9 w-9 shrink-0 relative overflow-hidden rounded-lg shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+              title={isSidebarOpen ? "Recolher menu" : "Expandir menu"}
+            >
+              <img src="/logo.png" alt="Realizzare Logo" className="h-full w-full object-cover" />
+            </div>
+            {isSidebarOpen && (
+              <span className="font-bold text-base text-slate-850 tracking-wide truncate">
+                Realizzare <span className="text-indigo-600">Mail</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className={`flex-1 py-6 space-y-2 overflow-y-auto transition-all ${
+          isSidebarOpen ? "px-4" : "px-2"
+        }`}>
+          {navigation.map((item) => {
+            const isActive = item.href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center rounded-lg text-sm font-medium transition-all group duration-150 relative ${
+                  isSidebarOpen ? "px-4 py-3 gap-3.5" : "h-11 w-11 justify-center mx-auto"
+                } ${
+                  isActive
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                {isSidebarOpen && <span className="truncate">{item.name}</span>}
+                {!isSidebarOpen && (
+                  <div className="absolute left-full ml-3 hidden group-hover:flex items-center bg-slate-900 text-white text-xs font-semibold py-1.5 px-3 rounded-xl shadow-xl z-50 pointer-events-none whitespace-nowrap animate-fadeIn">
+                    <span>{item.name}</span>
+                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 border-y-4 border-y-transparent border-r-4 border-r-slate-900" />
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User profile & Logout footer */}
+        <div className={`border-t border-slate-200 bg-slate-50/50 transition-all ${
+          isSidebarOpen ? "p-4" : "py-4 px-0 flex flex-col items-center justify-center"
+        }`}>
+          {isSidebarOpen ? (
+            <button
+              onClick={() => setShowUsagePopover(!showUsagePopover)}
+              className="w-full flex items-center justify-between hover:bg-slate-100/70 p-2.5 rounded-2xl border border-slate-200 bg-white transition-all cursor-pointer text-left usage-trigger-btn shadow-sm"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-slate-800 truncate">Realizzare</span>
+                  <span className="text-[10px] text-slate-500 truncate font-semibold">Ver uso da conta</span>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowUsagePopover(!showUsagePopover)}
+              className="h-10 w-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-650 hover:bg-slate-100 transition-all cursor-pointer usage-trigger-btn shadow-sm"
+              title="Ver uso da conta: Realizzare"
+            >
+              <Building2 className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* 4. Main Panel Wrapper */}
+      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        {/* Desktop Topbar Header */}
+        <header className="hidden md:flex h-16 shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm items-center justify-between px-8 z-10">
+          <div className="flex items-center gap-4 ml-auto">
+            {/* Notifications Bell Dropdown */}
+            <div className="relative notifications-dropdown-container">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-50 border border-slate-200 relative hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
+              >
+                <Bell className="h-4.5 w-4.5" />
+                {scheduledNotifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4.5 w-4.5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                    {scheduledNotifications.length}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-202 rounded-2xl shadow-xl p-4 z-40 space-y-3 animate-fadeIn">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 select-none">
+                      <span className="text-[10px] font-black uppercase text-slate-400">Atividades de Campanhas</span>
+                      {scheduledNotifications.length > 0 && (
+                        <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
+                          {scheduledNotifications.length} Ativas
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto space-y-2.5 pr-1">
+                      {scheduledNotifications.length === 0 ? (
+                        <div className="text-xs text-slate-400 py-6 text-center select-none">
+                          Nenhuma campanha agendada ou em envio.
+                        </div>
+                      ) : (
+                        scheduledNotifications.map((camp) => (
+                          <div key={camp.id} className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                            <span className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${
+                              camp.status === "Enviando" ? "bg-amber-500 animate-pulse" : "bg-indigo-650"
+                            }`} />
+                            <div className="text-xs flex-1">
+                              <p className="font-semibold text-slate-700 leading-relaxed">
+                                Campanha <strong className="text-slate-900">"{camp.name}"</strong> foi agendada por <span className="font-bold">{camp.fromName || (currentUser ? currentUser.name : "Leonardo Silva")}</span>.
+                              </p>
+                              <span className="text-[10px] text-slate-400 mt-1 block flex items-center gap-1 font-medium">
+                                <Clock className="h-3 w-3" />
+                                {camp.status === "Enviando" ? "Envio em curso" : `Para: ${camp.dateStr}`}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Settings Dropdown Cog */}
+            <div className="relative settings-dropdown-container">
+              <button
+                onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                className="p-2 rounded-lg text-slate-500 hover:text-slate-805 bg-slate-50 border border-slate-202 hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
+                title="Opções"
+              >
+                <Settings className="h-4.5 w-4.5 animate-spin-hover" />
+              </button>
+
+              {showSettingsDropdown && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowSettingsDropdown(false)} />
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setShowSettingsDropdown(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors w-full text-left"
+                    >
+                      <Settings className="h-4 w-4 text-slate-455" />
+                      <span>Configurações</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setShowSettingsDropdown(false);
+                        handleLogout();
+                      }}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-650 hover:bg-red-50 transition-colors w-full text-left cursor-pointer"
+                    >
+                      <LogOut className="h-4 w-4 text-red-400" />
+                      <span>Encerrar Sessão</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* User profile avatar link for desktop (next to settings gear!) */}
+            <Link
+              href="/dashboard/settings?sub=pessoal"
+              className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200/80 hover:scale-105 transition-all cursor-pointer relative overflow-hidden shrink-0"
+              title="Meu Perfil"
+            >
+              <User className="h-4.5 w-4.5" />
+            </Link>
+          </div>
+        </header>
+
+        {/* Scrollable Content Pane */}
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 pt-20 md:pt-8 bg-slate-50 relative">
+          {children}
+        </main>
+      </div>
+
+      {/* Usage Popover Modal */}
+      {showUsagePopover && (
+        <div className={`absolute bottom-20 z-50 w-72 bg-white border border-slate-200 rounded-3xl p-5 shadow-2xl animate-scaleIn usage-popover-container ${
+          isSidebarOpen ? "left-6" : "left-14"
+        }`}>
+          <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Uso Mensal da Conta</span>
+            <button
+              onClick={() => setShowUsagePopover(false)}
+              className="text-slate-400 hover:text-slate-655 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-4 pt-3.5 text-xs text-left">
+            {/* Profiles Usage */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-baseline select-none">
+                <span className="font-bold text-slate-700">Leads Inscritos</span>
+                <span className="text-[10px] text-slate-500 font-semibold">
+                  {usage.profilesUsed.toLocaleString("pt-BR")} / {usage.profilesLimit.toLocaleString("pt-BR")}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-indigo-650 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (usage.profilesUsed / usage.profilesLimit) * 100)}%` }}
+                />
+              </div>
+              <div className="text-[9px] text-slate-450 font-bold text-right">
+                {Math.round((usage.profilesUsed / usage.profilesLimit) * 100)}% utilizado
+              </div>
+            </div>
+
+            {/* Emails Usage */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-baseline select-none">
+                <span className="font-bold text-slate-700">E-mails Enviados</span>
+                <span className="text-[10px] text-slate-500 font-semibold">
+                  {usage.emailsUsed.toLocaleString("pt-BR")} / {usage.emailsLimit.toLocaleString("pt-BR")}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (usage.emailsUsed / usage.emailsLimit) * 100)}%` }}
+                />
+              </div>
+              <div className="text-[9px] text-slate-450 font-bold text-right">
+                {Math.round((usage.emailsUsed / usage.emailsLimit) * 100)}% utilizado
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-450 font-semibold select-none">
+              <span>Limites renovam em:</span>
+              <span className="text-indigo-600 font-bold">1º do próximo mês</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Password Modal */}
+      {showNewPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 space-y-6">
+            <div className="text-center space-y-2">
+              <div className="h-12 w-12 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-center text-indigo-650 mx-auto animate-pulse">
+                <Lock className="h-5 w-5" />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-850">Defina uma Nova Senha</h3>
+              <p className="text-xs text-slate-550 max-w-xs mx-auto">
+                Olá, <span className="font-bold">{currentUser?.name}</span>! Como este é o seu primeiro acesso, escolha uma senha personalizada e segura para continuar.
+              </p>
+            </div>
+
+            {passwordError && (
+              <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs font-semibold text-red-650 flex items-center gap-2">
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateNewUserPassword} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nova Senha</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Mínimo 6 caracteres"
+                  value={newAuthPassword}
+                  onChange={(e) => setNewAuthPassword(e.target.value)}
+                  className="w-full mt-1.5 bg-slate-50 border border-slate-205 rounded-xl py-2 px-3 text-xs text-slate-850 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Confirme a Nova Senha</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Repita a nova senha"
+                  value={confirmAuthPassword}
+                  onChange={(e) => setConfirmAuthPassword(e.target.value)}
+                  className="w-full mt-1.5 bg-slate-50 border border-slate-205 rounded-xl py-2 px-3 text-xs text-slate-850 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
+              >
+                Salvar Senha e Acessar Painel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
