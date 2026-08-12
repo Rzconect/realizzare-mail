@@ -54,13 +54,13 @@ export default function SettingsPage() {
   const [activeGeralSubmenu, setActiveGeralSubmenu] = useState<"pessoal" | "conta" | "enderecos" | "usuarios" | "tags" | "uso">("pessoal");
 
   // Integration Settings State (Pagar.me & PagBank)
-  const [pagarmeActive, setPagarmeActive] = useState(true);
-  const [pagarmeSecretKey, setPagarmeSecretKey] = useState("ak_live_79a831b9d4f201e7492c");
-  const [pagarmePublicKey, setPagarmePublicKey] = useState("pk_live_0194bc8d7612f0e381ab");
+  const [pagarmeActive, setPagarmeActive] = useState(false);
+  const [pagarmeSecretKey, setPagarmeSecretKey] = useState("");
+  const [pagarmePublicKey, setPagarmePublicKey] = useState("");
   
-  const [pagbankActive, setPagbankActive] = useState(true);
-  const [pagbankToken, setPagbankToken] = useState("pagbank_token_live_849201bd4920a1");
-  const [pagbankPublicKey, setPagbankPublicKey] = useState("PUB_KEY_98124019284019248");
+  const [pagbankActive, setPagbankActive] = useState(false);
+  const [pagbankToken, setPagbankToken] = useState("");
+  const [pagbankPublicKey, setPagbankPublicKey] = useState("");
 
   const [ruleExitAbandonedCart, setRuleExitAbandonedCart] = useState(true);
   const [ruleEnterPostSale, setRuleEnterPostSale] = useState(true);
@@ -182,6 +182,25 @@ export default function SettingsPage() {
           mobileUsed: 0.00
         };
         localStorage.setItem("realizzare_account_usage", JSON.stringify(defaults));
+      }
+
+      // Load Saved Integration Configs
+      const storedIntegrations = localStorage.getItem("realizzare_integrations_config");
+      if (storedIntegrations) {
+        try {
+          const cfg = JSON.parse(storedIntegrations);
+          if (cfg.pagarmeActive !== undefined) setPagarmeActive(cfg.pagarmeActive);
+          if (cfg.pagarmeSecretKey) setPagarmeSecretKey(cfg.pagarmeSecretKey);
+          if (cfg.pagarmePublicKey) setPagarmePublicKey(cfg.pagarmePublicKey);
+          if (cfg.pagbankActive !== undefined) setPagbankActive(cfg.pagbankActive);
+          if (cfg.pagbankToken) setPagbankToken(cfg.pagbankToken);
+          if (cfg.pagbankPublicKey) setPagbankPublicKey(cfg.pagbankPublicKey);
+          if (cfg.ruleExitAbandonedCart !== undefined) setRuleExitAbandonedCart(cfg.ruleExitAbandonedCart);
+          if (cfg.ruleEnterPostSale !== undefined) setRuleEnterPostSale(cfg.ruleEnterPostSale);
+          if (cfg.ruleUpdateKpiAndTimeline !== undefined) setRuleUpdateKpiAndTimeline(cfg.ruleUpdateKpiAndTimeline);
+        } catch (e) {
+          console.error(e);
+        }
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -2089,13 +2108,13 @@ export default function SettingsPage() {
                           <input
                             type="text"
                             readOnly
-                            value="https://app.rzconect.com.br/api/webhooks/pagarme"
+                            value="https://realizzare-mail.vercel.app/api/webhooks/pagarme"
                             className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-600"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText("https://app.rzconect.com.br/api/webhooks/pagarme");
+                              navigator.clipboard.writeText("https://realizzare-mail.vercel.app/api/webhooks/pagarme");
                               alert("URL do Webhook Pagar.me copiada!");
                             }}
                             className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer shrink-0"
