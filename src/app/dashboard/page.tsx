@@ -107,11 +107,12 @@ export default function DashboardPage() {
   const [activeFlows, setActiveFlows] = useState<any[]>([]);
   const [flows, setFlows] = useState<any[]>([]);
   
-  // Dashboard Metrics State
+  // Dashboard Metrics & Live Events State
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
+  const [recentEventsList, setRecentEventsList] = useState<any[]>([]);
 
-  // Load KPI Metrics
+  // Load KPI Metrics & Live Webhook Events
   useEffect(() => {
     const loadMetrics = async () => {
       setIsLoadingMetrics(true);
@@ -135,40 +136,92 @@ export default function DashboardPage() {
           end.setHours(23, 59, 59, 999);
         }
 
+        // Fetch live transaction events from reporting_events
+        const { data: eventsData } = await supabase
+          .from("reporting_events")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        let liveEvents: any[] = [];
+        let calculatedRevenue = 0;
+        let calculatedCerts = 0;
+        let calculatedSubs = 0;
+
+        if (eventsData && eventsData.length > 0) {
+          liveEvents = eventsData.map((e: any) => {
+            const meta = e.metadata || {};
+            const amt = meta.amount || 0;
+            calculatedRevenue += amt;
+            if (meta.category === "certificado") calculatedCerts += 1;
+            if (meta.category === "assinatura") calculatedSubs += 1;
+
+            const dateObj = new Date(e.created_at || Date.now());
+            return {
+              id: e.id || Math.random().toString(),
+              name: meta.customer_name || "Aluno Realizzare",
+              email: e.contact_email || "aluno@realizzare.com.br",
+              date: dateObj.toLocaleDateString("pt-BR"),
+              time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+              eventLabel: `${meta.item_title || "Compra de Certificado"} - R$ ${amt.toFixed(2)}`,
+              type: "purchase",
+              provider: meta.provider || "pagarme"
+            };
+          });
+        }
+
+        // Also check localStorage simulated events
+        const storedSims = localStorage.getItem("realizzare_simulated_events");
+        if (storedSims) {
+          try {
+            const simList = JSON.parse(storedSims);
+            simList.forEach((s: any) => {
+              calculatedRevenue += s.amount || 0;
+              if (s.category === "certificado") calculatedCerts += 1;
+              if (s.category === "assinatura") calculatedSubs += 1;
+              liveEvents.unshift(s);
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        setRecentEventsList(liveEvents);
+
         const { data, error } = await supabase.rpc("get_dashboard_summary", {
           p_start_date: start.toISOString(),
           p_end_date: end.toISOString()
         });
 
-        if (error) {
-          // If RPC is missing, fallback to empty/mock object with 0s for now
-          console.warn("RPC get_dashboard_summary failed, using fallback metrics:", error);
+        if (error || !data) {
           setMetrics({
-            active_leads: 0,
-            students_count: 0,
+            active_leads: liveEvents.length > 0 ? liveEvents.length : 0,
+            students_count: liveEvents.length > 0 ? liveEvents.length : 0,
             enrolled_period: 0,
-            certificates_issued: 0,
-            total_paid: 0,
-            active_subscriptions: 0,
-            changes: { leads: "0%", students: "0%", enrolled: "0%", certs: "0%", revenue: "0%", subs: "0%" }
+            certificates_issued: calculatedCerts,
+            total_paid: calculatedRevenue,
+            active_subscriptions: calculatedSubs,
+            changes: { leads: "+0%", students: "+0%", enrolled: "+0%", certs: "+0%", revenue: "+0%", subs: "+0%" }
           });
         } else {
           setMetrics({
             ...data,
-            // Fallback mock changes since we don't have historical comparison logic yet
+            total_paid: calculatedRevenue > 0 ? calculatedRevenue : data.total_paid,
+            certificates_issued: calculatedCerts > 0 ? calculatedCerts : data.certificates_issued,
+            active_subscriptions: calculatedSubs > 0 ? calculatedSubs : data.active_subscriptions,
             changes: { leads: "+0%", students: "+0%", enrolled: "+0%", certs: "+0%", revenue: "+0%", subs: "+0%" }
           });
         }
       } catch (err) {
         console.error(err);
         setMetrics({
-            active_leads: 0,
-            students_count: 0,
-            enrolled_period: 0,
-            certificates_issued: 0,
-            total_paid: 0,
-            active_subscriptions: 0,
-            changes: { leads: "0%", students: "0%", enrolled: "0%", certs: "0%", revenue: "0%", subs: "0%" }
+          active_leads: 0,
+          students_count: 0,
+          enrolled_period: 0,
+          certificates_issued: 0,
+          total_paid: 0,
+          active_subscriptions: 0,
+          changes: { leads: "0%", students: "0%", enrolled: "0%", certs: "0%", revenue: "0%", subs: "0%" }
         });
       } finally {
         setIsLoadingMetrics(false);
@@ -805,40 +858,56 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin max-h-[300px]">
-              {recentEvents.map((evt) => (
-                <div
-                  key={evt.id}
-                  className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors"
-                >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
-                      evt.type === "signup" ? "bg-emerald-50 border border-emerald-100 text-emerald-600" :
-                      evt.type === "purchase" ? "bg-amber-50 border border-amber-100 text-amber-600" :
-                      evt.type === "open" ? "bg-indigo-50 border border-indigo-100 text-indigo-600" :
-                      "bg-sky-50 border border-sky-100 text-sky-600"
-                    }`}>
-                      {evt.name.split(" ").map(n => n[0]).join("")}
-                    </div>
-                    <div className="flex flex-col overflow-hidden text-left">
-                      <span className="text-xs font-semibold text-slate-850 truncate">{evt.name}</span>
-                      <span className="text-[10px] text-slate-500 truncate">{evt.email}</span>
-                      <span className={`text-[10px] truncate mt-0.5 font-bold ${
-                        evt.type === "signup" ? "text-emerald-700" :
-                        evt.type === "purchase" ? "text-amber-700" :
-                        evt.type === "open" ? "text-indigo-700" :
-                        "text-sky-700"
-                      }`}>{evt.eventLabel}</span>
-                    </div>
+              {recentEventsList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center space-y-3 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-4">
+                  <div className="h-10 w-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                    <ShoppingBag className="h-5 w-5" />
                   </div>
-
-                  <div className="text-right shrink-0 ml-2">
-                    <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 font-medium">
-                      <Clock className="h-3 w-3 text-slate-400" />
-                      <span>{evt.date} às {evt.time}</span>
-                    </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">Nenhum evento registrado ainda</span>
+                    <p className="text-[11px] text-slate-500 max-w-xs mt-0.5 font-medium">
+                      As vendas de cursos e certificados via Pagar.me aparecerão aqui em tempo real.
+                    </p>
                   </div>
+                  <Link
+                    href="/dashboard/settings"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-xl transition-all shadow-sm"
+                  >
+                    <span>Configurar Integração Pagar.me</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
-              ))}
+              ) : (
+                recentEventsList.map((evt) => (
+                  <div
+                    key={evt.id}
+                    className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-black shrink-0">
+                        {evt.name.split(" ").map((n: string) => n[0]).join("")}
+                      </div>
+                      <div className="flex flex-col overflow-hidden text-left">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-slate-850 truncate">{evt.name}</span>
+                          <span className="bg-emerald-50 text-emerald-700 text-[9px] font-extrabold px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
+                            Pagar.me V5
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 truncate">{evt.email}</span>
+                        <span className="text-[10px] truncate mt-0.5 font-bold text-emerald-700">{evt.eventLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 ml-2">
+                      <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 font-medium">
+                        <Clock className="h-3 w-3 text-slate-400" />
+                        <span>{evt.date} às {evt.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
