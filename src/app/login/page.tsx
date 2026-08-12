@@ -34,22 +34,38 @@ export default function LoginPage() {
     }
 
     try {
+      const inputEmail = email.trim().toLowerCase();
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: password,
-      });
+      
+      let userName = "Realizzare Cursos";
+      let userEmail = inputEmail;
 
-      if (authError) {
-        setError("Credenciais inválidas. Verifique seu e-mail e senha.");
-        setIsLoading(false);
-        return;
+      // Check official admin login credentials
+      if (
+        (inputEmail === "contato@realizzarecursos.com.br" && password === "RZconect2026@") ||
+        (inputEmail === "admin@realizzare.com.br" && password === "senha123")
+      ) {
+        userName = inputEmail.includes("realizzarecursos") ? "Realizzare Cursos" : "Leonardo Christian";
+      } else {
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: inputEmail,
+          password: password,
+        });
+
+        if (authError) {
+          setError("Credenciais inválidas. Verifique seu e-mail e senha.");
+          setIsLoading(false);
+          return;
+        }
+
+        userName = data.user?.user_metadata?.name || "Administrador Realizzare";
+        userEmail = data.user?.email || inputEmail;
       }
 
       const userSession = {
-        name: data.user?.user_metadata?.name || "Leonardo Christian",
-        email: data.user?.email,
+        name: userName,
+        email: userEmail,
         role: "Administrador",
         isNewUser: false
       };
@@ -112,7 +128,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@realizzare.com.br"
+                  placeholder="contato@realizzarecursos.com.br"
                   className="block w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
                 />
               </div>
@@ -154,9 +170,9 @@ export default function LoginPage() {
           </div>
 
           <div className="flex flex-col gap-1 text-[11px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200 select-none">
-            <span className="font-bold text-slate-700">Acesso Padrão:</span>
-            <span>E-mail: <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[10px]">admin@realizzare.com.br</code></span>
-            <span>Senha: <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[10px]">senha123</code></span>
+            <span className="font-bold text-slate-700">Acesso Oficial Administrador:</span>
+            <span>E-mail: <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[10px]">contato@realizzarecursos.com.br</code></span>
+            <span>Senha: <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[10px]">RZconect2026@</code></span>
           </div>
 
           <div>
