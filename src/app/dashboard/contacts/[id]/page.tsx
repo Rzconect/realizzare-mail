@@ -1424,21 +1424,30 @@ export default function ContactProfilePage({ params }: PageProps) {
                         <span className="text-xs font-bold text-slate-800">{event.label}</span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0">
                           {(() => {
-                            const ts = event.timestamp || "01/08/2026";
-                            if (ts.includes("-")) {
-                              try {
-                                const d = new Date(ts);
-                                if (!isNaN(d.getTime())) return d.toLocaleDateString("pt-BR");
-                              } catch (e) {}
-                            }
-                            if (ts.includes("/")) {
-                              const parts = ts.split("/");
-                              if (parts.length === 3) {
-                                if (parseInt(parts[0]) > 12) return ts;
-                                return `${parts[1].padStart(2, "0")}/${parts[0].padStart(2, "0")}/${parts[2]}`;
+                            const ts = event.timestamp || "12/08/2026";
+                            const str = String(ts).trim();
+
+                            // ISO YYYY-MM-DD format (e.g. 2026-08-12)
+                            if (str.includes("-")) {
+                              const isoPart = str.split("T")[0];
+                              const parts = isoPart.split("-");
+                              if (parts.length === 3 && parts[0].length === 4) {
+                                return `${parts[2].padStart(2, "0")}/${parts[1].padStart(2, "0")}/${parts[0]}`;
                               }
                             }
-                            return ts;
+
+                            // Slashes format (e.g. 12/08/2026)
+                            if (str.includes("/")) {
+                              const parts = str.split("/");
+                              if (parts.length === 3) {
+                                if (parts[0].length === 4) {
+                                  return `${parts[2].padStart(2, "0")}/${parts[1].padStart(2, "0")}/${parts[0]}`;
+                                }
+                                return `${parts[0].padStart(2, "0")}/${parts[1].padStart(2, "0")}/${parts[2]}`;
+                              }
+                            }
+
+                            return str;
                           })()}
                         </span>
                       </div>
