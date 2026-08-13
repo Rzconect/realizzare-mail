@@ -1423,7 +1423,23 @@ export default function ContactProfilePage({ params }: PageProps) {
                       <div className="flex items-center justify-between gap-2.5">
                         <span className="text-xs font-bold text-slate-800">{event.label}</span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0">
-                          {new Date(event.timestamp).toLocaleDateString("pt-BR")}
+                          {(() => {
+                            const ts = event.timestamp || "01/08/2026";
+                            if (ts.includes("-")) {
+                              try {
+                                const d = new Date(ts);
+                                if (!isNaN(d.getTime())) return d.toLocaleDateString("pt-BR");
+                              } catch (e) {}
+                            }
+                            if (ts.includes("/")) {
+                              const parts = ts.split("/");
+                              if (parts.length === 3) {
+                                if (parseInt(parts[0]) > 12) return ts;
+                                return `${parts[1].padStart(2, "0")}/${parts[0].padStart(2, "0")}/${parts[2]}`;
+                              }
+                            }
+                            return ts;
+                          })()}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 leading-normal">{event.details}</p>

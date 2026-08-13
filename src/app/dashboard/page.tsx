@@ -209,10 +209,10 @@ export default function DashboardPage() {
       allEventsPool.forEach(evt => uniqueEventsMap.set(evt.id, evt));
       const deduplicatedPool = Array.from(uniqueEventsMap.values());
 
-      // Filter events by period date bounds
-      const filteredPeriodEvents = deduplicatedPool.filter(evt => {
-        return evt.timestampMs >= startMs && evt.timestampMs <= endMs;
-      });
+      // Filter events by period date bounds and sort descending (newest first)
+      const filteredPeriodEvents = deduplicatedPool
+        .filter(evt => evt.timestampMs >= startMs && evt.timestampMs <= endMs)
+        .sort((a, b) => b.timestampMs - a.timestampMs);
 
       let calculatedRevenue = 0;
       let calculatedCerts = 0;
