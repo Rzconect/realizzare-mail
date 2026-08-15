@@ -1649,9 +1649,10 @@ export default function ContactsPage() {
                   simEvents.forEach((evt: any) => {
                     const cEmail = (evt.email || "").toLowerCase().trim();
                     if (!cEmail) return;
-                    const exists = cleaned.some((c: any) => c.email.toLowerCase().trim() === cEmail);
+                    const exists = cleaned.some((c: any) => (c.email || "").toLowerCase().trim() === cEmail);
                     if (!exists) {
-                      const nameParts = (evt.name || "Aluno Realizzare").split(" ");
+                      const cleanName = (evt.name || "Aluno Realizzare").replace(/\(\d+\)/g, "").trim();
+                      const nameParts = cleanName.split(" ");
                       const fName = nameParts[0] || "Aluno";
                       const lName = nameParts.slice(1).join(" ") || "Realizzare";
                       const newC = {
@@ -1663,8 +1664,8 @@ export default function ContactsPage() {
                         status: "unsubscribed", // Not subscribed to marketing lists
                         created_at: evt.date || "01/08/2026",
                         tags: ["Pagar.me", "Cliente Realizzare"],
-                        course: evt.itemTitle || evt.eventLabel || "Certificado / Curso Realizzare",
-                        courseStatus: "Ativo",
+                        course: "Nenhum curso iniciado",
+                        courseStatus: "Não informado",
                         total_spent: evt.amount || 49.90
                       };
                       cleaned.unshift(newC);
@@ -1681,7 +1682,7 @@ export default function ContactsPage() {
                           gender: "Não informado",
                           status: "unsubscribed",
                           created_at: evt.date || "2026-08-01",
-                          location: { country: "Brasil", state: "SP", city: "São Paulo" },
+                          location: { country: "Brasil", state: evt.state || "SP", city: evt.city || "São Paulo" },
                           tags: ["Pagar.me", "Cliente Realizzare"],
                           custom_fields: [{ name: "Origem Lead", type: "text", value: "Pagar.me V5 Checkout" }],
                           lists: [],
@@ -1696,22 +1697,38 @@ export default function ContactsPage() {
                 } catch (e) { console.error(e); }
               }
 
-              setContacts(cleaned);
-              localStorage.setItem("realizzare_contacts", JSON.stringify(cleaned));
+              // Purge legacy fake alunoX@realizzarecursos.com.br contacts and deduplicate by email
+              const emailMap = new Map();
+              cleaned.forEach((c: any) => {
+                const em = (c.email || "").toLowerCase().trim();
+                const isFakeAluno = em.includes("aluno") && em.includes("realizzarecursos.com.br");
+                const hasParenNum = /\(\d+\)/.test(c.first_name || "") || /\(\d+\)/.test(c.last_name || "");
+                if (em && !isFakeAluno && !hasParenNum && !emailMap.has(em)) {
+                  emailMap.set(em, c);
+                }
+              });
+              const sanitizedContacts = Array.from(emailMap.values());
+
+              setContacts(sanitizedContacts);
+              localStorage.setItem("realizzare_contacts", JSON.stringify(sanitizedContacts));
+              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(sanitizedContacts));
             } else {
               const fullList = generateImportedMockContacts();
               setContacts(fullList);
               localStorage.setItem("realizzare_contacts", JSON.stringify(fullList));
+              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(fullList));
             }
           } catch (e) {
             const fullList = generateImportedMockContacts();
             setContacts(fullList);
             localStorage.setItem("realizzare_contacts", JSON.stringify(fullList));
+            localStorage.setItem("realizzare_mock_contacts", JSON.stringify(fullList));
           }
         } else {
           const initialSet = generateImportedMockContacts();
           setContacts(initialSet);
           localStorage.setItem("realizzare_contacts", JSON.stringify(initialSet));
+          localStorage.setItem("realizzare_mock_contacts", JSON.stringify(initialSet));
         }
 
         // 4. Consent Pages (Keep in localStorage for now as UI settings)
