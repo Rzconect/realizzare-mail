@@ -3825,6 +3825,7 @@ export default function ContactsPage() {
                   </div>
                 </th>
                 <th className="py-4 px-4">Telefone</th>
+                <th className="py-4 px-4">Último Curso</th>
                 <th
                   onClick={() => handleSort("courseStatus")}
                   className="py-4 px-4 cursor-pointer hover:text-slate-800 text-center"
@@ -3832,6 +3833,15 @@ export default function ContactsPage() {
                   <div className="flex items-center justify-center gap-1">
                     <span>Status do Curso</span>
                     {sortField === "courseStatus" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort("created_at")}
+                  className="py-4 px-4 cursor-pointer hover:text-slate-800 text-right"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Cadastro</span>
+                    {sortField === "created_at" && (sortDirection === "asc" ? "▲" : "▼")}
                   </div>
                 </th>
                 <th className="py-4 px-4 text-right">Ações</th>
@@ -3880,23 +3890,13 @@ export default function ContactsPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-500">{contact.phone}</td>
+                    <td className="py-3.5 px-4 text-xs text-slate-400 font-mono">—</td>
                     <td className="py-3.5 px-4 text-center">
-                      {(() => {
-                        const enrollInfo = getContactEnrollmentInfo(contact);
-                        if (!enrollInfo.status) return <span className="text-slate-400 font-mono">-</span>;
-                        return (
-                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                            enrollInfo.status === "Ativo"
-                              ? "bg-emerald-50 border border-emerald-250 text-emerald-700"
-                              : enrollInfo.status === "Em Andamento"
-                              ? "bg-blue-50/65 border border-blue-250 text-blue-700"
-                              : "bg-slate-100 border border-slate-250 text-slate-655"
-                          }`}>
-                            {enrollInfo.status}
-                          </span>
-                        );
-                      })()}
+                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-slate-100 border border-slate-200 text-slate-500">
+                        Não informado
+                      </span>
                     </td>
+                    <td className="py-3.5 px-4 text-right text-xs text-slate-400 font-mono">—</td>
                     <td className="py-3.5 px-4 text-right">
                       <Link
                         href={`/dashboard/contacts/${contact.id}`}
