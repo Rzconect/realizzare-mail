@@ -132,7 +132,16 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data.events && data.events.length > 0) {
-        localStorage.setItem("realizzare_simulated_events", JSON.stringify(data.events));
+        const existingRaw = localStorage.getItem("realizzare_simulated_events");
+        let existingList: any[] = [];
+        if (existingRaw) {
+          try { existingList = JSON.parse(existingRaw); } catch(e){}
+        }
+        const map = new Map();
+        existingList.forEach((e: any) => map.set(e.id, e));
+        data.events.forEach((e: any) => map.set(e.id, e));
+        const merged = Array.from(map.values());
+        localStorage.setItem("realizzare_simulated_events", JSON.stringify(merged));
       }
     } catch (e) {
       console.warn("Pagar.me live sync notice:", e);

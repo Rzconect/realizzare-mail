@@ -233,19 +233,6 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("Admin@realizzarecursos.com.br");
-                  setPassword("Admin@123");
-                  setError("");
-                }}
-                className="text-[11px] font-extrabold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 rounded-xl px-3 py-2 w-full flex items-center justify-center gap-1.5"
-              >
-                ⚡ Preencher Acesso Admin (1-Clique)
-              </button>
-            </div>
           </form>
         )}
 
