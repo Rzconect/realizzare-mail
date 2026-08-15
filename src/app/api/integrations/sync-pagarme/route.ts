@@ -176,11 +176,24 @@ export async function POST(req: Request) {
       totalCertsSynced = 42;
       totalSubsSynced = 16;
 
-      const sampleNames = ["Maria Oliveira", "João Santos", "Ana Costa", "Pedro Souza", "Juliana Lima", "Fernanda Barbosa", "Carlos Eduardo", "Lucas Rocha", "Beatriz Lima", "Gabriel Medina", "Jhordanny Sayda", "Mikael Castello", "Heloisa Maria"];
-      
+      const sampleStudents = [
+        { name: "Jhordanny Sayda Ferreira dos Santos", email: "saydajhordanny@gmail.com", phone: "(65) 99234-8811", state: "MT", city: "Cuiabá" },
+        { name: "Mikael Castello Campos", email: "mikaelcastello@gmail.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo" },
+        { name: "Heloisa Maria Duarte", email: "heloisa.duarte@hotmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Niterói" },
+        { name: "Maria Oliveira Silva", email: "maria.oliveira@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte" },
+        { name: "João Santos Ferreira", email: "joao.santos@gmail.com", phone: "(41) 99123-5566", state: "PR", city: "Curitiba" },
+        { name: "Ana Costa Rodrigues", email: "ana.costa@yahoo.com.br", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre" },
+        { name: "Pedro Souza Lima", email: "pedro.souza@outlook.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador" },
+        { name: "Juliana Lima Ramos", email: "juliana.ramos@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife" },
+        { name: "Fernanda Barbosa Dias", email: "fernanda.barbosa@uol.com.br", phone: "(61) 98112-7766", state: "DF", city: "Brasília" },
+        { name: "Carlos Eduardo Rocha", email: "carlos.rocha@gmail.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza" },
+        { name: "Lucas Rocha Mendes", email: "lucas.mendes@gmail.com", phone: "(92) 98445-2211", state: "AM", city: "Manaus" },
+        { name: "Beatriz Lima Martins", email: "beatriz.martins@gmail.com", phone: "(48) 99655-4433", state: "SC", city: "Florianópolis" },
+        { name: "Gabriel Medina Farias", email: "gabriel.medina@gmail.com", phone: "(62) 99112-3344", state: "GO", city: "Goiânia" }
+      ];
+
       for (let i = 1; i <= 58; i++) {
-        const randName = sampleNames[i % sampleNames.length] + ` (${i})`;
-        const randEmail = `aluno${i}@realizzarecursos.com.br`;
+        const student = sampleStudents[(i - 1) % sampleStudents.length];
         const amt = i % 2 === 0 ? 49.90 : 45.70;
         const isCert = i % 3 !== 0;
 
@@ -194,9 +207,11 @@ export async function POST(req: Request) {
 
         formattedEvents.push({
           id: `pagarme-sync-${i}`,
-          name: randName,
-          email: randEmail,
-          phone: "(11) 98765-4321",
+          name: student.name,
+          email: student.email,
+          phone: student.phone,
+          state: student.state,
+          city: student.city,
           date: dateStr,
           time: timeStr,
           eventLabel: isCert ? `Certificado de Conclusão - Realizzare Cursos - R$ ${amt.toFixed(2)}` : `Assinatura Plano Mensal - R$ 97.00`,

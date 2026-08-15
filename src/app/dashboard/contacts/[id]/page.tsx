@@ -972,9 +972,19 @@ export default function ContactProfilePage({ params }: PageProps) {
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Localização</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cidade</span>
                     <span className="text-slate-800 font-semibold mt-0.5 truncate">
-                      {draft.location?.city ? `${draft.location.city}, ${draft.location.state}` : "Cuiabá, MT"}
+                      {draft.location?.city || "Cuiabá"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-indigo-500 shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Estado (UF)</span>
+                    <span className="text-slate-800 font-semibold mt-0.5 truncate">
+                      {draft.location?.state || "MT"}
                     </span>
                   </div>
                 </div>

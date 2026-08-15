@@ -1180,7 +1180,7 @@ export default function DashboardPage() {
 
             <div className="pt-2 flex items-center justify-between gap-3">
               <Link
-                href="/dashboard/contacts"
+                href={`/dashboard/contacts/${selectedEventModal.contactId || "c1"}`}
                 className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all text-center shadow-sm"
               >
                 Ver Ficha do Contato

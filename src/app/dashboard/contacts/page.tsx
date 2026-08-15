@@ -1438,6 +1438,8 @@ export default function ContactsPage() {
   const [courseStatusFilter, setCourseStatusFilter] = useState<string[]>([]);
   const [certFilter, setCertFilter] = useState("all");
   const [creditsFilter, setCreditsFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("");
   const [showMassAddTagModal, setShowMassAddTagModal] = useState(false);
   const [showMassAddToListModal, setShowMassAddToListModal] = useState(false);
   const [showCreateStaticSegmentModal, setShowCreateStaticSegmentModal] = useState(false);
@@ -2338,6 +2340,23 @@ export default function ContactsPage() {
       });
     }
 
+    // State (UF) filter
+    if (stateFilter !== "all") {
+      result = result.filter((c) => {
+        const st = c.location?.state || c.state || "";
+        return st.toUpperCase() === stateFilter.toUpperCase();
+      });
+    }
+
+    // City filter
+    if (cityFilter && cityFilter.trim().length > 0) {
+      const cQuery = cityFilter.toLowerCase().trim();
+      result = result.filter((c) => {
+        const ct = (c.location?.city || c.city || "").toLowerCase();
+        return ct.includes(cQuery);
+      });
+    }
+
     // Sorting
     result.sort((a: any, b: any) => {
       let aField = a[sortField];
@@ -2353,7 +2372,7 @@ export default function ContactsPage() {
     });
 
     return result;
-  }, [contacts, searchTerm, statusFilter, courseFilter, tagFilter, courseStatusFilter, certFilter, creditsFilter, sortField, sortDirection]);
+  }, [contacts, searchTerm, statusFilter, courseFilter, tagFilter, courseStatusFilter, certFilter, creditsFilter, stateFilter, cityFilter, sortField, sortDirection]);
 
   // Paginated chunk calculation (simulating server-side)
   const paginatedContacts = useMemo(() => {
@@ -3670,6 +3689,49 @@ export default function ContactsPage() {
                 <option value="sim">Sim</option>
                 <option value="nao">Não</option>
               </select>
+            </div>
+
+            {/* Estado (UF) Filter */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Estado (UF)</label>
+              <select
+                value={stateFilter}
+                onChange={(e) => {
+                  setStateFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 font-medium"
+              >
+                <option value="all">Todos os Estados</option>
+                <option value="MT">MT - Mato Grosso</option>
+                <option value="SP">SP - São Paulo</option>
+                <option value="RJ">RJ - Rio de Janeiro</option>
+                <option value="MG">MG - Minas Gerais</option>
+                <option value="PR">PR - Paraná</option>
+                <option value="RS">RS - Rio Grande do Sul</option>
+                <option value="BA">BA - Bahia</option>
+                <option value="PE">PE - Pernambuco</option>
+                <option value="DF">DF - Distrito Federal</option>
+                <option value="CE">CE - Ceará</option>
+                <option value="AM">AM - Amazonas</option>
+                <option value="SC">SC - Santa Catarina</option>
+                <option value="GO">GO - Goiás</option>
+              </select>
+            </div>
+
+            {/* Cidade Filter */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Cidade</label>
+              <input
+                type="text"
+                value={cityFilter}
+                onChange={(e) => {
+                  setCityFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Filtrar por cidade..."
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 font-medium placeholder-slate-400"
+              />
             </div>
           </div>
         )}
