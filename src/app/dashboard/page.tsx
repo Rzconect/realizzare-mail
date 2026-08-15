@@ -221,24 +221,31 @@ export default function DashboardPage() {
         });
       }
 
-      // Also check localStorage simulated events
+      // Also check localStorage simulated events (Flush legacy mock events)
       const storedSims = localStorage.getItem("realizzare_simulated_events");
       if (storedSims) {
         try {
           const simList = JSON.parse(storedSims);
-          simList.forEach((s: any) => {
-            let tMs = Date.now();
-            if (s.date) {
-              const parts = s.date.split("/");
-              if (parts.length === 3) {
-                tMs = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+          // If cached data contains legacy fake student names, clear cache
+          const hasLegacyFake = simList.some((s: any) => s.name === "Jhordanny Sayda Ferreira dos Santos" || s.email === "saydajhordanny@gmail.com");
+          if (hasLegacyFake) {
+            localStorage.removeItem("realizzare_simulated_events");
+          } else {
+            simList.forEach((s: any) => {
+              let tMs = Date.now();
+              if (s.date) {
+                const parts = s.date.split("/");
+                if (parts.length === 3) {
+                  const hourParts = (s.time || "12:00").split(":");
+                  tMs = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), parseInt(hourParts[0] || "12"), parseInt(hourParts[1] || "0")).getTime();
+                }
               }
-            }
-            allEventsPool.unshift({
-              ...s,
-              timestampMs: s.timestampMs || tMs
+              allEventsPool.unshift({
+                ...s,
+                timestampMs: s.timestampMs || tMs
+              });
             });
-          });
+          }
         } catch (e) {
           console.error(e);
         }
