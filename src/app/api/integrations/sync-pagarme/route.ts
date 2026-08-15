@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/client";
 
 export async function POST(req: Request) {
   try {
-    const { secretKey, createdSince } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const secretKey = body?.secretKey || process.env.PAGARME_SECRET_KEY || process.env.NEXT_PUBLIC_PAGARME_SECRET_KEY || "";
+    const createdSince = body?.createdSince;
 
     if (!secretKey) {
       return NextResponse.json({ error: "Secret Key do Pagar.me não fornecida." }, { status: 400 });

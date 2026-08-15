@@ -103,7 +103,7 @@ const getCourseIconInfo = (iconName: string) => {
 export default function DashboardPage() {
   const [period, setPeriod] = useState<"today" | "7" | "30" | "90" | "current_month" | "custom">("current_month");
   const [customStartDate, setCustomStartDate] = useState("2026-08-01");
-  const [customEndDate, setCustomEndDate] = useState("2026-08-12");
+  const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split("T")[0]);
 
   const [activeFlows, setActiveFlows] = useState<any[]>([]);
   const [flows, setFlows] = useState<any[]>([]);
@@ -113,8 +113,36 @@ export default function DashboardPage() {
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
   const [recentEventsList, setRecentEventsList] = useState<any[]>([]);
   const [selectedEventModal, setSelectedEventModal] = useState<any>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<string>("Agora (12/08 às 19:40)");
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
+    const now = new Date();
+    return `Hoje às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  });
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Live Sync trigger handler
+  const handleLiveSync = async () => {
+    setIsSyncing(true);
+    try {
+      const savedKey = typeof window !== "undefined" ? (localStorage.getItem("realizzare_pagarme_secret_key") || "") : "";
+      const res = await fetch("/api/integrations/sync-pagarme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secretKey: savedKey })
+      });
+      const data = await res.json();
+      if (data.success && data.events) {
+        localStorage.setItem("realizzare_simulated_events", JSON.stringify(data.events));
+      }
+    } catch (e) {
+      console.warn("Pagar.me live sync notice:", e);
+    } finally {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setLastSyncTime(`Hoje às ${timeStr}`);
+      await loadMetrics();
+      setIsSyncing(false);
+    }
+  };
 
   // Load KPI Metrics & Live Webhook Events with Strict Date Range Filtering
   const loadMetrics = async () => {
@@ -122,23 +150,29 @@ export default function DashboardPage() {
     const supabase = createClient();
     
     try {
+      const now = new Date();
       let start = new Date();
       let end = new Date();
       
       if (period === "today") {
-        start.setHours(0, 0, 0, 0);
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       } else if (period === "7") {
-        start.setDate(start.getDate() - 7);
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         start.setHours(0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       } else if (period === "30") {
-        start.setDate(start.getDate() - 30);
+        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         start.setHours(0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       } else if (period === "90") {
-        start.setDate(start.getDate() - 90);
+        start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
         start.setHours(0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       } else if (period === "current_month") {
-        start = new Date("2026-08-01T00:00:00Z");
-        end = new Date("2026-08-12T23:59:59Z");
+        // First day of current month to end of current month
+        start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (period === "custom") {
         start = new Date(customStartDate);
         end = new Date(customEndDate);
@@ -700,13 +734,10 @@ export default function DashboardPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setIsSyncing(true);
-                  loadMetrics();
-                }}
+                onClick={handleLiveSync}
                 disabled={isSyncing}
                 className="h-7 w-7 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50 shrink-0 ml-0.5"
-                title="Sincronizar e atualizar dados"
+                title="Sincronizar e atualizar dados em tempo real"
               >
                 <RotateCcw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
               </button>
