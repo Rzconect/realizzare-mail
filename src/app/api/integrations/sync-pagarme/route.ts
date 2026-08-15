@@ -12,8 +12,28 @@ export async function POST(req: Request) {
       authHeader = "Basic " + Buffer.from(secretKey.trim() + ":").toString("base64");
     }
 
-    const startDate = createdSince || "2026-08-01T00:00:00Z";
-    console.log(`--> Sincronizando todas as páginas de vendas pagas do Pagar.me desde ${startDate}...`);
+    const supabase = createClient();
+
+    // 1. Calculate Incremental Start Date based on latest record in Supabase
+    let incrementalStartDate = createdSince;
+    if (!incrementalStartDate) {
+      try {
+        const { data: lastRecord } = await supabase
+          .from("reporting_events")
+          .select("created_at")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (lastRecord && lastRecord.length > 0 && lastRecord[0].created_at) {
+          incrementalStartDate = lastRecord[0].created_at;
+        }
+      } catch (e) {
+        console.warn("Notice querying latest event timestamp:", e);
+      }
+    }
+
+    const startDate = incrementalStartDate || "2026-08-01T00:00:00Z";
+    console.log(`--> Sincronização incremental do Pagar.me iniciada a partir de ${startDate}...`);
 
     let allPaidItems: any[] = [];
 
@@ -72,7 +92,6 @@ export async function POST(req: Request) {
     let totalCertsSynced = 0;
     let totalSubsSynced = 0;
     const formattedEvents: any[] = [];
-    const supabase = createClient();
 
     for (const item of allPaidItems) {
       const customer = item?.customer || item?.charge?.customer || {};
