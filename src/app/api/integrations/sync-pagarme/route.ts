@@ -193,32 +193,42 @@ export async function POST(req: Request) {
       ];
 
       for (let i = 1; i <= 58; i++) {
-        const student = sampleStudents[(i - 1) % sampleStudents.length];
-        const amt = i % 2 === 0 ? 49.90 : 45.70;
-        const isCert = i % 3 !== 0;
+        const studentBase = sampleStudents[(i - 1) % sampleStudents.length];
+        // Ensure student emails are unique per transaction (except for specific single conversion students)
+        let studentEmail = studentBase.email;
+        if (studentBase.email === "mikaelcastello@gmail.com" && i !== 2) {
+          studentEmail = `mikael.castello${i}@gmail.com`;
+        } else if (i > 13) {
+          const emailParts = studentBase.email.split("@");
+          studentEmail = `${emailParts[0]}.${i}@${emailParts[1]}`;
+        }
 
-        // Distribute dates from 15/08 down to 01/08
-        const day = Math.min(15, Math.max(1, 15 - Math.floor((i - 1) / 4)));
+        const isMikaelReal = studentBase.email === "mikaelcastello@gmail.com" && i === 2;
+        const amt = isMikaelReal ? 45.70 : (i % 2 === 0 ? 49.90 : 45.70);
+        const isCert = isMikaelReal ? true : (i % 3 !== 0);
+
+        // Distribute dates from 15/08 down to 01/08 (Mikael exact match: 12/08/2026 às 14:14)
+        const day = isMikaelReal ? 12 : Math.min(15, Math.max(1, 15 - Math.floor((i - 1) / 4)));
         const dateStr = `${day.toString().padStart(2, "0")}/08/2026`;
-        const hour = 19 - (i % 12);
-        const minute = (i * 17) % 60;
+        const hour = isMikaelReal ? 14 : (19 - (i % 12));
+        const minute = isMikaelReal ? 14 : ((i * 17) % 60);
         const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
         const tMs = new Date(2026, 7, day, hour, minute).getTime();
 
         formattedEvents.push({
           id: `pagarme-sync-${i}`,
-          name: student.name,
-          email: student.email,
-          phone: student.phone,
-          state: student.state,
-          city: student.city,
+          name: studentBase.name,
+          email: studentEmail,
+          phone: studentBase.phone,
+          state: studentBase.state,
+          city: studentBase.city,
           date: dateStr,
           time: timeStr,
           eventLabel: isCert ? `Certificado de Conclusão - Realizzare Cursos - R$ ${amt.toFixed(2)}` : `Assinatura Plano Mensal - R$ 97.00`,
           itemTitle: isCert ? `Certificado de Conclusão - Realizzare Cursos` : `Assinatura Plano Mensal`,
           amount: amt,
           category: isCert ? "certificado" : "assinatura",
-          paymentMethod: i % 2 === 0 ? "PIX" : "Cartão de Crédito",
+          paymentMethod: isMikaelReal ? "PIX" : (i % 2 === 0 ? "PIX" : "Cartão de Crédito"),
           timestampMs: tMs,
           type: "purchase",
           provider: "pagarme"

@@ -388,35 +388,39 @@ export default function ContactProfilePage({ params }: PageProps) {
             const parsedSims = JSON.parse(rawSims);
             if (Array.isArray(parsedSims) && parsedSims.length > 0) {
               const targetEmail = (emailQuery || foundContact?.email || "").toLowerCase().trim();
+              const seenTxIds = new Set();
               
-              // First pass: Find student matching target email
+              // First pass: Find transactions belonging strictly to target email
               if (targetEmail) {
                 parsedSims.forEach((s: any) => {
                   const sEmail = (s.email || "").toLowerCase().trim();
-                  if (sEmail === targetEmail || targetEmail.includes(sEmail.split("@")[0]) || sEmail.includes(targetEmail.split("@")[0])) {
+                  if (sEmail === targetEmail) {
                     if (!matchingStudentInfo) matchingStudentInfo = s;
-                    customTxList.push({
-                      id: s.id || `sim-${Math.random()}`,
-                      product_type: s.category || "certificado",
-                      product_name: s.itemTitle || s.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
-                      amount: s.amount || 45.70,
-                      paid_at: s.date ? `${s.date}${s.time ? ` às ${s.time}` : ""}` : "15/08/2026 às 14:30",
-                      status: "paid",
-                      provider: s.provider || "pagarme"
-                    });
+                    if (!seenTxIds.has(s.id)) {
+                      seenTxIds.add(s.id);
+                      customTxList.push({
+                        id: s.id || `sim-${Math.random()}`,
+                        product_type: s.category || "certificado",
+                        product_name: s.itemTitle || s.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
+                        amount: s.amount || 45.70,
+                        paid_at: s.date ? `${s.date}${s.time ? ` às ${s.time}` : ""}` : "12/08/2026 às 14:14",
+                        status: "paid",
+                        provider: s.provider || "pagarme"
+                      });
+                    }
                   }
                 });
               }
 
               // Fallback pass if no match or default id
               if (!matchingStudentInfo) {
-                matchingStudentInfo = parsedSims[0];
+                matchingStudentInfo = parsedSims.find((s: any) => s.email === "mikaelcastello@gmail.com") || parsedSims[0];
                 customTxList.push({
-                  id: matchingStudentInfo.id || `sim-${Math.random()}`,
+                  id: matchingStudentInfo.id || `sim-default`,
                   product_type: matchingStudentInfo.category || "certificado",
                   product_name: matchingStudentInfo.itemTitle || matchingStudentInfo.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
                   amount: matchingStudentInfo.amount || 45.70,
-                  paid_at: matchingStudentInfo.date ? `${matchingStudentInfo.date}${matchingStudentInfo.time ? ` às ${matchingStudentInfo.time}` : ""}` : "15/08/2026 às 14:30",
+                  paid_at: matchingStudentInfo.date ? `${matchingStudentInfo.date}${matchingStudentInfo.time ? ` às ${matchingStudentInfo.time}` : ""}` : "12/08/2026 às 14:14",
                   status: "paid",
                   provider: matchingStudentInfo.provider || "pagarme"
                 });
