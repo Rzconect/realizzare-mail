@@ -863,18 +863,11 @@ export default function ContactProfilePage({ params }: PageProps) {
         <section className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm lg:h-full lg:overflow-y-auto scrollbar-none">
           {/* Section 1: Avatar & Info Básica */}
           <div className="flex flex-col items-center text-center space-y-4">
-            <div className="relative h-20 w-20 rounded-full overflow-hidden border border-indigo-100 bg-slate-100 flex items-center justify-center shadow shadow-indigo-100/50 group">
-              {profile.email === "ana.oliveira@gmail.com" ? (
-                <img src="/avatar_ana.png" alt="Profile" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center bg-indigo-50 text-indigo-650 font-black text-2xl">
-                  {draft.first_name[0]}{draft.last_name[0]}
-                </div>
-              )}
-              <span className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white shadow" />
+            <div className="relative h-20 w-20 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center shadow-xs">
+              <User className="h-10 w-10 text-slate-500" />
             </div>
 
-            <div className="w-full">
+            <div className="w-full space-y-2">
               {editingFields.name ? (
                 <div className="flex gap-1.5 justify-center items-center mt-1 animate-fadeIn">
                   <input
@@ -897,15 +890,32 @@ export default function ContactProfilePage({ params }: PageProps) {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-1.5 group">
-                  <h2 className="text-lg font-bold text-slate-850 leading-6">{draft.first_name} {draft.last_name}</h2>
-                  <button
-                    onClick={() => toggleEdit("name")}
-                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer p-0.5"
-                    title="Editar Nome"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
+                <div className="flex flex-col items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-1.5 group">
+                    <h2 className="text-lg font-bold text-slate-850 leading-6">{draft.first_name} {draft.last_name}</h2>
+                    <button
+                      onClick={() => toggleEdit("name")}
+                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer p-0.5"
+                      title="Editar Nome"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </div>
+                  
+                  {/* Status do usuário: Ativo (em lista) ou Inativo (fora de lista) */}
+                  <div className="pt-0.5">
+                    {(draft.lists && draft.lists.length > 0 && draft.lists.some((l: any) => l.status === "subscribed")) || draft.status === "active" ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        Ativo (Inscrito em Lista)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="h-2 w-2 rounded-full bg-slate-400" />
+                        Inativo (Fora de Listas)
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -3825,7 +3825,6 @@ export default function ContactsPage() {
                   </div>
                 </th>
                 <th className="py-4 px-4">Telefone</th>
-                <th className="py-4 px-4">Último Curso</th>
                 <th
                   onClick={() => handleSort("courseStatus")}
                   className="py-4 px-4 cursor-pointer hover:text-slate-800 text-center"
@@ -3833,15 +3832,6 @@ export default function ContactsPage() {
                   <div className="flex items-center justify-center gap-1">
                     <span>Status do Curso</span>
                     {sortField === "courseStatus" && (sortDirection === "asc" ? "▲" : "▼")}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("created_at")}
-                  className="py-4 px-4 cursor-pointer hover:text-slate-800 text-right"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Cadastro</span>
-                    {sortField === "created_at" && (sortDirection === "asc" ? "▲" : "▼")}
                   </div>
                 </th>
                 <th className="py-4 px-4 text-right">Ações</th>
@@ -3890,21 +3880,6 @@ export default function ContactsPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-500">{contact.phone}</td>
-                    <td className="py-3.5 px-4 text-xs text-slate-600">
-                      {(() => {
-                        const enrollInfo = getContactEnrollmentInfo(contact);
-                        return (
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-800">{enrollInfo.course}</span>
-                            {enrollInfo.enrolledAt && (
-                              <span className="text-[10px] text-slate-400 mt-0.5">
-                                Inscrito em {new Date(enrollInfo.enrolledAt).toLocaleDateString("pt-BR")}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
                     <td className="py-3.5 px-4 text-center">
                       {(() => {
                         const enrollInfo = getContactEnrollmentInfo(contact);
@@ -3921,9 +3896,6 @@ export default function ContactsPage() {
                           </span>
                         );
                       })()}
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-slate-500 font-medium">
-                      {new Date(contact.created_at).toLocaleDateString("pt-BR")}
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <Link
