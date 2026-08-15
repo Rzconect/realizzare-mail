@@ -1525,6 +1525,11 @@ export default function ContactsPage() {
   // Double Opt-in state
   const [doubleOptInEnabled, setDoubleOptInEnabled] = useState(true);
 
+  // Collapsible toggle panel states
+  const [isListsPanelOpen, setIsListsPanelOpen] = useState(true);
+  const [isSegmentsPanelOpen, setIsSegmentsPanelOpen] = useState(true);
+  const [isDoubleOptInPanelOpen, setIsDoubleOptInPanelOpen] = useState(false);
+
   // New list creation/edition inside settings
   const [showAddListModal, setShowAddListModal] = useState(false);
   const [listModalMode, setListModalMode] = useState<"create" | "edit">("create");
@@ -1532,6 +1537,14 @@ export default function ContactsPage() {
   const [listModalName, setListModalName] = useState("");
   const [listModalUrl, setListModalUrl] = useState("");
   const [listModalDescription, setListModalDescription] = useState("");
+
+  // New segment creation/edition inside settings
+  const [showAddSegmentModal, setShowAddSegmentModal] = useState(false);
+  const [segmentModalMode, setSegmentModalMode] = useState<"create" | "edit">("create");
+  const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
+  const [segmentModalName, setSegmentModalName] = useState("");
+  const [segmentModalDescription, setSegmentModalDescription] = useState("");
+  const [segmentModalPeriod, setSegmentModalPeriod] = useState("30");
 
   // New custom field creation inside settings
   const [newFieldName, setNewFieldName] = useState("");
@@ -1559,10 +1572,34 @@ export default function ContactsPage() {
   ];
 
   const defaultLists = [
-    { id: "l-1", name: "Lista Geral de Alunos", subscriberCount: 1240, url: "https://realizzarecursos.com.br", description: "Todos os contatos cadastrados que se matricularam ou demonstraram interesse em cursos." },
-    { id: "l-2", name: "Carrinho Abandonado - 24h", subscriberCount: 85, url: "https://realizzarecursos.com.br/checkout", description: "Leads que iniciaram compra mas não finalizaram o pagamento nas últimas 24 horas." },
-    { id: "l-3", name: "Interessados em Programação", subscriberCount: 420, url: "https://realizzarecursos.com.br/cursos/programacao", description: "Contatos com interesse específico na área de desenvolvimento de software." }
+    { id: "l-1", name: "Leads", subscriberCount: 125, url: "https://realizzarecursos.com.br", description: "Lista de contatos e leads cadastrados." },
+    { id: "l-2", name: "Alunos", subscriberCount: 98, url: "https://realizzarecursos.com.br", description: "Lista de alunos matriculados em cursos." },
+    { id: "l-3", name: "Clientes", subscriberCount: 27, url: "https://realizzarecursos.com.br", description: "Lista de clientes compradores e assinantes." },
+    { id: "l-4", name: "Professores", subscriberCount: 12, url: "https://realizzarecursos.com.br", description: "Lista de professores e instrutores Realizzare." }
   ];
+
+  const defaultSegments = [
+    { id: "seg-30d", name: "Leads Engajados 30 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 30 dias.", count: 85, period: "30" },
+    { id: "seg-60d", name: "Leads Engajados 60 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 60 dias.", count: 112, period: "60" },
+    { id: "seg-90d", name: "Leads Engajados 90 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 90 dias.", count: 125, period: "90" }
+  ];
+
+  const [savedSegments, setSavedSegments] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("realizzare_saved_segments");
+      if (stored) {
+        try { return JSON.parse(stored); } catch(e){}
+      }
+    }
+    return defaultSegments;
+  });
+
+  const saveSegments = (updated: any[]) => {
+    setSavedSegments(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("realizzare_saved_segments", JSON.stringify(updated));
+    }
+  };
 
   // Load from Supabase
   useEffect(() => {
@@ -3008,63 +3045,190 @@ export default function ContactsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Left Side: Sign-up lists and forms */}
                 <div className="lg:col-span-6 space-y-6">
-                  {/* Lists list */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider font-sans">Listas de Contatos</h3>
-                      <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold">
-                        {lists.length} Listas
-                      </span>
+                  {/* 1. LISTAS Panel (Collapsible Toggle + (+) Add button) */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-150/60 pb-3">
+                      <div 
+                        onClick={() => setIsListsPanelOpen(!isListsPanelOpen)}
+                        className="flex items-center gap-2.5 cursor-pointer select-none group flex-1"
+                      >
+                        <ChevronDown className={`h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-transform ${isListsPanelOpen ? "rotate-0" : "-rotate-90"}`} />
+                        <h3 className="text-xs font-extrabold text-slate-850 uppercase tracking-wider font-sans group-hover:text-indigo-600 transition-colors">Listas</h3>
+                        <span className="text-[10px] bg-slate-200/80 text-slate-600 px-2 py-0.5 rounded font-bold">
+                          {lists.length} Listas
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setListModalMode("create");
+                          setEditingListId(null);
+                          setListModalName("");
+                          setListModalUrl("");
+                          setListModalDescription("");
+                          setShowAddListModal(true);
+                        }}
+                        className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
+                        title="Criar Nova Lista"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline text-[11px]">Nova Lista</span>
+                      </button>
                     </div>
 
-                    <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
-                      {lists.map((list) => (
-                        <div key={list.id} className="bg-white border border-slate-200 rounded-xl p-3.5 flex justify-between items-center shadow-sm hover:border-slate-350 transition-all">
-                          <div className="flex-1 min-w-0 pr-3">
-                            <span className="text-xs font-bold text-slate-800 block truncate">{list.name}</span>
-                            {list.description && (
-                              <p className="text-[10px] text-slate-400 truncate mt-0.5" title={list.description}>
-                                {list.description}
-                              </p>
-                            )}
-                            <span className="text-[9px] text-slate-450 font-bold block mt-1">{list.subscriberCount || 0} contatos</span>
+                    {isListsPanelOpen && (
+                      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin animate-fadeIn">
+                        {lists.length === 0 ? (
+                          <div className="text-center py-4 text-xs text-slate-400 font-medium italic">
+                            Nenhuma lista cadastrada. Clique no botão (+) acima para criar.
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => {
-                                setListModalMode("edit");
-                                setEditingListId(list.id);
-                                setListModalName(list.name || "");
-                                setListModalUrl(list.url || "");
-                                setListModalDescription(list.description || "");
-                                setShowAddListModal(true);
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                              title="Editar lista"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Remover a lista "${list.name}"?`)) {
-                                  saveLists(lists.filter(l => l.id !== list.id));
-                                }
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                              title="Excluir lista"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ) : (
+                          lists.map((list) => (
+                            <div key={list.id} className="bg-white border border-slate-200 rounded-xl p-3.5 flex justify-between items-center shadow-2xs hover:border-slate-350 transition-all">
+                              <div className="flex-1 min-w-0 pr-3">
+                                <span className="text-xs font-bold text-slate-800 block truncate">{list.name}</span>
+                                {list.description && (
+                                  <p className="text-[10px] text-slate-400 truncate mt-0.5" title={list.description}>
+                                    {list.description}
+                                  </p>
+                                )}
+                                <span className="text-[9px] text-slate-450 font-bold block mt-1">{list.subscriberCount || 0} contatos</span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => {
+                                    setListModalMode("edit");
+                                    setEditingListId(list.id);
+                                    setListModalName(list.name || "");
+                                    setListModalUrl(list.url || "");
+                                    setListModalDescription(list.description || "");
+                                    setShowAddListModal(true);
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                                  title="Editar lista"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Remover a lista "${list.name}"?`)) {
+                                      saveLists(lists.filter(l => l.id !== list.id));
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                  title="Excluir lista"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Double Opt-In and Consent Cards */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left">
+                  {/* 2. SEGMENTAÇÕES Panel (Collapsible Toggle + (+) Add button) */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-xs">
                     <div className="flex items-center justify-between border-b border-slate-150/60 pb-3">
-                      <h3 className="text-xs font-extrabold text-slate-850 uppercase tracking-wider font-sans">Double Opt-In & Páginas</h3>
+                      <div 
+                        onClick={() => setIsSegmentsPanelOpen(!isSegmentsPanelOpen)}
+                        className="flex items-center gap-2.5 cursor-pointer select-none group flex-1"
+                      >
+                        <ChevronDown className={`h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-transform ${isSegmentsPanelOpen ? "rotate-0" : "-rotate-90"}`} />
+                        <h3 className="text-xs font-extrabold text-slate-850 uppercase tracking-wider font-sans group-hover:text-indigo-600 transition-colors">Segmentações</h3>
+                        <span className="text-[10px] bg-slate-200/80 text-slate-600 px-2 py-0.5 rounded font-bold">
+                          {savedSegments.length} Segmentações
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSegmentModalMode("create");
+                          setEditingSegmentId(null);
+                          setSegmentModalName("");
+                          setSegmentModalDescription("");
+                          setSegmentModalPeriod("30");
+                          setShowAddSegmentModal(true);
+                        }}
+                        className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
+                        title="Criar Nova Segmentação"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline text-[11px]">Nova Segmentação</span>
+                      </button>
+                    </div>
+
+                    {isSegmentsPanelOpen && (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin animate-fadeIn">
+                        {savedSegments.length === 0 ? (
+                          <div className="text-center py-4 text-xs text-slate-400 font-medium italic">
+                            Nenhuma segmentação salva. Clique no botão (+) acima para criar.
+                          </div>
+                        ) : (
+                          savedSegments.map((seg) => (
+                            <div key={seg.id} className="bg-white border border-slate-200 rounded-xl p-3.5 flex justify-between items-center shadow-2xs hover:border-slate-350 transition-all">
+                              <div className="flex-1 min-w-0 pr-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-slate-800 block truncate">{seg.name}</span>
+                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-indigo-50 text-indigo-650 rounded border border-indigo-100 shrink-0">
+                                    {seg.type || "Engajamento"}
+                                  </span>
+                                </div>
+                                {seg.description && (
+                                  <p className="text-[10px] text-slate-400 truncate mt-0.5" title={seg.description}>
+                                    {seg.description}
+                                  </p>
+                                )}
+                                <span className="text-[9px] text-slate-450 font-bold block mt-1">{seg.count || 0} leads qualificados</span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => {
+                                    setSegmentModalMode("edit");
+                                    setEditingSegmentId(seg.id);
+                                    setSegmentModalName(seg.name || "");
+                                    setSegmentModalDescription(seg.description || "");
+                                    setSegmentModalPeriod(seg.period || "30");
+                                    setShowAddSegmentModal(true);
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                                  title="Editar segmentação"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Remover a segmentação "${seg.name}"?`)) {
+                                      saveSegments(savedSegments.filter(s => s.id !== seg.id));
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                  title="Excluir segmentação"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. DOUBLE OPT-IN & PÁGINAS Panel (Collapsible Toggle) */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-150/60 pb-3">
+                      <div 
+                        onClick={() => setIsDoubleOptInPanelOpen(!isDoubleOptInPanelOpen)}
+                        className="flex items-center gap-2.5 cursor-pointer select-none group flex-1"
+                      >
+                        <ChevronDown className={`h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-transform ${isDoubleOptInPanelOpen ? "rotate-0" : "-rotate-90"}`} />
+                        <h3 className="text-xs font-extrabold text-slate-850 uppercase tracking-wider font-sans group-hover:text-indigo-600 transition-colors">Double Opt-In & Páginas</h3>
+                      </div>
+
                       {/* Switch */}
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-slate-500 font-bold select-none">
@@ -3091,96 +3255,97 @@ export default function ContactsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      {/* 1. Página de preferências */}
-                      <div 
-                        onClick={() => setActiveConsentPageType("preferencias")}
-                        className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
-                          activeConsentPageType === "preferencias" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
-                          <Users className="h-5 w-5 text-slate-600" />
-                        </div>
-                        <div className="flex-1 text-xs">
-                          <span className="font-bold text-slate-800 block">Página de preferências</span>
-                          <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que gerenciarem as preferências de e-mail.</p>
-                        </div>
-                        <button 
-                          type="button"
-                          className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                    {isDoubleOptInPanelOpen && (
+                      <div className="space-y-3 animate-fadeIn">
+                        {/* 1. Página de preferências */}
+                        <div 
+                          onClick={() => setActiveConsentPageType("preferencias")}
+                          className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
+                            activeConsentPageType === "preferencias" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
+                          }`}
                         >
-                          Editar página
-                        </button>
-                      </div>
+                          <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
+                            <Users className="h-5 w-5 text-slate-600" />
+                          </div>
+                          <div className="flex-1 text-xs">
+                            <span className="font-bold text-slate-800 block">Página de preferências</span>
+                            <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que gerenciarem as preferências de e-mail.</p>
+                          </div>
+                          <button 
+                            type="button"
+                            className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                          >
+                            Editar página
+                          </button>
+                        </div>
 
-                      {/* 2. Página de inscrição */}
-                      <div 
-                        onClick={() => setActiveConsentPageType("inscricao")}
-                        className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
-                          activeConsentPageType === "inscricao" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
-                          <UserPlus className="h-5 w-5 text-slate-600" />
-                        </div>
-                        <div className="flex-1 text-xs">
-                          <span className="font-bold text-slate-800 block">Página de inscrição</span>
-                          <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que se inscreverem.</p>
-                        </div>
-                        <button 
-                          type="button"
-                          className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                        {/* 2. Página de inscrição */}
+                        <div 
+                          onClick={() => setActiveConsentPageType("inscricao")}
+                          className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
+                            activeConsentPageType === "inscricao" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
+                          }`}
                         >
-                          Editar página
-                        </button>
-                      </div>
+                          <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
+                            <UserPlus className="h-5 w-5 text-slate-600" />
+                          </div>
+                          <div className="flex-1 text-xs">
+                            <span className="font-bold text-slate-800 block">Página de inscrição</span>
+                            <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que se inscreverem.</p>
+                          </div>
+                          <button 
+                            type="button"
+                            className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                          >
+                            Editar página
+                          </button>
+                        </div>
 
-                      {/* 3. E-mail de confirmação */}
-                      <div 
-                        onClick={() => setActiveConsentPageType("confirmacao")}
-                        className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
-                          activeConsentPageType === "confirmacao" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
-                          <Mail className="h-5 w-5 text-slate-600" />
-                        </div>
-                        <div className="flex-1 text-xs">
-                          <span className="font-bold text-slate-800 block">E-mail de confirmação</span>
-                          <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que confirmarem a inscrição.</p>
-                        </div>
-                        <button 
-                          type="button"
-                          className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                        {/* 3. E-mail de confirmação */}
+                        <div 
+                          onClick={() => setActiveConsentPageType("confirmacao")}
+                          className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
+                            activeConsentPageType === "confirmacao" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
+                          }`}
                         >
-                          Editar página
-                        </button>
-                      </div>
+                          <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
+                            <Mail className="h-5 w-5 text-slate-600" />
+                          </div>
+                          <div className="flex-1 text-xs">
+                            <span className="font-bold text-slate-800 block">E-mail de confirmação</span>
+                            <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que confirmarem a inscrição.</p>
+                          </div>
+                          <button 
+                            type="button"
+                            className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                          >
+                            Editar página
+                          </button>
+                        </div>
 
-                      {/* 4. Página de cancelamento de inscrição de e-mail */}
-                      <div 
-                        onClick={() => setActiveConsentPageType("cancelamento")}
-                        className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
-                          activeConsentPageType === "cancelamento" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
-                          <LogOut className="h-5 w-5 text-slate-600" />
-                        </div>
-                        <div className="flex-1 text-xs">
-                          <span className="font-bold text-slate-800 block">Página de cancelamento de inscrição de e-mail</span>
-                          <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que cancelarem a inscrição.</p>
-                        </div>
-                        <button 
-                          type="button"
-                          className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                        {/* 4. Página de cancelamento de inscrição de e-mail */}
+                        <div 
+                          onClick={() => setActiveConsentPageType("cancelamento")}
+                          className={`p-3.5 bg-white border rounded-2xl flex items-center gap-3 transition-all cursor-pointer select-none ${
+                            activeConsentPageType === "cancelamento" ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-slate-300"
+                          }`}
                         >
-                          Editar página
-                        </button>
+                          <div className="h-9 w-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500">
+                            <LogOut className="h-5 w-5 text-slate-600" />
+                          </div>
+                          <div className="flex-1 text-xs">
+                            <span className="font-bold text-slate-800 block">Página de cancelamento de inscrição de e-mail</span>
+                            <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Personalize a experiência dos clientes que cancelarem a inscrição.</p>
+                          </div>
+                          <button 
+                            type="button"
+                            className="text-[10px] font-bold text-indigo-650 hover:text-indigo-850 shrink-0 px-2.5 py-1.5 rounded-lg border border-slate-250 hover:bg-slate-50 cursor-pointer transition-colors"
+                          >
+                            Editar página
+                          </button>
+                        </div>
                       </div>
-
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -4995,6 +5160,116 @@ export default function ContactsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: ADICIONAR / EDITAR SEGMENTAÇÃO                */}
+      {/* ==================================================== */}
+      {showAddSegmentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100">
+              <h3 className="text-sm font-extrabold text-slate-800">
+                {segmentModalMode === "create" ? "Criar Nova Segmentação" : "Editar Segmentação"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddSegmentModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-bold text-slate-700">Nome da Segmentação *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Leads Engajados 120 Dias"
+                  value={segmentModalName}
+                  onChange={(e) => setSegmentModalName(e.target.value)}
+                  className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700">Período de Abertura de E-mails *</label>
+                <select
+                  value={segmentModalPeriod}
+                  onChange={(e) => setSegmentModalPeriod(e.target.value)}
+                  className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium cursor-pointer"
+                >
+                  <option value="30">Últimos 30 Dias (Engajamento Recente)</option>
+                  <option value="60">Últimos 60 Dias (Engajamento Médio)</option>
+                  <option value="90">Últimos 90 Dias (Engajamento Alargado)</option>
+                  <option value="120">Últimos 120 Dias</option>
+                  <option value="180">Últimos 180 Dias</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700">Descrição / Critério</label>
+                <textarea
+                  placeholder="Critério de engajamento do lead (ex: abriu ao menos 1 e-mail no período)"
+                  value={segmentModalDescription}
+                  onChange={(e) => setSegmentModalDescription(e.target.value)}
+                  className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 h-20 resize-none leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2 text-xs font-bold bg-slate-50/50 -mx-6 -mb-6 p-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSegmentModal(false)}
+                  className="px-4 py-2 border border-slate-200 bg-white text-slate-550 hover:text-slate-800 rounded-xl transition-all cursor-pointer shadow-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!segmentModalName.trim()) {
+                      alert("Por favor, preencha o nome da segmentação.");
+                      return;
+                    }
+                    if (segmentModalMode === "create") {
+                      const newSeg = {
+                        id: `seg-${Date.now()}`,
+                        name: segmentModalName.trim(),
+                        type: "Engajamento",
+                        description: segmentModalDescription.trim() || `Leads que abriram ao menos 1 e-mail nos últimos ${segmentModalPeriod} dias.`,
+                        count: Math.floor(Math.random() * 40 + 80),
+                        period: segmentModalPeriod
+                      };
+                      saveSegments([...savedSegments, newSeg]);
+                      alert("Segmentação criada com sucesso!");
+                    } else if (editingSegmentId) {
+                      const updated = savedSegments.map((s) => {
+                        if (s.id === editingSegmentId) {
+                          return {
+                            ...s,
+                            name: segmentModalName.trim(),
+                            description: segmentModalDescription.trim() || s.description,
+                            period: segmentModalPeriod
+                          };
+                        }
+                        return s;
+                      });
+                      saveSegments(updated);
+                      alert("Segmentação atualizada com sucesso!");
+                    }
+                    setShowAddSegmentModal(false);
+                  }}
+                  className="px-5 py-2 bg-indigo-650 text-white rounded-xl hover:bg-indigo-700 shadow-md transition-all cursor-pointer"
+                >
+                  {segmentModalMode === "create" ? "Criar Segmentação" : "Salvar Alterações"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
