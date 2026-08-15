@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   User,
@@ -147,6 +147,8 @@ export default function ContactProfilePage({ params }: PageProps) {
   // Resolve params using React.use() wrapper as standard in Next.js 15
   const resolvedParams = use(params);
   const { id } = resolvedParams;
+  const searchParams = useSearchParams();
+  const emailQuery = searchParams ? searchParams.get("email") : null;
   
   // State initialized as null to fetch from database
   const [profile, setProfile] = useState<any>(null);
@@ -385,26 +387,40 @@ export default function ContactProfilePage({ params }: PageProps) {
           if (rawSims) {
             const parsedSims = JSON.parse(rawSims);
             if (Array.isArray(parsedSims) && parsedSims.length > 0) {
-              // Match by contact email or fallback to first student event if profile id is c1/default
-              const targetEmail = (foundContact?.email || "").toLowerCase().trim();
-              parsedSims.forEach((s: any) => {
-                const sEmail = (s.email || "").toLowerCase().trim();
-                if (
-                  (targetEmail && (sEmail === targetEmail || targetEmail.includes(sEmail.split("@")[0]))) ||
-                  (!matchingStudentInfo && (id === "c1" || !foundContact?.email))
-                ) {
-                  if (!matchingStudentInfo) matchingStudentInfo = s;
-                  customTxList.push({
-                    id: s.id || `sim-${Math.random()}`,
-                    product_type: s.category || "certificado",
-                    product_name: s.itemTitle || s.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
-                    amount: s.amount || 45.70,
-                    paid_at: s.date ? `${s.date}${s.time ? ` às ${s.time}` : ""}` : "15/08/2026 às 14:30",
-                    status: "paid",
-                    provider: s.provider || "pagarme"
-                  });
-                }
-              });
+              const targetEmail = (emailQuery || foundContact?.email || "").toLowerCase().trim();
+              
+              // First pass: Find student matching target email
+              if (targetEmail) {
+                parsedSims.forEach((s: any) => {
+                  const sEmail = (s.email || "").toLowerCase().trim();
+                  if (sEmail === targetEmail || targetEmail.includes(sEmail.split("@")[0]) || sEmail.includes(targetEmail.split("@")[0])) {
+                    if (!matchingStudentInfo) matchingStudentInfo = s;
+                    customTxList.push({
+                      id: s.id || `sim-${Math.random()}`,
+                      product_type: s.category || "certificado",
+                      product_name: s.itemTitle || s.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
+                      amount: s.amount || 45.70,
+                      paid_at: s.date ? `${s.date}${s.time ? ` às ${s.time}` : ""}` : "15/08/2026 às 14:30",
+                      status: "paid",
+                      provider: s.provider || "pagarme"
+                    });
+                  }
+                });
+              }
+
+              // Fallback pass if no match or default id
+              if (!matchingStudentInfo) {
+                matchingStudentInfo = parsedSims[0];
+                customTxList.push({
+                  id: matchingStudentInfo.id || `sim-${Math.random()}`,
+                  product_type: matchingStudentInfo.category || "certificado",
+                  product_name: matchingStudentInfo.itemTitle || matchingStudentInfo.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
+                  amount: matchingStudentInfo.amount || 45.70,
+                  paid_at: matchingStudentInfo.date ? `${matchingStudentInfo.date}${matchingStudentInfo.time ? ` às ${matchingStudentInfo.time}` : ""}` : "15/08/2026 às 14:30",
+                  status: "paid",
+                  provider: matchingStudentInfo.provider || "pagarme"
+                });
+              }
             }
           }
         } catch (e) {
@@ -421,12 +437,12 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         if (matchingStudentInfo) {
           const nameParts = matchingStudentInfo.name ? matchingStudentInfo.name.split(" ") : ["Aluno", "Realizzare"];
-          first_name = first_name && first_name !== "Contato" ? first_name : nameParts[0];
-          last_name = last_name && last_name !== "Importado" ? last_name : nameParts.slice(1).join(" ") || "Realizzare";
-          email = email && !email.includes("contato_") ? email : matchingStudentInfo.email;
-          phone = phone && phone !== "(11) 99887-1122" ? phone : (matchingStudentInfo.phone || "(65) 99234-8811");
-          state = state || matchingStudentInfo.state || "MT";
-          city = city || matchingStudentInfo.city || "Cuiabá";
+          first_name = nameParts[0];
+          last_name = nameParts.slice(1).join(" ") || "Realizzare";
+          email = matchingStudentInfo.email;
+          phone = matchingStudentInfo.phone || "(65) 99234-8811";
+          state = matchingStudentInfo.state || "MT";
+          city = matchingStudentInfo.city || "Cuiabá";
         }
 
         first_name = first_name || "Jhordanny";
