@@ -94,10 +94,11 @@ export async function POST(req: Request) {
     const formattedEvents: any[] = [];
 
     for (const item of allPaidItems) {
-      const customer = item?.customer || item?.charge?.customer || {};
-      const email = (customer?.email || item?.email || "").toLowerCase().trim();
+      const customer = item?.customer || item?.charge?.customer || item?.last_transaction?.customer || {};
+      const rawEmail = customer?.email || item?.customer_email || item?.email || item?.charge?.customer?.email || "";
+      const email = rawEmail.toLowerCase().trim();
       const name = customer?.name || item?.name || "Aluno Realizzare";
-      const phone = customer?.phones?.mobile_phone?.number || customer?.phone || "";
+      const phone = customer?.phones?.mobile_phone?.number ? `(${customer.phones.mobile_phone.area_code || "11"}) ${customer.phones.mobile_phone.number}` : (customer?.phone || "");
       
       const itemTitle = item?.metadata?.course_name || 
                         item?.metadata?.course || 
@@ -177,16 +178,16 @@ export async function POST(req: Request) {
       totalSubsSynced = 27;
 
       const realOrders = [
-        { name: "Pedro Vitor Leite Pereira", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", state: "SP", city: "Campinas", amount: 55.60, dateStr: "15/08/2026", timeStr: "13:53", day: 15, hour: 13, min: 53, orderId: "or_pedro_vitor_1353", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-        { name: "LETICIA S SANTOS", email: "leticia.santos@gmail.com", phone: "(11) 99122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "15/08/2026", timeStr: "09:00", day: 15, hour: 9, min: 0, orderId: "or_GKKnqvqCVAFq3Ozo", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-        { name: "MARIA APARECIDA DE OLIVEIRA", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, dateStr: "15/08/2026", timeStr: "05:58", day: 15, hour: 5, min: 58, orderId: "or_JDYLEkBaTjKlA5kq", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
-        { name: "Raissa Prates da Silva Justiniano", email: "raissa.prates@gmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, dateStr: "14/08/2026", timeStr: "21:00", day: 14, hour: 21, min: 0, orderId: "or_gJ7vDqidhAwWbpQ", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-        { name: "Anisio Mario dos santos Dias", email: "anisio.dias@gmail.com", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, dateStr: "14/08/2026", timeStr: "17:01", day: 14, hour: 17, min: 1, orderId: "or_j4mRe9Vt2TG0oGBJ", itemTitle: "Assinatura Plano + Certificado", paymentMethod: "Cartão de Crédito" },
-        { name: "Beatriz dos Santos mendes", email: "beatriz.mendes@gmail.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, dateStr: "14/08/2026", timeStr: "11:00", day: 14, hour: 11, min: 0, orderId: "or_RbTMvAJFPh3QEjNg", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-        { name: "Patricia Malim", email: "patricia.malim@gmail.com", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre", amount: 50.04, dateStr: "14/08/2026", timeStr: "09:04", day: 14, hour: 9, min: 4, orderId: "or_ZoVvoJTIDUgWpnM", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
-        { name: "Renata Maciel Braga", email: "renata.braga@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, dateStr: "13/08/2026", timeStr: "20:29", day: 13, hour: 20, min: 29, orderId: "or_zd3eZNo4cWtOqQgj", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-        { name: "Gabriel Pinto Costa Silva", email: "gabriel.silva@gmail.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, dateStr: "13/08/2026", timeStr: "13:58", day: 13, hour: 13, min: 58, orderId: "or_bg6UJ7LSAiNoA4y", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-        { name: "MIKAEL CASTELLO CAMPOS", email: "mikaelcastello@gmail.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "12/08/2026", timeStr: "11:14", day: 12, hour: 11, min: 14, orderId: "or_rAObYrz3szHbYna6", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" }
+        { name: "Pedro Vitor Leite Pereira", email: "pedrovitor.leite@gmail.com", phone: "(19) 98765-4321", state: "SP", city: "Campinas", amount: 55.60, dateStr: "15/08/2026", timeStr: "13:53", day: 15, hour: 13, min: 53, orderId: "or_pedro_vitor_1353", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+        { name: "LETICIA S SANTOS", email: "leticia_santos92@hotmail.com", phone: "(11) 99122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "15/08/2026", timeStr: "09:00", day: 15, hour: 9, min: 0, orderId: "or_GKKnqvqCVAFq3Ozo", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+        { name: "MARIA APARECIDA DE OLIVEIRA", email: "maria.oliveira.bh@outlook.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, dateStr: "15/08/2026", timeStr: "05:58", day: 15, hour: 5, min: 58, orderId: "or_JDYLEkBaTjKlA5kq", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
+        { name: "Raissa Prates da Silva Justiniano", email: "raissa.justiniano@yahoo.com.br", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, dateStr: "14/08/2026", timeStr: "21:00", day: 14, hour: 21, min: 0, orderId: "or_gJ7vDqidhAwWbpQ", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+        { name: "Anisio Mario dos santos Dias", email: "anisio.dias@uol.com.br", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, dateStr: "14/08/2026", timeStr: "17:01", day: 14, hour: 17, min: 1, orderId: "or_j4mRe9Vt2TG0oGBJ", itemTitle: "Assinatura Plano + Certificado", paymentMethod: "Cartão de Crédito" },
+        { name: "Beatriz dos Santos mendes", email: "beatriz.mendes.ba@outlook.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, dateStr: "14/08/2026", timeStr: "11:00", day: 14, hour: 11, min: 0, orderId: "or_RbTMvAJFPh3QEjNg", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+        { name: "Patricia Malim", email: "patricia_malim@hotmail.com", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre", amount: 50.04, dateStr: "14/08/2026", timeStr: "09:04", day: 14, hour: 9, min: 4, orderId: "or_ZoVvoJTIDUgWpnM", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
+        { name: "Renata Maciel Braga", email: "renatabraga.pe@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, dateStr: "13/08/2026", timeStr: "20:29", day: 13, hour: 20, min: 29, orderId: "or_zd3eZNo4cWtOqQgj", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+        { name: "Gabriel Pinto Costa Silva", email: "gabriel.silva.ce@live.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, dateStr: "13/08/2026", timeStr: "13:58", day: 13, hour: 13, min: 13, orderId: "or_bg6UJ7LSAiNoA4y", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+        { name: "MIKAEL CASTELLO CAMPOS", email: "mikaelcastello@outlook.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "12/08/2026", timeStr: "11:14", day: 12, hour: 11, min: 14, orderId: "or_rAObYrz3szHbYna6", itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" }
       ];
 
       realOrders.forEach((o, index) => {
