@@ -122,6 +122,7 @@ export default function DashboardPage() {
   // Live Sync trigger handler
   const handleLiveSync = async () => {
     setIsSyncing(true);
+    const syncStart = Date.now();
     try {
       const savedKey = typeof window !== "undefined" ? (localStorage.getItem("realizzare_pagarme_secret_key") || "") : "";
       const res = await fetch("/api/integrations/sync-pagarme", {
@@ -130,12 +131,17 @@ export default function DashboardPage() {
         body: JSON.stringify({ secretKey: savedKey })
       });
       const data = await res.json();
-      if (data.success && data.events) {
+      if (data.events && data.events.length > 0) {
         localStorage.setItem("realizzare_simulated_events", JSON.stringify(data.events));
       }
     } catch (e) {
       console.warn("Pagar.me live sync notice:", e);
     } finally {
+      // Ensure smooth user experience with at least 1.2s spinner feedback
+      const elapsed = Date.now() - syncStart;
+      if (elapsed < 1200) {
+        await new Promise((r) => setTimeout(r, 1200 - elapsed));
+      }
       const now = new Date();
       const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
       setLastSyncTime(`Hoje às ${timeStr}`);
