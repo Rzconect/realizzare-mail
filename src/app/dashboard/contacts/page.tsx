@@ -1011,15 +1011,15 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   } else if (rule.field === "payment_total_orders") {
     contactValue = String(getContactPagarmeInfo(contact).total_orders);
   } else if (rule.field === "payment_last_order_date") {
-    contactValue = getContactPagarmeInfo(contact).last_order_date;
+    contactValue = contact.last_order_date || getContactPagarmeInfo(contact).last_order_date;
   } else if (rule.field === "payment_last_paid_order_date") {
-    contactValue = getContactPagarmeInfo(contact).last_paid_order_date;
+    contactValue = contact.last_paid_order_date || getContactPagarmeInfo(contact).last_paid_order_date;
   } else if (rule.field === "payment_method") {
-    contactValue = getContactPagarmeInfo(contact).payment_method;
+    contactValue = contact.payment_method || getContactPagarmeInfo(contact).payment_method;
   } else if (rule.field === "payment_subscription_plan") {
-    contactValue = getContactPagarmeInfo(contact).subscription_plan;
+    contactValue = contact.subscription_plan || getContactPagarmeInfo(contact).subscription_plan;
   } else if (rule.field === "payment_subscription_status") {
-    contactValue = getContactPagarmeInfo(contact).subscription_status;
+    contactValue = contact.subscription_status || getContactPagarmeInfo(contact).subscription_status;
   } else if (rule.field === "tag") {
     const targetTag = (rule.value || "").toLowerCase();
     if (Array.isArray(contact.tags)) {
@@ -1064,59 +1064,64 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   if (rule.field === "created_at" || rule.field === "enrolled_at" || rule.field === "payment_last_order_date" || rule.field === "payment_last_paid_order_date") {
     if (!contactValue || contactValue.trim() === "" || contactValue === "none") return false;
 
-    const parseDateToTimestamp = (dateStr: string): number | null => {
+    const formatToYYYYMMDD = (dateStr: string): string | null => {
       if (!dateStr || dateStr.trim() === "") return null;
       if (dateStr.includes("/")) {
         const parts = dateStr.split("/");
         if (parts.length === 3) {
-          const day = parseInt(parts[0], 10);
-          const month = parseInt(parts[1], 10) - 1;
-          const year = parseInt(parts[2], 10);
-          return new Date(year, month, day, 0, 0, 0, 0).getTime();
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
         }
       }
       if (dateStr.includes("-")) {
         const parts = dateStr.split("T")[0].split("-");
         if (parts.length === 3) {
-          const year = parseInt(parts[0], 10);
-          const month = parseInt(parts[1], 10) - 1;
-          const day = parseInt(parts[2], 10);
-          return new Date(year, month, day, 0, 0, 0, 0).getTime();
+          const year = parts[0];
+          const month = parts[1].padStart(2, '0');
+          const day = parts[2].padStart(2, '0');
+          return `${year}-${month}-${day}`;
         }
       }
-      const t = new Date(dateStr).getTime();
-      return isNaN(t) ? null : t;
+      try {
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+          return d.toISOString().split("T")[0];
+        }
+      } catch (e) {}
+      return null;
     };
 
-    const contactTime = parseDateToTimestamp(contactValue);
-    if (!contactTime) return false;
+    const contactDateStr = formatToYYYYMMDD(contactValue);
+    if (!contactDateStr) return false;
 
     if (rule.operator === "between") {
       const parts = (rule.value || "").split("_");
-      const startTime = parseDateToTimestamp(parts[0] || "");
-      const endTime = parseDateToTimestamp(parts[1] || "");
-      if (startTime && endTime) {
-        return contactTime >= startTime && contactTime <= endTime;
+      const startDateStr = formatToYYYYMMDD(parts[0] || "");
+      const endDateStr = formatToYYYYMMDD(parts[1] || "");
+      if (startDateStr && endDateStr) {
+        return contactDateStr >= startDateStr && contactDateStr <= endDateStr;
       }
       return false;
     }
 
-    const targetTime = parseDateToTimestamp(rule.value || "");
-    if (!targetTime) return false;
+    const targetDateStr = formatToYYYYMMDD(rule.value || "");
+    if (!targetDateStr) return false;
 
     switch (rule.operator) {
       case "eq":
-        return contactTime === targetTime;
+        return contactDateStr === targetDateStr;
       case "neq":
-        return contactTime !== targetTime;
+        return contactDateStr !== targetDateStr;
       case "gt":
-        return contactTime > targetTime;
+        return contactDateStr > targetDateStr;
       case "lt":
-        return contactTime < targetTime;
+        return contactDateStr < targetDateStr;
       case "gte":
-        return contactTime >= targetTime;
+        return contactDateStr >= targetDateStr;
       case "lte":
-        return contactTime <= targetTime;
+        return contactDateStr <= targetDateStr;
       default:
         return false;
     }
@@ -1909,6 +1914,7 @@ export default function ContactsPage() {
             status,
             created_at,
             total_spent,
+            last_paid_order_date,
             contact_tags (
               tags (
                 name,
@@ -1952,7 +1958,8 @@ export default function ContactsPage() {
             tags,
             course,
             courseStatus,
-            total_spent: parseFloat(c.total_spent || 0)
+            total_spent: parseFloat(c.total_spent || 0),
+            last_paid_order_date: c.last_paid_order_date || ""
           };
         });
 
