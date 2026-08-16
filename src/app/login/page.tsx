@@ -65,35 +65,64 @@ export default function LoginPage() {
       };
 
       if (!isMasterAdmin) {
-        try {
-          const { createClient } = await import("@/lib/supabase/client");
-          const supabase = createClient();
-          
-          const { data, error: authError } = await supabase.auth.signInWithPassword({
-            email: inputEmail,
-            password: password,
-          });
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: inputEmail,
+          password: password,
+        });
 
-          if (authError) {
-            setError("Credenciais inválidas. Verifique seu e-mail e senha.");
+        if (authError) {
+          setError("Credenciais inválidas. Verifique seu e-mail e senha.");
+          setIsLoading(false);
+          return;
+        }
+
+        if (data.user) {
+          userSession.name = data.user.user_metadata?.name || "Administrador Realizzare";
+          userSession.email = data.user.email || inputEmail;
+
+          // Check if they are new (to enforce first password & 2FA setup)
+          const stored = localStorage.getItem("realizzare_auth_users");
+          let isNew = true;
+          if (stored) {
+            try {
+              const list = JSON.parse(stored);
+              const found = list.find((u: any) => u.email.toLowerCase() === inputEmail);
+              if (found) isNew = found.isNewUser;
+            } catch(e){}
+          }
+          userSession.isNewUser = isNew;
+
+          // Check if user has active MFA factors
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aalData && aalData.nextLevel === "aal2") {
+            setTempUserSession(userSession);
+            setStep("2fa");
             setIsLoading(false);
             return;
           }
-
-          if (data.user) {
-            userSession.name = data.user.user_metadata?.name || "Administrador Realizzare";
-            userSession.email = data.user.email || inputEmail;
-          }
-        } catch (e) {
-          // Fallback allow if offline/test
-          console.warn("Supabase Auth notice:", e);
+        }
+      } else {
+        // Master Admin Check: check if simulated MFA is enabled
+        const hasSimulatedMfa = localStorage.getItem(`realizzare_mfa_enabled_${inputEmail}`) === "true";
+        if (hasSimulatedMfa) {
+          setTempUserSession(userSession);
+          setStep("2fa");
+          setIsLoading(false);
+          return;
         }
       }
 
-      setTempUserSession(userSession);
+      // No MFA needed, complete login directly
+      if (keepLoggedIn) {
+        localStorage.setItem("realizzare_current_session", JSON.stringify(userSession));
+      } else {
+        sessionStorage.setItem("realizzare_current_session", JSON.stringify(userSession));
+      }
       setIsLoading(false);
-      // Advance to Step 2: 2FA Verification
-      setStep("2fa");
+      router.push("/dashboard");
     } catch (err: any) {
       console.error(err);
       setError("Erro de conexão. Verifique os dados e tente novamente.");
@@ -102,18 +131,62 @@ export default function LoginPage() {
   };
 
   // Step 2: Handle 2FA PIN Code Submission
-  const handle2FASubmit = (e: React.FormEvent) => {
+  const handle2FASubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    if (!pinCode || pinCode.trim().length < 4) {
+    if (!pinCode || pinCode.trim().length !== 6) {
       setError("Por favor, informe o código de verificação de 6 dígitos.");
       setIsLoading(false);
       return;
     }
 
-    setTimeout(() => {
+    try {
+      const inputEmail = email.trim().toLowerCase();
+      const isMasterAdmin = (inputEmail === "admin@realizzarecursos.com.br");
+
+      if (isMasterAdmin) {
+        // Simulated validation (accepts correct 6-digit structure or default code)
+        setTimeout(() => {
+          if (tempUserSession) {
+            if (keepLoggedIn) {
+              localStorage.setItem("realizzare_current_session", JSON.stringify(tempUserSession));
+            } else {
+              sessionStorage.setItem("realizzare_current_session", JSON.stringify(tempUserSession));
+            }
+          }
+          setIsLoading(false);
+          router.push("/dashboard");
+        }, 600);
+        return;
+      }
+
+      // Real Supabase MFA Verification
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+
+      const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+
+      const verifiedFactor = factors?.totp?.find((f: any) => f.status === "verified");
+      if (!verifiedFactor) {
+        throw new Error("Nenhum autenticador 2FA ativo encontrado. Faça login e ative-o nas configurações.");
+      }
+
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: verifiedFactor.id
+      });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: verifiedFactor.id,
+        challengeId: challenge.id,
+        code: pinCode
+      });
+      if (verifyError) throw verifyError;
+
+      // Successful 2FA login
       if (tempUserSession) {
         if (keepLoggedIn) {
           localStorage.setItem("realizzare_current_session", JSON.stringify(tempUserSession));
@@ -121,8 +194,13 @@ export default function LoginPage() {
           sessionStorage.setItem("realizzare_current_session", JSON.stringify(tempUserSession));
         }
       }
+      setIsLoading(false);
       router.push("/dashboard");
-    }, 600);
+    } catch (err: any) {
+      console.error("2FA validation failed:", err);
+      setError(err.message || "Código 2FA incorreto ou expirado. Tente novamente.");
+      setIsLoading(false);
+    }
   };
 
   return (
