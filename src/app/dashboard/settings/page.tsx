@@ -3740,14 +3740,40 @@ export default function SettingsPage() {
                       }
 
                       if (!profileObj.lists) profileObj.lists = [];
-                      const hasClientesList = profileObj.lists.some((pl: any) => pl.name === "Clientes" && pl.status === "subscribed");
-                      if (!hasClientesList) {
-                        profileObj.lists = profileObj.lists.filter((pl: any) => pl.name !== "Clientes");
-                        profileObj.lists.push({
-                          name: "Clientes",
-                          status: "subscribed",
-                          subscribed_at: new Date().toISOString()
+                      const leadsToAlunos = localStorage.getItem("realizzare_setting_leads_to_alunos") !== "false";
+                      const autoClientes = localStorage.getItem("realizzare_setting_auto_clientes_pagarme") !== "false";
+
+                      // 1. Rule 1: Move from Leads to Alunos
+                      if (leadsToAlunos) {
+                        profileObj.lists = profileObj.lists.map((pl: any) => {
+                          if (pl.name === "Leads") {
+                            return { ...pl, status: "unsubscribed", unsubscribed_at: new Date().toISOString() };
+                          }
+                          return pl;
                         });
+
+                        const hasAlunosList = profileObj.lists.some((pl: any) => pl.name === "Alunos" && pl.status === "subscribed");
+                        if (!hasAlunosList) {
+                          profileObj.lists = profileObj.lists.filter((pl: any) => pl.name !== "Alunos");
+                          profileObj.lists.push({
+                            name: "Alunos",
+                            status: "subscribed",
+                            subscribed_at: new Date().toISOString()
+                          });
+                        }
+                      }
+
+                      // 2. Rule 2: Auto-Add to Clientes list
+                      if (autoClientes) {
+                        const hasClientesList = profileObj.lists.some((pl: any) => pl.name === "Clientes" && pl.status === "subscribed");
+                        if (!hasClientesList) {
+                          profileObj.lists = profileObj.lists.filter((pl: any) => pl.name !== "Clientes");
+                          profileObj.lists.push({
+                            name: "Clientes",
+                            status: "subscribed",
+                            subscribed_at: new Date().toISOString()
+                          });
+                        }
                       }
 
                       profileObj.status = "active";

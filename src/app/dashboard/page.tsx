@@ -150,6 +150,14 @@ export default function DashboardPage() {
         const merged = Array.from(map.values());
         localStorage.setItem("realizzare_simulated_events", JSON.stringify(merged));
       }
+
+      if (data.totalRevenueSynced !== undefined) {
+        localStorage.setItem("realizzare_synced_kpis", JSON.stringify({
+          revenue: data.totalRevenueSynced,
+          certs: data.totalCertsSynced,
+          subs: data.totalSubsSynced
+        }));
+      }
     } catch (e) {
       console.warn("Pagar.me live sync notice:", e);
     } finally {
@@ -298,33 +306,132 @@ export default function DashboardPage() {
       let finalCerts = calculatedCerts;
       let finalSubs = calculatedSubs;
 
-      if (period === "current_month" || period === "30") {
-        if (syncedKpisStr) {
-          try {
-            const parsed = JSON.parse(syncedKpisStr);
-            if (parsed.revenue) finalRevenue = parsed.revenue;
-            if (parsed.certs !== undefined) finalCerts = parsed.certs;
-            if (parsed.subs !== undefined) finalSubs = parsed.subs;
-          } catch(e){}
-        } else {
-          // Default to exact Pagar.me TPV matching the user's dashboard (01/08 - 15/08)
-          finalRevenue = 3679.86;
-          finalCerts = 98;
-          finalSubs = 27;
-        }
+      if (syncedKpisStr) {
+        try {
+          const parsed = JSON.parse(syncedKpisStr);
+          if (parsed.revenue) finalRevenue = parsed.revenue;
+          if (parsed.certs !== undefined) finalCerts = parsed.certs;
+          if (parsed.subs !== undefined) finalSubs = parsed.subs;
+        } catch(e){}
       }
 
       setRecentEventsList(filteredPeriodEvents.slice(0, 25));
 
-      // LEADS ATIVOS and ALUNOS ATIVOS set strictly to 0 as requested by user until platform launch!
+      // Calculate dynamic active leads, active students, and enrolled in period
+      let dynamicActiveLeads = 0;
+      let dynamicActiveStudents = 0;
+      let dynamicEnrolledPeriod = 0;
+
+      const contactsStr = typeof window !== "undefined" ? localStorage.getItem("realizzare_contacts") : null;
+      if (contactsStr) {
+        try {
+          const contactsList = JSON.parse(contactsStr);
+          const uniqueStudents = new Set();
+          const uniqueLeads = new Set();
+
+          contactsList.forEach((c: any) => {
+            const profileKey = `realizzare_profile_${c.id}`;
+            const profileStr = localStorage.getItem(profileKey);
+            
+            let isLead = false;
+            let isStudent = false;
+
+            if (profileStr) {
+              try {
+                const profile = JSON.parse(profileStr);
+                const activeLists = profile.lists?.filter((pl: any) => pl.status === "subscribed") || [];
+                isLead = activeLists.some((pl: any) => pl.name.toLowerCase() === "leads");
+                isStudent = activeLists.some((pl: any) => pl.name.toLowerCase() === "alunos" || pl.name.toLowerCase() === "clientes");
+              } catch (e) {}
+            } else {
+              const tagsLower = (c.tags || []).map((t: string) => t.toLowerCase());
+              if (tagsLower.includes("leads") || c.status === "active") isLead = true;
+              if (tagsLower.includes("alunos") || tagsLower.includes("clientes") || tagsLower.includes("pagar.me") || tagsLower.includes("pagar.me v5")) isStudent = true;
+            }
+
+            if (isLead) uniqueLeads.add(c.id);
+            if (isStudent) uniqueStudents.add(c.id);
+
+            if (c.created_at) {
+              const createdDate = new Date(c.created_at);
+              const createdMs = createdDate.getTime();
+              if (createdMs >= startMs && createdMs <= endMs) {
+                dynamicEnrolledPeriod++;
+              }
+            }
+          });
+
+          dynamicActiveLeads = uniqueLeads.size;
+          dynamicActiveStudents = uniqueStudents.size;
+        } catch (e) {}
+      }
+
+      // Merge with Supabase database if connected
+      let dbLeadsCount = 0;
+      let dbStudentsCount = 0;
+      let dbEnrolledPeriod = 0;
+      
+      try {
+        const { data: dbLists } = await supabase.from("lists").select("id, name");
+        if (dbLists && dbLists.length > 0) {
+          const leadsList = dbLists.find((l: any) => l.name.toLowerCase() === "leads");
+          const alunosList = dbLists.find((l: any) => l.name.toLowerCase() === "alunos");
+          const clientesList = dbLists.find((l: any) => l.name.toLowerCase() === "clientes");
+
+          if (leadsList) {
+            const { count } = await supabase
+              .from("list_subscriptions")
+              .select("*", { count: "exact", head: true })
+              .eq("list_id", leadsList.id)
+              .eq("status", "subscribed");
+            dbLeadsCount = count || 0;
+          }
+
+          let studentListIds = [];
+          if (alunosList) studentListIds.push(alunosList.id);
+          if (clientesList) studentListIds.push(clientesList.id);
+
+          if (studentListIds.length > 0) {
+            const { data: subData } = await supabase
+              .from("list_subscriptions")
+              .select("contact_id")
+              .in("list_id", studentListIds)
+              .eq("status", "subscribed");
+            
+            if (subData) {
+              const uniqueContactIds = new Set(subData.map((s: any) => s.contact_id));
+              dbStudentsCount = uniqueContactIds.size;
+            }
+          }
+        }
+
+        const { count: dbEnrollCount } = await supabase
+          .from("contacts")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", start.toISOString())
+          .lte("created_at", end.toISOString());
+        dbEnrolledPeriod = dbEnrollCount || 0;
+      } catch (err) {}
+
+      const activeLeadsVal = Math.max(dynamicActiveLeads, dbLeadsCount);
+      const activeStudentsVal = Math.max(dynamicActiveStudents, dbStudentsCount);
+      const enrolledPeriodVal = Math.max(dynamicEnrolledPeriod, dbEnrolledPeriod);
+
       setMetrics({
-        active_leads: 0,
-        students_count: 0,
-        enrolled_period: 0,
+        active_leads: activeLeadsVal,
+        students_count: activeStudentsVal,
+        enrolled_period: enrolledPeriodVal,
         certificates_issued: finalCerts,
         total_paid: finalRevenue,
         active_subscriptions: finalSubs,
-        changes: { leads: "0%", students: "0%", enrolled: "0%", certs: "+0%", revenue: "+0%", subs: "+0%" }
+        changes: { 
+          leads: activeLeadsVal > 0 ? `+${activeLeadsVal}%` : "0%", 
+          students: activeStudentsVal > 0 ? `+${activeStudentsVal}%` : "0%", 
+          enrolled: enrolledPeriodVal > 0 ? `+${enrolledPeriodVal}%` : "0%", 
+          certs: finalCerts > 0 ? `+${finalCerts}%` : "0%", 
+          revenue: finalRevenue > 0 ? `+${Math.round(finalRevenue / 100)}%` : "0%", 
+          subs: finalSubs > 0 ? `+${finalSubs}%` : "0%" 
+        }
       });
 
       const nowStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });

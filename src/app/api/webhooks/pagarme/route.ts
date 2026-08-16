@@ -92,24 +92,74 @@ export async function POST(req: Request) {
         }
       }
 
-      // 3. Associate with "Clientes" list in list_subscriptions
-      if (contactId) {
-        const { data: listData } = await supabase
-          .from("lists")
-          .select("id")
-          .eq("name", "Clientes")
+      // Load toggles from settings (default to true if missing)
+      let leadsToAlunos = true;
+      let autoClientes = true;
+      try {
+        const { data: settingsData } = await supabase
+          .from("account_settings")
+          .select("settings")
+          .eq("org_id", "00000000-0000-0000-0000-000000000001")
           .maybeSingle();
-        
-        if (listData) {
-          await supabase
-            .from("list_subscriptions")
-            .upsert({
-              contact_id: contactId,
-              list_id: listData.id,
-              status: "subscribed"
-            }, {
-              onConflict: "contact_id,list_id"
-            });
+        if (settingsData && settingsData.settings) {
+          const settings = settingsData.settings as any;
+          if (settings.leads_to_alunos !== undefined) leadsToAlunos = settings.leads_to_alunos;
+          if (settings.auto_clientes_pagarme !== undefined) autoClientes = settings.auto_clientes_pagarme;
+        }
+      } catch (settingsErr) {
+        console.warn("Could not read account_settings:", settingsErr);
+      }
+
+      // Associate lists according to the rules
+      if (contactId) {
+        const { data: allLists } = await supabase
+          .from("lists")
+          .select("id, name");
+
+        if (allLists && allLists.length > 0) {
+          const leadsList = allLists.find((l: any) => l.name === "Leads");
+          const alunosList = allLists.find((l: any) => l.name === "Alunos");
+          const clientesList = allLists.find((l: any) => l.name === "Clientes");
+
+          // Rule 1: Move from Leads to Alunos
+          if (leadsToAlunos) {
+            if (alunosList) {
+              await supabase
+                .from("list_subscriptions")
+                .upsert({
+                  contact_id: contactId,
+                  list_id: alunosList.id,
+                  status: "subscribed",
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: "contact_id,list_id"
+                });
+            }
+            if (leadsList) {
+              await supabase
+                .from("list_subscriptions")
+                .update({
+                  status: "unsubscribed",
+                  updated_at: new Date().toISOString()
+                })
+                .eq("contact_id", contactId)
+                .eq("list_id", leadsList.id);
+            }
+          }
+
+          // Rule 2: Auto-Add to Clientes list
+          if (autoClientes && clientesList) {
+            await supabase
+              .from("list_subscriptions")
+              .upsert({
+                contact_id: contactId,
+                list_id: clientesList.id,
+                status: "subscribed",
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: "contact_id,list_id"
+              });
+          }
         }
       }
     } catch (dbErr) {

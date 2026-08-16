@@ -1853,6 +1853,45 @@ export default function ContactsPage() {
     }
   };
 
+  // Integration & Automation settings states
+  const [leadsToAlunosEnabled, setLeadsToAlunosEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("realizzare_setting_leads_to_alunos");
+      return stored !== "false"; // Default to true
+    }
+    return true;
+  });
+
+  const [autoClientesPagarmeEnabled, setAutoClientesPagarmeEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("realizzare_setting_auto_clientes_pagarme");
+      return stored !== "false"; // Default to true
+    }
+    return true;
+  });
+
+  const [isRulesPanelOpen, setIsRulesPanelOpen] = useState(true);
+
+  // Sync settings helper
+  const saveIntegrationSettings = async (leadsToAlunos: boolean, autoClientes: boolean) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("realizzare_setting_leads_to_alunos", String(leadsToAlunos));
+      localStorage.setItem("realizzare_setting_auto_clientes_pagarme", String(autoClientes));
+    }
+    try {
+      const supabase = createClient();
+      await supabase.from("account_settings").upsert({
+        org_id: "00000000-0000-0000-0000-000000000001",
+        settings: {
+          leads_to_alunos: leadsToAlunos,
+          auto_clientes_pagarme: autoClientes
+        }
+      }, { onConflict: "org_id" });
+    } catch (e) {
+      console.warn("Failed to save integration settings to database:", e);
+    }
+  };
+
   // Load from Supabase
   useEffect(() => {
     const loadDataFromSupabase = async () => {
@@ -2256,6 +2295,29 @@ export default function ContactsPage() {
           setDoubleOptInEnabled(storedOptIn === "true");
         } else {
           localStorage.setItem("realizzare_double_opt_in", "true");
+        }
+
+        // 6. Load Integration & Automation Settings
+        try {
+          const { data: settingsData } = await supabase
+            .from("account_settings")
+            .select("settings")
+            .eq("org_id", "00000000-0000-0000-0000-000000000001")
+            .maybeSingle();
+
+          if (settingsData && settingsData.settings) {
+            const settings = settingsData.settings as any;
+            if (settings.leads_to_alunos !== undefined) {
+              setLeadsToAlunosEnabled(settings.leads_to_alunos);
+              localStorage.setItem("realizzare_setting_leads_to_alunos", String(settings.leads_to_alunos));
+            }
+            if (settings.auto_clientes_pagarme !== undefined) {
+              setAutoClientesPagarmeEnabled(settings.auto_clientes_pagarme);
+              localStorage.setItem("realizzare_setting_auto_clientes_pagarme", String(settings.auto_clientes_pagarme));
+            }
+          }
+        } catch (settingsErr) {
+          console.warn("Failed to fetch settings from Supabase:", settingsErr);
         }
 
       } catch (err) {
@@ -3700,6 +3762,77 @@ export default function ContactsPage() {
                             </div>
                           ))
                         )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* REGRAS DE INTEGRAÇÃO & AUTOMAÇÃO Panel */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-150/60 pb-3">
+                      <div 
+                        onClick={() => setIsRulesPanelOpen(!isRulesPanelOpen)}
+                        className="flex items-center gap-2.5 cursor-pointer select-none group flex-1"
+                      >
+                        <ChevronDown className={`h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-transform ${isRulesPanelOpen ? "rotate-0" : "-rotate-90"}`} />
+                        <h3 className="text-xs font-extrabold text-slate-850 uppercase tracking-wider font-sans group-hover:text-indigo-600 transition-colors">Integração & Automação</h3>
+                      </div>
+                    </div>
+
+                    {isRulesPanelOpen && (
+                      <div className="space-y-4 animate-fadeIn">
+                        {/* Rule 1 Toggle */}
+                        <div className="flex items-start justify-between gap-4 p-3 bg-white border border-slate-150 rounded-xl shadow-2xs">
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-bold text-slate-850 block">Mover Leads para Alunos</span>
+                            <span className="text-[10px] text-slate-455 block leading-normal">
+                              Remover automaticamente da lista Leads e adicionar na lista de Alunos os usuários que iniciarem qualquer curso ou fizerem uma transação.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVal = !leadsToAlunosEnabled;
+                              setLeadsToAlunosEnabled(newVal);
+                              saveIntegrationSettings(newVal, autoClientesPagarmeEnabled);
+                            }}
+                            className={`w-9 h-5 rounded-full transition-colors relative outline-none shrink-0 cursor-pointer ${
+                              leadsToAlunosEnabled ? "bg-indigo-600" : "bg-slate-300"
+                            }`}
+                          >
+                            <span
+                              className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform shadow ${
+                                leadsToAlunosEnabled ? "translate-x-4.5" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Rule 2 Toggle */}
+                        <div className="flex items-start justify-between gap-4 p-3 bg-white border border-slate-150 rounded-xl shadow-2xs">
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-bold text-slate-850 block">Auto-Adicionar Clientes Pagar.me</span>
+                            <span className="text-[10px] text-slate-455 block leading-normal">
+                              Adicionar na lista de Clientes qualquer usuário que tiver uma transação paga na integração de pagamento atual (Pagar.me).
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVal = !autoClientesPagarmeEnabled;
+                              setAutoClientesPagarmeEnabled(newVal);
+                              saveIntegrationSettings(leadsToAlunosEnabled, newVal);
+                            }}
+                            className={`w-9 h-5 rounded-full transition-colors relative outline-none shrink-0 cursor-pointer ${
+                              autoClientesPagarmeEnabled ? "bg-indigo-600" : "bg-slate-300"
+                            }`}
+                          >
+                            <span
+                              className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform shadow ${
+                                autoClientesPagarmeEnabled ? "translate-x-4.5" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
