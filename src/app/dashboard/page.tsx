@@ -315,7 +315,7 @@ export default function DashboardPage() {
         } catch(e){}
       }
 
-      setRecentEventsList(filteredPeriodEvents.slice(0, 25));
+      setRecentEventsList(filteredPeriodEvents.slice(0, 10));
 
       // Calculate dynamic active leads, active students, and enrolled in period
       let dynamicActiveLeads = 0;
