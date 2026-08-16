@@ -38,6 +38,7 @@ import {
 
 // Mock Contacts database matching our schema
 const realize_mock_contacts = [
+  { id: "c0", first_name: "Pedro Vitor", last_name: "Leite Pereira", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 55.60, location: { state: "SP", city: "Campinas" } },
   { id: "c1", first_name: "Leticia", last_name: "S Santos", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "SP", city: "São Paulo" } },
   { id: "c2", first_name: "Maria Aparecida", last_name: "de Oliveira", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 55.60, location: { state: "MG", city: "Belo Horizonte" } },
   { id: "c3", first_name: "Raissa Prates", last_name: "da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "RJ", city: "Rio de Janeiro" } },
@@ -2699,15 +2700,34 @@ export default function ContactsPage() {
 
   const totalPages = Math.ceil(processedContacts.length / itemsPerPage);
 
+  const [showSegmentLeadsModal, setShowSegmentLeadsModal] = useState(false);
+  const [segmentSearchQuery, setSegmentSearchQuery] = useState("");
+
+  const getMatchingSegmentLeads = () => {
+    if (!segmentGroups || segmentGroups.length === 0) return contacts;
+    return contacts.filter((contact) => {
+      const groupResults: boolean[] = segmentGroups.map((group) => {
+        if (!group.rules || group.rules.length === 0) return true;
+        const ruleResults: boolean[] = group.rules.map((rule: any) => evaluateRule(contact, rule, customFields));
+        return group.logicalOperator === "or"
+          ? ruleResults.some((r: boolean) => r === true)
+          : ruleResults.every((r: boolean) => r === true);
+      });
+      return globalOperator === "or"
+        ? groupResults.some((r: boolean) => r === true)
+        : groupResults.every((r: boolean) => r === true);
+    });
+  };
+
   // Segment preview triggers
   const handleCalculatePreview = () => {
     setIsPreviewLoading(true);
     setPreviewCount(null);
     setTimeout(() => {
-      const count = countMatchingContacts(contacts, segmentGroups, globalOperator, customFields);
-      setPreviewCount(count);
+      const matching = getMatchingSegmentLeads();
+      setPreviewCount(matching.length);
       setIsPreviewLoading(false);
-    }, 800);
+    }, 400);
   };
 
   const handleAddGroup = () => {
@@ -4848,9 +4868,19 @@ export default function ContactsPage() {
                       <span>Contando leads...</span>
                     </div>
                   ) : previewCount !== null ? (
-                    <div className="flex flex-col text-right">
-                      <span className="text-lg font-black text-emerald-700">{previewCount.toLocaleString("pt-BR")} leads</span>
-                      <span className="text-[10px] text-slate-500">qualificados para o segmento</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col text-right">
+                        <span className="text-lg font-black text-emerald-700">{previewCount.toLocaleString("pt-BR")} leads</span>
+                        <span className="text-[10px] text-slate-500">qualificados para o segmento</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowSegmentLeadsModal(true)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span>Visualizar Leads ({previewCount})</span>
+                      </button>
                     </div>
                   ) : null}
 
@@ -4885,6 +4915,157 @@ export default function ContactsPage() {
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed shadow-md cursor-pointer"
               >
                 Salvar Segmento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Segment Leads Inspector Sub-Modal */}
+      {showSegmentLeadsModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-fadeIn">
+          <div className="relative w-full max-w-5xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">Leads Qualificados no Segmento</h3>
+                    <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      {getMatchingSegmentLeads().length} leads
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                    {segmentName || "Segmentação Dinâmica Personalizada"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSegmentLeadsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Sub-header Controls */}
+            <div className="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar por nome, e-mail ou telefone..."
+                  value={segmentSearchQuery}
+                  onChange={(e) => setSegmentSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const matching = getMatchingSegmentLeads();
+                    const headers = "Nome,E-mail,Telefone,Status,Curso,Total Pago,Data\n";
+                    const rows = matching.map(c => `"${c.first_name} ${c.last_name}","${c.email}","${c.phone}","${c.status}","${c.course}","R$ ${c.total_spent}","${c.created_at}"`).join("\n");
+                    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", `segmento_leads_${Date.now()}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Exportar CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Table Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {(() => {
+                const matchingAll = getMatchingSegmentLeads();
+                const filtered = matchingAll.filter(c => {
+                  const q = segmentSearchQuery.toLowerCase();
+                  const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
+                  return fullName.includes(q) || (c.email || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-slate-500 text-xs font-medium">
+                      Nenhum lead encontrado para o filtro aplicado.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase tracking-wider text-[10px]">
+                          <th className="py-3 px-4">Lead</th>
+                          <th className="py-3 px-4">E-mail</th>
+                          <th className="py-3 px-4">Telefone</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4">Curso / Produto</th>
+                          <th className="py-3 px-4 text-right">Total Pago</th>
+                          <th className="py-3 px-4 text-center">Data</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filtered.map((c) => {
+                          const fullName = `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Lead sem nome";
+                          const initials = fullName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase();
+                          return (
+                            <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="h-7 w-7 rounded-full bg-indigo-50 text-indigo-700 font-black text-[10px] flex items-center justify-center border border-indigo-200 shrink-0">
+                                    {initials}
+                                  </div>
+                                  <span className="font-bold text-slate-850 truncate max-w-[180px]">{fullName}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 font-medium text-slate-600 truncate max-w-[200px]">{c.email}</td>
+                              <td className="py-3 px-4 font-medium text-slate-500">{c.phone || "-"}</td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                  c.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600 border border-slate-200"
+                                }`}>
+                                  {c.status === "active" ? "Ativo" : "Inativo"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 font-bold text-emerald-700 truncate max-w-[220px]">{c.course || "Nenhum curso"}</td>
+                              <td className="py-3 px-4 text-right font-black text-slate-800">R$ {typeof c.total_spent === "number" ? c.total_spent.toFixed(2) : c.total_spent || "0.00"}</td>
+                              <td className="py-3 px-4 text-center text-slate-500 font-medium">{c.created_at || "-"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowSegmentLeadsModal(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Fechar Visualização
               </button>
             </div>
           </div>
