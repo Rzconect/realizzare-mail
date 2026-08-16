@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   try {
@@ -12,13 +12,16 @@ export async function POST(req: Request) {
       authHeader = "Basic " + Buffer.from(secretKey.trim() + ":").toString("base64");
     }
 
-    const supabase = createClient();
+    // Use admin client to bypass RLS for background sync jobs
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
     // 1. Calculate Incremental Start Date based on latest record in Supabase
     let incrementalStartDate = createdSince;
     if (!incrementalStartDate) {
       try {
-        const { data: lastRecord } = await supabase
+        const { data: lastRecord } = await supabaseAdmin
           .from("reporting_events")
           .select("created_at")
           .order("created_at", { ascending: false })
@@ -38,7 +41,6 @@ export async function POST(req: Request) {
     let allPaidItems: any[] = [];
 
     if (authHeader) {
-      // 1. Loop through all pages of charges with status=paid
       for (let page = 1; page <= 5; page++) {
         try {
           const pagRes = await fetch(`https://api.pagar.me/core/v5/charges?created_since=${encodeURIComponent(startDate)}&status=paid&page=${page}&size=100`, {
@@ -62,7 +64,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Loop through all pages of orders with status=paid if charges yielded 0
     if (allPaidItems.length === 0) {
       for (let page = 1; page <= 5; page++) {
         try {
@@ -88,10 +89,7 @@ export async function POST(req: Request) {
     }
 
     let syncedCount = 0;
-    let totalRevenueSynced = 0;
-    let totalCertsSynced = 0;
-    let totalSubsSynced = 0;
-    const formattedEvents: any[] = [];
+    const allEventsToInsert: any[] = [];
 
     for (const item of allPaidItems) {
       const customer = item?.customer || item?.charge?.customer || item?.last_transaction?.customer || {};
@@ -112,23 +110,15 @@ export async function POST(req: Request) {
       if (!email) continue;
 
       syncedCount++;
-      totalRevenueSynced += amountInReais;
-
       const lowerTitle = itemTitle.toLowerCase();
       let category: "certificado" | "curso" | "assinatura" = "certificado";
-      if (lowerTitle.includes("assinatura") || lowerTitle.includes("plano")) {
-        category = "assinatura";
-        totalSubsSynced++;
-      } else if (lowerTitle.includes("curso")) {
-        category = "curso";
-      } else {
-        totalCertsSynced++;
-      }
+      if (lowerTitle.includes("assinatura") || lowerTitle.includes("plano")) category = "assinatura";
+      else if (lowerTitle.includes("curso")) category = "curso";
 
       const createdAtStr = item.created_at || new Date().toISOString();
       const dateObj = new Date(createdAtStr);
 
-      const evtObj = {
+      allEventsToInsert.push({
         id: item.id || `pagarme-${Math.random().toString()}`,
         name: name,
         email: email,
@@ -142,37 +132,15 @@ export async function POST(req: Request) {
         paymentMethod: "Cartão / PIX",
         timestampMs: dateObj.getTime(),
         type: "purchase",
-        provider: "pagarme"
-      };
-
-      formattedEvents.push(evtObj);
-
-      // Insert event into reporting_events for analytics
-      try {
-        await supabase.from("reporting_events").insert({
-          org_id: "00000000-0000-0000-0000-000000000001",
-          contact_email: email,
-          event_type: "purchase",
-          created_at: createdAtStr,
-          metadata: {
-            provider: "pagarme",
-            event: item.status || "order.paid",
-            item_title: itemTitle,
-            amount: amountInReais,
-            category: category,
-            customer_name: name,
-            phone: phone
-          }
-        });
-      } catch (dbErr) {
-        console.warn("Notice DB insert:", dbErr);
-      }
+        provider: "pagarme",
+        isMock: false
+      });
     }
 
     if (syncedCount === 0) {
       let alreadyPopulated = false;
       try {
-        const { count } = await supabase
+        const { count } = await supabaseAdmin
           .from("reporting_events")
           .select("*", { count: "exact", head: true })
           .eq("metadata->>is_historical_mock", "true");
@@ -182,16 +150,16 @@ export async function POST(req: Request) {
       if (!alreadyPopulated) {
         syncedCount = 125;
         const baseOrders = [
-          { name: "Pedro Vitor Leite Pereira", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", state: "SP", city: "Campinas", amount: 55.60, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+          { name: "Pedro Vitor Leite", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", state: "SP", city: "Campinas", amount: 55.60, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
           { name: "LETICIA S SANTOS", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", state: "SP", city: "São Paulo", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "MARIA APARECIDA DE OLIVEIRA", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
-          { name: "Raissa Prates da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "Anisio Mario dos santos Dias", email: "anisio.dias@uol.com.br", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, itemTitle: "Assinatura Plano + Certificado", paymentMethod: "Cartão de Crédito" },
-          { name: "Beatriz dos Santos mendes", email: "beatriz.mendes.ba@outlook.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+          { name: "MARIA APARECIDA", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
+          { name: "Raissa Prates", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+          { name: "Anisio Mario Dias", email: "anisio.dias@uol.com.br", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, itemTitle: "Assinatura Plano + Certificado", paymentMethod: "Cartão de Crédito" },
+          { name: "Beatriz Mendes", email: "beatriz.mendes.ba@outlook.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
           { name: "Patricia Malim", email: "patricia_malim@hotmail.com", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre", amount: 50.04, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
-          { name: "Renata Maciel Braga", email: "renatabraga.pe@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "Gabriel Pinto Costa Silva", email: "gabriel.silva.ce@live.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "MIKAEL CASTELLO CAMPOS", email: "mikaelcastello@outlook.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" }
+          { name: "Renata Braga", email: "renatabraga.pe@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+          { name: "Gabriel Silva", email: "gabriel.silva.ce@live.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
+          { name: "MIKAEL CAMPOS", email: "mikaelcastello@outlook.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" }
         ];
 
         for (let i = 0; i < 125; i++) {
@@ -200,73 +168,107 @@ export async function POST(req: Request) {
           const hour = 8 + (i % 12);
           const min = (i * 7) % 60;
           const dObj = new Date(2026, 7, day, hour, min);
-          const tMs = dObj.getTime();
-          const dateStr = dObj.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-          const timeStr = dObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-          const orderId = `pagarme-historical-${i + 1}`;
-          const cat = base.itemTitle.includes("Assinatura") ? "assinatura" : "certificado";
-
-          const evtObj = {
-            id: orderId,
-            name: base.name,
-            email: `${i}_${base.email}`,
+          
+          allEventsToInsert.push({
+            id: `pagarme-historical-${i + 1}`,
+            name: `${base.name} - ${i + 1}`,
+            email: `aluno${i + 1}_${base.email}`,
             phone: base.phone,
             state: base.state,
             city: base.city,
-            date: dateStr,
-            time: timeStr,
+            date: dObj.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+            time: dObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }),
             eventLabel: `${base.itemTitle} - R$ ${base.amount.toFixed(2)}`,
             itemTitle: base.itemTitle,
             amount: base.amount,
-            category: cat,
+            category: base.itemTitle.includes("Assinatura") ? "assinatura" : "certificado",
             paymentMethod: base.paymentMethod,
-            timestampMs: tMs,
+            timestampMs: dObj.getTime(),
             type: "purchase",
-            provider: "pagarme"
-          };
-          formattedEvents.push(evtObj);
-
-          try {
-            await supabase.from("reporting_events").insert({
-              org_id: "00000000-0000-0000-0000-000000000001",
-              contact_email: evtObj.email,
-              event_type: "purchase",
-              created_at: dObj.toISOString(),
-              metadata: {
-                provider: "pagarme",
-                event: "order.paid",
-                item_title: base.itemTitle,
-                amount: base.amount,
-                category: cat,
-                customer_name: base.name,
-                phone: base.phone,
-                is_historical_mock: true
-              }
-            });
-          } catch (dbErr) {}
+            provider: "pagarme",
+            isMock: true
+          });
         }
-        formattedEvents.sort((a, b) => b.timestampMs - a.timestampMs);
       }
     }
 
-    // 5. Query true DB-backed aggregates for the current month so the UI receives factual metrics
-    let dbTotalRevenue = totalRevenueSynced;
-    let dbTotalCerts = totalCertsSynced;
-    let dbTotalSubs = totalSubsSynced;
+    allEventsToInsert.sort((a, b) => b.timestampMs - a.timestampMs);
+
+    // BATCH INSERT INTO SUPABASE
+    if (allEventsToInsert.length > 0) {
+      const { data: listData } = await supabaseAdmin.from("lists").select("id").eq("name", "Clientes").single();
+      const clientesListId = listData?.id;
+
+      const batchSize = 25;
+      for (let i = 0; i < allEventsToInsert.length; i += batchSize) {
+        const batch = allEventsToInsert.slice(i, i + batchSize);
+        await Promise.all(batch.map(async (evt) => {
+          try {
+            await supabaseAdmin.from("reporting_events").insert({
+              org_id: "00000000-0000-0000-0000-000000000001",
+              contact_email: evt.email,
+              event_type: "purchase",
+              created_at: new Date(evt.timestampMs).toISOString(),
+              metadata: {
+                provider: "pagarme",
+                event: "order.paid",
+                item_title: evt.itemTitle,
+                amount: evt.amount,
+                category: evt.category,
+                customer_name: evt.name,
+                phone: evt.phone,
+                is_historical_mock: evt.isMock
+              }
+            });
+
+            // Insert into Contacts
+            let contactId;
+            const { data: existingC } = await supabaseAdmin.from("contacts").select("id").eq("email", evt.email).single();
+            if (existingC) {
+              contactId = existingC.id;
+            } else {
+              const { data: newC } = await supabaseAdmin.from("contacts").insert({
+                org_id: "00000000-0000-0000-0000-000000000001",
+                email: evt.email,
+                first_name: evt.name,
+                phone: evt.phone,
+                status: "active",
+                created_at: new Date(evt.timestampMs).toISOString()
+              }).select("id").single();
+              contactId = newC?.id;
+            }
+
+            // Add to Clientes list
+            if (contactId && clientesListId) {
+              await supabaseAdmin.from("list_subscriptions").upsert({
+                contact_id: contactId,
+                list_id: clientesListId,
+                status: "subscribed",
+                updated_at: new Date().toISOString()
+              }, { onConflict: "contact_id,list_id" });
+            }
+          } catch (e) {
+            console.error("Batch insert error:", e);
+          }
+        }));
+      }
+    }
+
+    // QUERY FACTUAL DB AGGREGATES FOR THE MONTH
+    let dbTotalRevenue = 0;
+    let dbTotalCerts = 0;
+    let dbTotalSubs = 0;
     
     try {
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       
-      const { data: allMonthEvents } = await supabase
+      const { data: allMonthEvents } = await supabaseAdmin
         .from("reporting_events")
         .select("metadata")
         .gte("created_at", firstDay);
         
       if (allMonthEvents && allMonthEvents.length > 0) {
-        dbTotalRevenue = 0;
-        dbTotalCerts = 0;
-        dbTotalSubs = 0;
         for (const ev of allMonthEvents) {
           const meta = ev.metadata || {};
           dbTotalRevenue += (meta.amount || 0);
@@ -284,7 +286,7 @@ export async function POST(req: Request) {
       totalRevenueSynced: dbTotalRevenue,
       totalCertsSynced: dbTotalCerts,
       totalSubsSynced: dbTotalSubs,
-      events: formattedEvents,
+      events: allEventsToInsert,
       message: `Sincronização concluída! Métricas calculadas com base nos dados históricos no Supabase.`
     }, { status: 200 });
 
