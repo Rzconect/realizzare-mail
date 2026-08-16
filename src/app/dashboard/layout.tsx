@@ -444,14 +444,14 @@ export default function DashboardLayout({
             )}
           </div>
 
-          {/* Settings Dropdown Cog */}
+          {/* Settings Dropdown triggered by User Avatar button */}
           <div className="relative settings-dropdown-container">
             <button
               onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-805 bg-slate-50 border border-slate-202 hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
-              title="Opções"
+              className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200/80 hover:scale-105 transition-all cursor-pointer relative overflow-hidden shrink-0"
+              title="Opções da Conta"
             >
-              <Settings className="h-4 w-4" />
+              <User className="h-4 w-4" />
             </button>
 
             {showSettingsDropdown && (
@@ -480,14 +480,6 @@ export default function DashboardLayout({
               </>
             )}
           </div>
-
-          <Link
-            href="/dashboard/settings?sub=pessoal"
-            className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200/80 transition-all cursor-pointer relative overflow-hidden shrink-0"
-            title="Meu Perfil"
-          >
-            <User className="h-4 w-4" />
-          </Link>
         </div>
 
         <button
@@ -688,14 +680,14 @@ export default function DashboardLayout({
               )}
             </div>
 
-            {/* Settings Dropdown Cog */}
+            {/* Settings Dropdown triggered by User Avatar button */}
             <div className="relative settings-dropdown-container">
               <button
                 onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                className="p-2 rounded-lg text-slate-500 hover:text-slate-805 bg-slate-50 border border-slate-202 hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
-                title="Opções"
+                className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200/80 hover:scale-105 transition-all cursor-pointer relative overflow-hidden shrink-0"
+                title="Opções da Conta"
               >
-                <Settings className="h-4.5 w-4.5 animate-spin-hover" />
+                <User className="h-4.5 w-4.5" />
               </button>
 
               {showSettingsDropdown && (
@@ -724,15 +716,6 @@ export default function DashboardLayout({
                 </>
               )}
             </div>
-
-            {/* User profile avatar link for desktop (next to settings gear!) */}
-            <Link
-              href="/dashboard/settings?sub=pessoal"
-              className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200/80 hover:scale-105 transition-all cursor-pointer relative overflow-hidden shrink-0"
-              title="Meu Perfil"
-            >
-              <User className="h-4.5 w-4.5" />
-            </Link>
           </div>
         </header>
 
@@ -796,9 +779,19 @@ export default function DashboardLayout({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-450 font-semibold select-none">
-              <span>Limites renovam em:</span>
-              <span className="text-indigo-600 font-bold">1º do próximo mês</span>
+            <div className="pt-2.5 border-t border-slate-100 space-y-2">
+              <div className="flex items-center justify-between text-[9px] text-slate-450 font-semibold select-none">
+                <span>Limites renovam em:</span>
+                <span className="text-indigo-650 font-bold">1º do próximo mês</span>
+              </div>
+              <Link
+                href="/dashboard/settings"
+                onClick={() => setShowUsagePopover(false)}
+                className="flex items-center justify-center gap-1.5 w-full py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-650 hover:text-slate-800 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+              >
+                <Settings className="h-3.5 w-3.5 text-slate-450" />
+                <span>Configurações e Limites</span>
+              </Link>
             </div>
           </div>
         </div>
