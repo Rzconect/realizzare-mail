@@ -138,8 +138,15 @@ export default function DashboardPage() {
           try { existingList = JSON.parse(existingRaw); } catch(e){}
         }
         const map = new Map();
-        existingList.forEach((e: any) => map.set(e.id, e));
-        data.events.forEach((e: any) => map.set(e.id, e));
+        const getSig = (e: any) => {
+          const em = (e.email || "").toLowerCase().trim();
+          const d = e.date || "";
+          const t = e.time || "";
+          const amt = e.amount || 0;
+          return `${em}_${d}_${t}_${amt}`;
+        };
+        existingList.forEach((e: any) => map.set(getSig(e), e));
+        data.events.forEach((e: any) => map.set(getSig(e), e));
         const merged = Array.from(map.values());
         localStorage.setItem("realizzare_simulated_events", JSON.stringify(merged));
       }
@@ -260,9 +267,19 @@ export default function DashboardPage() {
         }
       }
 
-      // Deduplicate events by id
+      // Deduplicate events by content signature
       const uniqueEventsMap = new Map();
-      allEventsPool.forEach(evt => uniqueEventsMap.set(evt.id, evt));
+      allEventsPool.forEach(evt => {
+        const em = (evt.email || "").toLowerCase().trim();
+        const d = evt.date || "";
+        const t = evt.time || "";
+        const amt = Number(evt.amount) || 0;
+        const title = evt.itemTitle || evt.eventLabel || "";
+        const signature = `${em}_${d}_${t}_${amt}_${title}`;
+        if (!uniqueEventsMap.has(signature)) {
+          uniqueEventsMap.set(signature, evt);
+        }
+      });
       const deduplicatedPool = Array.from(uniqueEventsMap.values());
 
       // Filter events by period date bounds and sort descending (newest first)
