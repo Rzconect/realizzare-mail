@@ -760,6 +760,86 @@ function getContactEnrollmentInfo(c: any): { course: string; status: string; enr
   };
 }
 
+function getContactPagarmeInfo(contact: any) {
+  const cEmail = (contact.email || "").toLowerCase().trim();
+  let events: any[] = [];
+  
+  if (typeof window !== "undefined") {
+    const rawSims = localStorage.getItem("realizzare_simulated_events");
+    if (rawSims) {
+      try {
+        const parsed = JSON.parse(rawSims);
+        if (Array.isArray(parsed)) {
+          events = parsed.filter((e: any) => (e.email || "").toLowerCase().trim() === cEmail);
+        }
+      } catch(e){}
+    }
+  }
+
+  // Also check profile purchases from localStorage
+  if (events.length === 0 && typeof window !== "undefined") {
+    const storedProfile = localStorage.getItem(`realizzare_profile_${contact.id}`);
+    if (storedProfile) {
+      try {
+        const parsed = JSON.parse(storedProfile);
+        if (Array.isArray(parsed.purchases)) {
+          events = parsed.purchases.map((p: any) => ({
+            email: cEmail,
+            status: p.status || "paid",
+            amount: p.amount || 49.90,
+            date: p.paid_at || contact.created_at || "",
+            payment_method: p.payment_method || "credit_card"
+          }));
+        }
+      } catch(e){}
+    }
+  }
+
+  if (events.length === 0) {
+    const hasSpent = contact.total_spent && parseFloat(contact.total_spent) > 0;
+    return {
+      order_status: hasSpent ? "paid" : "none",
+      last_order_amount: hasSpent ? parseFloat(contact.total_spent) : 0,
+      total_spent: hasSpent ? parseFloat(contact.total_spent) : 0,
+      total_orders: hasSpent ? 1 : 0,
+      last_order_date: hasSpent ? (contact.created_at || "") : "",
+      last_paid_order_date: hasSpent ? (contact.created_at || "") : "",
+      payment_method: hasSpent ? "credit_card" : "none",
+      subscription_plan: "none",
+      subscription_status: "none"
+    };
+  }
+
+  const getTs = (d: string) => {
+    if (!d) return 0;
+    if (d.includes("/")) {
+      const p = d.split("/");
+      if (p.length === 3) return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0])).getTime();
+    }
+    return new Date(d).getTime() || 0;
+  };
+
+  const sorted = [...events].sort((a, b) => getTs(b.date || "") - getTs(a.date || ""));
+
+  const lastOrder = sorted[0];
+  const paidOrders = sorted.filter(e => e.status === "paid");
+  const lastPaidOrder = paidOrders[0];
+
+  const totalSpent = paidOrders.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+  return {
+    order_status: lastOrder.status || "paid",
+    last_order_amount: lastOrder.amount || 0,
+    total_spent: totalSpent || contact.total_spent || 0,
+    total_orders: sorted.length,
+    last_order_date: lastOrder.date || "",
+    last_paid_order_date: lastPaidOrder ? (lastPaidOrder.date || "") : "",
+    payment_method: lastOrder.payment_method || "credit_card",
+    subscription_plan: lastOrder.subscription_plan || "monthly",
+    subscription_status: lastOrder.subscription_status || "active"
+  };
+}
+
 function evaluateRule(contact: any, rule: { field: string; operator: string; value: string }, customFields: any[]): boolean {
   if (!rule.field) return true;
   
@@ -841,21 +921,23 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   } else if (rule.field === "status") {
     contactValue = contact.status || "";
   } else if (rule.field === "total_spent" || rule.field === "payment_total_revenue") {
-    contactValue = String(contact.total_spent || 0);
+    contactValue = String(contact.total_spent !== undefined ? contact.total_spent : getContactPagarmeInfo(contact).total_spent);
   } else if (rule.field === "payment_order_status") {
-    contactValue = contact.order_status || "paid";
+    contactValue = contact.order_status || getContactPagarmeInfo(contact).order_status;
   } else if (rule.field === "payment_order_amount") {
-    contactValue = String(contact.last_order_amount || contact.total_spent || 97.90);
+    contactValue = String(contact.last_order_amount !== undefined ? contact.last_order_amount : getContactPagarmeInfo(contact).last_order_amount);
   } else if (rule.field === "payment_total_orders") {
-    contactValue = String(contact.total_orders || 1);
-  } else if (rule.field === "payment_last_order_date" || rule.field === "payment_last_paid_order_date") {
-    contactValue = contact.created_at || "2026-08-01";
+    contactValue = String(contact.total_orders !== undefined ? contact.total_orders : getContactPagarmeInfo(contact).total_orders);
+  } else if (rule.field === "payment_last_order_date") {
+    contactValue = contact.last_order_date || getContactPagarmeInfo(contact).last_order_date;
+  } else if (rule.field === "payment_last_paid_order_date") {
+    contactValue = contact.last_paid_order_date || getContactPagarmeInfo(contact).last_paid_order_date;
   } else if (rule.field === "payment_method") {
-    contactValue = contact.payment_method || "credit_card";
+    contactValue = contact.payment_method || getContactPagarmeInfo(contact).payment_method;
   } else if (rule.field === "payment_subscription_plan") {
-    contactValue = contact.subscription_plan || "monthly";
+    contactValue = contact.subscription_plan || getContactPagarmeInfo(contact).subscription_plan;
   } else if (rule.field === "payment_subscription_status") {
-    contactValue = contact.subscription_status || "active";
+    contactValue = contact.subscription_status || getContactPagarmeInfo(contact).subscription_status;
   } else if (rule.field === "tag") {
     const targetTag = (rule.value || "").toLowerCase();
     if (Array.isArray(contact.tags)) {
@@ -898,22 +980,48 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   
   // Date-based checks
   if (rule.field === "created_at" || rule.field === "enrolled_at" || rule.field === "payment_last_order_date" || rule.field === "payment_last_paid_order_date") {
-    if (!contactValue) return false;
-    const contactTime = new Date(contactValue).getTime();
-    
+    if (!contactValue || contactValue.trim() === "" || contactValue === "none") return false;
+
+    const parseDateToTimestamp = (dateStr: string): number | null => {
+      if (!dateStr || dateStr.trim() === "") return null;
+      if (dateStr.includes("/")) {
+        const parts = dateStr.split("/");
+        if (parts.length === 3) {
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const year = parseInt(parts[2], 10);
+          return new Date(year, month, day, 0, 0, 0, 0).getTime();
+        }
+      }
+      if (dateStr.includes("-")) {
+        const parts = dateStr.split("T")[0].split("-");
+        if (parts.length === 3) {
+          const year = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          return new Date(year, month, day, 0, 0, 0, 0).getTime();
+        }
+      }
+      const t = new Date(dateStr).getTime();
+      return isNaN(t) ? null : t;
+    };
+
+    const contactTime = parseDateToTimestamp(contactValue);
+    if (!contactTime) return false;
+
     if (rule.operator === "between") {
-      const parts = rule.value.split("_");
-      const startTime = parts[0] ? new Date(parts[0]).getTime() : null;
-      const endTime = parts[1] ? new Date(parts[1]).getTime() : null;
+      const parts = (rule.value || "").split("_");
+      const startTime = parseDateToTimestamp(parts[0] || "");
+      const endTime = parseDateToTimestamp(parts[1] || "");
       if (startTime && endTime) {
         return contactTime >= startTime && contactTime <= endTime;
       }
       return false;
     }
-    
-    const targetTime = rule.value ? new Date(rule.value).getTime() : null;
+
+    const targetTime = parseDateToTimestamp(rule.value || "");
     if (!targetTime) return false;
-    
+
     switch (rule.operator) {
       case "eq":
         return contactTime === targetTime;
