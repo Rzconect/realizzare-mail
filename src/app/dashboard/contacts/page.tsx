@@ -1914,7 +1914,6 @@ export default function ContactsPage() {
             status,
             created_at,
             total_spent,
-            last_paid_order_date,
             contact_tags (
               tags (
                 name,
@@ -1932,6 +1931,26 @@ export default function ContactsPage() {
           .order("created_at", { ascending: false });
         if (contactsError) throw contactsError;
 
+        // Fetch purchase events to map last_paid_order_date dynamically
+        const lastPaidMap: Record<string, string> = {};
+        try {
+          const { data: eventsData } = await supabase
+            .from("reporting_events")
+            .select("contact_email, created_at")
+            .eq("event_type", "purchase")
+            .order("created_at", { ascending: true }); // ascending so latest overrides
+          if (eventsData) {
+            eventsData.forEach((evt: any) => {
+              if (evt.contact_email) {
+                const em = evt.contact_email.toLowerCase().trim();
+                lastPaidMap[em] = new Date(evt.created_at).toISOString().split("T")[0];
+              }
+            });
+          }
+        } catch (e) {
+          console.warn("Failed to fetch reporting_events for mapping:", e);
+        }
+
         const mappedContacts = contactsData.map((c: any) => {
           const tags = c.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || [];
           const primaryEnrollment = c.enrollments?.[0];
@@ -1947,6 +1966,8 @@ export default function ContactsPage() {
             }
           }
 
+          const cleanEmail = (c.email || "").toLowerCase().trim();
+
           return {
             id: c.id,
             first_name: c.first_name || "",
@@ -1959,7 +1980,7 @@ export default function ContactsPage() {
             course,
             courseStatus,
             total_spent: parseFloat(c.total_spent || 0),
-            last_paid_order_date: c.last_paid_order_date || ""
+            last_paid_order_date: lastPaidMap[cleanEmail] || ""
           };
         });
 
