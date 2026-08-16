@@ -64,19 +64,62 @@ export default function ContentsPage() {
         { id: "img-4", name: "background_email_newsletter.jpg", size: "112.4 KB", date: "20/06/2026", type: "JPEG", dimensions: "800x400", url: "https://media.realizzarecursos.com.br/uploads/background_email_newsletter.jpg", folderId: "f-default" }
       ];
 
+      let foldersList = defaultFolders;
       if (storedFolders) {
-        try { setFolders(JSON.parse(storedFolders)); } catch (e) { setFolders(defaultFolders); }
-      } else {
-        setFolders(defaultFolders);
-        localStorage.setItem("realizzare_media_folders", JSON.stringify(defaultFolders));
+        try {
+          foldersList = JSON.parse(storedFolders);
+        } catch (e) {
+          foldersList = defaultFolders;
+        }
       }
+      if (!foldersList.some(f => f.id === "f-id-visual" || f.name.toLowerCase() === "id visual")) {
+        foldersList = [...foldersList, { id: "f-id-visual", name: "ID Visual", date: "16/08/2026" }];
+      }
+      setFolders(foldersList);
+      localStorage.setItem("realizzare_media_folders", JSON.stringify(foldersList));
 
+      let filesList = defaultFiles;
       if (storedFiles) {
-        try { setFiles(JSON.parse(storedFiles)); } catch (e) { setFiles(defaultFiles); }
-      } else {
-        setFiles(defaultFiles);
-        localStorage.setItem("realizzare_media_files", JSON.stringify(defaultFiles));
+        try {
+          filesList = JSON.parse(storedFiles);
+        } catch (e) {
+          filesList = defaultFiles;
+        }
       }
+      const hasFavicon = filesList.some(f => f.name === "logo_favicon.png" || f.id === "img-favicon");
+      const hasRLogo = filesList.some(f => f.name === "r_logo_icon.png" || f.id === "img-r-logo");
+      
+      const newFilesToAdd = [];
+      if (!hasFavicon) {
+        newFilesToAdd.push({
+          id: "img-favicon",
+          name: "logo_favicon.png",
+          size: "204 KB",
+          date: "16/08/2026",
+          type: "PNG",
+          dimensions: "1024x1024",
+          url: "/favicon.png",
+          folderId: "f-id-visual"
+        });
+      }
+      if (!hasRLogo) {
+        newFilesToAdd.push({
+          id: "img-r-logo",
+          name: "r_logo_icon.png",
+          size: "273 KB",
+          date: "16/08/2026",
+          type: "PNG",
+          dimensions: "1024x1024",
+          url: "/r-logo.png",
+          folderId: "f-id-visual"
+        });
+      }
+      
+      if (newFilesToAdd.length > 0) {
+        filesList = [...filesList, ...newFilesToAdd];
+      }
+      setFiles(filesList);
+      localStorage.setItem("realizzare_media_files", JSON.stringify(filesList));
       setIsLoaded(true);
     }
   }, []);

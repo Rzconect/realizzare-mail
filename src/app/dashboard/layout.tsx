@@ -597,8 +597,8 @@ export default function DashboardLayout({
               className="w-full flex items-center justify-between hover:bg-slate-100/70 p-2.5 rounded-2xl border border-slate-200 bg-white transition-all cursor-pointer text-left usage-trigger-btn shadow-sm"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0">
-                  <Building2 className="h-5 w-5" />
+                <div className="h-9 w-9 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                  <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover" />
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-slate-800 truncate">Realizzare</span>
@@ -610,10 +610,10 @@ export default function DashboardLayout({
           ) : (
             <button
               onClick={() => setShowUsagePopover(!showUsagePopover)}
-              className="h-10 w-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-650 hover:bg-slate-100 transition-all cursor-pointer usage-trigger-btn shadow-sm"
+              className="h-10 w-10 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center hover:bg-slate-100 transition-all cursor-pointer usage-trigger-btn shadow-sm p-0.5"
               title="Ver uso da conta: Realizzare"
             >
-              <Building2 className="h-5 w-5" />
+              <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover rounded-lg" />
             </button>
           )}
         </div>
