@@ -94,6 +94,27 @@ export default function SettingsPage() {
   const [anthropicApiKey, setAnthropicApiKey] = useState("");
 
   // Sender Cascade & SmartSending State
+  const [senderName, setSenderName] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("realizzare_sender_name") || "Realizzare Cursos";
+    }
+    return "Realizzare Cursos";
+  });
+
+  const [senderEmail, setSenderEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("realizzare_sender_email") || "contato@realizzare.com.br";
+    }
+    return "contato@realizzare.com.br";
+  });
+
+  const [replyToEmail, setReplyToEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("realizzare_reply_to_email") || "suporte@realizzare.com.br";
+    }
+    return "suporte@realizzare.com.br";
+  });
+
   const [showCascadeSenderModal, setShowCascadeSenderModal] = useState(false);
   const [smartSendingEnabled, setSmartSendingEnabled] = useState(true);
   const [smartSendingIntervalHours, setSmartSendingIntervalHours] = useState(24);
@@ -1455,24 +1476,27 @@ export default function SettingsPage() {
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Nome do Remetente</label>
                     <input
                       type="text"
-                      defaultValue="Realizzare Cursos"
-                      className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none"
+                      value={senderName}
+                      onChange={(e) => setSenderName(e.target.value)}
+                      className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">E-mail do Remetente</label>
                     <input
                       type="email"
-                      defaultValue="contato@realizzare.com.br"
-                      className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none"
+                      value={senderEmail}
+                      onChange={(e) => setSenderEmail(e.target.value)}
+                      className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Responder Para (Reply-To)</label>
                     <input
                       type="email"
-                      defaultValue="suporte@realizzare.com.br"
-                      className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none"
+                      value={replyToEmail}
+                      onChange={(e) => setReplyToEmail(e.target.value)}
+                      className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
                     />
                   </div>
                 </div>
@@ -3046,13 +3070,13 @@ export default function SettingsPage() {
                 Você está prestes a atualizar o Remetente Padrão da conta para:
               </p>
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1 font-mono text-[11px]">
-                <div><strong>Nome do Remetente:</strong> Realizzare Cursos</div>
-                <div><strong>E-mail do Remetente:</strong> contato@realizzare.com.br</div>
-                <div><strong>Responder Para:</strong> suporte@realizzare.com.br</div>
+                <div><strong>Nome do Remetente:</strong> {senderName}</div>
+                <div><strong>E-mail do Remetente:</strong> {senderEmail}</div>
+                <div><strong>Responder Para:</strong> {replyToEmail}</div>
               </div>
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-800 space-y-1">
                 <span className="font-bold block">Aviso de Impacto:</span>
-                <p>Esta alteração atualizará os dados do remetente por padrão em <strong>todas as 7 campanhas pontuais</strong> e <strong>5 fluxos de automação ativos</strong> da Realizzare Mail.</p>
+                <p>Esta alteração atualizará os dados do remetente e responder-para apenas em <strong>campanhas agendadas, rascunhos e fluxos de automação ativos</strong>. Campanhas já enviadas não serão alteradas.</p>
               </div>
             </div>
 
@@ -3067,8 +3091,48 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("realizzare_sender_name", senderName);
+                    localStorage.setItem("realizzare_sender_email", senderEmail);
+                    localStorage.setItem("realizzare_reply_to_email", replyToEmail);
+
+                    // Update draft and scheduled campaigns in localStorage
+                    const storedCamps = localStorage.getItem("realizzare_campaigns");
+                    if (storedCamps) {
+                      try {
+                        const parsed = JSON.parse(storedCamps);
+                        const updated = parsed.map((c: any) => {
+                          if (c.status === "draft" || c.status === "scheduled" || c.status === "Rascunho" || c.status === "Agendado") {
+                            return {
+                              ...c,
+                              sender_name: senderName,
+                              sender_email: senderEmail,
+                              reply_to: replyToEmail
+                            };
+                          }
+                          return c;
+                        });
+                        localStorage.setItem("realizzare_campaigns", JSON.stringify(updated));
+                      } catch(e){}
+                    }
+
+                    // Update flows in localStorage
+                    const storedFlows = localStorage.getItem("realizzare_automations");
+                    if (storedFlows) {
+                      try {
+                        const parsed = JSON.parse(storedFlows);
+                        const updated = parsed.map((f: any) => ({
+                          ...f,
+                          sender_name: senderName,
+                          sender_email: senderEmail,
+                          reply_to: replyToEmail
+                        }));
+                        localStorage.setItem("realizzare_automations", JSON.stringify(updated));
+                      } catch(e){}
+                    }
+                  }
                   setShowCascadeSenderModal(false);
-                  alert("✅ Remetente atualizado com sucesso em todas as campanhas e fluxos de automação da conta!");
+                  alert("✅ Remetente salvo e aplicado com sucesso em todas as campanhas rascunho/agendadas e fluxos de automação!");
                 }}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer"
               >

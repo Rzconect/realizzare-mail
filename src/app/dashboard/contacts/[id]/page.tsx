@@ -902,17 +902,17 @@ export default function ContactProfilePage({ params }: PageProps) {
                     </button>
                   </div>
                   
-                  {/* Status do usuário: Ativo (em lista) ou Inativo (fora de lista) */}
+                  {/* Status do usuário: Ativo ou Inativo */}
                   <div className="pt-0.5">
                     {(draft.lists && draft.lists.length > 0 && draft.lists.some((l: any) => l.status === "subscribed")) || draft.status === "active" ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        Ativo (Inscrito em Lista)
+                        Ativo
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200">
                         <span className="h-2 w-2 rounded-full bg-slate-400" />
-                        Inativo (Fora de Listas)
+                        Inativo
                       </span>
                     )}
                   </div>
@@ -1193,63 +1193,61 @@ export default function ContactProfilePage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Section 5: Listas Vinculadas (MANTIDA VISÍVEL POR PADRÃO) */}
+          {/* Section 5: Listas de E-mail (Exibidas como pílulas semelhantes a Marcadores e Tags) */}
           <div className="pt-4 border-t border-slate-200 space-y-3">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
               <Mail className="h-4 w-4 text-indigo-600" />
               <span>Listas de E-mail</span>
             </h3>
 
-            <div className="space-y-2">
-              {draft.lists && draft.lists.length > 0 ? (
-                draft.lists.map((list: any) => (
-                  <div key={list.name} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs">
-                    <div className="flex flex-col text-left">
-                      <span className="font-semibold text-slate-800">{list.name}</span>
-                      <span className="text-[9px] text-slate-400 mt-0.5">
-                        {list.status === "subscribed" ? "Inscrito • " : "Desinscrito • "}
-                        {new Date(list.updated_at).toLocaleDateString("pt-BR")}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleListSubscription(list.name)}
-                      className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase transition-all shadow-sm cursor-pointer ${
-                        list.status === "subscribed"
-                          ? "bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
-                          : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                      }`}
+            <div className="flex flex-wrap gap-1.5">
+              {draft.lists && draft.lists.filter((l: any) => l.status === "subscribed").length > 0 ? (
+                draft.lists
+                  .filter((l: any) => l.status === "subscribed")
+                  .map((list: any) => (
+                    <span
+                      key={list.name}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-lg text-xs font-semibold"
                     >
-                      {list.status === "subscribed" ? "Sair" : "Participar"}
-                    </button>
-                  </div>
-                ))
+                      <Mail className="h-3 w-3 text-indigo-500" />
+                      <span>{list.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleListSubscription(list.name)}
+                        className="text-slate-400 hover:text-red-600 font-bold text-xs ml-1 cursor-pointer"
+                        title="Remover da lista"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
               ) : (
-                <span className="text-xs text-slate-400 italic block">Não inscrito em nenhuma lista.</span>
+                <span className="text-xs text-slate-400 italic block">Fora de qualquer lista de transmissão.</span>
               )}
             </div>
 
-            {/* Dropdown or select to add a new list association directly */}
-            <div className="flex gap-2 pt-1">
-              <select
-                value={selectedListToJoin}
-                onChange={(e) => setSelectedListToJoin(e.target.value)}
-                className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg p-1.5 text-xs focus:outline-none flex-1"
-              >
-                <option value="">-- Participar de outra lista --</option>
-                {allOtherAvailableLists.map((lname: string) => (
-                  <option key={lname} value={lname}>{lname}</option>
-                ))}
-              </select>
-              <button
-                type="button"
-                disabled={!selectedListToJoin}
-                onClick={handleAddToListConfirm}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:shadow-none cursor-pointer"
-              >
-                +
-              </button>
-            </div>
+            {allOtherAvailableLists.length > 0 && (
+              <div className="flex gap-1.5 pt-1">
+                <select
+                  value={selectedListToJoin}
+                  onChange={(e) => setSelectedListToJoin(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-indigo-500 flex-1 font-medium cursor-pointer"
+                >
+                  <option value="">+ Inscrever em lista...</option>
+                  {allOtherAvailableLists.map((lname: string) => (
+                    <option key={lname} value={lname}>{lname}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!selectedListToJoin}
+                  onClick={handleAddToListConfirm}
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:bg-slate-100 disabled:text-slate-400 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

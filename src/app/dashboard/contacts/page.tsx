@@ -1484,7 +1484,41 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [customFields, setCustomFields] = useState<any[]>([]);
-  const [lists, setLists] = useState<any[]>([]);
+
+  // Default values
+  const defaultCustomFields = [
+    { id: "cf-1", name: "Área de Interesse", type: "text", tag: "area_de_interesse", objective: "Estudo ou segmento de interesse do aluno." },
+    { id: "cf-2", name: "Nível Acadêmico", type: "text", tag: "nivel_academico", objective: "Escolaridade ou nível de formação atual do contato." },
+    { id: "cf-3", name: "Origem Lead", type: "text", tag: "origem_lead", objective: "Canal ou link de entrada do lead na base." },
+    { id: "cf-4", name: "Curso Pretendido", type: "text", tag: "curso_pretendido", objective: "Curso que o aluno pretende matricular-se." }
+  ];
+
+  const defaultLists = [
+    { id: "l-1", name: "Leads", subscriberCount: 125, url: "https://realizzarecursos.com.br", description: "Lista de contatos e leads cadastrados." },
+    { id: "l-2", name: "Alunos", subscriberCount: 98, url: "https://realizzarecursos.com.br", description: "Lista de alunos matriculados em cursos." },
+    { id: "l-3", name: "Clientes", subscriberCount: 27, url: "https://realizzarecursos.com.br", description: "Lista de clientes compradores e assinantes." },
+    { id: "l-4", name: "Professores", subscriberCount: 12, url: "https://realizzarecursos.com.br", description: "Lista de professores e instrutores Realizzare." }
+  ];
+
+  const [lists, setLists] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("realizzare_lists");
+      if (stored) {
+        try { 
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch(e){}
+      }
+    }
+    return defaultLists;
+  });
+
+  const saveLists = (updated: any[]) => {
+    setLists(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("realizzare_lists", JSON.stringify(updated));
+    }
+  };
 
   // Consent page options
   const [activeConsentPageType, setActiveConsentPageType] = useState<"preferencias" | "inscricao" | "confirmacao" | "cancelamento">("confirmacao");
@@ -1563,21 +1597,6 @@ export default function ContactsPage() {
   const [csvDelimiter, setCsvDelimiter] = useState(",");
   const [csvPreviewList, setCsvPreviewList] = useState<any[]>([]);
 
-  // Default values
-  const defaultCustomFields = [
-    { id: "cf-1", name: "Área de Interesse", type: "text", tag: "area_de_interesse", objective: "Estudo ou segmento de interesse do aluno." },
-    { id: "cf-2", name: "Nível Acadêmico", type: "text", tag: "nivel_academico", objective: "Escolaridade ou nível de formação atual do contato." },
-    { id: "cf-3", name: "Origem Lead", type: "text", tag: "origem_lead", objective: "Canal ou link de entrada do lead na base." },
-    { id: "cf-4", name: "Curso Pretendido", type: "text", tag: "curso_pretendido", objective: "Curso que o aluno pretende matricular-se." }
-  ];
-
-  const defaultLists = [
-    { id: "l-1", name: "Leads", subscriberCount: 125, url: "https://realizzarecursos.com.br", description: "Lista de contatos e leads cadastrados." },
-    { id: "l-2", name: "Alunos", subscriberCount: 98, url: "https://realizzarecursos.com.br", description: "Lista de alunos matriculados em cursos." },
-    { id: "l-3", name: "Clientes", subscriberCount: 27, url: "https://realizzarecursos.com.br", description: "Lista de clientes compradores e assinantes." },
-    { id: "l-4", name: "Professores", subscriberCount: 12, url: "https://realizzarecursos.com.br", description: "Lista de professores e instrutores Realizzare." }
-  ];
-
   const defaultSegments = [
     { id: "seg-30d", name: "Leads Engajados 30 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 30 dias.", count: 85, period: "30" },
     { id: "seg-60d", name: "Leads Engajados 60 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 60 dias.", count: 112, period: "60" },
@@ -1635,7 +1654,19 @@ export default function ContactsPage() {
           url: l.url || "",
           description: l.description || ""
         }));
-        setLists(mappedLists);
+        
+        if (mappedLists.length > 0) {
+          const namesSet = new Set(mappedLists.map((l: any) => l.name.toLowerCase()));
+          const merged = [...mappedLists];
+          defaultLists.forEach(dl => {
+            if (!namesSet.has(dl.name.toLowerCase())) {
+              merged.push(dl);
+            }
+          });
+          saveLists(merged);
+        } else {
+          saveLists(defaultLists);
+        }
 
         // 3. Fetch Contacts
         const { data: contactsData, error: contactsError } = await supabase
@@ -1862,11 +1893,6 @@ export default function ContactsPage() {
   const saveCustomFields = (updated: any[]) => {
     setCustomFields(updated);
     localStorage.setItem("realizzare_custom_fields", JSON.stringify(updated));
-  };
-
-  const saveLists = (updated: any[]) => {
-    setLists(updated);
-    localStorage.setItem("realizzare_mock_lists", JSON.stringify(updated));
   };
 
   const handleMassAddTagConfirm = (tagToAdd: string) => {
@@ -3146,12 +3172,8 @@ export default function ContactsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSegmentModalMode("create");
-                          setEditingSegmentId(null);
-                          setSegmentModalName("");
-                          setSegmentModalDescription("");
-                          setSegmentModalPeriod("30");
-                          setShowAddSegmentModal(true);
+                          setIsSegmentModalOpen(true);
+                          setPreviewCount(null);
                         }}
                         className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
                         title="Criar Nova Segmentação"
@@ -5154,7 +5176,7 @@ export default function ContactsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-650 text-white rounded-xl hover:bg-indigo-700 shadow-md transition-all cursor-pointer"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   {listModalMode === "create" ? "Adicionar" : "Salvar"}
                 </button>
@@ -5264,7 +5286,7 @@ export default function ContactsPage() {
                     }
                     setShowAddSegmentModal(false);
                   }}
-                  className="px-5 py-2 bg-indigo-650 text-white rounded-xl hover:bg-indigo-700 shadow-md transition-all cursor-pointer"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   {segmentModalMode === "create" ? "Criar Segmentação" : "Salvar Alterações"}
                 </button>
