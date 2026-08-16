@@ -321,13 +321,20 @@ export default function DashboardLayout({
       }
     }
 
-    // 2. Update real password in Supabase if they are a real user
+    // 2. Update real password & metadata in Supabase if they are a real user
     try {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      await supabase.auth.updateUser({ password: newAuthPassword });
+      await supabase.auth.updateUser({ 
+        password: newAuthPassword,
+        data: { is_new_user: false }
+      });
     } catch (e) {
-      console.warn("Notice updating real user password in Supabase:", e);
+      console.warn("Notice updating real user password & metadata in Supabase:", e);
+    }
+
+    if (currentUser?.email === "admin@realizzarecursos.com.br") {
+      localStorage.setItem("realizzare_master_first_access_completed", "true");
     }
 
     // 3. Update session storage and close modal

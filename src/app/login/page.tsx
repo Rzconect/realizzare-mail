@@ -84,16 +84,7 @@ export default function LoginPage() {
           userSession.email = data.user.email || inputEmail;
 
           // Check if they are new (to enforce first password & 2FA setup)
-          const stored = localStorage.getItem("realizzare_auth_users");
-          let isNew = true;
-          if (stored) {
-            try {
-              const list = JSON.parse(stored);
-              const found = list.find((u: any) => u.email.toLowerCase() === inputEmail);
-              if (found) isNew = found.isNewUser;
-            } catch(e){}
-          }
-          userSession.isNewUser = isNew;
+          userSession.isNewUser = data.user.user_metadata?.is_new_user !== false;
 
           // Check if user has active MFA factors
           const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -323,7 +314,7 @@ export default function LoginPage() {
                 <span>Verificação de Segurança em 2 Etapas</span>
               </div>
               <p className="text-slate-600 leading-relaxed font-medium">
-                Enviamos um código de segurança de 6 dígitos para o e-mail registrado: <strong className="text-slate-900">{email}</strong>.
+                Abra o aplicativo de autenticação (como <strong className="text-slate-900">Google Authenticator</strong>) no seu celular e digite o código temporário de 6 dígitos gerado para a sua conta.
               </p>
             </div>
 
@@ -342,13 +333,10 @@ export default function LoginPage() {
                   autoFocus
                   value={pinCode}
                   onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="891240"
+                  placeholder="000000"
                   className="block w-full rounded-xl border border-slate-200 bg-slate-50/70 py-3 pl-10 pr-3.5 text-base font-mono font-black tracking-widest text-slate-900 placeholder-slate-300 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all shadow-2xs text-center"
                 />
               </div>
-              <span className="text-[10px] text-slate-400 font-bold mt-1.5 block text-center">
-                💡 Código de teste do primeiro acesso: <strong className="text-indigo-600 font-mono">891240</strong> (ou qualquer 6 dígitos)
-              </span>
             </div>
 
             <div className="pt-1 space-y-2">
