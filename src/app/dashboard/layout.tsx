@@ -77,7 +77,7 @@ export default function DashboardLayout({
   const [totpLoading, setTotpLoading] = useState(false);
 
   useEffect(() => {
-    const checkAuthSession = () => {
+    const checkAuthSession = async () => {
       if (typeof window !== "undefined") {
         const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
         if (!sessionStr) {
@@ -87,6 +87,30 @@ export default function DashboardLayout({
 
         try {
           const parsed = JSON.parse(sessionStr);
+
+          // 1. Background check in database to avoid local cache desyncs
+          try {
+            const { createClient } = await import("@/lib/supabase/client");
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const isNew = user.user_metadata?.is_new_user !== false;
+              parsed.isNewUser = isNew;
+              
+              // Persist the corrected state in both local & session storages
+              localStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+              sessionStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+            }
+          } catch (e) {
+            console.warn("Background user session sync skipped:", e);
+          }
+
+          // 2. Mock Admin override check
+          if (parsed.email === "admin@realizzarecursos.com.br") {
+            const isCompleted = localStorage.getItem("realizzare_master_first_access_completed") === "true";
+            parsed.isNewUser = !isCompleted;
+          }
+
           setCurrentUser(parsed);
           setUserAccount({
             first_name: parsed.name ? parsed.name.split(" ")[0] : "Leonardo",
@@ -94,9 +118,11 @@ export default function DashboardLayout({
             email: parsed.email
           });
 
-          // Show password modal if it's a first login
+          // 3. Render modal dynamically based on actual status
           if (parsed.isNewUser) {
             setShowNewPasswordModal(true);
+          } else {
+            setShowNewPasswordModal(false);
           }
         } catch (e) {
           console.error(e);
@@ -105,8 +131,12 @@ export default function DashboardLayout({
       }
     };
     checkAuthSession();
-    window.addEventListener("storage", checkAuthSession);
-    return () => window.removeEventListener("storage", checkAuthSession);
+    window.addEventListener("storage", () => {
+      checkAuthSession();
+    });
+    return () => window.removeEventListener("storage", () => {
+      checkAuthSession();
+    });
   }, [pathname, router]);
 
   useEffect(() => {
@@ -339,11 +369,8 @@ export default function DashboardLayout({
 
     // 3. Update session storage and close modal
     const updatedSession = { ...currentUser, isNewUser: false };
-    if (localStorage.getItem("realizzare_current_session")) {
-      localStorage.setItem("realizzare_current_session", JSON.stringify(updatedSession));
-    } else {
-      sessionStorage.setItem("realizzare_current_session", JSON.stringify(updatedSession));
-    }
+    localStorage.setItem("realizzare_current_session", JSON.stringify(updatedSession));
+    sessionStorage.setItem("realizzare_current_session", JSON.stringify(updatedSession));
 
     setCurrentUser(updatedSession);
     setShowNewPasswordModal(false);
