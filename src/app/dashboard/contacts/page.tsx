@@ -38,9 +38,9 @@ import {
 
 // Mock Contacts database matching our schema
 const realize_mock_contacts = [
-  { id: "c1", first_name: "Leticia", last_name: "S Santos", email: "leticia.santos@gmail.com", phone: "(11) 99122-3344", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "SP", city: "São Paulo" } },
+  { id: "c1", first_name: "Leticia", last_name: "S Santos", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "SP", city: "São Paulo" } },
   { id: "c2", first_name: "Maria Aparecida", last_name: "de Oliveira", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 55.60, location: { state: "MG", city: "Belo Horizonte" } },
-  { id: "c3", first_name: "Raissa Prates", last_name: "da Silva Justiniano", email: "raissa.prates@gmail.com", phone: "(21) 97711-2233", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "RJ", city: "Rio de Janeiro" } },
+  { id: "c3", first_name: "Raissa Prates", last_name: "da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "RJ", city: "Rio de Janeiro" } },
   { id: "c4", first_name: "Anisio Mario", last_name: "dos Santos Dias", email: "anisio.dias@gmail.com", phone: "(41) 99123-5566", status: "active", created_at: "2026-08-14", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Assinatura Plano + Certificado", courseStatus: "Ativo", total_spent: 154.26, location: { state: "PR", city: "Curitiba" } },
   { id: "c5", first_name: "Beatriz", last_name: "dos Santos Mendes", email: "beatriz.mendes@gmail.com", phone: "(71) 99776-4433", status: "active", created_at: "2026-08-14", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "BA", city: "Salvador" } },
   { id: "c6", first_name: "Patricia", last_name: "Malim", email: "patricia.malim@gmail.com", phone: "(51) 98844-3322", status: "active", created_at: "2026-08-14", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 50.04, location: { state: "RS", city: "Porto Alegre" } },
@@ -84,14 +84,14 @@ function getRealPagarmeContacts() {
   const realOrders = [
     { name: "Pedro Vitor Leite Pereira", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", state: "SP", city: "Campinas", amount: 55.60, dateStr: "15/08/2026" },
     { name: "LETICIA S SANTOS", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "15/08/2026" },
-    { name: "MARIA APARECIDA DE OLIVEIRA", email: "mariaaocel@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, dateStr: "15/08/2026" },
-    { name: "Raissa Prates da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, dateStr: "14/08/2026" },
-    { name: "Anisio Mario dos santos Dias", email: "mariodias-sa@hotmail.com", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, dateStr: "14/08/2026" },
-    { name: "Beatriz dos Santos mendes", email: "bs123435@gmail.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, dateStr: "14/08/2026" },
-    { name: "Patricia Malim", email: "patriciamalim@yahoo.com.br", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre", amount: 50.04, dateStr: "14/08/2026" },
-    { name: "Renata Maciel Braga", email: "renatabraga.pe@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, dateStr: "13/08/2026" },
-    { name: "Gabriel Pinto Costa Silva", email: "gabriel.silva.ce@live.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, dateStr: "13/08/2026" },
-    { name: "MIKAEL CASTELLO CAMPOS", email: "mikaelcastello@outlook.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "12/08/2026" }
+    { name: "MARIA APARECIDA DE OLIVEIRA", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, dateStr: "15/08/2026" },
+    { name: "Raissa Prates da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, dateStr: "15/08/2026" },
+    { name: "Anisio Mario dos santos Dias", email: "anisio.dias@gmail.com", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, dateStr: "14/08/2026" },
+    { name: "Beatriz dos Santos mendes", email: "beatriz.mendes@gmail.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, dateStr: "14/08/2026" },
+    { name: "Patricia Malim", email: "patricia.malim@gmail.com", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre", amount: 50.04, dateStr: "14/08/2026" },
+    { name: "Renata Maciel Braga", email: "renata.braga@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, dateStr: "13/08/2026" },
+    { name: "Gabriel Pinto Costa Silva", email: "gabriel.silva@gmail.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, dateStr: "13/08/2026" },
+    { name: "MIKAEL CASTELLO CAMPOS", email: "mikaelcastello@gmail.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "12/08/2026" }
   ];
 
   return realOrders.map((o) => {

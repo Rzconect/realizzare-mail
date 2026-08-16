@@ -267,17 +267,12 @@ export default function DashboardPage() {
         }
       }
 
-      // Deduplicate events by content signature
+      // Deduplicate events strictly by clean buyer name to guarantee 1 single card per student
       const uniqueEventsMap = new Map();
       allEventsPool.forEach(evt => {
-        const em = (evt.email || "").toLowerCase().trim();
-        const d = evt.date || "";
-        const t = evt.time || "";
-        const amt = Number(evt.amount) || 0;
-        const title = evt.itemTitle || evt.eventLabel || "";
-        const signature = `${em}_${d}_${t}_${amt}_${title}`;
-        if (!uniqueEventsMap.has(signature)) {
-          uniqueEventsMap.set(signature, evt);
+        const cleanName = (evt.name || "").toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+        if (!uniqueEventsMap.has(cleanName)) {
+          uniqueEventsMap.set(cleanName, evt);
         }
       });
       const deduplicatedPool = Array.from(uniqueEventsMap.values());
