@@ -1728,10 +1728,10 @@ export default function ContactsPage() {
   ];
 
   const defaultLists = [
-    { id: "l-1", name: "Leads", subscriberCount: 125, url: "https://realizzarecursos.com.br", description: "Lista de contatos e leads cadastrados." },
-    { id: "l-2", name: "Alunos", subscriberCount: 98, url: "https://realizzarecursos.com.br", description: "Lista de alunos matriculados em cursos." },
-    { id: "l-3", name: "Clientes", subscriberCount: 27, url: "https://realizzarecursos.com.br", description: "Lista de clientes compradores e assinantes." },
-    { id: "l-4", name: "Professores", subscriberCount: 12, url: "https://realizzarecursos.com.br", description: "Lista de professores e instrutores Realizzare." }
+    { id: "l-1", name: "Leads", subscriberCount: 0, url: "https://realizzarecursos.com.br", description: "Lista de contatos e leads cadastrados." },
+    { id: "l-2", name: "Alunos", subscriberCount: 0, url: "https://realizzarecursos.com.br", description: "Lista de alunos matriculados em cursos." },
+    { id: "l-3", name: "Clientes", subscriberCount: 0, url: "https://realizzarecursos.com.br", description: "Lista de clientes compradores e assinantes." },
+    { id: "l-4", name: "Professores", subscriberCount: 0, url: "https://realizzarecursos.com.br", description: "Lista de professores e instrutores Realizzare." }
   ];
 
   const [lists, setLists] = useState<any[]>(() => {
@@ -1740,7 +1740,10 @@ export default function ContactsPage() {
       if (stored) {
         try { 
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const allowed = ["leads", "alunos", "professores", "clientes"];
+            return parsed.filter(l => allowed.includes(l.name.toLowerCase()));
+          }
         } catch(e){}
       }
     }
@@ -1831,11 +1834,7 @@ export default function ContactsPage() {
   const [csvDelimiter, setCsvDelimiter] = useState(",");
   const [csvPreviewList, setCsvPreviewList] = useState<any[]>([]);
 
-  const defaultSegments = [
-    { id: "seg-30d", name: "Leads Engajados 30 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 30 dias.", count: 85, period: "30" },
-    { id: "seg-60d", name: "Leads Engajados 60 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 60 dias.", count: 112, period: "60" },
-    { id: "seg-90d", name: "Leads Engajados 90 Dias", type: "Engajamento", description: "Leads que abriram ao menos 1 e-mail nos últimos 90 dias.", count: 125, period: "90" }
-  ];
+  const defaultSegments: any[] = [];
 
   const [savedSegments, setSavedSegments] = useState<any[]>(() => {
     if (typeof window !== "undefined") {
@@ -1875,32 +1874,30 @@ export default function ContactsPage() {
         }));
         setCustomFields(mappedFields);
 
-        // 2. Fetch Lists
+        // 2. Fetch Lists (Filter dynamically to keep only Leads, Alunos, Professores, Clientes)
         const { data: listsData, error: listsError } = await supabase
           .from("lists")
           .select("*");
         if (listsError) throw listsError;
         
-        const mappedLists = listsData.map((l: any) => ({
-          id: l.id,
-          name: l.name,
-          subscriberCount: l.subscriber_count || 0,
-          url: l.url || "",
-          description: l.description || ""
-        }));
+        const mappedLists = listsData
+          .map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            subscriberCount: 0,
+            url: l.url || "",
+            description: l.description || ""
+          }))
+          .filter((l: any) => ["leads", "alunos", "professores", "clientes"].includes(l.name.toLowerCase()));
         
-        if (mappedLists.length > 0) {
-          const namesSet = new Set(mappedLists.map((l: any) => l.name.toLowerCase()));
-          const merged = [...mappedLists];
-          defaultLists.forEach(dl => {
-            if (!namesSet.has(dl.name.toLowerCase())) {
-              merged.push(dl);
-            }
-          });
-          saveLists(merged);
-        } else {
-          saveLists(defaultLists);
-        }
+        const namesSet = new Set(mappedLists.map((l: any) => l.name.toLowerCase()));
+        const merged = [...mappedLists];
+        defaultLists.forEach(dl => {
+          if (!namesSet.has(dl.name.toLowerCase())) {
+            merged.push(dl);
+          }
+        });
+        saveLists(merged);
 
         // 3. Fetch Contacts
         const { data: contactsData, error: contactsError } = await supabase
@@ -2087,14 +2084,129 @@ export default function ContactsPage() {
                 });
               }
 
-              setContacts(sanitizedContacts);
-              localStorage.setItem("realizzare_contacts", JSON.stringify(sanitizedContacts));
-              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(sanitizedContacts));
+              // 1. Process contacts (auto-assign Pagar.me to Clientes, calculate active status)
+              const processedContacts = sanitizedContacts.map((c: any) => {
+                const em = (c.email || "").toLowerCase().trim();
+                const isPagarme = (c.tags && (c.tags.includes("Pagar.me") || c.tags.includes("Pagar.me V5") || c.tags.includes("Cliente Realizzare"))) || (c.id && c.id.includes("pagarme"));
+                
+                const profileKey = `realizzare_profile_${c.id}`;
+                const storedProfile = localStorage.getItem(profileKey);
+                let profileObj: any = null;
+                if (storedProfile) {
+                  try { profileObj = JSON.parse(storedProfile); } catch (e) {}
+                }
+
+                if (!profileObj) {
+                  profileObj = {
+                    first_name: c.first_name || "Aluno",
+                    last_name: c.last_name || "Realizzare",
+                    email: em,
+                    phone: c.phone || "",
+                    birth_date: "1995-01-01",
+                    gender: "Não informado",
+                    status: c.status || "unsubscribed",
+                    created_at: c.created_at || "2026-08-01",
+                    location: c.location || { country: "Brasil", state: "SP", city: "São Paulo" },
+                    tags: c.tags || [],
+                    custom_fields: [],
+                    lists: [],
+                    enrollments: [],
+                    purchases: [],
+                    flows: [],
+                    timeline: []
+                  };
+                }
+
+                if (isPagarme) {
+                  if (!profileObj.lists) profileObj.lists = [];
+                  const hasClientesList = profileObj.lists.some((pl: any) => pl.name === "Clientes" && pl.status === "subscribed");
+                  if (!hasClientesList) {
+                    profileObj.lists = profileObj.lists.filter((pl: any) => pl.name !== "Clientes");
+                    profileObj.lists.push({
+                      name: "Clientes",
+                      status: "subscribed",
+                      subscribed_at: new Date().toISOString()
+                    });
+                  }
+                }
+
+                const inAnyList = profileObj.lists?.some((pl: any) => pl.status === "subscribed") || false;
+                const finalStatus = inAnyList ? "active" : "unsubscribed";
+
+                profileObj.status = finalStatus;
+                localStorage.setItem(profileKey, JSON.stringify(profileObj));
+
+                return {
+                  ...c,
+                  status: finalStatus
+                };
+              });
+
+              setContacts(processedContacts);
+              localStorage.setItem("realizzare_contacts", JSON.stringify(processedContacts));
+              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(processedContacts));
+
+              // 2. Compute dynamic subscriberCount for all lists
+              const updatedListsWithCounts = merged.map((list: any) => {
+                let count = 0;
+                processedContacts.forEach((c: any) => {
+                  const profileStr = localStorage.getItem(`realizzare_profile_${c.id}`);
+                  if (profileStr) {
+                    try {
+                      const profile = JSON.parse(profileStr);
+                      const isSubscribed = profile.lists?.some(
+                        (pl: any) => pl.name.toLowerCase() === list.name.toLowerCase() && pl.status === "subscribed"
+                      );
+                      if (isSubscribed) {
+                        count++;
+                      }
+                    } catch (e) {}
+                  }
+                });
+                return {
+                  ...list,
+                  subscriberCount: count
+                };
+              });
+              saveLists(updatedListsWithCounts);
+
             } else {
               const pagarmeList = getRealPagarmeContacts();
-              setContacts(pagarmeList);
-              localStorage.setItem("realizzare_contacts", JSON.stringify(pagarmeList));
-              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(pagarmeList));
+              
+              const processedPagarme = pagarmeList.map((c: any) => {
+                const em = (c.email || "").toLowerCase().trim();
+                const profileKey = `realizzare_profile_${c.id}`;
+                let profileObj = {
+                  first_name: c.first_name || "Aluno",
+                  last_name: c.last_name || "Realizzare",
+                  email: em,
+                  phone: c.phone || "",
+                  birth_date: "1995-01-01",
+                  gender: "Não informado",
+                  status: "active",
+                  created_at: c.created_at || "2026-08-01",
+                  location: c.location || { country: "Brasil", state: "SP", city: "São Paulo" },
+                  tags: c.tags || [],
+                  custom_fields: [],
+                  lists: [{ name: "Clientes", status: "subscribed", subscribed_at: new Date().toISOString() }],
+                  enrollments: [],
+                  purchases: [],
+                  flows: [],
+                  timeline: []
+                };
+                localStorage.setItem(profileKey, JSON.stringify(profileObj));
+                return { ...c, status: "active" };
+              });
+
+              setContacts(processedPagarme);
+              localStorage.setItem("realizzare_contacts", JSON.stringify(processedPagarme));
+              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(processedPagarme));
+
+              const updatedListsWithCounts = merged.map((list: any) => {
+                let count = list.name === "Clientes" ? processedPagarme.length : 0;
+                return { ...list, subscriberCount: count };
+              });
+              saveLists(updatedListsWithCounts);
             }
           } catch (e) {
             const pagarmeList = getRealPagarmeContacts();
@@ -2265,6 +2377,12 @@ export default function ContactsPage() {
             }
           });
         }
+
+        // Apply active/inactive rule dynamically
+        const inAnyList = profileObj.lists?.some((pl: any) => pl.status === "subscribed") || false;
+        const finalStatus = inAnyList ? "active" : "unsubscribed";
+        c.status = finalStatus;
+        profileObj.status = finalStatus;
 
         localStorage.setItem(`realizzare_profile_${c.id}`, JSON.stringify(profileObj));
       }
@@ -5880,7 +5998,7 @@ export default function ContactsPage() {
                         name: segmentModalName.trim(),
                         type: "Engajamento",
                         description: segmentModalDescription.trim() || `Leads que abriram ao menos 1 e-mail nos últimos ${segmentModalPeriod} dias.`,
-                        count: Math.floor(Math.random() * 40 + 80),
+                        count: 0,
                         period: segmentModalPeriod
                       };
                       saveSegments([...savedSegments, newSeg]);

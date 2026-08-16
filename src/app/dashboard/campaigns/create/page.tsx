@@ -45,12 +45,10 @@ interface SegmentGroup {
 }
 
 const initialListsAndSegments: ListSegment[] = [
-  { id: "list-1", name: "Lista Geral de Alunos", count: 22450 },
-  { id: "list-2", name: "Interessados em Programação", count: 3400 },
-  { id: "list-3", name: "Alunos Matriculados - JS Pro", count: 1200 },
-  { id: "list-4", name: "Carrinho Abandonado - 24h", count: 500 },
-  { id: "list-5", name: "Leads Quentes", count: 312 },
-  { id: "list-6", name: "Inadimplentes", count: 42 }
+  { id: "list-1", name: "Leads", count: 0 },
+  { id: "list-2", name: "Alunos", count: 0 },
+  { id: "list-3", name: "Clientes", count: 0 },
+  { id: "list-4", name: "Professores", count: 0 }
 ];
 
 interface SearchableFieldDropdownProps {
@@ -994,17 +992,51 @@ function CreateCampaignForm() {
       try {
         const supabase = createClient();
         const { data: realLists } = await supabase.from("lists").select("id, name");
-        if (realLists && realLists.length > 0) {
-          const formatted = await Promise.all(realLists.map(async (l: any) => {
-            const { count } = await supabase.from("list_subscriptions").select("*", { count: "exact", head: true }).eq("list_id", l.id).eq("status", "subscribed");
-            return {
-              id: l.id,
-              name: l.name,
-              count: count || 0
-            };
-          }));
-          setListsList(formatted);
+        const stored = localStorage.getItem("realizzare_lists");
+        let localLists = [];
+        if (stored) {
+          try { localLists = JSON.parse(stored); } catch(e){}
         }
+
+        const allowed = ["leads", "alunos", "professores", "clientes"];
+        
+        let allLists: any[] = [];
+        if (realLists && realLists.length > 0) {
+          allLists = realLists.map((l: any) => ({ id: l.id, name: l.name }));
+        }
+        
+        localLists.forEach((l: any) => {
+          if (!allLists.some(al => al.name.toLowerCase() === l.name.toLowerCase())) {
+            allLists.push({ id: l.id, name: l.name });
+          }
+        });
+
+        // Filter out non-allowed lists
+        const filtered = allLists.filter(l => allowed.includes(l.name.toLowerCase()));
+
+        const formatted = await Promise.all(filtered.map(async (l: any) => {
+          const contactsStr = localStorage.getItem("realizzare_contacts");
+          let count = 0;
+          if (contactsStr) {
+            try {
+              const contactsList = JSON.parse(contactsStr);
+              contactsList.forEach((c: any) => {
+                const profileStr = localStorage.getItem(`realizzare_profile_${c.id}`);
+                if (profileStr) {
+                  const profile = JSON.parse(profileStr);
+                  const isSub = profile.lists?.some((pl: any) => pl.name.toLowerCase() === l.name.toLowerCase() && pl.status === "subscribed");
+                  if (isSub) count++;
+                }
+              });
+            } catch(e){}
+          }
+          return {
+            id: l.id,
+            name: l.name,
+            count: count
+          };
+        }));
+        setListsList(formatted);
       } catch (err) {
         console.error("Erro ao carregar listas do Supabase:", err);
       }

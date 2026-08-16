@@ -3677,17 +3677,89 @@ export default function SettingsPage() {
                     };
 
                     try {
+                      // 1. Save transaction
                       const existingStr = localStorage.getItem("realizzare_custom_transactions");
                       const existingList = existingStr ? JSON.parse(existingStr) : [];
                       existingList.unshift(newTx);
                       localStorage.setItem("realizzare_custom_transactions", JSON.stringify(existingList));
+
+                      // 2. Create/Update contact profile in localStorage & add to "Clientes" list
+                      const cleanEmail = simEmail.toLowerCase().trim();
+                      const contactId = `c_pagarme_${cleanEmail.replace(/[^a-z0-9]/gi, "")}`;
+                      
+                      // Check contacts list
+                      const contactsStr = localStorage.getItem("realizzare_contacts");
+                      let contactsList = contactsStr ? JSON.parse(contactsStr) : [];
+                      
+                      const existingIndex = contactsList.findIndex((c: any) => (c.email || "").toLowerCase().trim() === cleanEmail);
+                      if (existingIndex === -1) {
+                        contactsList.unshift({
+                          id: contactId,
+                          first_name: "Cliente",
+                          last_name: "Simulado",
+                          email: cleanEmail,
+                          phone: "(11) 98765-4321",
+                          status: "active",
+                          created_at: new Date().toISOString().split("T")[0],
+                          tags: [simProvider === "pagarme" ? "Pagar.me" : "PagBank", "Cliente Realizzare"],
+                          course: simItem,
+                          courseStatus: "Ativo",
+                          total_spent: Number(simAmount)
+                        });
+                        localStorage.setItem("realizzare_contacts", JSON.stringify(contactsList));
+                        localStorage.setItem("realizzare_mock_contacts", JSON.stringify(contactsList));
+                      }
+
+                      // Check profile details
+                      const profileKey = `realizzare_profile_${contactId}`;
+                      const storedProfile = localStorage.getItem(profileKey);
+                      let profileObj: any = null;
+                      if (storedProfile) {
+                        try { profileObj = JSON.parse(storedProfile); } catch (e) {}
+                      }
+
+                      if (!profileObj) {
+                        profileObj = {
+                          first_name: "Cliente",
+                          last_name: "Simulado",
+                          email: cleanEmail,
+                          phone: "(11) 98765-4321",
+                          birth_date: "1995-01-01",
+                          gender: "Não informado",
+                          status: "active",
+                          created_at: new Date().toISOString().split("T")[0],
+                          location: { country: "Brasil", state: "SP", city: "São Paulo" },
+                          tags: [simProvider === "pagarme" ? "Pagar.me" : "PagBank", "Cliente Realizzare"],
+                          custom_fields: [],
+                          lists: [],
+                          enrollments: [],
+                          purchases: [],
+                          flows: [],
+                          timeline: []
+                        };
+                      }
+
+                      if (!profileObj.lists) profileObj.lists = [];
+                      const hasClientesList = profileObj.lists.some((pl: any) => pl.name === "Clientes" && pl.status === "subscribed");
+                      if (!hasClientesList) {
+                        profileObj.lists = profileObj.lists.filter((pl: any) => pl.name !== "Clientes");
+                        profileObj.lists.push({
+                          name: "Clientes",
+                          status: "subscribed",
+                          subscribed_at: new Date().toISOString()
+                        });
+                      }
+
+                      profileObj.status = "active";
+                      localStorage.setItem(profileKey, JSON.stringify(profileObj));
+
                     } catch (err) {
                       console.error(err);
                     }
 
                     setIsSimulating(false);
                     setSimLogSuccess(
-                      `O webhook da ${simProvider === "pagarme" ? "Pagar.me" : "PagBank"} confirmou o pagamento de R$ ${Number(simAmount).toFixed(2)} para ${simEmail}. O faturamento geral foi atualizado, o aluno foi removido do fluxo de carrinho abandonado e a transação foi salva na timeline.`
+                      `O webhook da ${simProvider === "pagarme" ? "Pagar.me" : "PagBank"} confirmou o pagamento de R$ ${Number(simAmount).toFixed(2)} para ${simEmail}. O faturamento geral foi atualizado, o aluno foi adicionado à lista de "Clientes", seu status foi definido como "Ativo" e a transação foi salva.`
                     );
                   }, 900);
                 }}
