@@ -898,6 +898,13 @@ function CreateCampaignForm() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const sName = localStorage.getItem("realizzare_sender_name");
+      const sEmail = localStorage.getItem("realizzare_sender_email");
+      const rEmail = localStorage.getItem("realizzare_reply_to_email");
+      if (sName) setSenderName(sName);
+      if (sEmail) setSenderEmail(sEmail);
+      if (rEmail) setReplyToEmail(rEmail);
+
       const storedFields = localStorage.getItem("realizzare_custom_fields");
       if (storedFields) {
         try {

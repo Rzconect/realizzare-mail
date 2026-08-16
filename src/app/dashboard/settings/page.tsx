@@ -224,6 +224,15 @@ export default function SettingsPage() {
         }
       }
 
+      // Load Saved Default Sender Email Info
+      const savedSenderName = localStorage.getItem("realizzare_sender_name");
+      const savedSenderEmail = localStorage.getItem("realizzare_sender_email");
+      const savedReplyToEmail = localStorage.getItem("realizzare_reply_to_email");
+
+      if (savedSenderName) setSenderName(savedSenderName);
+      if (savedSenderEmail) setSenderEmail(savedSenderEmail);
+      if (savedReplyToEmail) setReplyToEmail(savedReplyToEmail);
+
       const params = new URLSearchParams(window.location.search);
       const sub = params.get("sub");
       if (sub === "pessoal" || sub === "conta" || sub === "usuarios" || sub === "tags" || sub === "uso") {
@@ -1501,7 +1510,14 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowCascadeSenderModal(true)}
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("realizzare_sender_name", senderName);
+                      localStorage.setItem("realizzare_sender_email", senderEmail);
+                      localStorage.setItem("realizzare_reply_to_email", replyToEmail);
+                    }
+                    setShowCascadeSenderModal(true);
+                  }}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
