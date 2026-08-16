@@ -2148,13 +2148,14 @@ export default function SettingsPage() {
                           <input
                             type="text"
                             readOnly
-                            value="https://realizzare-mail.vercel.app/api/webhooks/pagarme"
+                            value={typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/pagarme` : "https://realizzareconect.com.br/api/webhooks/pagarme"}
                             className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-600"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText("https://realizzare-mail.vercel.app/api/webhooks/pagarme");
+                              const url = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/pagarme` : "https://realizzareconect.com.br/api/webhooks/pagarme";
+                              navigator.clipboard.writeText(url);
                               alert("URL do Webhook Pagar.me copiada!");
                             }}
                             className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer shrink-0"
