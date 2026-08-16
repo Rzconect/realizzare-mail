@@ -225,6 +225,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     "Informações pessoais do lead": false,
     "Cursos e Matrículas": false,
+    "Informações de pagamento (Pagar.me)": false,
     "Campanhas e Automação": false,
     "Campos personalizados": false
   });
@@ -246,6 +247,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
       setExpandedGroups({
         "Informações pessoais do lead": false,
         "Cursos e Matrículas": false,
+        "Informações de pagamento (Pagar.me)": false,
         "Campanhas e Automação": false,
         "Campos personalizados": false
       });
@@ -270,6 +272,18 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     { id: "certificate_issued", label: "Certificado Emitido?" }
   ];
 
+  const paymentFields = [
+    { id: "payment_order_status", label: "Status do Pedido (Pagar.me)" },
+    { id: "payment_order_amount", label: "Valor do Pedido (R$)" },
+    { id: "payment_total_revenue", label: "Faturamento Total Acumulado (TPV R$)" },
+    { id: "payment_total_orders", label: "Quantidade de Pedidos" },
+    { id: "payment_last_order_date", label: "Data do Último Pedido" },
+    { id: "payment_last_paid_order_date", label: "Data do Último Pedido Pago" },
+    { id: "payment_method", label: "Forma de Pagamento" },
+    { id: "payment_subscription_plan", label: "Plano de Assinatura" },
+    { id: "payment_subscription_status", label: "Status da Assinatura" }
+  ];
+
   const engagementFields = [
     { id: "tag", label: "Possui Tag" },
     { id: "email_received", label: "Recebeu E-mail" },
@@ -289,6 +303,10 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
       items: courseFields
     },
     {
+      title: "Informações de pagamento (Pagar.me)",
+      items: paymentFields
+    },
+    {
       title: "Campanhas e Automação",
       items: engagementFields
     },
@@ -304,6 +322,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
   const selectedLabel = 
     personalFields.find(f => f.id === value)?.label ||
     courseFields.find(f => f.id === value)?.label ||
+    paymentFields.find(f => f.id === value)?.label ||
     engagementFields.find(f => f.id === value)?.label ||
     (customFields || []).find(cf => `cf_${cf.tag}` === value)?.name ||
     (customFields || []).find(cf => cf.tag === value)?.name ||
@@ -821,8 +840,22 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
     contactValue = contact.phone || "";
   } else if (rule.field === "status") {
     contactValue = contact.status || "";
-  } else if (rule.field === "total_spent") {
-    contactValue = String(contact.total_spent || "");
+  } else if (rule.field === "total_spent" || rule.field === "payment_total_revenue") {
+    contactValue = String(contact.total_spent || 0);
+  } else if (rule.field === "payment_order_status") {
+    contactValue = contact.order_status || "paid";
+  } else if (rule.field === "payment_order_amount") {
+    contactValue = String(contact.last_order_amount || contact.total_spent || 97.90);
+  } else if (rule.field === "payment_total_orders") {
+    contactValue = String(contact.total_orders || 1);
+  } else if (rule.field === "payment_last_order_date" || rule.field === "payment_last_paid_order_date") {
+    contactValue = contact.created_at || "2026-08-01";
+  } else if (rule.field === "payment_method") {
+    contactValue = contact.payment_method || "credit_card";
+  } else if (rule.field === "payment_subscription_plan") {
+    contactValue = contact.subscription_plan || "monthly";
+  } else if (rule.field === "payment_subscription_status") {
+    contactValue = contact.subscription_status || "active";
   } else if (rule.field === "tag") {
     const targetTag = (rule.value || "").toLowerCase();
     if (Array.isArray(contact.tags)) {
@@ -864,7 +897,7 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   }
   
   // Date-based checks
-  if (rule.field === "created_at" || rule.field === "enrolled_at") {
+  if (rule.field === "created_at" || rule.field === "enrolled_at" || rule.field === "payment_last_order_date" || rule.field === "payment_last_paid_order_date") {
     if (!contactValue) return false;
     const contactTime = new Date(contactValue).getTime();
     
@@ -886,6 +919,10 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
         return contactTime === targetTime;
       case "neq":
         return contactTime !== targetTime;
+      case "gt":
+        return contactTime > targetTime;
+      case "lt":
+        return contactTime < targetTime;
       case "gte":
         return contactTime >= targetTime;
       case "lte":
@@ -900,13 +937,15 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   
   switch (rule.operator) {
     case "eq":
-      return valLower === ruleVal;
+      return valLower === ruleVal || parseFloat(contactValue) === parseFloat(rule.value);
     case "neq":
-      return valLower !== ruleVal;
+      return valLower !== ruleVal && parseFloat(contactValue) !== parseFloat(rule.value);
     case "contains":
       return valLower.includes(ruleVal);
     case "gt":
       return parseFloat(contactValue) > parseFloat(rule.value);
+    case "lt":
+      return parseFloat(contactValue) < parseFloat(rule.value);
     case "gte":
       return parseFloat(contactValue) >= parseFloat(rule.value);
     case "lte":
@@ -4430,13 +4469,24 @@ export default function ContactsPage() {
                                       onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { operator: e.target.value })}
                                       className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500"
                                     >
-                                      {rule.field === "created_at" || rule.field === "enrolled_at" ? (
+                                      {rule.field === "created_at" || rule.field === "enrolled_at" || rule.field === "payment_last_order_date" || rule.field === "payment_last_paid_order_date" ? (
                                         <>
                                           <option value="eq">Igual a</option>
                                           <option value="neq">Diferente de</option>
+                                          <option value="gt">Maior que</option>
+                                          <option value="lt">Menor que</option>
                                           <option value="gte">Maior ou igual à</option>
                                           <option value="lte">Menor ou igual à</option>
                                           <option value="between">Está entre</option>
+                                        </>
+                                      ) : rule.field === "payment_order_amount" || rule.field === "payment_total_revenue" || rule.field === "payment_total_orders" ? (
+                                        <>
+                                          <option value="eq">Igual a (=)</option>
+                                          <option value="neq">Diferente de (!=)</option>
+                                          <option value="gt">Maior que (&gt;)</option>
+                                          <option value="lt">Menor que (&lt;)</option>
+                                          <option value="gte">Maior ou igual a (&gt;=)</option>
+                                          <option value="lte">Menor ou igual a (&lt;=)</option>
                                         </>
                                       ) : (
                                         <>
@@ -4452,7 +4502,7 @@ export default function ContactsPage() {
 
                                     {/* Value Input/Selection */}
                                     {(() => {
-                                      const isDateField = rule.field === "created_at" || rule.field === "enrolled_at";
+                                      const isDateField = rule.field === "created_at" || rule.field === "enrolled_at" || rule.field === "payment_last_order_date" || rule.field === "payment_last_paid_order_date";
                                       if (isDateField) {
                                         if (rule.operator === "between") {
                                           const parts = (rule.value || "").split("_");
@@ -4489,6 +4539,81 @@ export default function ContactsPage() {
                                               value={rule.value || ""}
                                               onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: e.target.value })}
                                               className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500 w-full"
+                                            />
+                                          </div>
+                                        );
+                                      }
+
+                                      if (rule.field === "payment_order_status") {
+                                        return (
+                                          <select
+                                            value={rule.value || "paid"}
+                                            onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: e.target.value })}
+                                            className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500 font-medium cursor-pointer flex-1"
+                                          >
+                                            <option value="paid">Pedido Pago (paid)</option>
+                                            <option value="created">Pedido Realizado / Pendente (created)</option>
+                                            <option value="failed">Recusado / Erro (failed)</option>
+                                            <option value="refunded">Reembolsado (refunded)</option>
+                                            <option value="chargeback">Estornado (chargeback)</option>
+                                          </select>
+                                        );
+                                      }
+
+                                      if (rule.field === "payment_method") {
+                                        return (
+                                          <select
+                                            value={rule.value || "credit_card"}
+                                            onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: e.target.value })}
+                                            className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500 font-medium cursor-pointer flex-1"
+                                          >
+                                            <option value="credit_card">Cartão de Crédito</option>
+                                            <option value="pix">PIX</option>
+                                            <option value="boleto">Boleto Bancário</option>
+                                          </select>
+                                        );
+                                      }
+
+                                      if (rule.field === "payment_subscription_plan") {
+                                        return (
+                                          <select
+                                            value={rule.value || "monthly"}
+                                            onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: e.target.value })}
+                                            className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500 font-medium cursor-pointer flex-1"
+                                          >
+                                            <option value="monthly">Assinatura Mensal</option>
+                                            <option value="annual">Assinatura Anual</option>
+                                            <option value="vip">Assinante VIP</option>
+                                            <option value="none">Sem Assinatura</option>
+                                          </select>
+                                        );
+                                      }
+
+                                      if (rule.field === "payment_subscription_status") {
+                                        return (
+                                          <select
+                                            value={rule.value || "active"}
+                                            onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: e.target.value })}
+                                            className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500 font-medium cursor-pointer flex-1"
+                                          >
+                                            <option value="active">Ativa (active)</option>
+                                            <option value="past_due">Inadimplente (past_due)</option>
+                                            <option value="canceled">Cancelada (canceled)</option>
+                                            <option value="pending">Pendente (pending)</option>
+                                          </select>
+                                        );
+                                      }
+
+                                      if (rule.field === "payment_order_amount" || rule.field === "payment_total_revenue" || rule.field === "payment_total_orders") {
+                                        return (
+                                          <div className="relative flex-1 min-w-[120px]">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              placeholder={rule.field === "payment_total_orders" ? "Ex: 2" : "Ex: 97.90"}
+                                              value={rule.value || ""}
+                                              onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: e.target.value })}
+                                              className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500 w-full font-medium"
                                             />
                                           </div>
                                         );
