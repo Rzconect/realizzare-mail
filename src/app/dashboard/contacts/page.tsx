@@ -1003,23 +1003,23 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   } else if (rule.field === "status") {
     contactValue = contact.status || "";
   } else if (rule.field === "total_spent" || rule.field === "payment_total_revenue") {
-    contactValue = String(contact.total_spent !== undefined ? contact.total_spent : getContactPagarmeInfo(contact).total_spent);
+    contactValue = String(getContactPagarmeInfo(contact).total_spent);
   } else if (rule.field === "payment_order_status") {
-    contactValue = contact.order_status || getContactPagarmeInfo(contact).order_status;
+    contactValue = getContactPagarmeInfo(contact).order_status;
   } else if (rule.field === "payment_order_amount") {
-    contactValue = String(contact.last_order_amount !== undefined ? contact.last_order_amount : getContactPagarmeInfo(contact).last_order_amount);
+    contactValue = String(getContactPagarmeInfo(contact).last_order_amount);
   } else if (rule.field === "payment_total_orders") {
-    contactValue = String(contact.total_orders !== undefined ? contact.total_orders : getContactPagarmeInfo(contact).total_orders);
+    contactValue = String(getContactPagarmeInfo(contact).total_orders);
   } else if (rule.field === "payment_last_order_date") {
-    contactValue = contact.last_order_date || getContactPagarmeInfo(contact).last_order_date;
+    contactValue = getContactPagarmeInfo(contact).last_order_date;
   } else if (rule.field === "payment_last_paid_order_date") {
-    contactValue = contact.last_paid_order_date || getContactPagarmeInfo(contact).last_paid_order_date;
+    contactValue = getContactPagarmeInfo(contact).last_paid_order_date;
   } else if (rule.field === "payment_method") {
-    contactValue = contact.payment_method || getContactPagarmeInfo(contact).payment_method;
+    contactValue = getContactPagarmeInfo(contact).payment_method;
   } else if (rule.field === "payment_subscription_plan") {
-    contactValue = contact.subscription_plan || getContactPagarmeInfo(contact).subscription_plan;
+    contactValue = getContactPagarmeInfo(contact).subscription_plan;
   } else if (rule.field === "payment_subscription_status") {
-    contactValue = contact.subscription_status || getContactPagarmeInfo(contact).subscription_status;
+    contactValue = getContactPagarmeInfo(contact).subscription_status;
   } else if (rule.field === "tag") {
     const targetTag = (rule.value || "").toLowerCase();
     if (Array.isArray(contact.tags)) {
