@@ -3733,6 +3733,107 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* 2FA Enrollment Modal */}
+      {showMfaEnrollModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 space-y-6 font-sans">
+            <div className="text-center space-y-2 text-slate-800">
+              <div className="h-12 w-12 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-center text-indigo-650 mx-auto">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-850">Ative o 2FA (Google Authenticator)</h3>
+              <p className="text-[11px] text-slate-500 font-medium max-w-xs mx-auto leading-relaxed">
+                Escaneie o QR Code abaixo com seu aplicativo de autenticação de preferência (como Google Authenticator ou Authy).
+              </p>
+            </div>
+
+            {totpLoading && !totpQrCode ? (
+              <div className="flex flex-col items-center py-6 gap-2">
+                <svg className="animate-spin h-6 w-6 text-indigo-650" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span className="text-[11px] font-semibold text-slate-500">Gerando chaves de segurança...</span>
+              </div>
+            ) : (
+              <>
+                {totpQrCode && (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="border border-slate-100 rounded-2xl p-2 bg-slate-50 shadow-sm">
+                      <img src={totpQrCode} alt="2FA QR Code" className="w-36 h-36 object-contain" />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Chave secreta de texto</span>
+                      <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono font-bold text-indigo-900 tracking-wider select-all">{totpSecret}</code>
+                    </div>
+                  </div>
+                )}
+
+                {totpError && (
+                  <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs font-semibold text-red-650">
+                    {totpError}
+                  </div>
+                )}
+
+                {!isTotpVerified ? (
+                  <form onSubmit={handleVerifyMfaCode} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Código verificador de 6 dígitos</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        required
+                        placeholder="000 000"
+                        value={totpPinCode}
+                        onChange={(e) => setTotpPinCode(e.target.value.replace(/\D/g, ""))}
+                        className="w-full mt-1.5 bg-slate-50 border border-slate-205 rounded-xl py-2 px-3 text-sm font-bold text-center tracking-widest text-slate-850 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMfaEnrollModal(false);
+                          setIsMfaActive(false);
+                        }}
+                        className="flex-1 py-2 border border-slate-202 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-650 cursor-pointer transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={totpLoading}
+                        className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/10 cursor-pointer disabled:opacity-50"
+                      >
+                        {totpLoading ? "Validando..." : "Validar Código"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="space-y-4 text-center">
+                    <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs font-bold text-emerald-700 flex items-center justify-center gap-2">
+                      <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />
+                      <span>Autenticação de 2 fatores ativada!</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMfaEnrollModal(false);
+                        alert("MFA ativado com sucesso em sua conta!");
+                      }}
+                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
+                    >
+                      Voltar para Configurações
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -3918,107 +4019,6 @@ function WordPressPayloadSimulator() {
           </div>
         </div>
       </div>
-
-      {/* 2FA Enrollment Modal */}
-      {showMfaEnrollModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 space-y-6 font-sans">
-            <div className="text-center space-y-2 text-slate-800">
-              <div className="h-12 w-12 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-center text-indigo-650 mx-auto">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <h3 className="text-sm font-extrabold text-slate-850">Ative o 2FA (Google Authenticator)</h3>
-              <p className="text-[11px] text-slate-500 font-medium max-w-xs mx-auto leading-relaxed">
-                Escaneie o QR Code abaixo com seu aplicativo de autenticação de preferência (como Google Authenticator ou Authy).
-              </p>
-            </div>
-
-            {totpLoading && !totpQrCode ? (
-              <div className="flex flex-col items-center py-6 gap-2">
-                <svg className="animate-spin h-6 w-6 text-indigo-650" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span className="text-[11px] font-semibold text-slate-500">Gerando chaves de segurança...</span>
-              </div>
-            ) : (
-              <>
-                {totpQrCode && (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="border border-slate-100 rounded-2xl p-2 bg-slate-50 shadow-sm">
-                      <img src={totpQrCode} alt="2FA QR Code" className="w-36 h-36 object-contain" />
-                    </div>
-                    <div className="text-center">
-                      <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Chave secreta de texto</span>
-                      <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono font-bold text-indigo-900 tracking-wider select-all">{totpSecret}</code>
-                    </div>
-                  </div>
-                )}
-
-                {totpError && (
-                  <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs font-semibold text-red-650">
-                    {totpError}
-                  </div>
-                )}
-
-                {!isTotpVerified ? (
-                  <form onSubmit={handleVerifyMfaCode} className="space-y-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Código verificador de 6 dígitos</label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        required
-                        placeholder="000 000"
-                        value={totpPinCode}
-                        onChange={(e) => setTotpPinCode(e.target.value.replace(/\D/g, ""))}
-                        className="w-full mt-1.5 bg-slate-50 border border-slate-205 rounded-xl py-2 px-3 text-sm font-bold text-center tracking-widest text-slate-850 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowMfaEnrollModal(false);
-                          setIsMfaActive(false);
-                        }}
-                        className="flex-1 py-2 border border-slate-202 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-650 cursor-pointer transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={totpLoading}
-                        className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/10 cursor-pointer disabled:opacity-50"
-                      >
-                        {totpLoading ? "Validando..." : "Validar Código"}
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="space-y-4 text-center">
-                    <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs font-bold text-emerald-700 flex items-center justify-center gap-2">
-                      <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />
-                      <span>Autenticação de 2 fatores ativada!</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowMfaEnrollModal(false);
-                        alert("MFA ativado com sucesso em sua conta!");
-                      }}
-                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/10 cursor-pointer"
-                    >
-                      Voltar para Configurações
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
