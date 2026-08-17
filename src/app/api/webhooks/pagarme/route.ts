@@ -44,20 +44,33 @@ export async function POST(req: Request) {
       const supabase = createClient();
       
       // 1. Log the purchase event
-      await supabase.from("reporting_events").insert({
-        org_id: "00000000-0000-0000-0000-000000000001",
-        contact_email: email,
-        event_type: "purchase",
-        metadata: {
-          provider: "pagarme",
-          event: eventType,
-          item_title: itemTitle,
-          amount: parseFloat(amountInReais),
-          category: category,
-          customer_name: name,
-          phone: phone
-        }
-      });
+      const pagarmeId = data?.id || `pagarme-webhook-${Date.now()}`;
+      
+      const { data: existingEvent } = await supabase
+        .from("reporting_events")
+        .select("id")
+        .eq("contact_email", email)
+        .eq("event_type", "purchase")
+        .eq("metadata->>pagarme_id", pagarmeId)
+        .maybeSingle();
+
+      if (!existingEvent) {
+        await supabase.from("reporting_events").insert({
+          org_id: "00000000-0000-0000-0000-000000000001",
+          contact_email: email,
+          event_type: "purchase",
+          metadata: {
+            provider: "pagarme",
+            event: eventType,
+            item_title: itemTitle,
+            amount: parseFloat(amountInReais),
+            category: category,
+            customer_name: name,
+            phone: phone,
+            pagarme_id: pagarmeId
+          }
+        });
+      }
 
       // 2. Find or create the contact in Supabase
       let contactId = null;
@@ -89,6 +102,31 @@ export async function POST(req: Request) {
           .single();
         if (newContact) {
           contactId = newContact.id;
+        }
+      }
+
+      // 3. Log the purchase in purchases table
+      if (contactId) {
+        const { data: existingPurchase } = await supabase
+          .from("purchases")
+          .select("id")
+          .eq("sku", pagarmeId)
+          .maybeSingle();
+
+        if (!existingPurchase) {
+          const prodType = category === "assinatura" ? "subscription" : 
+                           category === "curso" ? "course" : "certificate";
+          await supabase.from("purchases").insert({
+            org_id: "00000000-0000-0000-0000-000000000001",
+            contact_id: contactId,
+            product_type: prodType,
+            product_name: itemTitle,
+            amount: parseFloat(amountInReais),
+            sku: pagarmeId,
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            created_at: new Date().toISOString()
+          });
         }
       }
 

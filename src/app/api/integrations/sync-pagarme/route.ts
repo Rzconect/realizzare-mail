@@ -179,22 +179,34 @@ export async function POST(req: Request) {
         const batch = allEventsToInsert.slice(i, i + batchSize);
         await Promise.all(batch.map(async (evt) => {
           try {
-            await supabaseAdmin.from("reporting_events").insert({
-              org_id: "00000000-0000-0000-0000-000000000001",
-              contact_email: evt.email,
-              event_type: "purchase",
-              created_at: new Date(evt.timestampMs).toISOString(),
-              metadata: {
-                provider: "pagarme",
-                event: "order.paid",
-                item_title: evt.itemTitle,
-                amount: evt.amount,
-                category: evt.category,
-                customer_name: [formatName(evt.name).firstName, formatName(evt.name).lastName].filter(Boolean).join(" "),
-                phone: evt.phone,
-                is_historical_mock: evt.isMock
-              }
-            });
+            // Check if reporting event already exists
+            const { data: existingEvent } = await supabaseAdmin
+              .from("reporting_events")
+              .select("id")
+              .eq("contact_email", evt.email)
+              .eq("event_type", "purchase")
+              .eq("metadata->>pagarme_id", evt.id)
+              .maybeSingle();
+
+            if (!existingEvent) {
+              await supabaseAdmin.from("reporting_events").insert({
+                org_id: "00000000-0000-0000-0000-000000000001",
+                contact_email: evt.email,
+                event_type: "purchase",
+                created_at: new Date(evt.timestampMs).toISOString(),
+                metadata: {
+                  provider: "pagarme",
+                  event: "order.paid",
+                  item_title: evt.itemTitle,
+                  amount: evt.amount,
+                  category: evt.category,
+                  customer_name: [formatName(evt.name).firstName, formatName(evt.name).lastName].filter(Boolean).join(" "),
+                  phone: evt.phone,
+                  is_historical_mock: evt.isMock,
+                  pagarme_id: evt.id
+                }
+              });
+            }
 
             // Insert into Contacts
             let contactId;
@@ -213,6 +225,31 @@ export async function POST(req: Request) {
                 created_at: new Date(evt.timestampMs).toISOString()
               }).select("id").single();
               contactId = newC?.id;
+            }
+
+            // Insert into Purchases
+            if (contactId) {
+              const { data: existingPurchase } = await supabaseAdmin
+                .from("purchases")
+                .select("id")
+                .eq("sku", evt.id)
+                .maybeSingle();
+
+              if (!existingPurchase) {
+                const prodType = evt.category === "assinatura" ? "subscription" : 
+                                 evt.category === "curso" ? "course" : "certificate";
+                await supabaseAdmin.from("purchases").insert({
+                  org_id: "00000000-0000-0000-0000-000000000001",
+                  contact_id: contactId,
+                  product_type: prodType,
+                  product_name: evt.itemTitle,
+                  amount: evt.amount,
+                  sku: evt.id,
+                  status: "paid",
+                  paid_at: new Date(evt.timestampMs).toISOString(),
+                  created_at: new Date(evt.timestampMs).toISOString()
+                });
+              }
             }
 
             // Add to Clientes list

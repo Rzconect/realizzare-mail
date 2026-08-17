@@ -10,8 +10,13 @@ import type { Database } from './types'
  * @returns Instância tipada do cliente Supabase para o navegador.
  */
 export function createClient(): any {
+  const isBrowser = typeof window !== 'undefined';
+  const supabaseUrl = isBrowser 
+    ? `${window.location.origin}/api/supabase-proxy`
+    : process.env.NEXT_PUBLIC_SUPABASE_URL!;
+
   return createBrowserClient<Database>(
-    "/api/supabase-proxy",
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   ) as any
 }
