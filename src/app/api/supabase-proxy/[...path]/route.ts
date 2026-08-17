@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request: Request, { params }: { params: Promise<{ path: string[] }> }) { return handleRequest(request, await params); }
 export async function POST(request: Request, { params }: { params: Promise<{ path: string[] }> }) { return handleRequest(request, await params); }
@@ -8,17 +9,36 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ p
 export async function OPTIONS(request: Request, { params }: { params: Promise<{ path: string[] }> }) { return handleRequest(request, await params); }
 
 async function handleRequest(request: Request, params: { path: string[] }) {
+  if (request.method === "OPTIONS") {
+    return new NextResponse(null, { status: 200 });
+  }
+
   const url = new URL(request.url);
   const path = params.path.join('/');
   
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Use service role key to bypass RLS for all internal client requests
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  // Retrieve user JWT token sent by Supabase browser client
+  const clientAuthHeader = request.headers.get('authorization');
+  const token = clientAuthHeader ? clientAuthHeader.split(' ')[1] : null;
+
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized: Missing session token" }, { status: 401 });
+  }
+
+  // Validate the JWT token against Supabase Auth
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized: Invalid or expired session" }, { status: 401 });
+  }
   
   const targetUrl = `${supabaseUrl}/${path}${url.search}`;
   
   const headers = new Headers(request.headers);
-  headers.set('apikey', serviceRoleKey!);
+  headers.set('apikey', serviceRoleKey);
   headers.set('authorization', `Bearer ${serviceRoleKey}`);
   headers.delete('host'); // Let fetch set the correct host for Supabase
   headers.delete('origin'); // Avoid CORS issues from the proxy

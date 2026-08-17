@@ -198,6 +198,17 @@ export default function DashboardPage() {
       const startMs = start.getTime();
       const endMs = end.getTime();
 
+      // Fetch contacts first to map emails to IDs and calculate leads/students
+      const { data: contactsList } = await supabase.from("contacts").select("id, email, created_at, contact_tags(tags(name))");
+      const emailMap = new Map();
+      if (contactsList) {
+        contactsList.forEach((c: any) => {
+          if (c.email) {
+            emailMap.set(c.email.toLowerCase().trim(), c.id);
+          }
+        });
+      }
+
       // Fetch live transaction events from reporting_events
       const { data: eventsData } = await supabase
         .from("reporting_events")
@@ -211,9 +222,11 @@ export default function DashboardPage() {
           const meta = e.metadata || {};
           const amt = meta.amount || 0;
           const dateObj = new Date(e.created_at || Date.now());
+          const cEmail = (e.contact_email || "").toLowerCase().trim();
 
           allEventsPool.push({
             id: e.id || Math.random().toString(),
+            contactId: emailMap.get(cEmail) || null,
             name: meta.customer_name || "Aluno Realizzare",
             email: e.contact_email || "aluno@realizzare.com.br",
             phone: meta.phone || "(11) 98765-4321",
@@ -257,7 +270,6 @@ export default function DashboardPage() {
       let dynamicActiveStudents = 0;
       let dynamicEnrolledPeriod = 0;
 
-      const { data: contactsList } = await supabase.from("contacts").select("id, created_at, contact_tags(tags(name))");
       if (contactsList) {
         const uniqueStudents = new Set();
         const uniqueLeads = new Set();
