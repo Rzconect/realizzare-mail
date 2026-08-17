@@ -50,16 +50,19 @@ async function handleRequest(request: Request, params: { path: string[] }) {
     const res = await fetch(targetUrl, {
       method: request.method,
       headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined,
     });
     
     const responseHeaders = new Headers(res.headers);
     responseHeaders.delete('access-control-allow-origin');
     responseHeaders.delete('access-control-allow-methods');
     responseHeaders.delete('access-control-allow-headers');
-    responseHeaders.delete('content-encoding');
+    // DO NOT delete content-encoding — let the client handle decompression natively
     
-    return new NextResponse(res.body, {
+    // Buffer the full response to avoid truncated streams
+    const body = await res.arrayBuffer();
+    
+    return new NextResponse(body, {
       status: res.status,
       statusText: res.statusText,
       headers: responseHeaders,
