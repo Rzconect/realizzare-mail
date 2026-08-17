@@ -107,13 +107,28 @@ export async function POST(req: Request) {
 
       // 3. Log the purchase in purchases table
       if (contactId) {
-        const { data: existingPurchase } = await supabase
+        // Primary dedup: by Pagar.me SKU
+        const { data: existingBySku } = await supabase
           .from("purchases")
           .select("id")
           .eq("sku", pagarmeId)
           .maybeSingle();
 
-        if (!existingPurchase) {
+        // Secondary dedup: by contact + timestamp window + amount
+        // Prevents duplicate if the same purchase was previously inserted via migration with a different SKU
+        const nowMs = Date.now();
+        const windowStart = new Date(nowMs - 60000).toISOString();
+        const windowEnd = new Date(nowMs + 60000).toISOString();
+        const { data: existingByTime } = await supabase
+          .from("purchases")
+          .select("id")
+          .eq("contact_id", contactId)
+          .eq("amount", parseFloat(amountInReais))
+          .gte("paid_at", windowStart)
+          .lt("paid_at", windowEnd)
+          .maybeSingle();
+
+        if (!existingBySku && !existingByTime) {
           const prodType = category === "assinatura" ? "subscription" : 
                            category === "curso" ? "course" : "certificate";
           await supabase.from("purchases").insert({

@@ -229,13 +229,28 @@ export async function POST(req: Request) {
 
             // Insert into Purchases
             if (contactId) {
-              const { data: existingPurchase } = await supabaseAdmin
+              // Primary dedup: by Pagar.me SKU
+              const { data: existingBySku } = await supabaseAdmin
                 .from("purchases")
                 .select("id")
                 .eq("sku", evt.id)
                 .maybeSingle();
 
-              if (!existingPurchase) {
+              // Secondary dedup: by contact + timestamp window + amount
+              // Catches cases where the same purchase was inserted with a different SKU format (e.g., from migration)
+              const paidAtMin = new Date(evt.timestampMs);
+              paidAtMin.setSeconds(0, 0);
+              const paidAtMax = new Date(paidAtMin.getTime() + 60000);
+              const { data: existingByTime } = await supabaseAdmin
+                .from("purchases")
+                .select("id")
+                .eq("contact_id", contactId)
+                .eq("amount", evt.amount)
+                .gte("paid_at", paidAtMin.toISOString())
+                .lt("paid_at", paidAtMax.toISOString())
+                .maybeSingle();
+
+              if (!existingBySku && !existingByTime) {
                 const prodType = evt.category === "assinatura" ? "subscription" : 
                                  evt.category === "curso" ? "course" : "certificate";
                 await supabaseAdmin.from("purchases").insert({
