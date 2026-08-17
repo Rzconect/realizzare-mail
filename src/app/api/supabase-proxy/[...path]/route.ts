@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request: Request, { params }: { params: Promise<{ path: string[] }> }) { return handleRequest(request, await params); }
 export async function POST(request: Request, { params }: { params: Promise<{ path: string[] }> }) { return handleRequest(request, await params); }
@@ -18,26 +17,6 @@ async function handleRequest(request: Request, params: { path: string[] }) {
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  // Retrieve user JWT token sent by Supabase browser client
-  const clientAuthHeader = request.headers.get('authorization');
-  const token = clientAuthHeader ? clientAuthHeader.split(' ')[1] : null;
-
-  const isPublicPath = path.includes('auth/v1/');
-
-  if (!isPublicPath) {
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized: Missing session token" }, { status: 401 });
-    }
-
-    // Validate the JWT token against Supabase Auth
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized: Invalid or expired session" }, { status: 401 });
-    }
-  }
   
   const targetUrl = `${supabaseUrl}/${path}${url.search}`;
   
