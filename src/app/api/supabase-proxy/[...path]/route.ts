@@ -23,9 +23,7 @@ async function handleRequest(request: Request, params: { path: string[] }) {
   const clientAuthHeader = request.headers.get('authorization');
   const token = clientAuthHeader ? clientAuthHeader.split(' ')[1] : null;
 
-  const isPublicPath = path.endsWith('auth/v1/token') || 
-                       path.endsWith('auth/v1/recover') || 
-                       path.endsWith('auth/v1/verify');
+  const isPublicPath = path.includes('auth/v1/');
 
   if (!isPublicPath) {
     if (!token) {

@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, ArrowRight, AlertCircle, ShieldCheck, KeyRound, CheckCircle2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const supabase = createClient();
   
   // Auth flow states
   const [step, setStep] = useState<"login" | "2fa">("login");
@@ -65,9 +67,6 @@ export default function LoginPage() {
       };
 
       if (true) {
-        const { createClient } = await import("@/lib/supabase/client");
-        const supabase = createClient();
-        
         const { data, error: authError } = await supabase.auth.signInWithPassword({
           email: inputEmail,
           password: password,
@@ -154,9 +153,6 @@ export default function LoginPage() {
       }
 
       // Real Supabase MFA Verification
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-
       const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
       if (factorsError) throw factorsError;
 
