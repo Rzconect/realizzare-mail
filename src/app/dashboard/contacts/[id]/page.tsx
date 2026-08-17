@@ -159,77 +159,92 @@ export default function ContactProfilePage({ params }: PageProps) {
     const loadProfileData = async () => {
       try {
         const supabase = createClient();
-        
-        // 1. Fetch contact details with all associations
-        const { data, error: contactError } = await supabase
-          .from("contacts")
-          .select(`
-            id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            birth_date,
-            gender,
-            status,
-            created_at,
-            country,
-            state,
-            city,
-            contact_tags (
-              tags (
-                name
-              )
-            ),
-            contact_custom_values (
-              value_text,
-              value_number,
-              value_date,
-              value_boolean,
-              custom_fields (
-                name,
-                type,
-                tag
-              )
-            ),
-            list_subscriptions (
-              status,
-              updated_at,
-              lists (
-                name
-              )
-            ),
-            enrollments (
-              status,
-              progress,
-              enrolled_at,
-              completed_at,
-              certificate_issued,
-              courses (
-                name,
-                price
-              )
-            ),
-            purchases (
-              product_type,
-              product_name,
-              amount,
-              paid_at,
-              status,
-              sku
-            ),
-            flow_enrollments (
-              status,
-              entered_at,
-              flows (
-                name
-              )
-            )
-          `)
-          .eq("id", id)
-          .single();
 
-        if (contactError) throw contactError;
+        // Build the full select query for contacts
+        const contactSelect = `
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          birth_date,
+          gender,
+          status,
+          created_at,
+          country,
+          state,
+          city,
+          contact_tags (
+            tags (
+              name
+            )
+          ),
+          contact_custom_values (
+            value_text,
+            value_number,
+            value_date,
+            value_boolean,
+            custom_fields (
+              name,
+              type,
+              tag
+            )
+          ),
+          list_subscriptions (
+            status,
+            updated_at,
+            lists (
+              name
+            )
+          ),
+          enrollments (
+            status,
+            progress,
+            enrolled_at,
+            completed_at,
+            certificate_issued,
+            courses (
+              name,
+              price
+            )
+          ),
+          purchases (
+            product_type,
+            product_name,
+            amount,
+            paid_at,
+            status,
+            sku
+          ),
+          flow_enrollments (
+            status,
+            entered_at,
+            flows (
+              name
+            )
+          )
+        `;
+
+        // 1. Try to fetch by ID first
+        let { data, error: contactError } = await supabase
+          .from("contacts")
+          .select(contactSelect)
+          .eq("id", id)
+          .maybeSingle();
+
+        // 2. If no contact found by ID (e.g., ID is an event UUID not a contact UUID),
+        //    try fetching by email from the query param
+        if (!data && emailQuery) {
+          const emailResult = await supabase
+            .from("contacts")
+            .select(contactSelect)
+            .eq("email", emailQuery.toLowerCase().trim())
+            .maybeSingle();
+          data = emailResult.data;
+          contactError = emailResult.error;
+        }
+
+        if (contactError || !data) throw contactError || new Error("Contact not found");
         const contact: any = data;
 
         // 2. Fetch global custom fields definition
