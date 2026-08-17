@@ -17,15 +17,34 @@ async function handleRequest(request: Request, params: { path: string[] }) {
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   
   const targetUrl = `${supabaseUrl}/${path}${url.search}`;
   
   const headers = new Headers(request.headers);
-  headers.set('apikey', serviceRoleKey);
-  headers.set('authorization', `Bearer ${serviceRoleKey}`);
-  headers.delete('host'); // Let fetch set the correct host for Supabase
-  headers.delete('origin'); // Avoid CORS issues from the proxy
+  headers.delete('host');
+  headers.delete('origin');
   headers.delete('referer');
+
+  // Auth endpoints (login, MFA, etc.) need the original user JWT so Supabase
+  // can identify the user. Replacing with service role key causes
+  // "missing sub claim" because it has no user identity.
+  // Only REST/storage endpoints need service role key to bypass RLS.
+  const isAuthPath = path.startsWith('auth/v1/');
+  if (isAuthPath) {
+    // Forward original Authorization from client; fallback to anon key
+    const originalAuth = request.headers.get('authorization');
+    if (originalAuth) {
+      headers.set('authorization', originalAuth);
+    } else {
+      headers.set('authorization', `Bearer ${anonKey}`);
+    }
+    headers.set('apikey', anonKey);
+  } else {
+    // For data endpoints, use service role key to bypass RLS
+    headers.set('apikey', serviceRoleKey);
+    headers.set('authorization', `Bearer ${serviceRoleKey}`);
+  }
   
   try {
     const res = await fetch(targetUrl, {
@@ -35,7 +54,6 @@ async function handleRequest(request: Request, params: { path: string[] }) {
     });
     
     const responseHeaders = new Headers(res.headers);
-    // Remove Supabase CORS headers as Next.js will handle CORS for its own API routes
     responseHeaders.delete('access-control-allow-origin');
     responseHeaders.delete('access-control-allow-methods');
     responseHeaders.delete('access-control-allow-headers');
