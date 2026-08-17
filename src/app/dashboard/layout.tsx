@@ -92,8 +92,14 @@ export default function DashboardLayout({
           try {
             const { createClient } = await import("@/lib/supabase/client");
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+              console.warn("Invalid Supabase Auth session. Forcing logout.");
+              localStorage.removeItem("realizzare_current_session");
+              sessionStorage.removeItem("realizzare_current_session");
+              router.push("/login");
+              return;
+            } else {
               const isNew = user.user_metadata?.is_new_user !== false;
               parsed.isNewUser = isNew;
               
