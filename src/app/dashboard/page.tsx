@@ -132,23 +132,9 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data.events && data.events.length > 0) {
-        const existingRaw = localStorage.getItem("realizzare_simulated_events");
-        let existingList: any[] = [];
-        if (existingRaw) {
-          try { existingList = JSON.parse(existingRaw); } catch(e){}
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("realizzare_simulated_events");
         }
-        const map = new Map();
-        const getSig = (e: any) => {
-          const em = (e.email || "").toLowerCase().trim();
-          const d = e.date || "";
-          const t = e.time || "";
-          const amt = e.amount || 0;
-          return `${em}_${d}_${t}_${amt}`;
-        };
-        existingList.forEach((e: any) => map.set(getSig(e), e));
-        data.events.forEach((e: any) => map.set(getSig(e), e));
-        const merged = Array.from(map.values());
-        localStorage.setItem("realizzare_simulated_events", JSON.stringify(merged));
       }
 
       if (data.totalRevenueSynced !== undefined) {
@@ -245,34 +231,8 @@ export default function DashboardPage() {
         });
       }
 
-      // Also check localStorage simulated events (Flush legacy mock events)
-      const storedSims = localStorage.getItem("realizzare_simulated_events");
-      if (storedSims) {
-        try {
-          const simList = JSON.parse(storedSims);
-          // If cached data contains legacy fake student names, clear cache
-          const hasLegacyFake = simList.some((s: any) => s.name === "Jhordanny Sayda Ferreira dos Santos" || s.email === "saydajhordanny@gmail.com");
-          if (hasLegacyFake) {
-            localStorage.removeItem("realizzare_simulated_events");
-          } else {
-            simList.forEach((s: any) => {
-              let tMs = Date.now();
-              if (s.date) {
-                const parts = s.date.split("/");
-                if (parts.length === 3) {
-                  const hourParts = (s.time || "12:00").split(":");
-                  tMs = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), parseInt(hourParts[0] || "12"), parseInt(hourParts[1] || "0")).getTime();
-                }
-              }
-              allEventsPool.unshift({
-                ...s,
-                timestampMs: s.timestampMs || tMs
-              });
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("realizzare_simulated_events");
       }
 
       // Deduplicate events strictly by clean buyer name to guarantee 1 single card per student

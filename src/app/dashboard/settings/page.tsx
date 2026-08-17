@@ -304,7 +304,7 @@ export default function SettingsPage() {
           })));
         }
 
-        // Fetch Suppression
+        // Fetch suppression
         const { data: supData } = await supabase.from("suppression_list").select("*").order("created_at", { ascending: false });
         if (supData) {
           setSuppressedEmails(supData.map((s: any) => ({
@@ -314,6 +314,26 @@ export default function SettingsPage() {
             origin: s.origin || "Desconhecido",
             removable: s.removable
           })));
+        }
+
+        // Fetch Pagar.me / PagBank settings from account_settings table
+        const { data: settingsData } = await supabase
+          .from("account_settings")
+          .select("settings")
+          .eq("org_id", "00000000-0000-0000-0000-000000000001")
+          .maybeSingle();
+
+        if (settingsData && settingsData.settings) {
+          const cfg = settingsData.settings as any;
+          if (cfg.pagarme_active !== undefined) setPagarmeActive(cfg.pagarme_active);
+          if (cfg.pagarme_secret_key) setPagarmeSecretKey(cfg.pagarme_secret_key);
+          if (cfg.pagarme_public_key) setPagarmePublicKey(cfg.pagarme_public_key);
+          if (cfg.pagbank_active !== undefined) setPagbankActive(cfg.pagbank_active);
+          if (cfg.pagbank_token) setPagbankToken(cfg.pagbank_token);
+          if (cfg.pagbank_public_key) setPagbankPublicKey(cfg.pagbank_public_key);
+          if (cfg.rule_exit_abandoned_cart !== undefined) setRuleExitAbandonedCart(cfg.rule_exit_abandoned_cart);
+          if (cfg.rule_enter_post_sale !== undefined) setRuleEnterPostSale(cfg.rule_enter_post_sale);
+          if (cfg.rule_update_kpi_and_timeline !== undefined) setRuleUpdateKpiAndTimeline(cfg.rule_update_kpi_and_timeline);
         }
       } catch (err) {
         console.error("Erro ao carregar configuracoes:", err);
@@ -2263,20 +2283,51 @@ export default function SettingsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      const config = {
-                        pagarmeActive,
-                        pagarmeSecretKey,
-                        pagarmePublicKey,
-                        pagbankActive,
-                        pagbankToken,
-                        pagbankPublicKey,
-                        ruleExitAbandonedCart,
-                        ruleEnterPostSale,
-                        ruleUpdateKpiAndTimeline
-                      };
-                      localStorage.setItem("realizzare_integrations_config", JSON.stringify(config));
-                      alert("Configurações das integrações Pagar.me e PagBank salvas com sucesso!");
+                    onClick={async () => {
+                      const supabase = createClient();
+                      try {
+                        const { data: settingsData } = await supabase
+                          .from("account_settings")
+                          .select("settings")
+                          .eq("org_id", "00000000-0000-0000-0000-000000000001")
+                          .maybeSingle();
+
+                        const currentSettings = settingsData?.settings || {};
+                        const newSettings = {
+                          ...currentSettings,
+                          pagarme_active: pagarmeActive,
+                          pagarme_secret_key: pagarmeSecretKey,
+                          pagarme_public_key: pagarmePublicKey,
+                          pagbank_active: pagbankActive,
+                          pagbank_token: pagbankToken,
+                          pagbank_public_key: pagbankPublicKey,
+                          rule_exit_abandoned_cart: ruleExitAbandonedCart,
+                          rule_enter_post_sale: ruleEnterPostSale,
+                          rule_update_kpi_and_timeline: ruleUpdateKpiAndTimeline
+                        };
+
+                        await supabase
+                          .from("account_settings")
+                          .update({ settings: newSettings })
+                          .eq("org_id", "00000000-0000-0000-0000-000000000001");
+
+                        localStorage.setItem("realizzare_integrations_config", JSON.stringify({
+                          pagarmeActive,
+                          pagarmeSecretKey,
+                          pagarmePublicKey,
+                          pagbankActive,
+                          pagbankToken,
+                          pagbankPublicKey,
+                          ruleExitAbandonedCart,
+                          ruleEnterPostSale,
+                          ruleUpdateKpiAndTimeline
+                        }));
+
+                        alert("Configurações das integrações salvas com sucesso!");
+                      } catch (err) {
+                        console.error(err);
+                        alert("Erro ao salvar as configurações no banco de dados.");
+                      }
                     }}
                     className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-600/10"
                   >

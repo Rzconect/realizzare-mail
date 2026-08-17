@@ -4,18 +4,35 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const secretKey = body?.secretKey || process.env.PAGARME_SECRET_KEY || process.env.NEXT_PUBLIC_PAGARME_SECRET_KEY || "";
     const createdSince = body?.createdSince;
-
-    let authHeader = "";
-    if (secretKey) {
-      authHeader = "Basic " + Buffer.from(secretKey.trim() + ":").toString("base64");
-    }
 
     // Use admin client to bypass RLS for background sync jobs
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
     const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+    // Load secret key from settings DB if not provided in body
+    let secretKey = body?.secretKey || process.env.PAGARME_SECRET_KEY || process.env.NEXT_PUBLIC_PAGARME_SECRET_KEY || "";
+    if (!secretKey) {
+      try {
+        const { data: settingsData } = await supabaseAdmin
+          .from("account_settings")
+          .select("settings")
+          .eq("org_id", "00000000-0000-0000-0000-000000000001")
+          .maybeSingle();
+        if (settingsData && settingsData.settings) {
+          const settings = settingsData.settings as any;
+          secretKey = settings.pagarme_secret_key || "";
+        }
+      } catch (e) {
+        console.warn("Could not load secret key from DB settings:", e);
+      }
+    }
+
+    let authHeader = "";
+    if (secretKey) {
+      authHeader = "Basic " + Buffer.from(secretKey.trim() + ":").toString("base64");
+    }
 
     // 1. Calculate Incremental Start Date based on latest record in Supabase
     let incrementalStartDate = createdSince;
