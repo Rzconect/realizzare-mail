@@ -325,9 +325,6 @@ export default function ContactProfilePage({ params }: PageProps) {
               timestamp: t.created_at
             };
           });
-        } else {
-          // Fallback to mock timeline if no event logs exist to preserve design aesthetics
-          timeline = mockProfileData[id]?.timeline || mockProfileData["c1"]?.timeline || [];
         }
 
         const profileObj = {

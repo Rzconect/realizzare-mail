@@ -11,7 +11,7 @@ import type { Database } from './types'
  */
 export function createClient(): any {
   return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    "/api/supabase-proxy",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   ) as any
 }
