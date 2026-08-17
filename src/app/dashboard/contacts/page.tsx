@@ -40,83 +40,6 @@ import {
 } from "lucide-react";
 
 // Mock Contacts database matching our schema
-const realize_mock_contacts = [
-  { id: "c0", first_name: "Pedro Vitor", last_name: "Leite Pereira", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 55.60, location: { state: "SP", city: "Campinas" } },
-  { id: "c1", first_name: "Leticia", last_name: "S Santos", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "SP", city: "São Paulo" } },
-  { id: "c2", first_name: "Maria Aparecida", last_name: "de Oliveira", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 55.60, location: { state: "MG", city: "Belo Horizonte" } },
-  { id: "c3", first_name: "Raissa Prates", last_name: "da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "RJ", city: "Rio de Janeiro" } },
-  { id: "c4", first_name: "Anisio Mario", last_name: "dos Santos Dias", email: "anisio.dias@gmail.com", phone: "(41) 99123-5566", status: "active", created_at: "2026-08-14", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Assinatura Plano + Certificado", courseStatus: "Ativo", total_spent: 154.26, location: { state: "PR", city: "Curitiba" } },
-  { id: "c5", first_name: "Beatriz", last_name: "dos Santos Mendes", email: "beatriz.mendes@gmail.com", phone: "(71) 99776-4433", status: "active", created_at: "2026-08-14", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "BA", city: "Salvador" } },
-  { id: "c6", first_name: "Patricia", last_name: "Malim", email: "patricia.malim@gmail.com", phone: "(51) 98844-3322", status: "active", created_at: "2026-08-14", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 50.04, location: { state: "RS", city: "Porto Alegre" } },
-  { id: "c7", first_name: "Renata", last_name: "Maciel Braga", email: "renata.braga@gmail.com", phone: "(81) 99221-8899", status: "active", created_at: "2026-08-13", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "PE", city: "Recife" } },
-  { id: "c8", first_name: "Gabriel Pinto", last_name: "Costa Silva", email: "gabriel.silva@gmail.com", phone: "(85) 99334-1188", status: "active", created_at: "2026-08-13", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "CE", city: "Fortaleza" } },
-  { id: "c9", first_name: "Mikael Castello", last_name: "Campos", email: "mikaelcastello@gmail.com", phone: "(11) 98122-3344", status: "active", created_at: "2026-08-12", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "SP", city: "São Paulo" } },
-];
-
-function generateImportedMockContacts() {
-  const firstNames = ["Lucas", "Mariana", "Gabriel", "Beatriz", "Rodrigo", "Camila", "Fernando", "Patricia", "Gustavo", "Vanessa", "Diego", "Aline", "Marcelo", "Renata", "Thiago", "Amanda", "Rafael", "Juliana", "Bruno", "Fernanda", "Leonardo", "Leticia", "Vinicius", "Larissa", "Matheus", "Jessica"];
-  const lastNames = ["Silva", "Santos", "Oliveira", "Souza", "Rodrigues", "Ferreira", "Almeida", "Pereira", "Lima", "Gomes", "Costa", "Ribeiro", "Martins", "Carvalho", "Alves", "Lopes", "Araújo", "Barbosa", "Rocha", "Dias"];
-  const domains = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com.br", "uol.com.br", "live.com"];
-
-  const importedList: any[] = [];
-
-  for (let i = 1; i <= 1268; i++) {
-    const fn = firstNames[i % firstNames.length];
-    const ln = lastNames[(i * 3) % lastNames.length];
-    const domain = domains[i % domains.length];
-    const email = `${fn.toLowerCase()}.${ln.toLowerCase()}${i}@${domain}`;
-
-    importedList.push({
-      id: `c_imp_ac_${i}`,
-      first_name: fn,
-      last_name: ln, // Clean name with no # or numbers!
-      email: email,
-      phone: `(11) 9${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
-      status: "unsubscribed", // All unsubscribed as configured in import!
-      created_at: "01/07/2026",
-      tags: ["Importado ActiveCampaign"],
-      course: "Nenhum curso iniciado",
-      courseStatus: "Não informado",
-      total_spent: 0
-    });
-  }
-
-  return importedList;
-}
-
-function getRealPagarmeContacts() {
-  const realOrders = [
-    { name: "Pedro Vitor Leite Pereira", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", state: "SP", city: "Campinas", amount: 55.60, dateStr: "15/08/2026" },
-    { name: "LETICIA S SANTOS", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "15/08/2026" },
-    { name: "MARIA APARECIDA DE OLIVEIRA", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, dateStr: "15/08/2026" },
-    { name: "Raissa Prates da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, dateStr: "15/08/2026" },
-    { name: "Anisio Mario dos santos Dias", email: "anisio.dias@gmail.com", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, dateStr: "14/08/2026" },
-    { name: "Beatriz dos Santos mendes", email: "beatriz.mendes@gmail.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, dateStr: "14/08/2026" },
-    { name: "Patricia Malim", email: "patricia.malim@gmail.com", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre", amount: 50.04, dateStr: "14/08/2026" },
-    { name: "Renata Maciel Braga", email: "renata.braga@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, dateStr: "13/08/2026" },
-    { name: "Gabriel Pinto Costa Silva", email: "gabriel.silva@gmail.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, dateStr: "13/08/2026" },
-    { name: "MIKAEL CASTELLO CAMPOS", email: "mikaelcastello@gmail.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, dateStr: "12/08/2026" }
-  ];
-
-  return realOrders.map((o) => {
-    const parts = o.name.split(" ");
-    const fn = parts[0];
-    const ln = parts.slice(1).join(" ") || "";
-    return {
-      id: `c_pagarme_${o.email.replace(/[^a-z0-9]/gi, "")}`,
-      first_name: fn,
-      last_name: ln,
-      email: o.email,
-      phone: o.phone,
-      status: "unsubscribed",
-      created_at: o.dateStr,
-      tags: ["Pagar.me", "Cliente Realizzare"],
-      course: "Nenhum curso iniciado",
-      courseStatus: "Não informado",
-      total_spent: o.amount
-    };
-  });
-}
 
 interface SearchableFieldDropdownProps {
   value: string;
@@ -2020,245 +1943,23 @@ export default function ContactsPage() {
           };
         });
 
-        // Check if there are local stored/imported contacts
-        const storedContacts = localStorage.getItem("realizzare_contacts");
-        if (storedContacts) {
-          try {
-            const parsed = JSON.parse(storedContacts);
-            if (Array.isArray(parsed) && parsed.length > 50) {
-              const cleaned = parsed
-                .filter((item: any) => !item.id.match(/^c\d+$/)) // Filter out mock demo leads (c1..c12)
-                .map((item: any) => ({
-                  ...item,
-                  last_name: (item.last_name || "").replace(/#\d+/g, "").trim(),
-                  status: "unsubscribed",
-                  course: "Nenhum curso iniciado",
-                  courseStatus: "Não informado"
-                }));
-              
-              // Also merge Pagar.me transactions as contacts
-              const storedSims = localStorage.getItem("realizzare_simulated_events");
-              if (storedSims) {
-                try {
-                  const simEvents = JSON.parse(storedSims);
-                  simEvents.forEach((evt: any) => {
-                    const cEmail = (evt.email || "").toLowerCase().trim();
-                    if (!cEmail) return;
-                    const exists = cleaned.some((c: any) => (c.email || "").toLowerCase().trim() === cEmail);
-                    if (!exists) {
-                      const cleanName = (evt.name || "Aluno Realizzare").replace(/\(\d+\)/g, "").trim();
-                      const nameParts = cleanName.split(" ");
-                      const fName = nameParts[0] || "Aluno";
-                      const lName = nameParts.slice(1).join(" ") || "Realizzare";
-                      const newC = {
-                        id: `c_pagarme_${cEmail.replace(/[^a-z0-9]/gi, "")}`,
-                        first_name: fName,
-                        last_name: lName,
-                        email: cEmail,
-                        phone: evt.phone || "(11) 98765-4321",
-                        status: "unsubscribed", // Not subscribed to marketing lists
-                        created_at: evt.date || "01/08/2026",
-                        tags: ["Pagar.me", "Cliente Realizzare"],
-                        course: "Nenhum curso iniciado",
-                        courseStatus: "Não informado",
-                        total_spent: evt.amount || 49.90
-                      };
-                      cleaned.unshift(newC);
+        // Use real contacts from DB
+        setContacts(mappedContacts);
 
-                      // Create rich profile for contact
-                      const profileKey = `realizzare_profile_${newC.id}`;
-                      if (!localStorage.getItem(profileKey)) {
-                        localStorage.setItem(profileKey, JSON.stringify({
-                          first_name: fName,
-                          last_name: lName,
-                          email: cEmail,
-                          phone: evt.phone || "(11) 98765-4321",
-                          birth_date: "1995-01-01",
-                          gender: "Não informado",
-                          status: "unsubscribed",
-                          created_at: evt.date || "2026-08-01",
-                          location: { country: "Brasil", state: evt.state || "SP", city: evt.city || "São Paulo" },
-                          tags: ["Pagar.me", "Cliente Realizzare"],
-                          custom_fields: [{ name: "Origem Lead", type: "text", value: "Pagar.me V5 Checkout" }],
-                          lists: [],
-                          enrollments: [{ course_name: evt.itemTitle || "Certificado / Curso Realizzare", price: `R$ ${evt.amount ? evt.amount.toFixed(2) : "49.90"}`, status: "active", progress: 100, enrolled_at: evt.date || "2026-08-01", certificate_issued: true, completed_at: evt.date || "2026-08-01" }],
-                          purchases: [{ product_type: "certificado", product_name: evt.itemTitle || "Certificado / Curso Realizzare", amount: evt.amount || 49.90, paid_at: evt.date || "2026-08-01", status: "paid", sku: "PAGARME-V5" }],
-                          flows: [],
-                          timeline: [{ id: `evt-${Math.random()}`, type: "purchase", label: "Compra Aprovada via Pagar.me", details: `${evt.itemTitle || "Certificado / Curso Realizzare"} - R$ ${evt.amount ? evt.amount.toFixed(2) : "49.90"}`, timestamp: evt.date || "2026-08-01" }]
-                        }));
-                      }
-                    }
-                  });
-                } catch (e) { console.error(e); }
-              }
-
-              // Keep strictly ONLY contacts from direct Pagar.me integration
-              const emailMap = new Map();
-              cleaned.forEach((c: any) => {
-                const em = (c.email || "").toLowerCase().trim();
-                const isPagarme = (c.tags && (c.tags.includes("Pagar.me") || c.tags.includes("Pagar.me V5") || c.tags.includes("Cliente Realizzare"))) || (c.id && (c.id.includes("pagarme") || c.id.match(/^c\d+$/)));
-                const isFakeAluno = em.includes("aluno") && em.includes("realizzarecursos.com.br");
-                const hasParenNum = /\(\d+\)/.test(c.first_name || "") || /\(\d+\)/.test(c.last_name || "");
-                if (em && (isPagarme || c.id === "c0") && !isFakeAluno && !hasParenNum && !emailMap.has(em)) {
-                  emailMap.set(em, c);
-                }
-              });
-              
-              let sanitizedContacts = Array.from(emailMap.values());
-              const hasPedro = sanitizedContacts.some(c => (c.email || "").includes("pedro") || (c.first_name || "").includes("Pedro"));
-              if (!hasPedro) {
-                sanitizedContacts.unshift({
-                  id: "c0",
-                  first_name: "Pedro Vitor",
-                  last_name: "Leite Pereira",
-                  email: "pedrovitorleitepereira@gmail.com",
-                  phone: "(19) 98765-4321",
-                  status: "active",
-                  created_at: "2026-08-15",
-                  tags: ["Pagar.me V5", "Cliente Realizzare"],
-                  course: "Certificado de Conclusão - Realizzare Cursos",
-                  courseStatus: "Ativo",
-                  total_spent: 55.60,
-                  location: { state: "SP", city: "Campinas" }
-                });
-              }
-
-              // 1. Process contacts (auto-assign Pagar.me to Clientes, calculate active status)
-              const processedContacts = sanitizedContacts.map((c: any) => {
-                const em = (c.email || "").toLowerCase().trim();
-                const isPagarme = (c.tags && (c.tags.includes("Pagar.me") || c.tags.includes("Pagar.me V5") || c.tags.includes("Cliente Realizzare"))) || (c.id && c.id.includes("pagarme"));
-                
-                const profileKey = `realizzare_profile_${c.id}`;
-                const storedProfile = localStorage.getItem(profileKey);
-                let profileObj: any = null;
-                if (storedProfile) {
-                  try { profileObj = JSON.parse(storedProfile); } catch (e) {}
-                }
-
-                if (!profileObj) {
-                  profileObj = {
-                    first_name: c.first_name || "Aluno",
-                    last_name: c.last_name || "Realizzare",
-                    email: em,
-                    phone: c.phone || "",
-                    birth_date: "1995-01-01",
-                    gender: "Não informado",
-                    status: c.status || "unsubscribed",
-                    created_at: c.created_at || "2026-08-01",
-                    location: c.location || { country: "Brasil", state: "SP", city: "São Paulo" },
-                    tags: c.tags || [],
-                    custom_fields: [],
-                    lists: [],
-                    enrollments: [],
-                    purchases: [],
-                    flows: [],
-                    timeline: []
-                  };
-                }
-
-                if (isPagarme) {
-                  if (!profileObj.lists) profileObj.lists = [];
-                  const hasClientesList = profileObj.lists.some((pl: any) => pl.name === "Clientes" && pl.status === "subscribed");
-                  if (!hasClientesList) {
-                    profileObj.lists = profileObj.lists.filter((pl: any) => pl.name !== "Clientes");
-                    profileObj.lists.push({
-                      name: "Clientes",
-                      status: "subscribed",
-                      subscribed_at: new Date().toISOString()
-                    });
-                  }
-                }
-
-                const inAnyList = profileObj.lists?.some((pl: any) => pl.status === "subscribed") || false;
-                const finalStatus = inAnyList ? "active" : "unsubscribed";
-
-                profileObj.status = finalStatus;
-                localStorage.setItem(profileKey, JSON.stringify(profileObj));
-
-                return {
-                  ...c,
-                  status: finalStatus
-                };
-              });
-
-              setContacts(processedContacts);
-              localStorage.setItem("realizzare_contacts", JSON.stringify(processedContacts));
-              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(processedContacts));
-
-              // 2. Compute dynamic subscriberCount for all lists
-              const updatedListsWithCounts = merged.map((list: any) => {
-                let count = 0;
-                processedContacts.forEach((c: any) => {
-                  const profileStr = localStorage.getItem(`realizzare_profile_${c.id}`);
-                  if (profileStr) {
-                    try {
-                      const profile = JSON.parse(profileStr);
-                      const isSubscribed = profile.lists?.some(
-                        (pl: any) => pl.name.toLowerCase() === list.name.toLowerCase() && pl.status === "subscribed"
-                      );
-                      if (isSubscribed) {
-                        count++;
-                      }
-                    } catch (e) {}
-                  }
-                });
-                return {
-                  ...list,
-                  subscriberCount: count
-                };
-              });
-              saveLists(updatedListsWithCounts);
-
-            } else {
-              const pagarmeList = getRealPagarmeContacts();
-              
-              const processedPagarme = pagarmeList.map((c: any) => {
-                const em = (c.email || "").toLowerCase().trim();
-                const profileKey = `realizzare_profile_${c.id}`;
-                let profileObj = {
-                  first_name: c.first_name || "Aluno",
-                  last_name: c.last_name || "Realizzare",
-                  email: em,
-                  phone: c.phone || "",
-                  birth_date: "1995-01-01",
-                  gender: "Não informado",
-                  status: "active",
-                  created_at: c.created_at || "2026-08-01",
-                  location: c.location || { country: "Brasil", state: "SP", city: "São Paulo" },
-                  tags: c.tags || [],
-                  custom_fields: [],
-                  lists: [{ name: "Clientes", status: "subscribed", subscribed_at: new Date().toISOString() }],
-                  enrollments: [],
-                  purchases: [],
-                  flows: [],
-                  timeline: []
-                };
-                localStorage.setItem(profileKey, JSON.stringify(profileObj));
-                return { ...c, status: "active" };
-              });
-
-              setContacts(processedPagarme);
-              localStorage.setItem("realizzare_contacts", JSON.stringify(processedPagarme));
-              localStorage.setItem("realizzare_mock_contacts", JSON.stringify(processedPagarme));
-
-              const updatedListsWithCounts = merged.map((list: any) => {
-                let count = list.name === "Clientes" ? processedPagarme.length : 0;
-                return { ...list, subscriberCount: count };
-              });
-              saveLists(updatedListsWithCounts);
+        // 2. Compute dynamic subscriberCount for all lists
+        const updatedListsWithCounts = merged.map((list: any) => {
+          let count = 0;
+          mappedContacts.forEach((c: any) => {
+            if (list.name === "Clientes" && c.tags && c.tags.includes("Cliente Realizzare")) {
+              count++;
             }
-          } catch (e) {
-            const pagarmeList = getRealPagarmeContacts();
-            setContacts(pagarmeList);
-            localStorage.setItem("realizzare_contacts", JSON.stringify(pagarmeList));
-            localStorage.setItem("realizzare_mock_contacts", JSON.stringify(pagarmeList));
-          }
-        } else {
-          const pagarmeList = getRealPagarmeContacts();
-          setContacts(pagarmeList);
-          localStorage.setItem("realizzare_contacts", JSON.stringify(pagarmeList));
-          localStorage.setItem("realizzare_mock_contacts", JSON.stringify(pagarmeList));
-        }
+          });
+          return {
+            ...list,
+            subscriberCount: count
+          };
+        });
+        saveLists(updatedListsWithCounts);
 
         // 4. Consent Pages (Keep in localStorage for now as UI settings)
         const storedConsentPages = localStorage.getItem("realizzare_consent_pages_config");
@@ -3006,47 +2707,8 @@ export default function ContactsPage() {
   const [showSegmentLeadsModal, setShowSegmentLeadsModal] = useState(false);
   const [segmentSearchQuery, setSegmentSearchQuery] = useState("");
 
-  const ensureCanonicalPagarmeBuyers = (list: any[]) => {
-    const canonicalBuyers = [
-      { id: "c0", first_name: "Pedro Vitor", last_name: "Leite Pereira", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 55.60, location: { state: "SP", city: "Campinas" } },
-      { id: "c1", first_name: "Leticia", last_name: "S Santos", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "SP", city: "São Paulo" } },
-      { id: "c2", first_name: "Maria Aparecida", last_name: "de Oliveira", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 55.60, location: { state: "MG", city: "Belo Horizonte" } },
-      { id: "c3", first_name: "Raissa Prates", last_name: "da Silva Justiniano", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", status: "active", created_at: "2026-08-15", tags: ["Pagar.me V5", "Cliente Realizzare"], course: "Certificado de Conclusão - Realizzare Cursos", courseStatus: "Ativo", total_spent: 45.70, location: { state: "RJ", city: "Rio de Janeiro" } },
-    ];
-
-    if (!Array.isArray(list)) return canonicalBuyers;
-
-    const result = [...list];
-    canonicalBuyers.forEach((cb) => {
-      const cbEm = cb.email.toLowerCase();
-      const idx = result.findIndex((c) => {
-        const em = (c.email || "").toLowerCase();
-        if (em === cbEm) return true;
-        if (cbEm.includes("leticia") && em.includes("leticia")) return true;
-        if (cbEm.includes("raissa") && em.includes("raissa")) return true;
-        if (cbEm.includes("pedro") && em.includes("pedro")) return true;
-        return false;
-      });
-
-      if (idx >= 0) {
-        result[idx] = {
-          ...result[idx],
-          created_at: "2026-08-15",
-          total_spent: cb.total_spent,
-          email: cb.email,
-          first_name: cb.first_name,
-          last_name: cb.last_name
-        };
-      } else {
-        result.unshift(cb);
-      }
-    });
-
-    return result;
-  };
-
   const getMatchingSegmentLeads = () => {
-    const enforced = ensureCanonicalPagarmeBuyers(contacts);
+    const enforced = contacts;
     if (!segmentGroups || segmentGroups.length === 0) return enforced;
     return enforced.filter((contact) => {
       const groupResults: boolean[] = segmentGroups.map((group) => {

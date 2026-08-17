@@ -235,45 +235,20 @@ export default function DashboardPage() {
         localStorage.removeItem("realizzare_simulated_events");
       }
 
-      // Deduplicate events strictly by clean buyer name to guarantee 1 single card per student
-      const uniqueEventsMap = new Map();
-      allEventsPool.forEach(evt => {
-        const cleanName = (evt.name || "").toLowerCase().replace(/[^a-z0-9]/g, "").trim();
-        if (!uniqueEventsMap.has(cleanName)) {
-          uniqueEventsMap.set(cleanName, evt);
-        }
-      });
-      const deduplicatedPool = Array.from(uniqueEventsMap.values());
-
       // Filter events by period date bounds and sort descending (newest first)
-      const filteredPeriodEvents = deduplicatedPool
+      const filteredPeriodEvents = allEventsPool
         .filter(evt => evt.timestampMs >= startMs && evt.timestampMs <= endMs)
         .sort((a, b) => b.timestampMs - a.timestampMs);
 
-      let calculatedRevenue = 0;
-      let calculatedCerts = 0;
-      let calculatedSubs = 0;
+      let finalRevenue = 0;
+      let finalCerts = 0;
+      let finalSubs = 0;
 
       filteredPeriodEvents.forEach(evt => {
-        calculatedRevenue += evt.amount || 0;
-        if (evt.category === "certificado") calculatedCerts += 1;
-        if (evt.category === "assinatura") calculatedSubs += 1;
+        finalRevenue += evt.amount || 0;
+        if (evt.category === "certificado") finalCerts += 1;
+        if (evt.category === "assinatura") finalSubs += 1;
       });
-
-      // Check if we have exact synced metrics saved from database/API sync for current_month
-      const syncedKpisStr = typeof window !== "undefined" ? localStorage.getItem("realizzare_synced_kpis") : null;
-      let finalRevenue = calculatedRevenue;
-      let finalCerts = calculatedCerts;
-      let finalSubs = calculatedSubs;
-
-      if (syncedKpisStr) {
-        try {
-          const parsed = JSON.parse(syncedKpisStr);
-          if (parsed.revenue) finalRevenue = parsed.revenue;
-          if (parsed.certs !== undefined) finalCerts = parsed.certs;
-          if (parsed.subs !== undefined) finalSubs = parsed.subs;
-        } catch(e){}
-      }
 
       setRecentEventsList(filteredPeriodEvents.slice(0, 10));
 
@@ -282,48 +257,37 @@ export default function DashboardPage() {
       let dynamicActiveStudents = 0;
       let dynamicEnrolledPeriod = 0;
 
-      const contactsStr = typeof window !== "undefined" ? localStorage.getItem("realizzare_contacts") : null;
-      if (contactsStr) {
-        try {
-          const contactsList = JSON.parse(contactsStr);
-          const uniqueStudents = new Set();
-          const uniqueLeads = new Set();
+      const { data: contactsList } = await supabase.from("contacts").select("id, created_at, contact_tags(tags(name))");
+      if (contactsList) {
+        const uniqueStudents = new Set();
+        const uniqueLeads = new Set();
 
-          contactsList.forEach((c: any) => {
-            const profileKey = `realizzare_profile_${c.id}`;
-            const profileStr = localStorage.getItem(profileKey);
-            
-            let isLead = false;
-            let isStudent = false;
+        contactsList.forEach((c: any) => {
+          let isLead = false;
+          let isStudent = false;
 
-            if (profileStr) {
-              try {
-                const profile = JSON.parse(profileStr);
-                const activeLists = profile.lists?.filter((pl: any) => pl.status === "subscribed") || [];
-                isLead = activeLists.some((pl: any) => pl.name.toLowerCase() === "leads");
-                isStudent = activeLists.some((pl: any) => pl.name.toLowerCase() === "alunos" || pl.name.toLowerCase() === "clientes");
-              } catch (e) {}
-            } else {
-              const tagsLower = (c.tags || []).map((t: string) => t.toLowerCase());
-              if (tagsLower.includes("leads") || c.status === "active") isLead = true;
-              if (tagsLower.includes("alunos") || tagsLower.includes("clientes") || tagsLower.includes("pagar.me") || tagsLower.includes("pagar.me v5")) isStudent = true;
+          const tagsLower = (c.contact_tags || []).map((ct: any) => (ct.tags?.name || "").toLowerCase());
+          
+          if (tagsLower.includes("leads") || tagsLower.includes("lead")) isLead = true;
+          if (tagsLower.includes("alunos") || tagsLower.includes("clientes") || tagsLower.includes("cliente realizzare") || tagsLower.includes("pagar.me")) isStudent = true;
+          
+          // By default, if they don't have tags but are in the db, we count them as leads for now
+          if (tagsLower.length === 0) isLead = true;
+
+          if (isLead) uniqueLeads.add(c.id);
+          if (isStudent) uniqueStudents.add(c.id);
+
+          if (c.created_at) {
+            const createdDate = new Date(c.created_at);
+            const createdMs = createdDate.getTime();
+            if (createdMs >= startMs && createdMs <= endMs) {
+              dynamicEnrolledPeriod++;
             }
+          }
+        });
 
-            if (isLead) uniqueLeads.add(c.id);
-            if (isStudent) uniqueStudents.add(c.id);
-
-            if (c.created_at) {
-              const createdDate = new Date(c.created_at);
-              const createdMs = createdDate.getTime();
-              if (createdMs >= startMs && createdMs <= endMs) {
-                dynamicEnrolledPeriod++;
-              }
-            }
-          });
-
-          dynamicActiveLeads = uniqueLeads.size;
-          dynamicActiveStudents = uniqueStudents.size;
-        } catch (e) {}
+        dynamicActiveLeads = uniqueLeads.size;
+        dynamicActiveStudents = uniqueStudents.size;
       }
 
       // Merge with Supabase database if connected

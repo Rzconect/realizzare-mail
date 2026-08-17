@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+function formatName(fullName: string) {
+  if (!fullName) return { firstName: "Aluno", lastName: "Realizzare" };
+  const parts = fullName.trim().split(/\s+/);
+  const titleCaseParts = parts.map(
+    (p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+  );
+  const firstName = titleCaseParts[0] || "Aluno";
+  const lastName = titleCaseParts.slice(1).join(" ") || "";
+  return { firstName, lastName };
+}
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -130,6 +140,7 @@ export async function POST(req: Request) {
       const lowerTitle = itemTitle.toLowerCase();
       let category: "certificado" | "curso" | "assinatura" = "certificado";
       if (lowerTitle.includes("assinatura") || lowerTitle.includes("plano")) category = "assinatura";
+      else if (lowerTitle.includes("certificado")) category = "certificado";
       else if (lowerTitle.includes("curso")) category = "curso";
 
       const createdAtStr = item.created_at || new Date().toISOString();
@@ -137,7 +148,7 @@ export async function POST(req: Request) {
 
       allEventsToInsert.push({
         id: item.id || `pagarme-${Math.random().toString()}`,
-        name: name,
+        name: `${formatName(name).firstName} ${formatName(name).lastName}`.trim(),
         email: email,
         phone: phone,
         date: dateObj.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
@@ -179,7 +190,7 @@ export async function POST(req: Request) {
                 item_title: evt.itemTitle,
                 amount: evt.amount,
                 category: evt.category,
-                customer_name: evt.name,
+                customer_name: [formatName(evt.name).firstName, formatName(evt.name).lastName].filter(Boolean).join(" "),
                 phone: evt.phone,
                 is_historical_mock: evt.isMock
               }
@@ -191,10 +202,12 @@ export async function POST(req: Request) {
             if (existingC) {
               contactId = existingC.id;
             } else {
+              const { firstName, lastName } = formatName(evt.name);
               const { data: newC } = await supabaseAdmin.from("contacts").insert({
                 org_id: "00000000-0000-0000-0000-000000000001",
                 email: evt.email,
-                first_name: evt.name,
+                first_name: firstName,
+                last_name: lastName,
                 phone: evt.phone,
                 status: "active",
                 created_at: new Date(evt.timestampMs).toISOString()
