@@ -137,60 +137,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (syncedCount === 0) {
-      let alreadyPopulated = false;
-      try {
-        const { count } = await supabaseAdmin
-          .from("reporting_events")
-          .select("*", { count: "exact", head: true })
-          .eq("metadata->>is_historical_mock", "true");
-        if (count && count >= 125) alreadyPopulated = true;
-      } catch (e) {}
 
-      if (!alreadyPopulated) {
-        syncedCount = 125;
-        const baseOrders = [
-          { name: "Pedro Vitor Leite", email: "pedrovitorleitepereira@gmail.com", phone: "(19) 98765-4321", state: "SP", city: "Campinas", amount: 55.60, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "LETICIA S SANTOS", email: "leticiasouzaagro2021@gmail.com", phone: "(11) 99122-3344", state: "SP", city: "São Paulo", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "MARIA APARECIDA", email: "maria.aparecida@gmail.com", phone: "(31) 99887-1122", state: "MG", city: "Belo Horizonte", amount: 55.60, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
-          { name: "Raissa Prates", email: "raissapratesdasilva@gmail.com", phone: "(21) 97711-2233", state: "RJ", city: "Rio de Janeiro", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "Anisio Mario Dias", email: "anisio.dias@uol.com.br", phone: "(41) 99123-5566", state: "PR", city: "Curitiba", amount: 154.26, itemTitle: "Assinatura Plano + Certificado", paymentMethod: "Cartão de Crédito" },
-          { name: "Beatriz Mendes", email: "beatriz.mendes.ba@outlook.com", phone: "(71) 99776-4433", state: "BA", city: "Salvador", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "Patricia Malim", email: "patricia_malim@hotmail.com", phone: "(51) 98844-3322", state: "RS", city: "Porto Alegre", amount: 50.04, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "Cartão de Crédito" },
-          { name: "Renata Braga", email: "renatabraga.pe@gmail.com", phone: "(81) 99221-8899", state: "PE", city: "Recife", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "Gabriel Silva", email: "gabriel.silva.ce@live.com", phone: "(85) 99334-1188", state: "CE", city: "Fortaleza", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" },
-          { name: "MIKAEL CAMPOS", email: "mikaelcastello@outlook.com", phone: "(11) 98122-3344", state: "SP", city: "São Paulo", amount: 45.70, itemTitle: "Certificado de Conclusão - Realizzare Cursos", paymentMethod: "PIX" }
-        ];
-
-        for (let i = 0; i < 125; i++) {
-          const base = baseOrders[i % 10];
-          const day = Math.floor((i / 125) * 16) + 1; 
-          const hour = 8 + (i % 12);
-          const min = (i * 7) % 60;
-          const dObj = new Date(2026, 7, day, hour, min);
-          
-          allEventsToInsert.push({
-            id: `pagarme-historical-${i + 1}`,
-            name: `${base.name} - ${i + 1}`,
-            email: `aluno${i + 1}_${base.email}`,
-            phone: base.phone,
-            state: base.state,
-            city: base.city,
-            date: dObj.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-            time: dObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }),
-            eventLabel: `${base.itemTitle} - R$ ${base.amount.toFixed(2)}`,
-            itemTitle: base.itemTitle,
-            amount: base.amount,
-            category: base.itemTitle.includes("Assinatura") ? "assinatura" : "certificado",
-            paymentMethod: base.paymentMethod,
-            timestampMs: dObj.getTime(),
-            type: "purchase",
-            provider: "pagarme",
-            isMock: true
-          });
-        }
-      }
-    }
 
     allEventsToInsert.sort((a, b) => b.timestampMs - a.timestampMs);
 
