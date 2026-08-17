@@ -53,8 +53,8 @@ export default function LoginPage() {
     try {
       const inputEmail = email.trim().toLowerCase();
       
-      // Standardized Master Admin Credential Check
-      const isMasterAdmin = (inputEmail === "admin@realizzarecursos.com.br" && password === "Admin@123");
+      // Standardized Master Admin Credential Check (Now integrated into Supabase Auth database)
+      const isMasterAdmin = false;
 
       let userSession = {
         name: "Administrador Realizzare",
@@ -64,7 +64,7 @@ export default function LoginPage() {
         expiresAt: keepLoggedIn ? Date.now() + 30 * 24 * 60 * 60 * 1000 : undefined
       };
 
-      if (!isMasterAdmin) {
+      if (true) {
         const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
         

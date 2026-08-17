@@ -23,16 +23,22 @@ async function handleRequest(request: Request, params: { path: string[] }) {
   const clientAuthHeader = request.headers.get('authorization');
   const token = clientAuthHeader ? clientAuthHeader.split(' ')[1] : null;
 
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized: Missing session token" }, { status: 401 });
-  }
+  const isPublicPath = path.endsWith('auth/v1/token') || 
+                       path.endsWith('auth/v1/recover') || 
+                       path.endsWith('auth/v1/verify');
 
-  // Validate the JWT token against Supabase Auth
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+  if (!isPublicPath) {
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized: Missing session token" }, { status: 401 });
+    }
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized: Invalid or expired session" }, { status: 401 });
+    // Validate the JWT token against Supabase Auth
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized: Invalid or expired session" }, { status: 401 });
+    }
   }
   
   const targetUrl = `${supabaseUrl}/${path}${url.search}`;
