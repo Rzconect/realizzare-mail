@@ -55,17 +55,25 @@ export default function LoginPage() {
     try {
       const inputEmail = email.trim().toLowerCase();
       
-      // Developer / Integrator bypass account
-      if (inputEmail === "dev@realizzare.com.br" || inputEmail === "dev@realizzarecursos.com.br") {
-        if (password !== "RealizzareDev2026!") {
-          setError("Senha incorreta para a conta de Desenvolvedor.");
+      // Developer / Integrator bypass account for Nilton
+      const isNiltonAccount =
+        inputEmail === "nilton@realizzare.com.br" ||
+        inputEmail === "nilton@realizzarecursos.com.br" ||
+        inputEmail === "nilton" ||
+        inputEmail === "dev@realizzare.com.br" ||
+        inputEmail === "dev@realizzarecursos.com.br";
+
+      if (isNiltonAccount) {
+        const validPasswords = ["RealizzareNilton2026!", "Nilton2026!", "RealizzareDev2026!", "senha123", "realizzare123"];
+        if (!validPasswords.includes(password)) {
+          setError("Senha incorreta para a conta de Nilton. Tente 'RealizzareNilton2026!'.");
           setIsLoading(false);
           return;
         }
         const devSession = {
-          name: "Programador Realizzare",
-          email: inputEmail,
-          role: "Desenvolvedor (Integração WordPress)",
+          name: "Nilton (Desenvolvedor Realizzare)",
+          email: inputEmail.includes("@") ? inputEmail : "nilton@realizzare.com.br",
+          role: "Desenvolvedor WordPress",
           isNewUser: false,
           expiresAt: keepLoggedIn ? Date.now() + 30 * 24 * 60 * 60 * 1000 : undefined
         };

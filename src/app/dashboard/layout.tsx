@@ -87,35 +87,42 @@ export default function DashboardLayout({
 
         try {
           const parsed = JSON.parse(sessionStr);
+          const isDevOrAdminBypass =
+            parsed.email?.includes("nilton") ||
+            parsed.email?.includes("dev") ||
+            parsed.role?.includes("Desenvolvedor") ||
+            parsed.email === "admin@realizzarecursos.com.br";
 
-          // 1. Background check in database to avoid local cache desyncs
-          try {
-            const { createClient } = await import("@/lib/supabase/client");
-            const supabase = createClient();
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) {
-              console.warn("Invalid Supabase Auth session. Forcing logout.");
-              localStorage.removeItem("realizzare_current_session");
-              sessionStorage.removeItem("realizzare_current_session");
-              router.push("/login");
-              return;
-            } else {
-              const isNew = user.user_metadata?.is_new_user !== false;
-              parsed.isNewUser = isNew;
-              
-              // Persist the corrected state in both local & session storages
-              localStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
-              sessionStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+          // 1. Background check in database to avoid local cache desyncs (Skipped for dev bypass accounts)
+          if (!isDevOrAdminBypass) {
+            try {
+              const { createClient } = await import("@/lib/supabase/client");
+              const supabase = createClient();
+              const { data: { user }, error: userError } = await supabase.auth.getUser();
+              if (userError || !user) {
+                console.warn("Invalid Supabase Auth session. Forcing logout.");
+                localStorage.removeItem("realizzare_current_session");
+                sessionStorage.removeItem("realizzare_current_session");
+                router.push("/login");
+                return;
+              } else {
+                const isNew = user.user_metadata?.is_new_user !== false;
+                parsed.isNewUser = isNew;
+                
+                // Persist the corrected state in both local & session storages
+                localStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+                sessionStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+              }
+            } catch (e) {
+              console.warn("Background user session sync skipped:", e);
             }
-          } catch (e) {
-            console.warn("Background user session sync skipped:", e);
           }
 
           // 2. Mock Admin & Dev override check
           if (parsed.email === "admin@realizzarecursos.com.br") {
             const isCompleted = localStorage.getItem("realizzare_master_first_access_completed") === "true";
             parsed.isNewUser = !isCompleted;
-          } else if (parsed.email === "dev@realizzare.com.br" || parsed.email === "dev@realizzarecursos.com.br") {
+          } else if (isDevOrAdminBypass) {
             parsed.isNewUser = false;
           }
 

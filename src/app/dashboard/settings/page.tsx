@@ -229,7 +229,7 @@ export default function SettingsPage() {
       // Load auth users list
       const defaultUsers = [
         { name: "Leonardo Christian", email: "admin@realizzare.com.br", password: "senha123", role: "Administrador", isNewUser: false },
-        { name: "Programador Realizzare", email: "dev@realizzare.com.br", password: "RealizzareDev2026!", role: "Desenvolvedor WordPress", isNewUser: false },
+        { name: "Nilton (Programador)", email: "nilton@realizzare.com.br", password: "RealizzareNilton2026!", role: "Desenvolvedor WordPress", isNewUser: false },
         { name: "Ana Oliveira", email: "ana.oliveira@gmail.com", password: "senha123", role: "Editor", isNewUser: true },
         { name: "João Santos", email: "joao.santos@outlook.com", password: "senha123", role: "Visualizador", isNewUser: true }
       ];
