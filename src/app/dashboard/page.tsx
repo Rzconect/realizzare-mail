@@ -31,7 +31,8 @@ import {
   Eye,
   GitBranch,
   Play,
-  RotateCcw
+  RotateCcw,
+  Search
 } from "lucide-react";
 import {
   AreaChart,
@@ -118,6 +119,32 @@ export default function DashboardPage() {
     return `Hoje às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [eventsSearchTerm, setEventsSearchTerm] = useState("");
+  const [attributionDaysWindow, setAttributionDaysWindow] = useState<number>(7);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("realizzare_attribution_config");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.attrEmailClickDays || parsed.attrEmailOpenDays) {
+            setAttributionDaysWindow(parsed.attrEmailClickDays || parsed.attrEmailOpenDays || 7);
+          }
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  const filteredEventsList = recentEventsList.filter((evt) => {
+    if (!eventsSearchTerm.trim()) return true;
+    const term = eventsSearchTerm.toLowerCase().trim();
+    return (
+      (evt.name || "").toLowerCase().includes(term) ||
+      (evt.email || "").toLowerCase().includes(term) ||
+      (evt.itemTitle || evt.eventLabel || "").toLowerCase().includes(term)
+    );
+  });
 
   // Live Sync trigger handler
   const handleLiveSync = async () => {
@@ -845,228 +872,251 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
-        {/* Enrolled in Period */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Inscritos no Período</span>
-            <span className="p-1.5 bg-violet-50 rounded-lg text-violet-600">
-              <UserPlus className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-slate-850">{formatNumber(data.enrolled_period)}</h3>
-            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {data.changes.enrolled} <span className="text-slate-500 text-[10px] font-normal">vs. anterior</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-violet-600" />
-        </div>
+      {/* Dashboard Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left & Middle Column: KPI Cards + Daily Engagement Graph */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Row 1: KPI Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Card 1: Unified Contacts Metrics (Inscritos, Leads Ativos, Alunos Ativos) */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm flex flex-col justify-between space-y-3">
+              {/* Item 1: Inscritos no Período */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Inscritos no Período</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-xl font-black text-slate-850">
+                      {isLoadingMetrics ? <div className="h-6 w-16 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.enrolled_period)}
+                    </h4>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      <TrendingUp className="h-3 w-3" />
+                      {data.changes.enrolled}
+                    </span>
+                  </div>
+                </div>
+                <span className="p-1.5 bg-violet-50 rounded-lg text-violet-600 shrink-0">
+                  <UserPlus className="h-4 w-4" />
+                </span>
+              </div>
 
-        {/* Active Leads */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Leads Ativos</span>
-            <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
-              <Users className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-slate-850">
-              {isLoadingMetrics ? <div className="h-8 w-24 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.active_leads)}
-            </h3>
-            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {data.changes.leads} <span className="text-slate-500 text-[10px] font-normal">vs. anterior</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-600" />
-        </div>
+              {/* Item 2: Leads Ativos */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Leads Ativos</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-xl font-black text-slate-850">
+                      {isLoadingMetrics ? <div className="h-6 w-16 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.active_leads)}
+                    </h4>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      <TrendingUp className="h-3 w-3" />
+                      {data.changes.leads}
+                    </span>
+                  </div>
+                </div>
+                <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600 shrink-0">
+                  <Users className="h-4 w-4" />
+                </span>
+              </div>
 
-        {/* Total Students / Active Students */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Alunos Ativos</span>
-            <span className="p-1.5 bg-blue-50 rounded-lg text-blue-600">
-              <GraduationCap className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-slate-850">
-              {isLoadingMetrics ? <div className="h-8 w-24 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.students_count)}
-            </h3>
-            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {data.changes.students} <span className="text-slate-500 text-[10px] font-normal">vs. anterior</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
-        </div>
+              {/* Item 3: Alunos Ativos */}
+              <div className="flex items-center justify-between pt-0.5">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Alunos Ativos</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-xl font-black text-slate-850">
+                      {isLoadingMetrics ? <div className="h-6 w-16 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.students_count)}
+                    </h4>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      <TrendingUp className="h-3 w-3" />
+                      {data.changes.students}
+                    </span>
+                  </div>
+                </div>
+                <span className="p-1.5 bg-blue-50 rounded-lg text-blue-600 shrink-0">
+                  <GraduationCap className="h-4 w-4" />
+                </span>
+              </div>
 
-        {/* Certificates Issued */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Certificados</span>
-            <span className="p-1.5 bg-amber-50 rounded-lg text-amber-600">
-              <FileBadge2 className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-slate-850">
-              {isLoadingMetrics ? <div className="h-8 w-24 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.certificates_issued)}
-            </h3>
-            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {data.changes.certs} <span className="text-slate-500 text-[10px] font-normal">vs. anterior</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-amber-600" />
-        </div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500" />
+            </div>
 
-        {/* Active Subscriptions (Assinaturas ao lado de Certificados) */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Assinaturas</span>
-            <span className="p-1.5 bg-rose-50 rounded-lg text-rose-600">
-              <Sparkles className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-slate-850">
-              {isLoadingMetrics ? <div className="h-8 w-24 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.active_subscriptions)}
-            </h3>
-            <span className="text-xs text-emerald-755 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {data.changes.subs} <span className="text-slate-500 text-[10px] font-normal">vs. anterior</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-rose-600" />
-        </div>
-
-        {/* Revenue / Receita Atribuída (Último card) */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Faturamento</span>
-            <span className="p-1.5 bg-emerald-50 rounded-lg text-emerald-700">
-              <DollarSign className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-black text-slate-850">
-              {isLoadingMetrics ? <div className="h-8 w-32 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.total_paid)}
-            </h3>
-            <span className="text-xs text-emerald-755 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {data.changes.revenue} <span className="text-slate-500 text-[10px] font-normal">vs. anterior</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600" />
-        </div>
-      </div>
-
-      {/* Main Graphs Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:-mt-2">
-        {/* Engagement Graph (Area) */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 lg:col-span-2 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-6">
+            {/* Card 2: Faturamento Total */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm flex flex-col justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">Envios de E-mails & Engajamento Diário</h2>
-                <p className="text-xs text-slate-500">Relação entre e-mails enviados, abertos e cliques gerados no período.</p>
+                <div className="flex justify-between items-start">
+                  <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Faturamento Total</span>
+                  <span className="p-1.5 bg-emerald-50 rounded-lg text-emerald-700">
+                    <DollarSign className="h-4 w-4" />
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-black text-slate-850">
+                    {isLoadingMetrics ? <div className="h-8 w-32 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.total_paid)}
+                  </h3>
+                  <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1.5 w-fit">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    {data.changes.revenue} <span className="text-slate-500 text-[10px] font-normal">vs. anterior</span>
+                  </span>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium pt-3 border-t border-slate-100 mt-4">
+                Receita total transacionada no período
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600" />
+            </div>
+
+            {/* Card 3: Faturamento do E-mail */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-start">
+                  <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Faturamento do E-mail</span>
+                  <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-black text-slate-850">
+                    {isLoadingMetrics ? <div className="h-8 w-32 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.email_revenue || 0)}
+                  </h3>
+                  <div className="mt-1.5">
+                    <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded shadow-2xs inline-block">
+                      {data.email_paid_count || 0} transações pagas
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium pt-3 border-t border-slate-100 mt-4 leading-tight">
+                Janela de atribuição: <strong className="text-slate-600 font-bold">{attributionDaysWindow} dias</strong> (Last-touch)
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
+            </div>
+          </div>
+
+          {/* Row 2: Engagement Graph (AreaChart) */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">Envios de E-mails & Engajamento Diário</h2>
+                  <p className="text-xs text-slate-500">Relação entre e-mails enviados, abertos e cliques gerados no período.</p>
+                </div>
+              </div>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dailyStats}>
+                    <defs>
+                      <linearGradient id="colorEnvios" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorAbertos" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorClicados" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} minTickGap={25} />
+                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 12, marginTop: 10 }} />
+                    <Area
+                      type="monotone"
+                      dataKey="envios"
+                      name="E-mails Enviados"
+                      stroke="#6366f1"
+                      fillOpacity={1}
+                      fill="url(#colorEnvios)"
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="abertos"
+                      name="E-mails Abertos"
+                      stroke="#8b5cf6"
+                      fillOpacity={1}
+                      fill="url(#colorAbertos)"
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="clicados"
+                      name="E-mails Clicados"
+                      stroke="#10b981"
+                      fillOpacity={1}
+                      fill="url(#colorClicados)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
-            <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyStats}>
-                  <defs>
-                    <linearGradient id="colorEnvios" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorAbertos" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorClicados" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} minTickGap={25} />
-                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 12, marginTop: 10 }} />
-                  <Area
-                    type="monotone"
-                    dataKey="envios"
-                    name="E-mails Enviados"
-                    stroke="#6366f1"
-                    fillOpacity={1}
-                    fill="url(#colorEnvios)"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="abertos"
-                    name="E-mails Abertos"
-                    stroke="#8b5cf6"
-                    fillOpacity={1}
-                    fill="url(#colorAbertos)"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="clicados"
-                    name="E-mails Clicados"
-                    stroke="#10b981"
-                    fillOpacity={1}
-                    fill="url(#colorClicados)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
           </div>
         </div>
 
-        {/* Recent Events Panel */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+        {/* Right Column: Recent Events Side Panel (Tall vertical alignment) */}
+        <div className="lg:col-span-1 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-full min-h-[580px]">
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-bold text-slate-800 font-sans">Últimos Eventos</h2>
                 <p className="text-xs text-slate-500 mt-0.5">Atividades recentes dos contatos na plataforma.</p>
               </div>
-              <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-650">
+              <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-650 shrink-0">
                 <Clock className="h-4.5 w-4.5" />
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin max-h-[300px]">
-              {recentEventsList.length === 0 ? (
+            {/* Search Input for Events */}
+            <div className="relative mb-3">
+              <input
+                type="text"
+                placeholder="Buscar nos últimos eventos..."
+                value={eventsSearchTerm}
+                onChange={(e) => setEventsSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              />
+              <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              {eventsSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setEventsSearchTerm("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm font-bold"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin max-h-[520px]">
+              {filteredEventsList.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center space-y-3 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-4">
                   <div className="h-10 w-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
                     <ShoppingBag className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-800 block">Nenhum evento registrado ainda</span>
+                    <span className="text-xs font-bold text-slate-800 block">
+                      {eventsSearchTerm ? "Nenhum evento encontrado para a busca" : "Nenhum evento registrado ainda"}
+                    </span>
                     <p className="text-[11px] text-slate-500 max-w-xs mt-0.5 font-medium">
-                      As vendas de cursos e certificados via Pagar.me aparecerão aqui em tempo real.
+                      {eventsSearchTerm ? "Tente buscar por outro termo ou nome de aluno." : "As vendas de cursos e certificados via Pagar.me aparecerão aqui em tempo real."}
                     </p>
                   </div>
-                  <Link
-                    href="/dashboard/settings"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-xl transition-all shadow-sm"
-                  >
-                    <span>Configurar Integração Pagar.me</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
+                  {!eventsSearchTerm && (
+                    <Link
+                      href="/dashboard/settings"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-xl transition-all shadow-sm"
+                    >
+                      <span>Configurar Integração Pagar.me</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
                 </div>
               ) : (
-                recentEventsList.map((evt) => (
+                filteredEventsList.map((evt) => (
                   <div
                     key={evt.id}
                     onClick={() => setSelectedEventModal(evt)}
