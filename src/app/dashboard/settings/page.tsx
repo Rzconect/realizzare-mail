@@ -4167,20 +4167,38 @@ function WordPressPayloadSimulator() {
   const [selectedEventType, setSelectedEventType] = useState<
     "contact.created" | "course.enrollment" | "course.progress" | "certificate.issued" | "user.action"
   >("contact.created");
-  const [testLogs, setTestLogs] = useState<Array<{ id: string; timestamp: string; event: string; status: number; payload: any }>>([
-    {
-      id: "log-101",
-      timestamp: "04/08/2026 04:05:12",
-      event: "course.enrollment",
-      status: 200,
-      payload: {
-        event: "course.enrollment",
-        student_email: "isabela.m@live.com",
-        course_name: "Introdução à Programação Web",
-        enrolled_at: "2026-08-04T04:05:12Z"
+  const [testLogs, setTestLogs] = useState<Array<{ id: string; timestamp: string; event: string; status: number; payload: any }>>([]);
+
+  const fetchLiveInboundLogs = async () => {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("inbound_webhook_events")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (data && data.length > 0) {
+        const formatted = data.map((item: any) => ({
+          id: item.id,
+          timestamp: new Date(item.created_at || item.processed_at || Date.now()).toLocaleString("pt-BR"),
+          event: item.event_type || item.payload?.event || "evento",
+          status: item.status === "error" ? 500 : 200,
+          payload: item.payload
+        }));
+        setTestLogs(formatted);
       }
+    } catch (e) {
+      console.warn(e);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchLiveInboundLogs();
+    const interval = setInterval(fetchLiveInboundLogs, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const payloads = {
     "contact.created": {
