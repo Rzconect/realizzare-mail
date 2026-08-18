@@ -986,7 +986,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="lg:h-[calc(100vh-130px)] flex flex-col space-y-6 overflow-hidden">
+    <div className="lg:h-[calc(100vh-140px)] flex flex-col space-y-5 pb-3">
       {/* Navigation & Header */}
       <div className="shrink-0 flex items-center justify-between pb-4 border-b border-slate-200">
         <div className="flex items-center gap-2.5 text-sm">
@@ -1015,10 +1015,10 @@ export default function ContactProfilePage({ params }: PageProps) {
       </div>
 
       {/* 3-Column Profile Layout Grid (3 / 6 / 3 cols) - Fixed Height on Desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch flex-1 min-h-0 overflow-y-auto lg:overflow-hidden pb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-1 pb-4">
         
         {/* Column 1: Unified Left Sidebar Card (3 Cols) - Independently Scrollable */}
-        <section className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm lg:h-full lg:overflow-y-auto scrollbar-none">
+        <section className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm lg:h-full lg:overflow-y-auto scrollbar-none my-0.5">
           {/* Section 1: Avatar & Info Básica */}
           <div className="flex flex-col items-center text-center space-y-4">
             <div className="relative h-20 w-20 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center shadow-xs">
@@ -1410,7 +1410,7 @@ export default function ContactProfilePage({ params }: PageProps) {
         </section>
 
         {/* Column 2: KPIs, Matrículas, Fluxos, Transações (6 Cols) - Independently Scrollable */}
-        <section className="lg:col-span-6 space-y-6 lg:h-full lg:overflow-y-auto pr-1 scrollbar-none">
+        <section className="lg:col-span-6 space-y-6 lg:h-full lg:overflow-y-auto px-1.5 py-1 scrollbar-none pb-6">
           {/* Middle Top KPI Metrics Cards (Light and Minimal layout) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* KPI 1: Emails Sent */}
@@ -1671,8 +1671,8 @@ export default function ContactProfilePage({ params }: PageProps) {
         </section>
 
         {/* Column 3: Timeline (3 Cols) - Independently Scrollable */}
-        <section className="lg:col-span-3 lg:h-full lg:overflow-y-auto scrollbar-none pr-1">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-full">
+        <section className="lg:col-span-3 lg:h-full lg:overflow-y-auto scrollbar-none p-1">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between min-h-full my-0.5">
             <div className="space-y-6">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
                 <Clock className="h-4.5 w-4.5 text-indigo-650" />
