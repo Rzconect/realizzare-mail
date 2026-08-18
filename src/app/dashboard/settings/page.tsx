@@ -4239,16 +4239,41 @@ function WordPressPayloadSimulator() {
     }
   };
 
-  const handleRunSimulation = () => {
+  const [isSending, setIsSending] = useState(false);
+
+  const handleRunSimulation = async () => {
+    setIsSending(true);
     const currentPayload = payloads[selectedEventType];
-    const newLog = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleString("pt-BR"),
-      event: selectedEventType,
-      status: 200,
-      payload: currentPayload
-    };
-    setTestLogs([newLog, ...testLogs]);
+    try {
+      const res = await fetch("/api/v1/realizzare-events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer realizzare_secret_api_key_test"
+        },
+        body: JSON.stringify(currentPayload)
+      });
+      const resData = await res.json();
+      const newLog = {
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toLocaleString("pt-BR"),
+        event: selectedEventType,
+        status: res.status,
+        payload: resData
+      };
+      setTestLogs([newLog, ...testLogs]);
+    } catch (e: any) {
+      const newLog = {
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toLocaleString("pt-BR"),
+        event: selectedEventType,
+        status: 500,
+        payload: { error: e.message }
+      };
+      setTestLogs([newLog, ...testLogs]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -4304,10 +4329,11 @@ function WordPressPayloadSimulator() {
             <button
               type="button"
               onClick={handleRunSimulation}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              disabled={isSending}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
             >
               <CheckCircle2 className="h-4 w-4" />
-              <span>Simular Envio de Teste (200 OK)</span>
+              <span>{isSending ? "Processando no Servidor..." : "Disparar Payload de Teste (Simulação POST)"}</span>
             </button>
           </div>
         </div>
