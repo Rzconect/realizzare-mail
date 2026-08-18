@@ -11,13 +11,13 @@ export interface AttributionConfig {
 
 export const DEFAULT_ATTRIBUTION_CONFIG: AttributionConfig = {
   attrEmailOpenDays: "5 dias",
-  attrEmailClickDays: "14 dias",
-  attrSmsDeliveredHours: "24 horas",
-  attrSmsClickDays: "7 dias",
+  attrEmailClickDays: "5 dias",
+  attrSmsDeliveredHours: "12 horas",
+  attrSmsClickDays: "5 dias",
   attrExcludeTransactional: false,
-  attrExcludeEmailBots: false,
-  attrExcludeSmsBots: false,
-  attrExcludeAppleMpp: false
+  attrExcludeEmailBots: true,
+  attrExcludeSmsBots: true,
+  attrExcludeAppleMpp: true
 };
 
 export function getAttributionConfig(): AttributionConfig {
@@ -32,7 +32,7 @@ export function getAttributionConfig(): AttributionConfig {
   return DEFAULT_ATTRIBUTION_CONFIG;
 }
 
-export function parseDaysFromSetting(settingStr: string, fallback = 7): number {
+export function parseDaysFromSetting(settingStr: string, fallback = 5): number {
   if (!settingStr) return fallback;
   const match = settingStr.match(/(\d+)/);
   return match ? parseInt(match[1], 10) : fallback;
@@ -40,10 +40,11 @@ export function parseDaysFromSetting(settingStr: string, fallback = 7): number {
 
 export function getEmailAttributionSummary(): { windowLabel: string; openDays: number; clickDays: number } {
   const config = getAttributionConfig();
-  const clickDays = parseDaysFromSetting(config.attrEmailClickDays, 14);
+  const clickDays = parseDaysFromSetting(config.attrEmailClickDays, 5);
   const openDays = parseDaysFromSetting(config.attrEmailOpenDays, 5);
   
-  const windowLabel = config.attrEmailClickDays || `${clickDays} dias`;
+  const rawStr = (config.attrEmailClickDays || config.attrEmailOpenDays || "5").replace(/dias/gi, "").trim();
+  const windowLabel = `${rawStr} dias`;
   
   return {
     windowLabel,

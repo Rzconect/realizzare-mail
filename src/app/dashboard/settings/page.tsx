@@ -77,10 +77,46 @@ export default function SettingsPage() {
   const [simLogSuccess, setSimLogSuccess] = useState<string | null>(null);
 
   // Attribution Settings State (Klaviyo Style)
-  const [attrEmailOpenDays, setAttrEmailOpenDays] = useState("5 dias");
-  const [attrEmailClickDays, setAttrEmailClickDays] = useState("5 dias");
-  const [attrSmsDeliveredHours, setAttrSmsDeliveredHours] = useState("12 horas");
-  const [attrSmsClickDays, setAttrSmsClickDays] = useState("5 dias");
+  const [attrEmailOpenDays, setAttrEmailOpenDays] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("realizzare_attribution_config");
+        if (raw) return JSON.parse(raw).attrEmailOpenDays || "5 dias";
+      } catch (e) {}
+    }
+    return "5 dias";
+  });
+
+  const [attrEmailClickDays, setAttrEmailClickDays] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("realizzare_attribution_config");
+        if (raw) return JSON.parse(raw).attrEmailClickDays || "5 dias";
+      } catch (e) {}
+    }
+    return "5 dias";
+  });
+
+  const [attrSmsDeliveredHours, setAttrSmsDeliveredHours] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("realizzare_attribution_config");
+        if (raw) return JSON.parse(raw).attrSmsDeliveredHours || "12 horas";
+      } catch (e) {}
+    }
+    return "12 horas";
+  });
+
+  const [attrSmsClickDays, setAttrSmsClickDays] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("realizzare_attribution_config");
+        if (raw) return JSON.parse(raw).attrSmsClickDays || "5 dias";
+      } catch (e) {}
+    }
+    return "5 dias";
+  });
+
   const [attrExcludeTransactional, setAttrExcludeTransactional] = useState(false);
   const [attrExcludeEmailBots, setAttrExcludeEmailBots] = useState(true);
   const [attrExcludeSmsBots, setAttrExcludeSmsBots] = useState(true);
@@ -2147,7 +2183,21 @@ export default function SettingsPage() {
                             <span className="text-slate-600">Aberto:</span>
                             <select
                               value={attrEmailOpenDays}
-                              onChange={(e) => setAttrEmailOpenDays(e.target.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setAttrEmailOpenDays(val);
+                                const config = {
+                                  attrEmailOpenDays: val,
+                                  attrEmailClickDays,
+                                  attrSmsDeliveredHours,
+                                  attrSmsClickDays,
+                                  attrExcludeTransactional,
+                                  attrExcludeEmailBots,
+                                  attrExcludeSmsBots,
+                                  attrExcludeAppleMpp
+                                };
+                                localStorage.setItem("realizzare_attribution_config", JSON.stringify(config));
+                              }}
                               className="bg-slate-50 border border-slate-200 rounded-lg py-1 px-2.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
                             >
                               <option value="1 dia">1 dia</option>
@@ -2164,7 +2214,21 @@ export default function SettingsPage() {
                             <span className="text-slate-600">Clicado:</span>
                             <select
                               value={attrEmailClickDays}
-                              onChange={(e) => setAttrEmailClickDays(e.target.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setAttrEmailClickDays(val);
+                                const config = {
+                                  attrEmailOpenDays,
+                                  attrEmailClickDays: val,
+                                  attrSmsDeliveredHours,
+                                  attrSmsClickDays,
+                                  attrExcludeTransactional,
+                                  attrExcludeEmailBots,
+                                  attrExcludeSmsBots,
+                                  attrExcludeAppleMpp
+                                };
+                                localStorage.setItem("realizzare_attribution_config", JSON.stringify(config));
+                              }}
                               className="bg-slate-50 border border-slate-200 rounded-lg py-1 px-2.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
                             >
                               <option value="1 dia">1 dia</option>

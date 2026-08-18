@@ -980,7 +980,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-[10px] text-slate-400 font-medium pt-2 border-t border-slate-100 mt-2 truncate">
-                    Janela: <strong className="text-slate-600 font-bold">{attributionDaysWindow} dias</strong> (Last-touch)
+                    Janela: <strong className="text-slate-600 font-bold">{attributionDaysWindow}</strong> (Last-touch)
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
                 </div>
