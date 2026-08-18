@@ -177,6 +177,29 @@ function formatTransactionDate(paidAt: string, productType?: string): string {
   return `${paidAt}${method}`;
 }
 
+function formatTimelineTimestamp(ts: string): string {
+  if (!ts) return "";
+  try {
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) {
+      const datePart = d.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "America/Sao_Paulo"
+      });
+      const timePart = d.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Sao_Paulo"
+      });
+      return `${datePart} às ${timePart}`;
+    }
+  } catch (e) {}
+
+  return ts;
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -398,6 +421,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             let label = "Evento do Curso (WordPress)";
             let details = `Curso: ${ce.metadata?.course_name || "Realizzare"}`;
             let type = "enrollment";
+            let note = "";
 
             if (ce.event_type === "started") {
               label = "Matrícula em Curso (WordPress)";
@@ -411,6 +435,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               label = "Certificado Emitido (WordPress)";
               details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${ce.metadata?.course_name || "Realizzare"}' com Nota ${ce.metadata?.grade || "10.0"}`;
               type = "enrollment";
+              note = "(1 crédito de certificado consumido)";
             }
 
             rawEvents.push({
@@ -418,6 +443,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               type,
               label,
               details,
+              note: ce.metadata?.note || note,
               timestamp: ce.created_at
             });
           });
@@ -441,7 +467,15 @@ export default function ContactProfilePage({ params }: PageProps) {
             seenEvtKeys.add(key);
             return true;
           })
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .map((e, idx) => ({
+            id: e.id || `evt-${idx}`,
+            type: e.type || "import",
+            label: e.label || "Evento Registrado",
+            details: e.details || "",
+            note: e.note || "",
+            timestamp: e.timestamp
+          }));
 
         const profileObj = {
           first_name: contact.first_name || "",
@@ -1629,35 +1663,15 @@ export default function ContactProfilePage({ params }: PageProps) {
                       <div className="flex items-center justify-between gap-2.5">
                         <span className="text-xs font-bold text-slate-800">{event.label}</span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0">
-                          {(() => {
-                            const ts = event.timestamp || "12/08/2026";
-                            const str = String(ts).trim();
-
-                            // ISO YYYY-MM-DD format (e.g. 2026-08-12)
-                            if (str.includes("-")) {
-                              const isoPart = str.split("T")[0];
-                              const parts = isoPart.split("-");
-                              if (parts.length === 3 && parts[0].length === 4) {
-                                return `${parts[2].padStart(2, "0")}/${parts[1].padStart(2, "0")}/${parts[0]}`;
-                              }
-                            }
-
-                            // Slashes format (e.g. 12/08/2026)
-                            if (str.includes("/")) {
-                              const parts = str.split("/");
-                              if (parts.length === 3) {
-                                if (parts[0].length === 4) {
-                                  return `${parts[2].padStart(2, "0")}/${parts[1].padStart(2, "0")}/${parts[0]}`;
-                                }
-                                return `${parts[0].padStart(2, "0")}/${parts[1].padStart(2, "0")}/${parts[2]}`;
-                              }
-                            }
-
-                            return str;
-                          })()}
+                          {formatTimelineTimestamp(event.timestamp)}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 leading-normal">{event.details}</p>
+                      {event.note && (
+                        <p className="text-[11px] text-indigo-650 font-bold mt-0.5">
+                          {event.note}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}

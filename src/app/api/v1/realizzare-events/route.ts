@@ -281,7 +281,7 @@ export async function POST(request: Request) {
         })
         .eq("id", enrollment.id);
 
-      // 2. Log Certificate Event in 'course_events'
+      // 2. Log Certificate Event in 'course_events' with credit consumption note
       await supabase.from("course_events").insert({
         org_id: DEFAULT_ORG_ID,
         contact_id: contact.id,
@@ -292,20 +292,10 @@ export async function POST(request: Request) {
           code: certCode,
           course_name: courseName,
           grade: body.certificate?.grade || "10.0",
-          issued_at: new Date().toISOString()
+          issued_at: new Date().toISOString(),
+          credit_consumed: true,
+          note: "(1 crédito de certificado consumido)"
         }
-      });
-
-      // 3. Register transaction record in 'purchases' so Transações & Faturamento displays it
-      await supabase.from("purchases").insert({
-        org_id: DEFAULT_ORG_ID,
-        contact_id: contact.id,
-        product_type: "certificate",
-        product_name: `Certificado de Conclusão - ${courseName}`,
-        amount: 45.70,
-        sku: certCode,
-        status: "paid",
-        paid_at: new Date().toISOString()
       });
 
       processedResult = { action: "certificate_issued", email, courseName, certCode };
