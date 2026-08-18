@@ -2647,7 +2647,7 @@ export default function ContactsPage() {
   const paginatedContacts = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return processedContacts.slice(startIndex, startIndex + itemsPerPage);
-  }, [processedContacts, currentPage]);
+  }, [processedContacts, currentPage, itemsPerPage]);
 
   const getActiveConsentPageData = () => {
     switch (activeConsentPageType) {
