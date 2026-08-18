@@ -979,8 +979,38 @@ export default function ContactProfilePage({ params }: PageProps) {
 
   if (!profile || !draft) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      <div className="flex-1 flex flex-col space-y-4 animate-fadeIn">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+          <div className="h-6 w-48 bg-slate-200 rounded-md animate-pulse" />
+          <div className="h-9 w-32 bg-slate-200 rounded-xl animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0">
+          <div className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-xs animate-pulse">
+            <div className="h-20 w-20 bg-slate-200 rounded-full mx-auto" />
+            <div className="h-6 w-36 bg-slate-200 rounded-md mx-auto" />
+            <div className="h-4 w-48 bg-slate-200 rounded-md mx-auto" />
+            <div className="space-y-3 pt-6">
+              <div className="h-10 w-full bg-slate-100 rounded-xl" />
+              <div className="h-10 w-full bg-slate-100 rounded-xl" />
+              <div className="h-10 w-full bg-slate-100 rounded-xl" />
+            </div>
+          </div>
+          <div className="lg:col-span-6 space-y-6">
+            <div className="grid grid-cols-4 gap-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-20 bg-white border border-slate-200 rounded-3xl p-4 animate-pulse" />
+              ))}
+            </div>
+            <div className="h-64 bg-white border border-slate-200 rounded-3xl p-6 animate-pulse" />
+            <div className="h-48 bg-white border border-slate-200 rounded-3xl p-6 animate-pulse" />
+          </div>
+          <div className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 animate-pulse space-y-4">
+            <div className="h-5 w-32 bg-slate-200 rounded-md" />
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-slate-100 rounded-xl" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

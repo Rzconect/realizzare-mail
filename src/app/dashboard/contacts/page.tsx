@@ -4476,9 +4476,22 @@ export default function ContactsPage() {
                     </td>
                   </tr>
                 ))
+              ) : !isLoaded ? (
+                [...Array(6)].map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-3.5 px-5 text-center"><div className="h-4 w-4 bg-slate-200/80 rounded mx-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-36 bg-slate-200/80 rounded-md" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-44 bg-slate-200/80 rounded-md" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-slate-200/70 rounded-md" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-40 bg-slate-200/70 rounded-md" /></td>
+                    <td className="py-3.5 px-4 text-center"><div className="h-5 w-24 bg-indigo-100/70 rounded-full mx-auto" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-20 bg-slate-200/70 rounded-md ml-auto" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-7 w-7 bg-slate-200/80 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
                     Nenhum contato encontrado para estes critérios.
                   </td>
                 </tr>
