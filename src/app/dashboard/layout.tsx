@@ -229,15 +229,33 @@ export default function DashboardLayout({
     return () => window.removeEventListener("storage", loadUsage);
   }, [pathname]);
 
-  const navigation: SidebarItem[] = [
-    { name: "Início", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Contatos", href: "/dashboard/contacts", icon: Users },
-    { name: "Campanhas", href: "/dashboard/campaigns", icon: Mail },
-    { name: "Automações", href: "/dashboard/automations", icon: GitBranch },
-    { name: "Conteúdos", href: "/dashboard/contents", icon: Image },
-    { name: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },
-    { name: "Cursos", href: "/dashboard/courses", icon: BookOpen },
-  ];
+  const isNiltonUser = currentUser?.role?.includes("Desenvolvedor") || currentUser?.email?.includes("nilton");
+
+  useEffect(() => {
+    if (isNiltonUser && pathname) {
+      if (
+        !pathname.startsWith("/dashboard/contacts") &&
+        !pathname.startsWith("/dashboard/settings")
+      ) {
+        router.push("/dashboard/settings?sub=integration");
+      }
+    }
+  }, [isNiltonUser, pathname, router]);
+
+  const navigation: SidebarItem[] = isNiltonUser
+    ? [
+        { name: "Contatos", href: "/dashboard/contacts", icon: Users },
+        { name: "Integração WordPress", href: "/dashboard/settings?sub=integration", icon: Settings }
+      ]
+    : [
+        { name: "Início", href: "/dashboard", icon: LayoutDashboard },
+        { name: "Contatos", href: "/dashboard/contacts", icon: Users },
+        { name: "Campanhas", href: "/dashboard/campaigns", icon: Mail },
+        { name: "Automações", href: "/dashboard/automations", icon: GitBranch },
+        { name: "Conteúdos", href: "/dashboard/contents", icon: Image },
+        { name: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },
+        { name: "Cursos", href: "/dashboard/courses", icon: BookOpen },
+      ];
 
   const handleLogout = async () => {
     try {

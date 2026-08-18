@@ -160,6 +160,7 @@ export default function SettingsPage() {
 
   // User profile states
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const isNiltonUser = currentUser?.role?.includes("Desenvolvedor") || currentUser?.email?.includes("nilton");
   const [firstName, setFirstName] = useState("Leonardo");
   const [lastName, setLastName] = useState("Christian");
   const [email, setEmail] = useState("leonardo@realizzare.com.br");
@@ -1043,18 +1044,21 @@ export default function SettingsPage() {
       {/* 2. Horizontal Tabs */}
       <div className="border-b border-slate-200">
         <nav className="flex flex-wrap gap-1 -mb-px">
-          {[
-            { id: "geral", label: "Geral", icon: Settings2 },
-            { id: "email", label: "E-mail", icon: Mail },
-            { id: "dominios", label: "Domínios", icon: Globe },
-            { id: "atribuicao", label: "Atribuição", icon: RotateCcw },
-            { id: "integracoes", label: "Integrações", icon: CreditCard },
-            { id: "api", label: "Chaves de API", icon: Key },
-            { id: "webhooks", label: "Webhooks", icon: Webhook },
-            { id: "suppression", label: "Suppression List", icon: Ban },
-            { id: "ai", label: "Inteligência Artificial", icon: Sparkles },
-            { id: "seguranca", label: "Segurança", icon: Shield }
-          ].map((tab) => {
+          {(isNiltonUser
+            ? [{ id: "integracoes", label: "Integração Realizzare WordPress", icon: CreditCard }]
+            : [
+                { id: "geral", label: "Geral", icon: Settings2 },
+                { id: "email", label: "E-mail", icon: Mail },
+                { id: "dominios", label: "Domínios", icon: Globe },
+                { id: "atribuicao", label: "Atribuição", icon: RotateCcw },
+                { id: "integracoes", label: "Integrações", icon: CreditCard },
+                { id: "api", label: "Chaves de API", icon: Key },
+                { id: "webhooks", label: "Webhooks", icon: Webhook },
+                { id: "suppression", label: "Suppression List", icon: Ban },
+                { id: "ai", label: "Inteligência Artificial", icon: Sparkles },
+                { id: "seguranca", label: "Segurança", icon: Shield }
+              ]
+          ).map((tab) => {
             const Icon = tab.icon;
             const isSelected = activeTab === tab.id;
             return (
@@ -2332,8 +2336,10 @@ export default function SettingsPage() {
           {/* ==================================================== */}
           {activeTab === "integracoes" && (
             <div className="space-y-6 animate-fadeIn">
-              {/* Header with Title & Action Buttons */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+              {!isNiltonUser && (
+                <>
+                  {/* Header with Title & Action Buttons */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-extrabold text-slate-850 font-sans">Integrações de Checkout & Pagamentos</h2>
@@ -2698,99 +2704,10 @@ export default function SettingsPage() {
                   </label>
                 </div>
               </div>
-            </div>
-          )}
+            </>
+            )}
 
-          {/* ==================================================== */}
-          {/* TAB 4: CHAVES DE API                                 */}
-          {/* ==================================================== */}
-          {activeTab === "api" && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-800">Chaves de API Privadas</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Desenvolva integrações seguras com a plataforma de e-mail marketing.</p>
-                </div>
-                <button
-                  onClick={() => setShowApiKeyModal(true)}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Gerar Nova Chave</span>
-                </button>
-              </div>
-
-              {/* Keys list table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-[10px] uppercase font-bold tracking-wider text-slate-555 text-slate-500">
-                      <th className="py-2.5">Nome da Chave</th>
-                      <th className="py-2.5">Chave</th>
-                      <th className="py-2.5">Criada Em</th>
-                      <th className="py-2.5">Último Uso</th>
-                      <th className="py-2.5">Escopo</th>
-                      <th className="py-2.5 text-right w-12">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                    {apiKeys.map((k) => (
-                      <tr key={k.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3.5 font-bold text-slate-800">{k.name}</td>
-                        <td className="py-3.5 font-mono text-slate-500">{k.keyHash}</td>
-                        <td className="py-3.5 text-slate-550 text-slate-500">{k.created}</td>
-                        <td className="py-3.5 text-slate-550 text-slate-500">{k.lastUsed}</td>
-                        <td className="py-3.5">
-                          <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-150 text-indigo-700 font-bold rounded text-[9px]">
-                            {k.scope}
-                          </span>
-                        </td>
-                        <td className="py-3.5 text-right">
-                          <button
-                            onClick={() => handleRevokeKey(k.id)}
-                            className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors cursor-pointer"
-                            title="Revogar Chave"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Restrição de IP do Servidor (Segurança Solicitada pelo TI) */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 text-left">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4.5 w-4.5 text-indigo-600" />
-                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Restrição por IP de Origem (IP Whitelist)</h4>
-                  </div>
-                  <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[9px] rounded uppercase">
-                    Proteção Ativa
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  Defina o endereço IP fixo do servidor WordPress da Realizzare. A API rejeitará com `403 Forbidden` qualquer chamada externa que não venha deste IP.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="text"
-                    defaultValue="185.215.180.45"
-                    placeholder="Ex: 185.215.180.45 (IP do Servidor WordPress)"
-                    className="flex-1 bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
-                  />
-                  <button
-                    onClick={() => alert("IP do servidor salvo e protegido com sucesso!")}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
-                  >
-                    Salvar Restrição de IP
-                  </button>
-                </div>
-              </div>
-
-              {/* Área de Integração e Testes WordPress */}
+            {/* Área de Integração e Testes WordPress */}
               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                   <div>
@@ -2856,6 +2773,97 @@ export default function SettingsPage() {
 
                 {/* Interactive Simulator Component */}
                 <WordPressPayloadSimulator />
+              </div>
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* TAB 4: CHAVES DE API                                 */}
+          {/* ==================================================== */}
+          {activeTab === "api" && (
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Chaves de API Privadas</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Desenvolva integrações seguras com a plataforma de e-mail marketing.</p>
+                </div>
+                <button
+                  onClick={() => setShowApiKeyModal(true)}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Gerar Nova Chave</span>
+                </button>
+              </div>
+
+              {/* Keys list table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+                      <th className="py-2.5">Nome da Chave</th>
+                      <th className="py-2.5">Chave</th>
+                      <th className="py-2.5">Criada Em</th>
+                      <th className="py-2.5">Último Uso</th>
+                      <th className="py-2.5">Escopo</th>
+                      <th className="py-2.5 text-right w-12">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {apiKeys.map((k) => (
+                      <tr key={k.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3.5 font-bold text-slate-800">{k.name}</td>
+                        <td className="py-3.5 font-mono text-slate-500">{k.keyHash}</td>
+                        <td className="py-3.5 text-slate-500">{k.created}</td>
+                        <td className="py-3.5 text-slate-500">{k.lastUsed}</td>
+                        <td className="py-3.5">
+                          <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-150 text-indigo-700 font-bold rounded text-[9px]">
+                            {k.scope}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-right">
+                          <button
+                            onClick={() => handleRevokeKey(k.id)}
+                            className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors cursor-pointer"
+                            title="Revogar Chave"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Restrição de IP do Servidor */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4.5 w-4.5 text-indigo-600" />
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Restrição por IP de Origem (IP Whitelist)</h4>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[9px] rounded uppercase">
+                    Proteção Ativa
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Defina o endereço IP fixo do servidor WordPress da Realizzare. A API rejeitará com `403 Forbidden` qualquer chamada externa que não venha deste IP.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    defaultValue="185.215.180.45"
+                    placeholder="Ex: 185.215.180.45 (IP do Servidor WordPress)"
+                    className="flex-1 bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    onClick={() => alert("IP do servidor salvo e protegido com sucesso!")}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
+                  >
+                    Salvar Restrição de IP
+                  </button>
+                </div>
               </div>
             </div>
           )}
