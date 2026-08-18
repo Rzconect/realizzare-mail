@@ -30,6 +30,9 @@ interface ListSegment {
   id: string;
   name: string;
   count: number;
+  description?: string;
+  isSegment?: boolean;
+  isStatic?: boolean;
 }
 
 interface SegmentRule {
@@ -951,6 +954,75 @@ function CreateCampaignForm() {
           localStorage.setItem(`realizzare_profile_${key}`, JSON.stringify(mockProfileData[key]));
         }
       });
+
+      // Sync lists and segments dynamically from DB & local storage
+      const loadDynamicAudienceLists = async () => {
+        const audienceMap = new Map<string, ListSegment>();
+        initialListsAndSegments.forEach(item => audienceMap.set(item.id, item));
+
+        try {
+          const storedCustomLists = localStorage.getItem("realizzare_custom_lists");
+          if (storedCustomLists) {
+            const parsed = JSON.parse(storedCustomLists);
+            parsed.forEach((l: any) => {
+              if (l.name) {
+                const itemKey = l.id || `list-${l.name}`;
+                audienceMap.set(itemKey, {
+                  id: itemKey,
+                  name: l.name,
+                  count: l.subscriberCount || l.count || 0,
+                  description: l.description || "Lista de contatos",
+                  isSegment: false,
+                  isStatic: l.isStatic !== false
+                });
+              }
+            });
+          }
+
+          const storedSegments = localStorage.getItem("realizzare_saved_segments");
+          if (storedSegments) {
+            const parsed = JSON.parse(storedSegments);
+            parsed.forEach((s: any) => {
+              if (s.name) {
+                const itemKey = s.id || `seg-${s.name}`;
+                audienceMap.set(itemKey, {
+                  id: itemKey,
+                  name: s.name,
+                  count: s.count || s.subscriberCount || 0,
+                  description: s.description || "Segmento de público",
+                  isSegment: true,
+                  isStatic: s.isStatic !== false
+                });
+              }
+            });
+          }
+        } catch (e) {}
+
+        try {
+          const { createClient } = await import("@/lib/supabase/client");
+          const supabase = createClient();
+          const { data: dbLists } = await supabase
+            .from("lists")
+            .select("id, name, type, subscriber_count, description");
+          
+          if (dbLists && dbLists.length > 0) {
+            dbLists.forEach((l: any) => {
+              audienceMap.set(l.id, {
+                id: l.id,
+                name: l.name,
+                count: l.subscriber_count || 0,
+                description: l.description || (l.type === "segment" ? "Segmentação de público" : "Lista de transmissão"),
+                isSegment: l.type === "segment",
+                isStatic: true
+              });
+            });
+          }
+        } catch (e) {}
+
+        setListsList(Array.from(audienceMap.values()));
+      };
+
+      loadDynamicAudienceLists();
     }
   }, []);
 

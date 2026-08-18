@@ -2218,20 +2218,55 @@ export default function ContactsPage() {
     setShowCreateStaticSegmentModal(true);
   };
 
-  const handleCreateStaticSegmentConfirm = (name: string) => {
+  const handleCreateStaticSegmentConfirm = async (name: string) => {
     const newId = `seg-static-${Date.now()}`;
     const newSegment = {
       id: newId,
       name: name,
       subscriberCount: selectedContacts.length,
+      count: selectedContacts.length,
+      type: "Segmento Fixo",
       url: "",
-      description: "Segmento fixo criado na tela de contatos",
+      description: `Segmentação fixa contendo ${selectedContacts.length} contatos.`,
       isStatic: true,
       contactIds: [...selectedContacts]
     };
     
+    // Persist in local storage for both lists & savedSegments
     const updatedLists = [...lists, newSegment];
     saveLists(updatedLists);
+
+    const updatedSegments = [...savedSegments, newSegment];
+    saveSegments(updatedSegments);
+    
+    // Async persist to Supabase DB
+    try {
+      const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
+      const supabase = createClient();
+      const { data: inserted } = await supabase
+        .from("lists")
+        .insert({
+          org_id: DEFAULT_ORG_ID,
+          name: name,
+          type: "segment",
+          subscriber_count: selectedContacts.length,
+          description: newSegment.description
+        })
+        .select()
+        .single();
+
+      if (inserted && selectedContacts.length > 0) {
+        const subRows = selectedContacts.map(cid => ({
+          org_id: DEFAULT_ORG_ID,
+          list_id: inserted.id,
+          contact_id: cid,
+          status: "subscribed"
+        }));
+        await supabase.from("list_subscribers").upsert(subRows, { onConflict: "list_id,contact_id" });
+      }
+    } catch (e) {
+      console.warn("Supabase lists sync exception:", e);
+    }
     
     selectedContacts.forEach(cid => {
       const storedProfile = localStorage.getItem(`realizzare_profile_${cid}`);
@@ -2275,7 +2310,7 @@ export default function ContactsPage() {
 
     setShowCreateStaticSegmentModal(false);
     setSelectedContacts([]);
-    alert(`Segmento estático "${name}" criado com sucesso contendo ${newSegment.subscriberCount} contatos!`);
+    alert(`Segmentação "${name}" criada com sucesso! Ela foi salva nas suas Segmentações e estará disponível para seleção no disparo de campanhas.`);
   };
 
   const allExistingTags = useMemo(() => {
