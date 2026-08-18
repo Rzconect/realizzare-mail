@@ -148,12 +148,6 @@ export default function DashboardPage() {
     );
   });
 
-  const emailTotalSent = dailyStats.reduce((acc, curr) => acc + (curr.envios || 0), 0);
-  const emailTotalOpened = dailyStats.reduce((acc, curr) => acc + (curr.abertos || 0), 0);
-  const emailTotalClicked = dailyStats.reduce((acc, curr) => acc + (curr.clicados || 0), 0);
-  const emailOpenRate = emailTotalSent > 0 ? (emailTotalOpened / emailTotalSent) * 100 : 0;
-  const emailClickRate = emailTotalSent > 0 ? (emailTotalClicked / emailTotalSent) * 100 : 0;
-
   // Live Sync trigger handler
   const handleLiveSync = async () => {
     setIsSyncing(true);
@@ -621,6 +615,12 @@ export default function DashboardPage() {
 
   const [dailyStats, setDailyStats] = useState<any[]>([]);
   const [isLoadingDailyStats, setIsLoadingDailyStats] = useState(true);
+
+  const emailTotalSent = dailyStats.reduce((acc, curr) => acc + (curr.envios || 0), 0);
+  const emailTotalOpened = dailyStats.reduce((acc, curr) => acc + (curr.abertos || 0), 0);
+  const emailTotalClicked = dailyStats.reduce((acc, curr) => acc + (curr.clicados || 0), 0);
+  const emailOpenRate = emailTotalSent > 0 ? (emailTotalOpened / emailTotalSent) * 100 : 0;
+  const emailClickRate = emailTotalSent > 0 ? (emailTotalClicked / emailTotalSent) * 100 : 0;
 
   useEffect(() => {
     const loadDailyStats = async () => {
