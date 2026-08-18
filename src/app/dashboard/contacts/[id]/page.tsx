@@ -986,9 +986,9 @@ export default function ContactProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="lg:h-[calc(100vh-140px)] flex flex-col space-y-5 pb-3">
+    <div className="lg:h-[calc(100vh-100px)] flex flex-col space-y-4 overflow-hidden min-h-0">
       {/* Navigation & Header */}
-      <div className="shrink-0 flex items-center justify-between pb-4 border-b border-slate-200">
+      <div className="shrink-0 flex items-center justify-between pb-3 border-b border-slate-200">
         <div className="flex items-center gap-2.5 text-sm">
           <button
             onClick={() => router.push("/dashboard/contacts")}
@@ -1015,10 +1015,10 @@ export default function ContactProfilePage({ params }: PageProps) {
       </div>
 
       {/* 3-Column Profile Layout Grid (3 / 6 / 3 cols) - Fixed Height on Desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-1 pb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-0.5 pb-1">
         
         {/* Column 1: Unified Left Sidebar Card (3 Cols) - Independently Scrollable */}
-        <section className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm lg:h-full lg:overflow-y-auto scrollbar-none my-0.5">
+        <section className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm lg:h-full lg:overflow-y-auto scrollbar-none">
           {/* Section 1: Avatar & Info Básica */}
           <div className="flex flex-col items-center text-center space-y-4">
             <div className="relative h-20 w-20 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center shadow-xs">

@@ -726,7 +726,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Scrollable Content Pane */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 pt-20 md:pt-8 bg-slate-50 relative">
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-3 md:py-4 pt-20 md:pt-6 bg-slate-50 relative flex flex-col">
           {children}
         </main>
       </div>

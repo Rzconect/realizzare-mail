@@ -1223,7 +1223,7 @@ interface MultiSelectCourseStatusDropdownProps {
 function MultiSelectCourseStatusDropdown({ selectedValues, onChange }: MultiSelectCourseStatusDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const options = ["Ativo", "Em Andamento", "Finalizado", "Não informado"];
+  const options = ["Matriculado", "Em Andamento", "Concluído", "Finalizado", "Não Iniciado / Sem Matrícula"];
   
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -1641,6 +1641,7 @@ export default function ContactsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
+  const [latestCourseFilter, setLatestCourseFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [courseStatusFilter, setCourseStatusFilter] = useState<string[]>([]);
   const [certFilter, setCertFilter] = useState("all");
@@ -1936,14 +1937,16 @@ export default function ContactsPage() {
           );
           const primaryEnrollment = sortedEnrollments[0];
           const course = primaryEnrollment?.courses?.name || "Sem Matrícula";
-          let courseStatus = "Nenhum";
+          let courseStatus = "Não Iniciado / Sem Matrícula";
           if (primaryEnrollment) {
-            if (primaryEnrollment.certificate_issued || primaryEnrollment.progress >= 100 || primaryEnrollment.status === "completed") {
-              courseStatus = "Concluído (100%)";
+            if (primaryEnrollment.certificate_issued || (primaryEnrollment.progress >= 100 && primaryEnrollment.status === "completed")) {
+              courseStatus = "Finalizado";
+            } else if (primaryEnrollment.progress >= 100) {
+              courseStatus = "Concluído";
             } else if (primaryEnrollment.progress > 0) {
-              courseStatus = `Em Andamento (${primaryEnrollment.progress}%)`;
+              courseStatus = "Em Andamento";
             } else {
-              courseStatus = "Matriculado (0%)";
+              courseStatus = "Matriculado";
             }
           }
 
@@ -2583,14 +2586,32 @@ export default function ContactsPage() {
       result = result.filter((c) => c.status === statusFilter);
     }
 
-    // Course filter
-    if (courseFilter !== "all") {
-      result = result.filter((c) => c.course === courseFilter);
+    // Course filter (checks any enrollment)
+    if (courseFilter !== "all" && courseFilter !== "") {
+      result = result.filter((c) => {
+        const matchesPrimary = c.course === courseFilter;
+        const matchesAny = c.enrollments?.some((e: any) => e.courses?.name === courseFilter || e.course_name === courseFilter);
+        return matchesPrimary || matchesAny;
+      });
+    }
+
+    // Latest Course Filter (checks exact primary/latest enrolled course)
+    if (latestCourseFilter !== "all" && latestCourseFilter !== "") {
+      result = result.filter((c) => c.course === latestCourseFilter);
     }
     
     // Course status filter
     if (courseStatusFilter.length > 0) {
-      result = result.filter((c) => courseStatusFilter.includes(c.courseStatus));
+      result = result.filter((c) => {
+        const cStatus = (c.courseStatus || "").toLowerCase();
+        return courseStatusFilter.some(filterOpt => {
+          const fOpt = filterOpt.toLowerCase();
+          if (fOpt.includes("não iniciado") || fOpt.includes("sem matrícula")) {
+            return cStatus.includes("não iniciado") || cStatus.includes("sem matrícula") || cStatus === "nenhum";
+          }
+          return cStatus.startsWith(fOpt) || fOpt.startsWith(cStatus);
+        });
+      });
     }
 
     // Tag filter
@@ -2664,7 +2685,7 @@ export default function ContactsPage() {
     });
 
     return result;
-  }, [contacts, searchTerm, statusFilter, courseFilter, tagFilter, courseStatusFilter, certFilter, creditsFilter, stateFilter, cityFilter, sortField, sortDirection]);
+  }, [contacts, searchTerm, statusFilter, courseFilter, latestCourseFilter, tagFilter, courseStatusFilter, certFilter, creditsFilter, stateFilter, cityFilter, sortField, sortDirection]);
 
   // Paginated chunk calculation (simulating server-side)
   const paginatedContacts = useMemo(() => {
