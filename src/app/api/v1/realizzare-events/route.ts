@@ -409,6 +409,19 @@ export async function POST(request: Request) {
       processedResult = { action: "user_action_logged", email, actionType };
     }
 
+    // Log request to inbound_webhook_events table for live feed monitoring
+    try {
+      await supabase.from("inbound_webhook_events").insert({
+        org_id: DEFAULT_ORG_ID,
+        provider: "wordpress",
+        event_type: eventType,
+        payload: body,
+        status: "processed"
+      });
+    } catch (logErr) {
+      console.warn("Could not record inbound_webhook_events log:", logErr);
+    }
+
     return NextResponse.json({
       success: true,
       message: `Evento '${eventType}' processado com sucesso no Supabase.`,
