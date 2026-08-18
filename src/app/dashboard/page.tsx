@@ -50,6 +50,7 @@ import {
 } from "recharts";
 
 import { createClient } from "@/lib/supabase/client";
+import { getEmailAttributionSummary } from "@/lib/attribution";
 
 // ==========================================
 // MOCK DATA (to be replaced gradually)
@@ -122,20 +123,11 @@ export default function DashboardPage() {
   });
   const [isSyncing, setIsSyncing] = useState(false);
   const [eventsSearchTerm, setEventsSearchTerm] = useState("");
-  const [attributionDaysWindow, setAttributionDaysWindow] = useState<number>(7);
+  const [attributionDaysWindow, setAttributionDaysWindow] = useState<string>("14 dias");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("realizzare_attribution_config");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.attrEmailClickDays || parsed.attrEmailOpenDays) {
-            setAttributionDaysWindow(parsed.attrEmailClickDays || parsed.attrEmailOpenDays || 7);
-          }
-        }
-      } catch (e) {}
-    }
+    const summary = getEmailAttributionSummary();
+    setAttributionDaysWindow(summary.windowLabel);
   }, []);
 
   const filteredEventsList = recentEventsList.filter((evt) => {

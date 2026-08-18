@@ -133,6 +133,50 @@ export const mockProfileData: Record<string, {
   }
 };
 
+function formatTransactionDate(paidAt: string, productType?: string): string {
+  if (!paidAt) return "Data não informada";
+
+  let method = "";
+  if (paidAt.toLowerCase().includes("pix")) method = " • PIX";
+  else if (paidAt.toLowerCase().includes("cartão") || paidAt.toLowerCase().includes("card")) method = " • Cartão de Crédito";
+  else if (productType === "course") method = " • Cartão de Crédito";
+  else method = " • PIX";
+
+  // Match ISO string e.g. 2026-08-17T17:48:14+00:00 or 2026-08-17T17:48:14.000Z
+  const isoMatch = paidAt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:\d{2}|Z)?/);
+  let dateObj: Date | null = null;
+  if (isoMatch) {
+    dateObj = new Date(isoMatch[0]);
+  } else {
+    const cleanStr = paidAt.split(" • ")[0].split(" - ")[0].trim();
+    const d = new Date(cleanStr);
+    if (!isNaN(d.getTime())) {
+      dateObj = d;
+    }
+  }
+
+  if (dateObj && !isNaN(dateObj.getTime())) {
+    const formattedDate = dateObj.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "America/Sao_Paulo"
+    });
+    const formattedTime = dateObj.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo"
+    });
+    return `${formattedDate} às ${formattedTime}${method}`;
+  }
+
+  if (paidAt.includes("às") || paidAt.includes("as") || paidAt.includes("/")) {
+    return paidAt.includes("•") ? paidAt : `${paidAt}${method}`;
+  }
+
+  return `${paidAt}${method}`;
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -1464,7 +1508,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                       </td>
                       <td className="py-3 px-3">
                         <div className="text-xs text-slate-600 font-semibold whitespace-nowrap">
-                          {purchase.paid_at || "08/08/2026"} • {purchase.product_type === "course" ? "Cartão de Crédito" : "PIX"}
+                          {formatTransactionDate(purchase.paid_at, purchase.product_type)}
                         </div>
                       </td>
                       <td className="py-3 px-3 font-black text-emerald-700 text-xs whitespace-nowrap">
