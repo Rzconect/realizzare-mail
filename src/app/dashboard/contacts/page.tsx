@@ -3531,20 +3531,18 @@ export default function ContactsPage() {
                           </div>
                           <button
                             type="button"
+                            role="switch"
+                            aria-checked={leadsToAlunosEnabled}
                             onClick={() => {
                               const newVal = !leadsToAlunosEnabled;
                               setLeadsToAlunosEnabled(newVal);
                               saveIntegrationSettings(newVal, autoClientesPagarmeEnabled);
                             }}
-                            className={`w-9 h-5 rounded-full transition-colors relative outline-none shrink-0 cursor-pointer ${
-                              leadsToAlunosEnabled ? "bg-indigo-600" : "bg-slate-300"
+                            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 outline-none shrink-0 cursor-pointer shadow-xs ${
+                              leadsToAlunosEnabled ? "bg-indigo-600 justify-end" : "bg-slate-300 justify-start"
                             }`}
                           >
-                            <span
-                              className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform shadow ${
-                                leadsToAlunosEnabled ? "translate-x-4.5" : "translate-x-0.5"
-                              }`}
-                            />
+                            <span className="h-4 w-4 bg-white rounded-full shadow-md transition-all duration-200" />
                           </button>
                         </div>
 
@@ -3558,20 +3556,18 @@ export default function ContactsPage() {
                           </div>
                           <button
                             type="button"
+                            role="switch"
+                            aria-checked={autoClientesPagarmeEnabled}
                             onClick={() => {
                               const newVal = !autoClientesPagarmeEnabled;
                               setAutoClientesPagarmeEnabled(newVal);
                               saveIntegrationSettings(leadsToAlunosEnabled, newVal);
                             }}
-                            className={`w-9 h-5 rounded-full transition-colors relative outline-none shrink-0 cursor-pointer ${
-                              autoClientesPagarmeEnabled ? "bg-indigo-600" : "bg-slate-300"
+                            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 outline-none shrink-0 cursor-pointer shadow-xs ${
+                              autoClientesPagarmeEnabled ? "bg-indigo-600 justify-end" : "bg-slate-300 justify-start"
                             }`}
                           >
-                            <span
-                              className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform shadow ${
-                                autoClientesPagarmeEnabled ? "translate-x-4.5" : "translate-x-0.5"
-                              }`}
-                            />
+                            <span className="h-4 w-4 bg-white rounded-full shadow-md transition-all duration-200" />
                           </button>
                         </div>
                       </div>
@@ -4198,6 +4194,18 @@ export default function ContactsPage() {
                 value={courseFilter}
                 onChange={(val) => {
                   setCourseFilter(val);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+
+            {/* Latest Course Filter */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Último Curso</label>
+              <SearchableCourseDropdown
+                value={latestCourseFilter}
+                onChange={(val) => {
+                  setLatestCourseFilter(val);
                   setCurrentPage(1);
                 }}
               />
