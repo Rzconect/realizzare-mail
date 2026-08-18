@@ -30,7 +30,8 @@ import {
   ChevronUp,
   X,
   Pencil,
-  Plus
+  Plus,
+  Coins
 } from "lucide-react";
 
 // Mock Database of detailed profiles
@@ -220,6 +221,16 @@ export default function ContactProfilePage({ params }: PageProps) {
   // State initialized as null to fetch from database
   const [profile, setProfile] = useState<any>(null);
   const [draft, setDraft] = useState<any>(null);
+  const [visibleTimelineCount, setVisibleTimelineCount] = useState(6);
+
+  const handleTimelineScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 40) {
+      if (draft && draft.timeline && visibleTimelineCount < draft.timeline.length) {
+        setVisibleTimelineCount(prev => Math.min(prev + 5, draft.timeline.length));
+      }
+    }
+  };
 
   // Sync with Supabase Database
   useEffect(() => {
@@ -1432,13 +1443,27 @@ export default function ContactProfilePage({ params }: PageProps) {
             </div>
 
             {/* KPI 4: Certificate Credits Available */}
-            <div className="bg-white border border-slate-200 bg-slate-50/20 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
-              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block">Créditos de Certificado</span>
+            <div className="bg-white border border-amber-200/80 bg-amber-50/20 rounded-3xl p-4 shadow-sm hover:border-amber-300 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-amber-900 uppercase tracking-widest block">Créditos de Certificado</span>
+                <Coins className="h-4 w-4 text-amber-500 shrink-0" />
+              </div>
               <div className="flex items-baseline gap-1.5 mt-1.5">
                 <span className="text-xl font-black text-slate-850">
-                  {draft.enrollments ? draft.enrollments.filter((e: any) => e.certificate_issued).length : 0}
+                  {(() => {
+                    const purchased = draft.purchases ? draft.purchases.filter((p: any) => p.status === "paid" && (p.product_type === "certificate" || (p.product_name || "").toLowerCase().includes("certificado"))).length : 0;
+                    const issued = draft.enrollments ? draft.enrollments.filter((e: any) => e.certificate_issued).length : 0;
+                    return Math.max(0, purchased - issued);
+                  })()}
                 </span>
-                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">Emitidos</span>
+                <span className="text-[9px] text-amber-800 font-bold bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
+                  {(() => {
+                    const purchased = draft.purchases ? draft.purchases.filter((p: any) => p.status === "paid" && (p.product_type === "certificate" || (p.product_name || "").toLowerCase().includes("certificado"))).length : 0;
+                    const issued = draft.enrollments ? draft.enrollments.filter((e: any) => e.certificate_issued).length : 0;
+                    const available = Math.max(0, purchased - issued);
+                    return `${available} ${available === 1 ? "crédito disponível" : "créditos disponíveis"}`;
+                  })()}
+                </span>
               </div>
             </div>
           </div>
@@ -1489,19 +1514,27 @@ export default function ContactProfilePage({ params }: PageProps) {
                             </td>
                             <td className="py-3 px-3">
                               <div className="flex flex-col items-start text-left">
-                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                  item.certificate_issued || item.progress >= 100
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : item.progress > 0
-                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                                    : "bg-slate-100 text-slate-600 border border-slate-200"
-                                }`}>
-                                  {item.certificate_issued || item.progress >= 100
-                                    ? "Concluído (100%)"
-                                    : item.progress > 0
-                                    ? `Em Andamento (${item.progress}%)`
-                                    : "Matriculado (0%)"}
-                                </span>
+                                {(() => {
+                                  let badgeCls = "bg-amber-50 text-amber-700 border border-amber-200";
+                                  let labelText = "Iniciado (0%)";
+
+                                  if (item.certificate_issued || (item.progress >= 100 && item.status === "completed")) {
+                                    badgeCls = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+                                    labelText = "Finalizado (100%)";
+                                  } else if (item.progress >= 100) {
+                                    badgeCls = "bg-sky-50 text-sky-700 border border-sky-200";
+                                    labelText = "Concluído (100%)";
+                                  } else if (item.progress > 0) {
+                                    badgeCls = "bg-indigo-50 text-indigo-700 border border-indigo-200";
+                                    labelText = `Em Andamento (${item.progress}%)`;
+                                  }
+
+                                  return (
+                                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badgeCls}`}>
+                                      {labelText}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </td>
                             <td className="py-3 px-3">
@@ -1646,10 +1679,13 @@ export default function ContactProfilePage({ params }: PageProps) {
                 <span>Linha do Tempo</span>
               </h3>
 
-              {/* Clean minimal vertical timeline in light mode */}
-              <div className="relative pl-0.5 max-h-[380px] lg:max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-none pr-1">
-                {draft.timeline.map((event: any, eventIdx: number) => (
-                  <div key={event.id} className="relative pl-8 pb-7 group last:pb-2">
+              {/* Clean minimal vertical timeline with infinite scroll */}
+              <div 
+                onScroll={handleTimelineScroll}
+                className="relative pl-0.5 max-h-[380px] lg:max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-none pr-1 space-y-1"
+              >
+                {draft.timeline.slice(0, visibleTimelineCount).map((event: any, eventIdx: number) => (
+                  <div key={event.id} className="relative pl-8 pb-6 group last:pb-2">
                     {/* Vertical Connector Line */}
                     <div className="absolute left-[11px] top-4.5 bottom-0 w-[1px] bg-slate-200 group-last:hidden" />
                     
@@ -1668,19 +1704,28 @@ export default function ContactProfilePage({ params }: PageProps) {
                       </div>
                       <p className="text-xs text-slate-500 leading-normal">{event.details}</p>
                       {event.note && (
-                        <p className="text-[11px] text-indigo-650 font-bold mt-0.5">
-                          {event.note}
-                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/90 text-[11px] font-extrabold shadow-2xs">
+                            <Coins className="h-3 w-3 text-amber-500 shrink-0" />
+                            {event.note}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
                 ))}
+
+                {visibleTimelineCount < draft.timeline.length ? (
+                  <div className="pt-2 text-center text-[10px] font-bold text-slate-400 animate-pulse">
+                    Role para carregar mais... ({Math.min(visibleTimelineCount, draft.timeline.length)} de {draft.timeline.length})
+                  </div>
+                ) : (
+                  <div className="pt-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Fim do histórico ({draft.timeline.length} eventos)
+                  </div>
+                )}
               </div>
             </div>
-
-            <button className="w-full mt-6 py-2.5 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-850 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center shadow-sm">
-              Ver fluxo completo
-            </button>
           </div>
         </section>
 
