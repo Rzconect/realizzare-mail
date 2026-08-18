@@ -41,6 +41,24 @@ import {
 
 // Mock Contacts database matching our schema
 
+function formatContactFullName(firstStr: string, lastStr: string): string {
+  let combined = `${firstStr || ""} ${lastStr || ""}`.trim();
+  if (!combined) return "Contato Sem Nome";
+
+  // Clean dots, underscores, hyphens
+  combined = combined.replace(/[._-]/g, " ");
+
+  return combined
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => {
+      const lower = word.toLowerCase();
+      if (["da", "de", "do", "das", "dos", "e"].includes(lower)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
 interface SearchableFieldDropdownProps {
   value: string;
   onChange: (value: string) => void;
@@ -1912,16 +1930,20 @@ export default function ContactsPage() {
 
         const mappedContacts = contactsData.map((c: any) => {
           const tags = c.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || [];
-          const primaryEnrollment = c.enrollments?.[0];
-          const course = primaryEnrollment?.courses?.name || "Nenhum";
-          let courseStatus = "";
+          
+          const sortedEnrollments = [...(c.enrollments || [])].sort(
+            (a: any, b: any) => new Date(b.enrolled_at || b.created_at || 0).getTime() - new Date(a.enrolled_at || a.created_at || 0).getTime()
+          );
+          const primaryEnrollment = sortedEnrollments[0];
+          const course = primaryEnrollment?.courses?.name || "Sem Matrícula";
+          let courseStatus = "Nenhum";
           if (primaryEnrollment) {
-            if (primaryEnrollment.status === "active") {
-              courseStatus = primaryEnrollment.progress < 100 ? "Em Andamento" : "Ativo";
-            } else if (primaryEnrollment.status === "completed") {
-              courseStatus = "Finalizado";
-            } else if (primaryEnrollment.status === "dropped") {
-              courseStatus = "Cancelado";
+            if (primaryEnrollment.certificate_issued || primaryEnrollment.progress >= 100 || primaryEnrollment.status === "completed") {
+              courseStatus = "Concluído (100%)";
+            } else if (primaryEnrollment.progress > 0) {
+              courseStatus = `Em Andamento (${primaryEnrollment.progress}%)`;
+            } else {
+              courseStatus = "Matriculado (0%)";
             }
           }
 
@@ -1934,10 +1956,11 @@ export default function ContactsPage() {
             email: c.email,
             phone: c.phone || "",
             status: c.status,
-            created_at: new Date(c.created_at).toISOString().split("T")[0],
+            created_at: c.created_at ? new Date(c.created_at).toISOString().split("T")[0] : "",
             tags,
             course,
             courseStatus,
+            enrollments: c.enrollments || [],
             total_spent: parseFloat(c.total_spent || 0),
             last_paid_order_date: lastPaidMap[cleanEmail] || ""
           };
@@ -4366,7 +4389,7 @@ export default function ContactsPage() {
                         href={`/dashboard/contacts/${contact.id}`}
                         className="hover:text-indigo-600 hover:underline transition-colors cursor-pointer"
                       >
-                        {contact.first_name} {contact.last_name}
+                        {formatContactFullName(contact.first_name, contact.last_name)}
                       </Link>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
@@ -4391,14 +4414,36 @@ export default function ContactsPage() {
                         <span className="text-slate-800 font-medium">{contact.email}</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">{contact.phone}</td>
-                    <td className="py-3.5 px-4 text-xs text-slate-400 font-mono">—</td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-slate-100 border border-slate-200 text-slate-500">
-                        Não informado
-                      </span>
+                    <td className="py-3.5 px-4 text-slate-500">{contact.phone || "—"}</td>
+                    <td className="py-3.5 px-4 text-xs font-medium text-slate-800 truncate max-w-[200px]">
+                      {contact.course && contact.course !== "Nenhum" && contact.course !== "Sem Matrícula"
+                        ? contact.course
+                        : <span className="text-slate-400 font-normal italic">—</span>}
                     </td>
-                    <td className="py-3.5 px-4 text-right text-xs text-slate-400 font-mono">—</td>
+                    <td className="py-3.5 px-4 text-center">
+                      {contact.courseStatus && contact.courseStatus !== "Nenhum" ? (
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          contact.courseStatus.includes("Concluído") || contact.courseStatus.includes("Finalizado")
+                            ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                            : contact.courseStatus.includes("Andamento") || contact.courseStatus.includes("Matriculado")
+                            ? "bg-indigo-50 border border-indigo-200 text-indigo-700"
+                            : "bg-slate-100 border border-slate-200 text-slate-600"
+                        }`}>
+                          {contact.courseStatus}
+                        </span>
+                      ) : (
+                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider bg-slate-100 border border-slate-200 text-slate-400">
+                          Sem Matrícula
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-right text-xs text-slate-600 font-medium whitespace-nowrap">
+                      {contact.created_at
+                        ? (contact.created_at.includes("-")
+                            ? `${contact.created_at.split("-")[2].split("T")[0]}/${contact.created_at.split("-")[1]}/${contact.created_at.split("-")[0]}`
+                            : contact.created_at)
+                        : "—"}
+                    </td>
                     <td className="py-3.5 px-4 text-right">
                       <Link
                         href={`/dashboard/contacts/${contact.id}`}
