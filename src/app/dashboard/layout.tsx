@@ -111,10 +111,12 @@ export default function DashboardLayout({
             console.warn("Background user session sync skipped:", e);
           }
 
-          // 2. Mock Admin override check
+          // 2. Mock Admin & Dev override check
           if (parsed.email === "admin@realizzarecursos.com.br") {
             const isCompleted = localStorage.getItem("realizzare_master_first_access_completed") === "true";
             parsed.isNewUser = !isCompleted;
+          } else if (parsed.email === "dev@realizzare.com.br" || parsed.email === "dev@realizzarecursos.com.br") {
+            parsed.isNewUser = false;
           }
 
           setCurrentUser(parsed);

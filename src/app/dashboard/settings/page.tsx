@@ -212,14 +212,24 @@ export default function SettingsPage() {
             const isEnabled = localStorage.getItem(`realizzare_mfa_enabled_${parsedSession.email.toLowerCase()}`) === "true";
             setIsMfaActive(isEnabled);
           }
+          if (parsedSession.role?.includes("Desenvolvedor")) {
+            setActiveTab("integracoes");
+          }
         } catch (e) {
           console.error(e);
         }
       }
 
+      const searchParams = new URLSearchParams(window.location.search);
+      const subParam = searchParams.get("sub") || searchParams.get("tab");
+      if (subParam === "integration" || subParam === "integracoes" || subParam === "wordpress") {
+        setActiveTab("integracoes");
+      }
+
       // Load auth users list
       const defaultUsers = [
         { name: "Leonardo Christian", email: "admin@realizzare.com.br", password: "senha123", role: "Administrador", isNewUser: false },
+        { name: "Programador Realizzare", email: "dev@realizzare.com.br", password: "RealizzareDev2026!", role: "Desenvolvedor WordPress", isNewUser: false },
         { name: "Ana Oliveira", email: "ana.oliveira@gmail.com", password: "senha123", role: "Editor", isNewUser: true },
         { name: "João Santos", email: "joao.santos@outlook.com", password: "senha123", role: "Visualizador", isNewUser: true }
       ];
@@ -2795,6 +2805,27 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 bg-indigo-50 border border-indigo-150 text-indigo-700 text-xs font-bold rounded-xl">
                       ENDPOINT: POST /api/v1/realizzare-events
+                    </span>
+                  </div>
+                </div>
+
+                {/* Integration Credentials Spec Banner */}
+                <div className="bg-slate-900 text-white rounded-2xl p-4.5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs font-mono border border-slate-800 shadow-md">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-indigo-400 font-bold uppercase text-[11px] tracking-wide">Dados de Conexão HTTP (WordPress ➔ Realizzare Mail)</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-300 text-[11px]">
+                      <div><strong>ENDPOINT:</strong> <code className="bg-slate-950 px-2 py-1 rounded text-emerald-400 border border-slate-800 ml-1">POST https://realizzareconect.com.br/api/v1/realizzare-events</code></div>
+                      <div><strong>HEADER TYPE:</strong> <code className="bg-slate-950 px-2 py-1 rounded text-indigo-300 border border-slate-800 ml-1">Content-Type: application/json</code></div>
+                      <div><strong>HEADER AUTH (PROD):</strong> <code className="bg-slate-950 px-2 py-1 rounded text-indigo-300 border border-slate-800 ml-1">Authorization: Bearer realizarre_secret_api_key_production</code></div>
+                      <div><strong>HEADER AUTH (TESTE):</strong> <code className="bg-slate-950 px-2 py-1 rounded text-indigo-300 border border-slate-800 ml-1">Authorization: Bearer realizarre_secret_api_key_test</code></div>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <span className="px-3.5 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      API 100% Ativa na Produção
                     </span>
                   </div>
                 </div>

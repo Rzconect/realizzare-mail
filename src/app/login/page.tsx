@@ -55,6 +55,30 @@ export default function LoginPage() {
     try {
       const inputEmail = email.trim().toLowerCase();
       
+      // Developer / Integrator bypass account
+      if (inputEmail === "dev@realizzare.com.br" || inputEmail === "dev@realizzarecursos.com.br") {
+        if (password !== "RealizzareDev2026!") {
+          setError("Senha incorreta para a conta de Desenvolvedor.");
+          setIsLoading(false);
+          return;
+        }
+        const devSession = {
+          name: "Programador Realizzare",
+          email: inputEmail,
+          role: "Desenvolvedor (Integração WordPress)",
+          isNewUser: false,
+          expiresAt: keepLoggedIn ? Date.now() + 30 * 24 * 60 * 60 * 1000 : undefined
+        };
+        if (keepLoggedIn) {
+          localStorage.setItem("realizzare_current_session", JSON.stringify(devSession));
+        } else {
+          sessionStorage.setItem("realizzare_current_session", JSON.stringify(devSession));
+        }
+        setIsLoading(false);
+        router.push("/dashboard/settings?sub=integration");
+        return;
+      }
+
       // Standardized Master Admin Credential Check (Now integrated into Supabase Auth database)
       const isMasterAdmin = false;
 
