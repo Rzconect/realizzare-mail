@@ -4225,8 +4225,7 @@ function WordPressPayloadSimulator() {
       certificate: {
         code: "CERT-2026-88741",
         course_name: "Introdução à Programação Web",
-        issued_at: new Date().toISOString(),
-        grade: "9.8"
+        issued_at: new Date().toISOString()
       }
     },
     "user.action": {

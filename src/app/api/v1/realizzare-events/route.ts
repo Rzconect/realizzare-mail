@@ -48,7 +48,6 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (existing) {
-        // Update basic info if provided
         if (extraData.first_name || extraData.phone || extraData.city) {
           await supabase
             .from("contacts")
@@ -65,7 +64,6 @@ export async function POST(request: Request) {
         return existing;
       }
 
-      // Insert new contact
       const firstName = extraData.first_name || cleanEmail.split("@")[0];
       const lastName = extraData.last_name || "Realizzare";
       const { data: inserted, error } = await supabase
@@ -142,6 +140,69 @@ export async function POST(request: Request) {
       return inserted;
     };
 
+    // Helper: Manage Lists (Leads vs Alunos transition)
+    const ensureList = async (listNameStr: string, descriptionStr: string) => {
+      const nameClean = listNameStr.trim();
+      const { data: existing } = await supabase
+        .from("lists")
+        .select("*")
+        .ilike("name", `%${nameClean}%`)
+        .maybeSingle();
+
+      if (existing) return existing;
+
+      const { data: inserted, error } = await supabase
+        .from("lists")
+        .insert({
+          org_id: DEFAULT_ORG_ID,
+          name: nameClean,
+          description: descriptionStr,
+          url: "https://realizzarecursos.com.br"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return inserted;
+    };
+
+    const subscribeToList = async (contactId: string, listId: string) => {
+      await supabase
+        .from("list_subscriptions")
+        .upsert(
+          {
+            contact_id: contactId,
+            list_id: listId,
+            status: "subscribed",
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "contact_id,list_id" }
+        );
+    };
+
+    const unsubscribeFromList = async (contactId: string, listId: string) => {
+      await supabase
+        .from("list_subscriptions")
+        .update({
+          status: "unsubscribed",
+          updated_at: new Date().toISOString()
+        })
+        .eq("contact_id", contactId)
+        .eq("list_id", listId);
+    };
+
+    const handleCourseEnrollmentListTransition = async (contactId: string) => {
+      const leadsList = await ensureList("Leads", "Lista de leads cadastrados via formulário ou integração.");
+      const alunosList = await ensureList("Lista Geral de Alunos", "Lista de alunos matriculados em cursos.");
+
+      if (leadsList) {
+        await unsubscribeFromList(contactId, leadsList.id);
+      }
+      if (alunosList) {
+        await subscribeToList(contactId, alunosList.id);
+      }
+    };
+
     // =========================================================================
     // EVENT 1: contact.created / contact.updated
     // =========================================================================
@@ -154,6 +215,20 @@ export async function POST(request: Request) {
       }
 
       const contact = await ensureContact(email, student);
+
+      // List management for new leads: Check if enrolled or brand new
+      const { count } = await supabase
+        .from("enrollments")
+        .select("*", { count: "exact", head: true })
+        .eq("contact_id", contact.id);
+
+      if (count && count > 0) {
+        const alunosList = await ensureList("Lista Geral de Alunos", "Lista de alunos matriculados em cursos.");
+        if (alunosList) await subscribeToList(contact.id, alunosList.id);
+      } else {
+        const leadsList = await ensureList("Leads", "Lista de leads cadastrados via formulário ou integração.");
+        if (leadsList) await subscribeToList(contact.id, leadsList.id);
+      }
 
       // Log event in course_events
       await supabase.from("course_events").insert({
@@ -177,7 +252,7 @@ export async function POST(request: Request) {
         processed_at: new Date().toISOString()
       });
 
-      processedResult = { action: "contact_upserted", contact_id: contact.id, email };
+      processedResult = { action: "contact_upserted", contact_id: contact.id, email, list: count && count > 0 ? "Alunos" : "Leads" };
     }
 
     // =========================================================================
@@ -196,6 +271,9 @@ export async function POST(request: Request) {
       const course = await ensureCourse(courseName, coursePrice);
       const enrollment = await ensureEnrollment(contact.id, course.id);
 
+      // Automatic List Transition: Move from 'Leads' to 'Lista Geral de Alunos'
+      await handleCourseEnrollmentListTransition(contact.id);
+
       // Log course event
       await supabase.from("course_events").insert({
         org_id: DEFAULT_ORG_ID,
@@ -206,7 +284,7 @@ export async function POST(request: Request) {
         metadata: { course_name: courseName, enrolled_at: new Date().toISOString() }
       });
 
-      processedResult = { action: "enrollment_created", email, courseName, enrollment_id: enrollment.id };
+      processedResult = { action: "enrollment_created", email, courseName, enrollment_id: enrollment.id, listTransition: "Leads -> Alunos" };
     }
 
     // =========================================================================
@@ -224,6 +302,9 @@ export async function POST(request: Request) {
       const contact = await ensureContact(email);
       const course = await ensureCourse(courseName);
       const enrollment = await ensureEnrollment(contact.id, course.id);
+
+      // Automatic List Transition: Ensure lead is in Alunos list
+      await handleCourseEnrollmentListTransition(contact.id);
 
       // Update Enrollment Progress
       await supabase
@@ -269,6 +350,9 @@ export async function POST(request: Request) {
       const course = await ensureCourse(courseName);
       const enrollment = await ensureEnrollment(contact.id, course.id);
 
+      // Ensure in Alunos list
+      await handleCourseEnrollmentListTransition(contact.id);
+
       // 1. Mark enrollment as Certificate Issued = true & completed
       await supabase
         .from("enrollments")
@@ -281,7 +365,7 @@ export async function POST(request: Request) {
         })
         .eq("id", enrollment.id);
 
-      // 2. Log Certificate Event in 'course_events' with credit consumption note
+      // 2. Log Certificate Event in 'course_events' with credit consumption note (No grade)
       await supabase.from("course_events").insert({
         org_id: DEFAULT_ORG_ID,
         contact_id: contact.id,
@@ -291,7 +375,6 @@ export async function POST(request: Request) {
         metadata: {
           code: certCode,
           course_name: courseName,
-          grade: body.certificate?.grade || "10.0",
           issued_at: new Date().toISOString(),
           credit_consumed: true,
           note: "(1 crédito de certificado consumido)"

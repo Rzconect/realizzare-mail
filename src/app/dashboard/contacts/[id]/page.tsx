@@ -433,7 +433,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               type = "enrollment";
             } else if (ce.event_type === "certificate_issued") {
               label = "Certificado Emitido (WordPress)";
-              details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${ce.metadata?.course_name || "Realizzare"}' com Nota ${ce.metadata?.grade || "10.0"}`;
+              details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${ce.metadata?.course_name || "Realizzare"}'`;
               type = "enrollment";
               note = "(1 crédito de certificado consumido)";
             }
