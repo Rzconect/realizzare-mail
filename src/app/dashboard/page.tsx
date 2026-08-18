@@ -521,25 +521,15 @@ export default function DashboardPage() {
   const getMockDailyStats = () => {
     let stats: { name: string; envios: number; abertos: number; clicados: number }[] = [];
     
-    const generatePoint = (name: string, seedIndex: number, scale: number) => {
-      const sinValue = Math.sin((seedIndex * 45 * Math.PI) / 180);
-      const factor = 1 + sinValue * 0.35; // organic wave variation
-      const envios = Math.round(18000 * factor * scale);
-      const abertos = Math.round(envios * (0.42 + Math.cos(seedIndex) * 0.05));
-      const clicados = Math.round(envios * (0.17 + Math.sin(seedIndex) * 0.03));
-      return { name, envios, abertos, clicados };
+    const generatePoint = (name: string) => {
+      return { name, envios: 0, abertos: 0, clicados: 0 };
     };
 
     if (period === "today") {
       // Hourly points: 24 points (00:00 to 23:00)
-      const currentHour = new Date().getHours();
       for (let h = 0; h < 24; h++) {
         const name = `${String(h).padStart(2, "0")}:00`;
-        if (h > currentHour) {
-          stats.push({ name, envios: 0, abertos: 0, clicados: 0 });
-        } else {
-          stats.push(generatePoint(name, h, 0.04));
-        }
+        stats.push(generatePoint(name));
       }
     } else if (period === "7") {
       // 7 points: last 7 days
@@ -549,17 +539,22 @@ export default function DashboardPage() {
         const d = new Date(start);
         d.setDate(start.getDate() + i);
         const name = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-        stats.push(generatePoint(name, i, 0.6));
+        stats.push(generatePoint(name));
       }
-    } else if (period === "30") {
-      // 30 points: day-by-day for last 30 days
-      const start = new Date();
-      start.setDate(start.getDate() - 29);
-      for (let i = 0; i < 30; i++) {
+    } else if (period === "30" || period === "current_month") {
+      const now = new Date();
+      let start = new Date(now.getFullYear(), now.getMonth(), 1);
+      let days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      if (period === "30") {
+        start = new Date();
+        start.setDate(start.getDate() - 29);
+        days = 30;
+      }
+      for (let i = 0; i < days; i++) {
         const d = new Date(start);
         d.setDate(start.getDate() + i);
         const name = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-        stats.push(generatePoint(name, i, 1.0));
+        stats.push(generatePoint(name));
       }
     } else if (period === "90") {
       // Weekly intervals for 90 days (13 weeks)
@@ -569,7 +564,7 @@ export default function DashboardPage() {
         const d = new Date(start);
         d.setDate(start.getDate() + i * 7);
         const name = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-        stats.push(generatePoint(name, i, 5.0));
+        stats.push(generatePoint(name));
       }
     } else {
       // Custom range: dynamic sizing
@@ -579,33 +574,29 @@ export default function DashboardPage() {
       const diffDays = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
 
       if (diffDays === 1) {
-        // Single day: exactly 1 point
         const d = new Date(start);
         const name = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-        stats.push(generatePoint(name, 0, 1.0));
+        stats.push(generatePoint(name));
       } else if (diffDays <= 30) {
-        // Day-by-day (e.g. up to 30 days)
         for (let i = 0; i < diffDays; i++) {
           const d = new Date(start);
           d.setDate(start.getDate() + i);
           const name = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-          stats.push(generatePoint(name, i, 1.0));
+          stats.push(generatePoint(name));
         }
       } else {
-        // Weekly intervals for ranges > 30 days
         const weeksCount = Math.min(20, Math.ceil(diffDays / 7));
         const stepDays = diffDays / weeksCount;
         for (let i = 0; i < weeksCount; i++) {
           const d = new Date(start);
           d.setDate(start.getDate() + Math.round(i * stepDays));
           const name = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-          stats.push(generatePoint(name, i, 5.0));
+          stats.push(generatePoint(name));
         }
-        // Force include last date if missing
         const lastDate = new Date(end);
         const lastDateName = `${String(lastDate.getDate()).padStart(2, "0")}/${String(lastDate.getMonth() + 1).padStart(2, "0")}`;
         if (stats[stats.length - 1]?.name !== lastDateName) {
-          stats.push(generatePoint(lastDateName, weeksCount, 5.0));
+          stats.push(generatePoint(lastDateName));
         }
       }
     }
