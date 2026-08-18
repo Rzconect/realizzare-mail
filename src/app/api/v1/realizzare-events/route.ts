@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase Admin Client for Server-to-Server Webhooks (Bypasses RLS)
 function getAdminSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
   return createClient(supabaseUrl, serviceKey);
 }
 
-// Default Organization ID for Realizzare
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
 export async function POST(request: Request) {
   try {
     const supabase = getAdminSupabase();
 
-    // 1. Bearer Token Verification (Optional for local test, enforced for production)
+    // 1. Bearer Token Verification
     const authHeader = request.headers.get("authorization");
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "").trim();
@@ -40,6 +38,110 @@ export async function POST(request: Request) {
 
     let processedResult: any = {};
 
+    // Helper: Find or Create Contact
+    const ensureContact = async (emailStr: string, extraData: any = {}) => {
+      const cleanEmail = emailStr.toLowerCase().trim();
+      const { data: existing } = await supabase
+        .from("contacts")
+        .select("*")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (existing) {
+        // Update basic info if provided
+        if (extraData.first_name || extraData.phone || extraData.city) {
+          await supabase
+            .from("contacts")
+            .update({
+              first_name: extraData.first_name || existing.first_name,
+              last_name: extraData.last_name || existing.last_name,
+              phone: extraData.phone || existing.phone,
+              city: extraData.city || existing.city,
+              state: extraData.state || existing.state,
+              source: extraData.origin || existing.source
+            })
+            .eq("id", existing.id);
+        }
+        return existing;
+      }
+
+      // Insert new contact
+      const firstName = extraData.first_name || cleanEmail.split("@")[0];
+      const lastName = extraData.last_name || "Realizzare";
+      const { data: inserted, error } = await supabase
+        .from("contacts")
+        .insert({
+          org_id: DEFAULT_ORG_ID,
+          email: cleanEmail,
+          first_name: firstName,
+          last_name: lastName,
+          phone: extraData.phone || null,
+          city: extraData.city || null,
+          state: extraData.state || null,
+          source: extraData.origin || "WordPress Realizzare",
+          status: "active"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return inserted;
+    };
+
+    // Helper: Find or Create Course
+    const ensureCourse = async (courseNameStr: string, priceNum = 197.00) => {
+      const nameClean = courseNameStr.trim();
+      const { data: existing } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("name", nameClean)
+        .maybeSingle();
+
+      if (existing) return existing;
+
+      const { data: inserted, error } = await supabase
+        .from("courses")
+        .insert({
+          org_id: DEFAULT_ORG_ID,
+          name: nameClean,
+          price: priceNum,
+          type: "online"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return inserted;
+    };
+
+    // Helper: Find or Create Enrollment
+    const ensureEnrollment = async (contactId: string, courseId: string) => {
+      const { data: existing } = await supabase
+        .from("enrollments")
+        .select("*")
+        .eq("contact_id", contactId)
+        .eq("course_id", courseId)
+        .maybeSingle();
+
+      if (existing) return existing;
+
+      const { data: inserted, error } = await supabase
+        .from("enrollments")
+        .insert({
+          org_id: DEFAULT_ORG_ID,
+          contact_id: contactId,
+          course_id: courseId,
+          status: "active",
+          progress: 0.00,
+          enrolled_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return inserted;
+    };
+
     // =========================================================================
     // EVENT 1: contact.created / contact.updated
     // =========================================================================
@@ -51,29 +153,21 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "E-mail do contato obrigatório." }, { status: 400 });
       }
 
-      // Upsert Contact into 'contacts' table
-      const { data: contactData, error: contactError } = await supabase
-        .from("contacts")
-        .upsert(
-          {
-            org_id: DEFAULT_ORG_ID,
-            email,
-            first_name: student.first_name || student.name?.split(" ")[0] || "Aluno",
-            last_name: student.last_name || student.name?.split(" ").slice(1).join(" ") || "Realizzare",
-            phone: student.phone || null,
-            city: student.city || null,
-            state: student.state || null,
-            source: student.origin || "WordPress Realizzare",
-            status: "active"
-          },
-          { onConflict: "org_id,email" }
-        )
-        .select()
-        .single();
+      const contact = await ensureContact(email, student);
 
-      if (contactError) throw contactError;
+      // Log event in course_events
+      await supabase.from("course_events").insert({
+        org_id: DEFAULT_ORG_ID,
+        contact_id: contact.id,
+        event_type: "started",
+        metadata: {
+          event: "contact_created",
+          origin: student.origin || "WordPress Realizzare",
+          tags: student.tags || []
+        }
+      });
 
-      // Log Event in 'inbound_webhook_events'
+      // Log raw payload
       await supabase.from("inbound_webhook_events").insert({
         org_id: DEFAULT_ORG_ID,
         source: "realizzare_wordpress",
@@ -83,7 +177,7 @@ export async function POST(request: Request) {
         processed_at: new Date().toISOString()
       });
 
-      processedResult = { action: "contact_upserted", contact_id: contactData.id, email };
+      processedResult = { action: "contact_upserted", contact_id: contact.id, email };
     }
 
     // =========================================================================
@@ -91,69 +185,28 @@ export async function POST(request: Request) {
     // =========================================================================
     else if (eventType === "course.enrollment") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
-      const courseName = body.course?.title || body.course_name || "Curso Realizzare";
+      const courseName = body.course?.title || body.course_name || "Introdução à Programação Web";
       const coursePrice = Number(body.course?.price || 197.00);
 
       if (!email) {
-        return NextResponse.json({ success: false, message: "E-mail do aluno obrigatório para matrícula." }, { status: 400 });
+        return NextResponse.json({ success: false, message: "E-mail do aluno obrigatório." }, { status: 400 });
       }
 
-      // 1. Ensure contact exists
-      const { data: contact } = await supabase
-        .from("contacts")
-        .upsert(
-          {
-            org_id: DEFAULT_ORG_ID,
-            email,
-            first_name: email.split("@")[0],
-            last_name: "Realizzare",
-            status: "active"
-          },
-          { onConflict: "org_id,email" }
-        )
-        .select()
-        .single();
+      const contact = await ensureContact(email);
+      const course = await ensureCourse(courseName, coursePrice);
+      const enrollment = await ensureEnrollment(contact.id, course.id);
 
-      // 2. Ensure course exists
-      const { data: course } = await supabase
-        .from("courses")
-        .upsert(
-          {
-            org_id: DEFAULT_ORG_ID,
-            name: courseName,
-            price: coursePrice,
-            type: "online"
-          },
-          { onConflict: "org_id,name" }
-        )
-        .select()
-        .single();
+      // Log course event
+      await supabase.from("course_events").insert({
+        org_id: DEFAULT_ORG_ID,
+        contact_id: contact.id,
+        course_id: course.id,
+        enrollment_id: enrollment.id,
+        event_type: "started",
+        metadata: { course_name: courseName, enrolled_at: new Date().toISOString() }
+      });
 
-      // 3. Upsert Enrollment
-      if (contact && course) {
-        await supabase.from("enrollments").upsert(
-          {
-            org_id: DEFAULT_ORG_ID,
-            contact_id: contact.id,
-            course_id: course.id,
-            status: "active",
-            progress: 0.00,
-            enrolled_at: body.course?.enrolled_at || new Date().toISOString()
-          },
-          { onConflict: "contact_id,course_id" }
-        );
-
-        // 4. Log course event
-        await supabase.from("course_events").insert({
-          org_id: DEFAULT_ORG_ID,
-          contact_id: contact.id,
-          course_id: course.id,
-          event_type: "started",
-          metadata: { course_name: courseName, enrolled_at: new Date().toISOString() }
-        });
-      }
-
-      processedResult = { action: "enrollment_created", email, courseName };
+      processedResult = { action: "enrollment_created", email, courseName, enrollment_id: enrollment.id };
     }
 
     // =========================================================================
@@ -168,31 +221,34 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "E-mail do aluno obrigatório." }, { status: 400 });
       }
 
-      // Find Contact & Course
-      const { data: contact } = await supabase.from("contacts").select("id").eq("email", email).single();
-      const { data: course } = await supabase.from("courses").select("id").eq("name", courseName).single();
+      const contact = await ensureContact(email);
+      const course = await ensureCourse(courseName);
+      const enrollment = await ensureEnrollment(contact.id, course.id);
 
-      if (contact && course) {
-        // Update Enrollment Progress
-        await supabase
-          .from("enrollments")
-          .update({
-            progress: progressPercent,
-            last_accessed_at: new Date().toISOString(),
-            status: progressPercent >= 100 ? "completed" : "active"
-          })
-          .eq("contact_id", contact.id)
-          .eq("course_id", course.id);
+      // Update Enrollment Progress
+      await supabase
+        .from("enrollments")
+        .update({
+          progress: progressPercent,
+          last_accessed_at: new Date().toISOString(),
+          status: progressPercent >= 100 ? "completed" : "active"
+        })
+        .eq("id", enrollment.id);
 
-        // Log course progress event
-        await supabase.from("course_events").insert({
-          org_id: DEFAULT_ORG_ID,
-          contact_id: contact.id,
-          course_id: course.id,
-          event_type: "progress_updated",
-          metadata: { progress_percent: progressPercent, completed_lessons: body.completed_lessons || 0 }
-        });
-      }
+      // Log course progress event
+      await supabase.from("course_events").insert({
+        org_id: DEFAULT_ORG_ID,
+        contact_id: contact.id,
+        course_id: course.id,
+        enrollment_id: enrollment.id,
+        event_type: "progress_updated",
+        metadata: {
+          progress_percent: progressPercent,
+          completed_lessons: body.completed_lessons || 0,
+          total_lessons: body.total_lessons || 20,
+          course_name: courseName
+        }
+      });
 
       processedResult = { action: "progress_updated", email, courseName, progressPercent };
     }
@@ -209,70 +265,80 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "E-mail do aluno obrigatório." }, { status: 400 });
       }
 
-      const { data: contact } = await supabase.from("contacts").select("id").eq("email", email).single();
-      const { data: course } = await supabase.from("courses").select("id").eq("name", courseName).single();
+      const contact = await ensureContact(email);
+      const course = await ensureCourse(courseName);
+      const enrollment = await ensureEnrollment(contact.id, course.id);
 
-      if (contact) {
-        if (course) {
-          // 1. Update enrollment to Certificate Issued = true
-          await supabase
-            .from("enrollments")
-            .update({
-              certificate_issued: true,
-              certificate_issued_at: new Date().toISOString(),
-              completed_at: new Date().toISOString(),
-              progress: 100.00,
-              status: "completed"
-            })
-            .eq("contact_id", contact.id)
-            .eq("course_id", course.id);
+      // 1. Mark enrollment as Certificate Issued = true & completed
+      await supabase
+        .from("enrollments")
+        .update({
+          certificate_issued: true,
+          certificate_issued_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          progress: 100.00,
+          status: "completed"
+        })
+        .eq("id", enrollment.id);
+
+      // 2. Log Certificate Event in 'course_events'
+      await supabase.from("course_events").insert({
+        org_id: DEFAULT_ORG_ID,
+        contact_id: contact.id,
+        course_id: course.id,
+        enrollment_id: enrollment.id,
+        event_type: "certificate_issued",
+        metadata: {
+          code: certCode,
+          course_name: courseName,
+          grade: body.certificate?.grade || "10.0",
+          issued_at: new Date().toISOString()
         }
+      });
 
-        // 2. Log Certificate Event in 'course_events'
-        await supabase.from("course_events").insert({
-          org_id: DEFAULT_ORG_ID,
-          contact_id: contact.id,
-          course_id: course?.id || null,
-          event_type: "certificate_issued",
-          metadata: {
-            code: certCode,
-            course_name: courseName,
-            grade: body.certificate?.grade || "10.0",
-            issued_at: new Date().toISOString()
-          }
-        });
-      }
+      // 3. Register transaction record in 'purchases' so Transações & Faturamento displays it
+      await supabase.from("purchases").insert({
+        org_id: DEFAULT_ORG_ID,
+        contact_id: contact.id,
+        product_type: "certificate",
+        product_name: `Certificado de Conclusão - ${courseName}`,
+        amount: 45.70,
+        sku: certCode,
+        status: "paid",
+        paid_at: new Date().toISOString()
+      });
 
       processedResult = { action: "certificate_issued", email, courseName, certCode };
     }
 
     // =========================================================================
-    // EVENT 5: user.action (e.g. checkout_abandoned, page_view)
+    // EVENT 5: user.action (e.g. checkout_abandoned)
     // =========================================================================
     else if (eventType === "user.action") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
       const actionType = body.action_type || "checkout_abandoned";
 
       if (email) {
-        const { data: contact } = await supabase.from("contacts").select("id").eq("email", email).single();
+        const contact = await ensureContact(email);
 
-        // Log into inbound_webhook_events
-        await supabase.from("inbound_webhook_events").insert({
+        await supabase.from("course_events").insert({
           org_id: DEFAULT_ORG_ID,
-          source: "realizzare_wordpress",
-          event_type: actionType,
-          payload: body,
-          status: "processed",
-          processed_at: new Date().toISOString()
+          contact_id: contact.id,
+          event_type: "progress_updated",
+          metadata: {
+            action_type: actionType,
+            page_url: body.page_url || "https://realizzarecursos.com.br/checkout",
+            cart_item: body.cart_item || "Curso Realizzare"
+          }
         });
       }
 
-      processedResult = { action: "user_action_logged", email, actionType: body.action_type };
+      processedResult = { action: "user_action_logged", email, actionType };
     }
 
     return NextResponse.json({
       success: true,
-      message: `Evento '${eventType}' processado com sucesso.`,
+      message: `Evento '${eventType}' processado com sucesso no Supabase.`,
       result: processedResult,
       timestamp: new Date().toISOString()
     });

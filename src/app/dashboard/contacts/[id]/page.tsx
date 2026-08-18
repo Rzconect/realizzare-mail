@@ -347,16 +347,23 @@ export default function ContactProfilePage({ params }: PageProps) {
           entered_at: fe.entered_at ? new Date(fe.entered_at).toISOString().split("T")[0] : ""
         })) || [];
 
-        // 3. Fetch Timeline from Unified View
-        const { data: timelineData, error: timelineError } = await supabase
+        // 3. Fetch Timeline & Course Events for this Contact
+        const { data: timelineData } = await supabase
           .from("contact_timeline_view")
           .select("*")
-          .eq("contact_id", id)
+          .eq("contact_id", contact.id)
           .order("created_at", { ascending: false });
 
-        let timeline = [];
-        if (!timelineError && timelineData && timelineData.length > 0) {
-          timeline = timelineData.map((t: any, index: number) => {
+        const { data: courseEventsData } = await supabase
+          .from("course_events")
+          .select("*")
+          .eq("contact_id", contact.id)
+          .order("created_at", { ascending: false });
+
+        let rawEvents: any[] = [];
+
+        if (timelineData && timelineData.length > 0) {
+          timelineData.forEach((t: any) => {
             let type = t.event_group;
             let label = t.event_group;
             let details = "";
@@ -376,15 +383,65 @@ export default function ContactProfilePage({ params }: PageProps) {
               details = `Ação: ${t.label} (Nó: ${t.metadata?.node_id})`;
             }
 
-            return {
-              id: `evt-${index}`,
+            rawEvents.push({
+              id: t.id || `evt-${Math.random()}`,
               type,
               label,
               details,
               timestamp: t.created_at
-            };
+            });
           });
         }
+
+        if (courseEventsData && courseEventsData.length > 0) {
+          courseEventsData.forEach((ce: any) => {
+            let label = "Evento do Curso (WordPress)";
+            let details = `Curso: ${ce.metadata?.course_name || "Realizzare"}`;
+            let type = "enrollment";
+
+            if (ce.event_type === "started") {
+              label = "Matrícula em Curso (WordPress)";
+              details = `Matriculado no curso '${ce.metadata?.course_name || "Introdução à Programação Web"}'`;
+              type = "enrollment";
+            } else if (ce.event_type === "progress_updated") {
+              label = `Progresso de Aulas (${ce.metadata?.progress_percent || 0}%)`;
+              details = `Concluiu ${ce.metadata?.completed_lessons || 0} aulas do curso '${ce.metadata?.course_name || "Realizzare"}'`;
+              type = "enrollment";
+            } else if (ce.event_type === "certificate_issued") {
+              label = "Certificado Emitido (WordPress)";
+              details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${ce.metadata?.course_name || "Realizzare"}' com Nota ${ce.metadata?.grade || "10.0"}`;
+              type = "enrollment";
+            }
+
+            rawEvents.push({
+              id: ce.id,
+              type,
+              label,
+              details,
+              timestamp: ce.created_at
+            });
+          });
+        }
+
+        // Always add contact creation event
+        rawEvents.push({
+          id: `created-${contact.id}`,
+          type: "import",
+          label: "Contato Cadastrado",
+          details: `Cadastrado via ${contact.source || "WordPress Realizzare Integration"}`,
+          timestamp: contact.created_at
+        });
+
+        // Deduplicate and sort
+        const seenEvtKeys = new Set();
+        const timeline = rawEvents
+          .filter(e => {
+            const key = `${e.label}-${e.timestamp}`;
+            if (seenEvtKeys.has(key)) return false;
+            seenEvtKeys.add(key);
+            return true;
+          })
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         const profileObj = {
           first_name: contact.first_name || "",
@@ -1333,8 +1390,10 @@ export default function ContactProfilePage({ params }: PageProps) {
             <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Cursos Iniciados</span>
               <div className="flex items-baseline gap-1.5 mt-1.5">
-                <span className="text-xl font-black text-slate-850">0</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">0%</span>
+                <span className="text-xl font-black text-slate-850">{draft.enrollments ? draft.enrollments.length : 0}</span>
+                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">
+                  {draft.enrollments && draft.enrollments.length > 0 ? "Ativo" : "0%"}
+                </span>
               </div>
             </div>
 
@@ -1342,8 +1401,10 @@ export default function ContactProfilePage({ params }: PageProps) {
             <div className="bg-white border border-slate-200 bg-slate-50/20 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
               <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block">Créditos de Certificado</span>
               <div className="flex items-baseline gap-1.5 mt-1.5">
-                <span className="text-xl font-black text-slate-850">0</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">Disponíveis</span>
+                <span className="text-xl font-black text-slate-850">
+                  {draft.enrollments ? draft.enrollments.filter((e: any) => e.certificate_issued).length : 0}
+                </span>
+                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">Emitidos</span>
               </div>
             </div>
           </div>
@@ -1369,57 +1430,72 @@ export default function ContactProfilePage({ params }: PageProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700 text-xs">
-                  {[...draft.enrollments]
-                    .sort((a, b) => new Date(a.enrolled_at).getTime() - new Date(b.enrolled_at).getTime())
-                    .map((item, idx) => {
-                      // Clean course name
-                      const cleanCourseName = (item.course_name || "Curso Realizzare")
-                        .replace(/^Certificado de Conclusão - /i, "")
-                        .replace(/^Curso de /i, "");
+                  {draft.enrollments && draft.enrollments.length > 0 ? (
+                    [...draft.enrollments]
+                      .sort((a, b) => new Date(a.enrolled_at || 0).getTime() - new Date(b.enrolled_at || 0).getTime())
+                      .map((item, idx) => {
+                        const cleanCourseName = (item.course_name || "Curso Realizzare")
+                          .replace(/^Certificado de Conclusão - /i, "")
+                          .replace(/^Curso de /i, "");
 
-                      const certStatus = item.certificate_issued ? "Emitido" : "Não Emitido";
-                      const certSub = item.certificate_issued 
-                        ? `Emissão: ${item.enrolled_at ? new Date(item.enrolled_at).toLocaleDateString("pt-BR") : "08/08/2026"}`
-                        : "Aguardando solicitação";
+                        const certStatus = item.certificate_issued ? "Emitido" : "Não Emitido";
+                        const certSub = item.certificate_issued 
+                          ? `Emissão: ${item.enrolled_at ? new Date(item.enrolled_at).toLocaleDateString("pt-BR") : "Hoje"}`
+                          : "Aguardando solicitação";
 
-                      return (
-                        <tr key={idx} className="hover:bg-slate-50/40 transition-colors group">
-                          <td className="py-3 px-3 text-center font-bold text-slate-400 w-10">
-                            {idx + 1}
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col text-left">
-                              <span className="font-bold text-slate-800 text-xs">{cleanCourseName}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col items-start text-left">
-                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 border border-slate-200 text-slate-600">
-                                Aguardando LMS
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col items-start text-left">
-                              <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
-                                item.certificate_issued ? "text-emerald-700" : "text-slate-500 italic"
-                              }`}>
-                                {item.certificate_issued ? "✓ " : ""} {certStatus}
-                              </span>
-                              <span className="text-[10px] text-slate-450 mt-0.5">
-                                {certSub}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/40 transition-colors group">
+                            <td className="py-3 px-3 text-center font-bold text-slate-400 w-10">
+                              {idx + 1}
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-col text-left">
+                                <span className="font-bold text-slate-800 text-xs">{cleanCourseName}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-col items-start text-left">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  item.certificate_issued || item.progress >= 100
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : item.progress > 0
+                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                                }`}>
+                                  {item.certificate_issued || item.progress >= 100
+                                    ? "Concluído (100%)"
+                                    : item.progress > 0
+                                    ? `Em Andamento (${item.progress}%)`
+                                    : "Matriculado (0%)"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-col items-start text-left">
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
+                                  item.certificate_issued ? "text-emerald-700" : "text-slate-500 italic"
+                                }`}>
+                                  {item.certificate_issued ? "✓ " : ""} {certStatus}
+                                </span>
+                                <span className="text-[10px] text-slate-450 mt-0.5">
+                                  {certSub}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-slate-400 italic font-medium">
+                        Nenhum curso matriculado até o momento.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
-
-          {/* Card 3: Fluxos de Automação */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
               <GitBranch className="h-4.5 w-4.5 text-indigo-650" />
