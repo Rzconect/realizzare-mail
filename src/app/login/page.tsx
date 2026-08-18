@@ -231,8 +231,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-7 rounded-3xl border border-slate-200 bg-white/90 p-8 backdrop-blur-xl shadow-2xl transition-all">
         {/* Header/Logo with smooth rounded corners */}
         <div className="flex flex-col items-center">
-          <div className="h-16 w-16 relative overflow-hidden rounded-2xl shadow-lg border border-slate-100 bg-white p-2 flex items-center justify-center">
-            <img src="/logo.png" alt="Realizzare Logo" className="h-full w-full object-contain rounded-xl" />
+          <div className="h-16 w-16 relative overflow-hidden rounded-2xl shadow-md">
+            <img src="/logo.png" alt="Realizzare Logo" className="h-full w-full object-cover rounded-2xl" />
           </div>
           <h2 className="mt-5 text-center text-3xl font-black tracking-tight text-slate-900">
             Realizzare <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">Mail</span>
@@ -267,7 +267,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="contato@realizzarecursos.com.br"
+                    placeholder="Digite seu e-mail"
                     className="block w-full rounded-xl border border-slate-200 bg-slate-50/70 py-3 pl-10 pr-3.5 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all shadow-2xs"
                   />
                 </div>
