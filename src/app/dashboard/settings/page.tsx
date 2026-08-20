@@ -2469,13 +2469,13 @@ export default function SettingsPage() {
                           <input
                             type="text"
                             readOnly
-                            value={typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/pagarme` : "https://realizzareconect.com.br/api/webhooks/pagarme"}
+                            value={typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/pagarme` : "https://www.realizzareconect.com.br/api/webhooks/pagarme"}
                             className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-600"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              const url = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/pagarme` : "https://realizzareconect.com.br/api/webhooks/pagarme";
+                              const url = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/pagarme` : "https://www.realizzareconect.com.br/api/webhooks/pagarme";
                               navigator.clipboard.writeText(url);
                               alert("URL do Webhook Pagar.me copiada!");
                             }}
@@ -2727,23 +2727,111 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Integration Credentials Spec Banner */}
-                <div className="bg-slate-900 text-white rounded-2xl p-4.5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs font-mono border border-slate-800 shadow-md">
-                  <div className="space-y-2">
+                <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-md space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-indigo-400 font-bold uppercase text-[11px] tracking-wide">Dados de Conexão HTTP (WordPress ➔ Realizzare Mail)</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-300 text-[11px]">
-                      <div><strong>ENDPOINT:</strong> <code className="bg-slate-950 px-2 py-1 rounded text-emerald-400 border border-slate-800 ml-1">POST https://realizzareconect.com.br/api/v1/realizzare-events</code></div>
-                      <div><strong>HEADER TYPE:</strong> <code className="bg-slate-950 px-2 py-1 rounded text-indigo-300 border border-slate-800 ml-1">Content-Type: application/json</code></div>
-                      <div><strong>HEADER AUTH (PROD):</strong> <code className="bg-slate-950 px-2 py-1 rounded text-indigo-300 border border-slate-800 ml-1">Authorization: Bearer realizarre_secret_api_key_production</code></div>
-                      <div><strong>HEADER AUTH (TESTE):</strong> <code className="bg-slate-950 px-2 py-1 rounded text-indigo-300 border border-slate-800 ml-1">Authorization: Bearer realizarre_secret_api_key_test</code></div>
-                    </div>
-                  </div>
-                  <div className="shrink-0">
-                    <span className="px-3.5 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-indigo-400 font-bold uppercase text-[11px] tracking-wide font-mono">
+                        Dados de Conexão HTTP (WordPress ➔ Realizzare Mail)
+                      </span>
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl text-[11px] font-bold font-mono self-start sm:self-auto">
                       API 100% Ativa na Produção
                     </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs font-mono">
+                    {/* Endpoint URL */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">ENDPOINT URL (POST)</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <code className="text-emerald-400 font-semibold break-all text-[11px]">
+                          https://www.realizzareconect.com.br/api/v1/realizzare-events
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText("https://www.realizzareconect.com.br/api/v1/realizzare-events");
+                            alert("URL do Endpoint copiada!");
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] shrink-0 cursor-pointer transition-colors"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Header Type */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">HEADER TYPE</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <code className="text-indigo-300 font-semibold text-[11px]">
+                          Content-Type: application/json
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText("Content-Type: application/json");
+                            alert("Header Content-Type copiado!");
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] shrink-0 cursor-pointer transition-colors"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Header Auth Prod */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">HEADER AUTH (PRODUÇÃO)</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <code className="text-indigo-300 font-semibold break-all text-[11px]">
+                          Authorization: Bearer realizarre_secret_api_key_production
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText("Authorization: Bearer realizarre_secret_api_key_production");
+                            alert("Header de Autenticação Produção copiado!");
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] shrink-0 cursor-pointer transition-colors"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Header Auth Teste */}
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">HEADER AUTH (TESTE)</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <code className="text-indigo-300 font-semibold break-all text-[11px]">
+                          Authorization: Bearer realizarre_secret_api_key_test
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText("Authorization: Bearer realizarre_secret_api_key_test");
+                            alert("Header de Autenticação Teste copiado!");
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] shrink-0 cursor-pointer transition-colors"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Technical Note on HTTP 308 & Redirects */}
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Aviso sobre Erro 308 (Redirecting) nas Requisições:</p>
+                    <p className="text-[11px] leading-relaxed text-amber-800">
+                      O erro <strong>308 Permanent Redirect</strong> ocorre quando o cliente envia a requisição para a URL com barra final (<code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">/realizzare-events/</code>) ou via HTTP inseguro (<code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">http://</code>). 
+                      A plataforma foi atualizada para tratar requisições com barra no final e evitar redirecionamentos 308 automaticamente. Certifique-se de configurar suas requisições no WordPress com <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">https://</code>.
+                    </p>
                   </div>
                 </div>
 
