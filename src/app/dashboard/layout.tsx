@@ -91,6 +91,8 @@ export default function DashboardLayout({
             parsed.email?.includes("nilton") ||
             parsed.email?.includes("dev") ||
             parsed.role?.includes("Desenvolvedor") ||
+            parsed.email?.includes("contato@realizzare") ||
+            parsed.email?.includes("admin@realizzare") ||
             parsed.email === "admin@realizzarecursos.com.br";
 
           // 1. Background check in database to avoid local cache desyncs (Skipped for dev bypass accounts)
