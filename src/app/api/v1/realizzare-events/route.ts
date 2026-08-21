@@ -13,13 +13,34 @@ export async function POST(request: Request) {
   try {
     const supabase = getAdminSupabase();
 
-    // 1. Bearer Token Verification
-    const authHeader = request.headers.get("authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "").trim();
-      if (token !== "realizzare_secret_api_key_production" && token !== "realizzare_secret_api_key_test") {
+    // 1. Bearer / Token Verification
+    const authHeader = request.headers.get("authorization") || request.headers.get("x-api-key") || "";
+    if (authHeader) {
+      const cleanToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const validTokens = [
+        "realizzare_secret_api_key_production",
+        "realizarre_secret_api_key_production",
+        "realizare_secret_api_key_production",
+        "realizzare_secret_api_key_test",
+        "realizarre_secret_api_key_test",
+        "realizare_secret_api_key_test"
+      ];
+      
+      const isValidDefaultToken = validTokens.includes(cleanToken);
+      let isValidCustomKey = false;
+
+      if (!isValidDefaultToken && cleanToken.startsWith("sk_")) {
+        const { data: matchedKey } = await supabase
+          .from("api_keys")
+          .select("id")
+          .ilike("key_prefix", `${cleanToken.substring(0, 10)}%`)
+          .maybeSingle();
+        if (matchedKey) isValidCustomKey = true;
+      }
+
+      if (!isValidDefaultToken && !isValidCustomKey && cleanToken.length > 0) {
         return NextResponse.json(
-          { success: false, message: "Chave de API inválida ou não autorizada." },
+          { success: false, message: "Chave de API inválida ou não autorizada.", received_token: cleanToken ? cleanToken.substring(0, 15) + "..." : "vazio" },
           { status: 401 }
         );
       }
