@@ -350,6 +350,7 @@ export default function DashboardPage() {
             }
           }
 
+          // Resolve clean contact name from contactsList or campaign target_list
           if (cContactId && contactsList) {
             const cObj = contactsList.find((c: any) => c.id === cContactId);
             if (cObj) {
@@ -366,12 +367,20 @@ export default function DashboardPage() {
             }
           }
 
+          if (!cName && campaignObj?.target_list) {
+            const cleanTargetName = campaignObj.target_list.replace(/👤/g, "").replace(/\([^)]*\)/g, "").trim();
+            if (cleanTargetName && !cleanTargetName.includes("@")) {
+              cName = cleanTargetName;
+            }
+          }
+
           // Skip tracking events without real contact email
           if (!cEmail) return;
 
           if (!cName) {
-            const prefix = cEmail.split("@")[0];
-            cName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+            const prefix = cEmail.split("@")[0].replace(/[._\d]/g, " ").trim();
+            const words = prefix.split(/\s+/).filter(Boolean);
+            cName = words.length > 0 ? words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : cEmail;
           }
 
           const isClick = te.event_type === "email.click";
@@ -405,6 +414,11 @@ export default function DashboardPage() {
             if (c.target_list) {
               const matchEmail = c.target_list.match(/\(([^)]+@[\w.-]+)\)/) || c.target_list.match(/([\w.-]+@[\w.-]+)/);
               if (matchEmail && matchEmail[1]) cEmail = matchEmail[1].trim();
+
+              const cleanTargetName = c.target_list.replace(/👤/g, "").replace(/\([^)]*\)/g, "").trim();
+              if (cleanTargetName && !cleanTargetName.includes("@")) {
+                cName = cleanTargetName;
+              }
             }
 
             let contactId = null;
@@ -412,14 +426,15 @@ export default function DashboardPage() {
               const cObj = contactsList.find((ct: any) => (ct.email || "").toLowerCase().trim() === cEmail.toLowerCase());
               if (cObj) {
                 contactId = cObj.id;
-                cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim();
+                cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim() || cName;
               }
             }
 
             if (cEmail) {
               if (!cName) {
-                const prefix = cEmail.split("@")[0];
-                cName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+                const prefix = cEmail.split("@")[0].replace(/[._\d]/g, " ").trim();
+                const words = prefix.split(/\s+/).filter(Boolean);
+                cName = words.length > 0 ? words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : cEmail;
               }
 
               const dateObj = new Date(c.updated_at || c.sent_at || c.created_at || Date.now());
@@ -1307,54 +1322,34 @@ export default function DashboardPage() {
               </div>
               <div className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dailyStats}>
-                    <defs>
-                      <linearGradient id="colorEnvios" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorAbertos" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorClicados" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <BarChart data={dailyStats} barGap={4} barCategoryGap="20%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                     <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} minTickGap={25} />
                     <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 12, marginTop: 10 }} />
-                    <Area
-                      type="monotone"
+                    <Bar
                       dataKey="envios"
                       name="E-mails Enviados"
-                      stroke="#6366f1"
-                      fillOpacity={1}
-                      fill="url(#colorEnvios)"
-                      strokeWidth={2}
+                      fill="#6366f1"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={32}
                     />
-                    <Area
-                      type="monotone"
+                    <Bar
                       dataKey="abertos"
                       name="E-mails Abertos"
-                      stroke="#8b5cf6"
-                      fillOpacity={1}
-                      fill="url(#colorAbertos)"
-                      strokeWidth={2}
+                      fill="#8b5cf6"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={32}
                     />
-                    <Area
-                      type="monotone"
+                    <Bar
                       dataKey="clicados"
                       name="E-mails Clicados"
-                      stroke="#10b981"
-                      fillOpacity={1}
-                      fill="url(#colorClicados)"
-                      strokeWidth={2}
+                      fill="#10b981"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={32}
                     />
-                  </AreaChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
