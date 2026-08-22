@@ -1439,18 +1439,35 @@ function CreateCampaignForm() {
         if (inserted) insertedId = (inserted as any).id;
       }
 
-      // If sending immediately, generate email_events for active contacts
-      if (status === "sent") {
-        const { data: contacts } = await supabase.from("contacts").select("id").limit(audienceEstimateCount || 10);
-        if (contacts && contacts.length > 0) {
-          const events = contacts.map((c: any) => ({
-            org_id: "00000000-0000-0000-0000-000000000001",
-            contact_id: c.id,
-            campaign_id: insertedId || undefined,
-            event_type: "sent",
-            created_at: new Date().toISOString()
-          }));
-          await supabase.from("email_events").insert(events as any);
+      // Extract target emails if specific contacts were selected
+      const targetEmailsList: string[] = [];
+      selectedIncludeLists.forEach((id) => {
+        const item = listsList.find((l) => l.id === id);
+        if (item && item.name.includes("(") && item.name.includes("@")) {
+          const match = item.name.match(/\(([^)]+)\)/);
+          if (match && match[1] && match[1].includes("@")) {
+            targetEmailsList.push(match[1].trim());
+          }
+        }
+      });
+
+      // If sending immediately, invoke real email dispatch API
+      if (sendType === "immediate" && insertedId) {
+        try {
+          const res = await fetch("/api/campaigns/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              campaignId: insertedId,
+              targetEmails: targetEmailsList.length > 0 ? targetEmailsList : undefined
+            })
+          });
+          const resData = await res.json();
+          if (!res.ok) {
+            alert(`Aviso de envio: ${resData.error || "Não foi possível conectar ao servidor SMTP da AWS SES."}`);
+          }
+        } catch (dispatchErr) {
+          console.error("Error triggering email dispatch API:", dispatchErr);
         }
       }
 
