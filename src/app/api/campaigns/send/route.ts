@@ -89,10 +89,43 @@ export async function POST(req: Request) {
     }
 
     let recipients: string[] = targetEmails || [];
+
     if (!recipients || recipients.length === 0) {
-      const { data: dbContacts } = await supabase.from("contacts").select("email").eq("status", "active");
-      if (dbContacts) {
-        recipients = dbContacts.map((c: any) => c.email).filter(Boolean);
+      const targetListStr = (campaign.target_list || "").trim();
+
+      // 1. Extract explicit email addresses from target_list string (e.g. "👤 Leonardo (leo@outlook.com), 👤 Teste (outro@outlook.com)")
+      const emailMatches = targetListStr.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
+      if (emailMatches && emailMatches.length > 0) {
+        recipients = Array.from(new Set(emailMatches.map((e: string) => e.trim().toLowerCase())));
+      } else {
+        // 2. Match list names against Supabase lists table
+        const listNames = targetListStr.split(",").map((s: string) => s.trim().toLowerCase());
+        const { data: dbLists } = await supabase.from("lists").select("id, name");
+        const matchedListIds = dbLists
+          ?.filter((l: any) => listNames.some((n: string) => n === l.name.toLowerCase()))
+          .map((l: any) => l.id) || [];
+
+        if (matchedListIds.length > 0) {
+          const { data: subs } = await supabase
+            .from("list_subscriptions")
+            .select("contacts(email, status)")
+            .in("list_id", matchedListIds)
+            .eq("status", "subscribed");
+
+          if (subs && subs.length > 0) {
+            recipients = subs
+              .map((s: any) => s.contacts?.status === "active" ? s.contacts?.email : null)
+              .filter(Boolean);
+          }
+        }
+
+        // 3. Fallback to all contacts ONLY if target_list explicitly specifies "Geral" or "Todos"
+        if ((!recipients || recipients.length === 0) && (targetListStr.toLowerCase().includes("geral") || targetListStr.toLowerCase().includes("todos"))) {
+          const { data: dbContacts } = await supabase.from("contacts").select("email").eq("status", "active");
+          if (dbContacts) {
+            recipients = dbContacts.map((c: any) => c.email).filter(Boolean);
+          }
+        }
       }
     }
 

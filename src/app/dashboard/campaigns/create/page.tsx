@@ -23,7 +23,8 @@ import {
   PlusCircle,
   ChevronDown,
   Search,
-  Zap
+  Zap,
+  Loader2
 } from "lucide-react";
 
 interface ListSegment {
@@ -877,6 +878,7 @@ function CreateCampaignForm() {
   const [customReplyTo, setCustomReplyTo] = useState("");
   const [htmlContent, setHtmlContent] = useState("");
   const [verifiedDomains, setVerifiedDomains] = useState<string[]>(["realizzarecursos.com.br", "realizzare.com.br"]);
+  const [isSending, setIsSending] = useState(false);
 
   // Lists list state to support dynamic list creation/selection
   const [listsList, setListsList] = useState<ListSegment[]>(initialListsAndSegments);
@@ -1377,7 +1379,63 @@ function CreateCampaignForm() {
       .filter(Boolean)
       .join(", ");
 
+    setIsSending(true);
     try {
+      // Extract target emails if specific contacts or lists were selected
+      const targetEmailsList: string[] = [];
+      selectedIncludeLists.forEach((id) => {
+        const item = listsList.find((l) => l.id === id);
+        if (item) {
+          if (item.name.includes("(") && item.name.includes("@")) {
+            const match = item.name.match(/\(([^)]+)\)/);
+            if (match && match[1] && match[1].includes("@")) {
+              targetEmailsList.push(match[1].trim());
+            }
+          } else if (item.name.includes("@")) {
+            targetEmailsList.push(item.name.trim());
+          }
+        }
+      });
+
+      // If specific list names are selected (e.g. "Clientes", "Leads"), resolve contacts from Supabase
+      if (targetEmailsList.length === 0 && selectedIncludeLists.length > 0) {
+        const selectedNames = selectedIncludeLists
+          .map((id) => listsList.find((l) => l.id === id)?.name)
+          .filter(Boolean);
+
+        const isGeneral = selectedNames.some((n: any) => 
+          n.toLowerCase().includes("geral") || n.toLowerCase().includes("todos")
+        );
+
+        if (!isGeneral) {
+          try {
+            const supabase = createClient();
+            const { data: dbLists } = await supabase.from("lists").select("id, name");
+            const matchedIds = dbLists
+              ?.filter((l: any) => selectedNames.some((sn: any) => sn.toLowerCase() === l.name.toLowerCase()))
+              .map((l: any) => l.id) || [];
+
+            if (matchedIds.length > 0) {
+              const { data: subs } = await supabase
+                .from("list_subscriptions")
+                .select("contacts(email, status)")
+                .in("list_id", matchedIds)
+                .eq("status", "subscribed");
+
+              if (subs && subs.length > 0) {
+                subs.forEach((s: any) => {
+                  if (s.contacts?.status === "active" && s.contacts?.email) {
+                    targetEmailsList.push(s.contacts.email);
+                  }
+                });
+              }
+            }
+          } catch (e) {
+            console.warn("Could not query list subscribers for dispatch:", e);
+          }
+        }
+      }
+
       const status = sendType === "immediate" ? "sent" : "scheduled";
       const scheduledAt = sendType === "immediate" ? new Date().toISOString() : `${scheduledDate}T${scheduledTime}:00Z`;
 
@@ -1395,7 +1453,7 @@ function CreateCampaignForm() {
         scheduled_at: status === "scheduled" ? scheduledAt : null,
         sent_at: status === "sent" ? scheduledAt : null,
         html_content: htmlContent,
-        sent_count: sendType === "immediate" ? (audienceEstimateCount || 10) : 0
+        sent_count: sendType === "immediate" ? (targetEmailsList.length || audienceEstimateCount || 0) : 0
       };
 
       const saveRes = await fetch("/api/campaigns/save", {
@@ -1408,18 +1466,6 @@ function CreateCampaignForm() {
       if (!saveRes.ok) throw new Error(saveJson.error || "Erro ao salvar dados da campanha");
 
       const insertedId = saveJson.id || editId;
-
-      // Extract target emails if specific contacts were selected
-      const targetEmailsList: string[] = [];
-      selectedIncludeLists.forEach((id) => {
-        const item = listsList.find((l) => l.id === id);
-        if (item && item.name.includes("(") && item.name.includes("@")) {
-          const match = item.name.match(/\(([^)]+)\)/);
-          if (match && match[1] && match[1].includes("@")) {
-            targetEmailsList.push(match[1].trim());
-          }
-        }
-      });
 
       // If sending immediately, invoke real email dispatch API
       if (sendType === "immediate" && insertedId) {
@@ -1446,6 +1492,8 @@ function CreateCampaignForm() {
     } catch (err: any) {
       console.error(err);
       alert(`Erro ao salvar campanha: ${err.message || err}`);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -3061,17 +3109,26 @@ function CreateCampaignForm() {
             <div className="flex justify-end gap-2.5 pt-3">
               <button
                 type="button"
+                disabled={isSending}
                 onClick={() => setShowConfirmSendModal(false)}
-                className="px-4 py-2 border border-slate-202 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2 border border-slate-202 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
               >
                 Revisar
               </button>
               <button
                 type="button"
+                disabled={isSending}
                 onClick={handleConfirmWizard}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-md transition-colors cursor-pointer"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Confirmar
+                {isSending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Disparando e-mails...</span>
+                  </>
+                ) : (
+                  <span>Confirmar Envio</span>
+                )}
               </button>
             </div>
           </div>
