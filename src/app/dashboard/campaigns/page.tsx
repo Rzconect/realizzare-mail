@@ -309,34 +309,24 @@ export default function CampaignsPage() {
     if (!target) return;
 
     try {
-      const supabase = createClient();
-      // @ts-ignore
-      const { data, error } = await supabase
-        .from("campaigns")
-        // @ts-ignore
-        .insert({
-          org_id: "00000000-0000-0000-0000-000000000001",
-          name: `${target.name} (Cópia)`,
-          subject: target.subject,
-          preview_text: target.previewText,
-          from_name: target.fromName,
-          from_email: target.fromEmail,
-          reply_to: target.replyTo,
-          status: 'draft',
-          target_list: target.targetList
-        } as any)
-        .select()
-        .single();
-        
-      if (error) throw error;
+      const res = await fetch("/api/campaigns/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cloneFromId: id })
+      });
+
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Erro ao clonar campanha.");
+
+      const cloned = resData.campaign;
 
       const clone: Campaign = {
         ...target,
-        id: (data as any).id,
-        name: (data as any).name,
+        id: cloned.id,
+        name: cloned.name,
         status: "Rascunho",
-        dateStr: `Rascunho (Salvo em ${new Date((data as any).created_at).toLocaleDateString()})`,
-        sentAtDate: (data as any).created_at,
+        dateStr: `Rascunho (Salvo em ${new Date(cloned.created_at || Date.now()).toLocaleDateString()})`,
+        sentAtDate: cloned.created_at || new Date().toISOString(),
         sentCount: 0,
         openCount: 0,
         clickCount: 0,
@@ -346,10 +336,10 @@ export default function CampaignsPage() {
 
       setCampaigns((prev) => [clone, ...prev]);
       setActiveMenuId(null);
-      alert("Campanha clonada como Rascunho!");
-    } catch (err) {
+      alert("Campanha clonada como Rascunho com sucesso!");
+    } catch (err: any) {
       console.error(err);
-      alert("Erro ao clonar campanha.");
+      alert(`Erro ao clonar campanha: ${err.message || err}`);
     }
   };
 

@@ -69,6 +69,25 @@ export async function POST(req: Request) {
       });
     }
 
+    function personalizeText(text: string, contact: any): string {
+      if (!text) return "";
+      let personalized = text;
+      const firstName = contact?.first_name || "";
+      const lastName = contact?.last_name || "";
+      const fullName = `${firstName} ${lastName}`.trim() || contact?.email || "";
+      const email = contact?.email || "";
+      const phone = contact?.phone || "";
+
+      personalized = personalized.replace(/\{\{\s*primeiro_nome\s*\}\}/gi, firstName || "Cliente");
+      personalized = personalized.replace(/\{\{\s*nome\s*\}\}/gi, firstName || "Cliente");
+      personalized = personalized.replace(/\{\{\s*nome_completo\s*\}\}/gi, fullName || "Cliente");
+      personalized = personalized.replace(/\{\{\s*sobrenome\s*\}\}/gi, lastName || "");
+      personalized = personalized.replace(/\{\{\s*email\s*\}\}/gi, email);
+      personalized = personalized.replace(/\{\{\s*telefone\s*\}\}/gi, phone);
+
+      return personalized;
+    }
+
     let recipients: string[] = targetEmails || [];
     if (!recipients || recipients.length === 0) {
       const { data: dbContacts } = await supabase.from("contacts").select("email").eq("status", "active");
@@ -82,12 +101,21 @@ export async function POST(req: Request) {
 
     for (const email of recipients) {
       try {
+        const { data: contact } = await supabase
+          .from("contacts")
+          .select("*")
+          .ilike("email", email.trim())
+          .maybeSingle();
+
+        const personalizedSubject = personalizeText(campaign.subject || "", contact);
+        const personalizedHtml = personalizeText(processedHtml, contact);
+
         await transporter.sendMail({
           from: `"${campaign.from_name || 'Realizzare Cursos'}" <${campaign.from_email || 'contato@realizzarecursos.com.br'}>`,
           replyTo: campaign.reply_to || 'contato@realizzare.com',
           to: email,
-          subject: campaign.subject,
-          html: processedHtml
+          subject: personalizedSubject,
+          html: personalizedHtml
         });
         successCount++;
       } catch (err: any) {

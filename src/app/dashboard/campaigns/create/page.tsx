@@ -1362,7 +1362,6 @@ function CreateCampaignForm() {
 
   const handleSaveDraft = async () => {
     try {
-      const supabase = createClient();
       const campaignData = {
         org_id: "00000000-0000-0000-0000-000000000001",
         name: campaignName.trim() || "Rascunho de Campanha",
@@ -1376,18 +1375,19 @@ function CreateCampaignForm() {
         sent_count: 0
       };
 
-      if (editId) {
-        const { error } = await supabase.from("campaigns").update(campaignData as any).eq("id", editId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("campaigns").insert(campaignData as any);
-        if (error) throw error;
-      }
+      const res = await fetch("/api/campaigns/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ editId, campaignData })
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Erro ao salvar rascunho");
+
       alert("Rascunho salvo com sucesso!");
       router.push("/dashboard/campaigns");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Erro ao salvar rascunho!");
+      alert(`Erro ao salvar rascunho: ${e.message || e}`);
     }
   };
 
@@ -1398,7 +1398,6 @@ function CreateCampaignForm() {
       .join(", ");
 
     try {
-      const supabase = createClient();
       const status = sendType === "immediate" ? "sent" : "scheduled";
       const scheduledAt = sendType === "immediate" ? new Date().toISOString() : `${scheduledDate}T${scheduledTime}:00Z`;
 
@@ -1419,25 +1418,16 @@ function CreateCampaignForm() {
         sent_count: sendType === "immediate" ? (audienceEstimateCount || 10) : 0
       };
 
-      let insertedId = editId;
+      const saveRes = await fetch("/api/campaigns/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ editId, campaignData })
+      });
 
-      if (editId) {
-        const { error } = await supabase
-          .from("campaigns")
-          // @ts-ignore
-          .update(campaignData as any)
-          .eq('id', editId);
-        if (error) throw error;
-      } else {
-        const { data: inserted, error } = await supabase
-          .from("campaigns")
-          // @ts-ignore
-          .insert(campaignData as any)
-          .select("id")
-          .single();
-        if (error) throw error;
-        if (inserted) insertedId = (inserted as any).id;
-      }
+      const saveJson = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveJson.error || "Erro ao salvar dados da campanha");
+
+      const insertedId = saveJson.id || editId;
 
       // Extract target emails if specific contacts were selected
       const targetEmailsList: string[] = [];
@@ -1473,9 +1463,9 @@ function CreateCampaignForm() {
 
       alert(sendType === "immediate" ? "Campanha disparada com sucesso!" : "Campanha agendada com sucesso!");
       router.push("/dashboard/campaigns");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Erro ao salvar campanha!");
+      alert(`Erro ao salvar campanha: ${err.message || err}`);
     }
   };
 
@@ -3083,7 +3073,7 @@ function CreateCampaignForm() {
 
             <div className="space-y-2.5 text-xs text-slate-700 border-y border-slate-100 py-3 leading-relaxed">
               <div>Campanha: <strong className="text-slate-900">{campaignName}</strong></div>
-              <div>Assunto: <strong className="text-slate-900">{renderMockTags(subjectLine)}</strong></div>
+              <div>Assunto: <strong className="text-slate-900">{subjectLine}</strong></div>
               <div>Público estimado: <strong className="text-slate-900">{audienceEstimateCount.toLocaleString("pt-BR")} destinatários</strong></div>
               <div>Envio: <strong className="text-indigo-650 font-bold uppercase">{sendType === "immediate" ? "Imediato (Agora)" : `Agendado para ${scheduledDate} as ${scheduledTime}`}</strong></div>
             </div>
