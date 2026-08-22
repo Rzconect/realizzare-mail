@@ -9,11 +9,20 @@ export async function POST(req: Request) {
     const eventType = body?.type || body?.event || "order.paid";
     const data = body?.data || body;
 
-    // Extract customer details
+    // Extract customer details & address
     const customer = data?.customer || {};
     const email = (customer?.email || data?.email || "").toLowerCase().trim();
     const name = customer?.name || data?.name || "Aluno Realizzare";
-    const phone = customer?.phones?.mobile_phone?.number || customer?.phone || "";
+    const phone = customer?.phones?.mobile_phone?.number ? `(${customer.phones.mobile_phone.area_code || "11"}) ${customer.phones.mobile_phone.number}` : (customer?.phone || "");
+
+    const address = customer?.address || 
+                    data?.shipping?.address || 
+                    data?.billing?.address || 
+                    data?.charges?.[0]?.customer?.address || 
+                    data?.charges?.[0]?.billing?.address || 
+                    {};
+    const city = address?.city || customer?.city || data?.city || "";
+    const state = address?.state || customer?.state || data?.state || "";
 
     if (!email) {
       return NextResponse.json({ message: "Webhook ignorado: e-mail não informado." }, { status: 200 });
@@ -84,6 +93,12 @@ export async function POST(req: Request) {
 
       if (existingContact) {
         contactId = existingContact.id;
+        const updatePayload: any = { status: "active", updated_at: new Date().toISOString() };
+        if (city) updatePayload.city = city;
+        if (state) updatePayload.state = state;
+        if (phone) updatePayload.phone = phone;
+        updatePayload.country = "Brasil";
+        await supabase.from("contacts").update(updatePayload).eq("id", existingContact.id);
       } else {
         const nameParts = name.trim().split(" ");
         const firstName = nameParts[0] || "Cliente";
@@ -97,6 +112,9 @@ export async function POST(req: Request) {
             last_name: lastName,
             email: email,
             phone: phone,
+            city: city || null,
+            state: state || null,
+            country: "Brasil",
             status: "active",
             source: "pagarme"
           })

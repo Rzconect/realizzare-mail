@@ -561,6 +561,45 @@ export default function ContactProfilePage({ params }: PageProps) {
           });
         }
 
+        // C. Purchase Events (Pagar.me Transactions)
+        if (purchases && purchases.length > 0) {
+          purchases.forEach((p: any) => {
+            const prodName = p.product_name || "Certificado de Conclusão - Realizzare Cursos";
+            const amtStr = (p.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const isPaid = p.status === "paid" || p.status === "approved";
+
+            rawEvents.push({
+              id: `purchase-${p.id}`,
+              type: "purchase",
+              label: isPaid ? "Compra Aprovada (Pagar.me)" : "Transação Registrada",
+              details: `Adquiriu '${prodName}' - R$ ${amtStr}`,
+              timestamp: p.paid_at || p.created_at
+            });
+          });
+        }
+
+        const { data: reportingEventsData } = await supabase
+          .from("reporting_events")
+          .select("*")
+          .eq("contact_email", contact.email)
+          .eq("event_type", "purchase");
+
+        if (reportingEventsData && reportingEventsData.length > 0) {
+          reportingEventsData.forEach((re: any) => {
+            const meta = re.metadata || {};
+            const title = meta.item_title || "Certificado de Conclusão - Realizzare Cursos";
+            const amtStr = (meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            rawEvents.push({
+              id: `reporting-${re.id}`,
+              type: "purchase",
+              label: "Compra Aprovada (Pagar.me)",
+              details: `Adquiriu '${title}' - R$ ${amtStr}`,
+              timestamp: re.created_at
+            });
+          });
+        }
+
         // Always add contact creation event
         rawEvents.push({
           id: `created-${contact.id}`,

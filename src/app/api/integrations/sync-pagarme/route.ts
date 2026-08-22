@@ -134,6 +134,15 @@ export async function POST(req: Request) {
       const email = rawEmail.toLowerCase().trim();
       const name = customer?.name || item?.name || "Aluno Realizzare";
       const phone = customer?.phones?.mobile_phone?.number ? `(${customer.phones.mobile_phone.area_code || "11"}) ${customer.phones.mobile_phone.number}` : (customer?.phone || "");
+           const address = customer?.address || 
+                      item?.shipping?.address || 
+                      item?.billing?.address || 
+                      item?.charge?.customer?.address || 
+                      item?.charge?.billing?.address || 
+                      item?.address || {};
+
+      const city = address?.city || customer?.city || item?.city || "";
+      const state = address?.state || customer?.state || item?.state || "";
       
       const itemTitle = item?.metadata?.course_name || 
                         item?.metadata?.course || 
@@ -161,6 +170,8 @@ export async function POST(req: Request) {
         name: `${formatName(name).firstName} ${formatName(name).lastName}`.trim(),
         email: email,
         phone: phone,
+        city: city,
+        state: state,
         date: dateObj.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
         time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }),
         eventLabel: `${itemTitle} - R$ ${amountInReais.toFixed(2)}`,
@@ -174,8 +185,6 @@ export async function POST(req: Request) {
         isMock: false
       });
     }
-
-
 
     allEventsToInsert.sort((a, b) => b.timestampMs - a.timestampMs);
 
@@ -212,6 +221,8 @@ export async function POST(req: Request) {
                   category: evt.category,
                   customer_name: [formatName(evt.name).firstName, formatName(evt.name).lastName].filter(Boolean).join(" "),
                   phone: evt.phone,
+                  city: evt.city,
+                  state: evt.state,
                   is_historical_mock: evt.isMock,
                   pagarme_id: evt.id
                 }
@@ -220,7 +231,7 @@ export async function POST(req: Request) {
 
             // Insert or Update Contacts intelligently
             let contactId;
-            const { data: existingC } = await supabaseAdmin.from("contacts").select("id, first_name, last_name, phone").eq("email", evt.email).maybeSingle();
+            const { data: existingC } = await supabaseAdmin.from("contacts").select("id, first_name, last_name, phone, city, state").eq("email", evt.email).maybeSingle();
             const { firstName, lastName } = formatName(evt.name);
             if (existingC) {
               contactId = existingC.id;
@@ -231,6 +242,9 @@ export async function POST(req: Request) {
               if (firstName && (!existingC.first_name || existingC.first_name === "Aluno")) updatePayload.first_name = firstName;
               if (lastName && (!existingC.last_name || existingC.last_name === "Realizzare")) updatePayload.last_name = lastName;
               if (evt.phone && !existingC.phone) updatePayload.phone = evt.phone;
+              if (evt.city && !existingC.city) updatePayload.city = evt.city;
+              if (evt.state && !existingC.state) updatePayload.state = evt.state;
+              updatePayload.country = "Brasil";
 
               await supabaseAdmin.from("contacts").update(updatePayload).eq("id", existingC.id);
             } else {
@@ -240,6 +254,9 @@ export async function POST(req: Request) {
                 first_name: firstName,
                 last_name: lastName,
                 phone: evt.phone,
+                city: evt.city || null,
+                state: evt.state || null,
+                country: "Brasil",
                 status: "active",
                 source: "Pagar.me Integration",
                 created_at: new Date(evt.timestampMs).toISOString()
