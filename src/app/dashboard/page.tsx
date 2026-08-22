@@ -323,24 +323,39 @@ export default function DashboardPage() {
         trackingEvents.forEach((te: any) => {
           const dateObj = new Date(te.created_at || Date.now());
           const payload = te.payload || {};
-          let cEmail = payload.email || payload.contact_email || "";
-          let cName = "Contato Realizzare";
+          let cEmail = (payload.email || payload.contact_email || "").trim();
+          let cContactId = payload.contact_id;
+          let cName = "";
 
-          if (payload.contact_id && contactsList) {
-            const cObj = contactsList.find((c: any) => c.id === payload.contact_id);
+          if (cContactId && contactsList) {
+            const cObj = contactsList.find((c: any) => c.id === cContactId);
             if (cObj) {
               cEmail = cObj.email || cEmail;
-              cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim() || cEmail;
+              cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim();
             }
           }
-          if (!cEmail) cEmail = "aluno@realizzare.com.br";
 
-          const campTitle = campaignMap.get(payload.campaign_id) || "Campanha de E-mail";
+          if (!cName && cEmail && contactsList) {
+            const cObj = contactsList.find((c: any) => (c.email || "").toLowerCase().trim() === cEmail.toLowerCase());
+            if (cObj) {
+              cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim();
+            }
+          }
+
+          // Skip tracking events without real contact email
+          if (!cEmail) return;
+
+          if (!cName) {
+            const prefix = cEmail.split("@")[0];
+            cName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+          }
+
+          const campTitle = campaignMap.get(payload.campaign_id) || "Campanha Realizzare";
           const isClick = te.event_type === "email.click";
 
           allEventsPool.push({
             id: te.id || Math.random().toString(),
-            contactId: payload.contact_id || null,
+            contactId: cContactId || null,
             name: cName,
             email: cEmail,
             date: dateObj.toLocaleDateString("pt-BR"),
@@ -1367,7 +1382,7 @@ export default function DashboardPage() {
                         {isPurchase ? (
                           <span className="font-bold text-slate-700">R$ {evt.amount ? evt.amount.toFixed(2) : "0.00"}</span>
                         ) : (
-                          <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">E-mail Engajado</span>
+                          <span className="text-slate-400 font-medium text-[10px]">Realizzare Mail</span>
                         )}
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3 text-slate-400 shrink-0" />

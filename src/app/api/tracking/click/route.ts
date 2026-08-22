@@ -7,6 +7,8 @@ export async function GET(req: NextRequest) {
   const contactId = searchParams.get("uid") || searchParams.get("u") || searchParams.get("contact_id");
   const rawUrl = searchParams.get("url") || searchParams.get("target") || "https://realizzarecursos.com.br";
 
+  const rawEmail = searchParams.get("email");
+
   let destinationUrl = "https://realizzarecursos.com.br";
   try {
     if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
@@ -24,6 +26,18 @@ export async function GET(req: NextRequest) {
 
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
+
+      let resolvedContactId = contactId;
+      let resolvedEmail = rawEmail;
+
+      if (rawEmail && !resolvedContactId) {
+        const { data: cData } = await supabase.from("contacts").select("id").ilike("email", rawEmail.trim()).maybeSingle();
+        if (cData) resolvedContactId = cData.id;
+      }
+      if (resolvedContactId && !resolvedEmail) {
+        const { data: cData } = await supabase.from("contacts").select("email").eq("id", resolvedContactId).maybeSingle();
+        if (cData) resolvedEmail = cData.email;
+      }
 
       // 1. Update Campaign click_count
       if (campaignId) {
@@ -45,24 +59,23 @@ export async function GET(req: NextRequest) {
       }
 
       // 2. Log click event in inbound_webhook_events
-      if (contactId || campaignId) {
-        await supabase.from("inbound_webhook_events").insert({
-          org_id: "00000000-0000-0000-0000-000000000001",
-          source: "realizzare_tracking",
-          event_type: "email.click",
-          payload: {
-            event: "email.click",
-            contact_id: contactId,
-            campaign_id: campaignId,
-            target_url: destinationUrl,
-            user_agent: req.headers.get("user-agent") || "unknown",
-            ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
-            timestamp: new Date().toISOString()
-          },
-          status: "processed",
-          processed_at: new Date().toISOString()
-        });
-      }
+      await supabase.from("inbound_webhook_events").insert({
+        org_id: "00000000-0000-0000-0000-000000000001",
+        source: "realizzare_tracking",
+        event_type: "email.click",
+        payload: {
+          event: "email.click",
+          contact_id: resolvedContactId || null,
+          email: resolvedEmail || null,
+          campaign_id: campaignId,
+          target_url: destinationUrl,
+          user_agent: req.headers.get("user-agent") || "unknown",
+          ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
+          timestamp: new Date().toISOString()
+        },
+        status: "processed",
+        processed_at: new Date().toISOString()
+      });
     }
   } catch (err) {
     console.error("Click tracking error:", err);

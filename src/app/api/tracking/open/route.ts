@@ -12,12 +12,26 @@ export async function GET(req: NextRequest) {
   const campaignId = searchParams.get("cid") || searchParams.get("c") || searchParams.get("campaign_id");
   const contactId = searchParams.get("uid") || searchParams.get("u") || searchParams.get("contact_id");
 
+  const rawEmail = searchParams.get("email");
+
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
+
+      let resolvedContactId = contactId;
+      let resolvedEmail = rawEmail;
+
+      if (rawEmail && !resolvedContactId) {
+        const { data: cData } = await supabase.from("contacts").select("id").ilike("email", rawEmail.trim()).maybeSingle();
+        if (cData) resolvedContactId = cData.id;
+      }
+      if (resolvedContactId && !resolvedEmail) {
+        const { data: cData } = await supabase.from("contacts").select("email").eq("id", resolvedContactId).maybeSingle();
+        if (cData) resolvedEmail = cData.email;
+      }
 
       // 1. Update Campaign open_count
       if (campaignId) {
@@ -39,23 +53,22 @@ export async function GET(req: NextRequest) {
       }
 
       // 2. Log event in inbound_webhook_events for contact timeline
-      if (contactId || campaignId) {
-        await supabase.from("inbound_webhook_events").insert({
-          org_id: "00000000-0000-0000-0000-000000000001",
-          source: "realizzare_tracking",
-          event_type: "email.open",
-          payload: {
-            event: "email.open",
-            contact_id: contactId,
-            campaign_id: campaignId,
-            user_agent: req.headers.get("user-agent") || "unknown",
-            ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
-            timestamp: new Date().toISOString()
-          },
-          status: "processed",
-          processed_at: new Date().toISOString()
-        });
-      }
+      await supabase.from("inbound_webhook_events").insert({
+        org_id: "00000000-0000-0000-0000-000000000001",
+        source: "realizzare_tracking",
+        event_type: "email.open",
+        payload: {
+          event: "email.open",
+          contact_id: resolvedContactId || null,
+          email: resolvedEmail || null,
+          campaign_id: campaignId,
+          user_agent: req.headers.get("user-agent") || "unknown",
+          ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
+          timestamp: new Date().toISOString()
+        },
+        status: "processed",
+        processed_at: new Date().toISOString()
+      });
     }
   } catch (err) {
     console.error("Open tracking error:", err);

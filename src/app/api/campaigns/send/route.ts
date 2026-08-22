@@ -101,24 +101,49 @@ export async function POST(req: Request) {
 
     for (const email of recipients) {
       try {
+        const recipientEmail = email.trim();
         const { data: contact } = await supabase
           .from("contacts")
           .select("*")
-          .ilike("email", email.trim())
+          .ilike("email", recipientEmail)
           .maybeSingle();
 
+        const contactId = contact?.id || "";
+
+        // Personalize text tags first
+        let personalizedHtml = personalizeText(campaign.html_content || "", contact);
+
+        // Inject per-recipient open tracking pixel
+        const openTrackingPixel = `<img src="${appUrl}/api/tracking/open?cid=${campaign.id}&uid=${contactId}&email=${encodeURIComponent(recipientEmail)}" width="1" height="1" style="display:none" alt="" />`;
+        if (!personalizedHtml.includes("/api/tracking/open")) {
+          personalizedHtml += openTrackingPixel;
+        } else {
+          personalizedHtml = personalizedHtml.replace(
+            /\/api\/tracking\/open\?[^"']*/gi,
+            `/api/tracking/open?cid=${campaign.id}&uid=${contactId}&email=${encodeURIComponent(recipientEmail)}`
+          );
+        }
+
+        // Rewrite per-recipient click tracking links
+        if (personalizedHtml.includes("href=")) {
+          personalizedHtml = personalizedHtml.replace(/href=["'](https?:\/\/[^"']+)["']/gi, (match: string, p1: string) => {
+            if (p1.includes("/api/tracking")) return match;
+            const trackingUrl = `${appUrl}/api/tracking/click?cid=${campaign.id}&uid=${contactId}&email=${encodeURIComponent(recipientEmail)}&url=${encodeURIComponent(p1)}`;
+            return `href="${trackingUrl}"`;
+          });
+        }
+
         const personalizedSubject = personalizeText(campaign.subject || "", contact);
-        const personalizedHtml = personalizeText(processedHtml, contact);
 
         await transporter.sendMail({
           from: `"${campaign.from_name || 'Realizzare Cursos'}" <${campaign.from_email || 'contato@realizzarecursos.com.br'}>`,
           replyTo: campaign.reply_to || 'contato@realizzare.com',
-          to: email,
+          to: recipientEmail,
           subject: personalizedSubject,
           html: personalizedHtml,
           headers: {
             "X-Campaign-ID": campaign.id,
-            "X-Contact-ID": contact?.id || ""
+            "X-Contact-ID": contactId
           }
         });
         successCount++;
