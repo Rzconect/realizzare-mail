@@ -849,9 +849,9 @@ export default function DashboardPage() {
   const [dailyStats, setDailyStats] = useState<any[]>([]);
   const [isLoadingDailyStats, setIsLoadingDailyStats] = useState(true);
 
-  const emailTotalSent = dailyStats.reduce((acc, curr) => acc + (curr.envios || 0), 0);
-  const emailTotalOpened = dailyStats.reduce((acc, curr) => acc + (curr.abertos || 0), 0);
-  const emailTotalClicked = dailyStats.reduce((acc, curr) => acc + (curr.clicados || 0), 0);
+  const emailTotalSent = dailyStats.reduce((acc, curr) => acc + (curr.totalEnvios !== undefined ? curr.totalEnvios : (curr.envios || 0)), 0);
+  const emailTotalOpened = dailyStats.reduce((acc, curr) => acc + (curr.abertosUnicos !== undefined ? curr.abertosUnicos : (curr.abertos || 0)), 0);
+  const emailTotalClicked = dailyStats.reduce((acc, curr) => acc + (curr.clicadosUnicos !== undefined ? curr.clicadosUnicos : (curr.clicados || 0)), 0);
   const emailOpenRate = emailTotalSent > 0 ? (emailTotalOpened / emailTotalSent) * 100 : 0;
   const emailClickRate = emailTotalSent > 0 ? (emailTotalClicked / emailTotalSent) * 100 : 0;
 
@@ -938,11 +938,23 @@ export default function DashboardPage() {
 
         const result = slots.map((s) => {
           const entry = slotMap.get(s.name);
+          const totalEnvios = entry ? entry.envios : 0;
+          const abertosUnicos = entry ? entry.abertos : 0;
+          const clicadosUnicos = entry ? entry.clicados : 0;
+
+          // Proportional breakdown segments for ordered stacked bar chart:
+          const enviosApenas = Math.max(0, totalEnvios - abertosUnicos);
+          const abertosApenas = Math.max(0, abertosUnicos - clicadosUnicos);
+          const clicados = clicadosUnicos;
+
           return {
             name: s.name,
-            envios: entry ? entry.envios : 0,
-            abertos: entry ? entry.abertos : 0,
-            clicados: entry ? entry.clicados : 0
+            totalEnvios,
+            abertosUnicos,
+            clicadosUnicos,
+            enviosApenas,
+            abertosApenas,
+            clicados
           };
         });
 
@@ -970,12 +982,7 @@ export default function DashboardPage() {
         return `R$ ${formatted}k`;
       }
     }
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      maximumFractionDigits: 0,
-      minimumFractionDigits: 0
-    }).format(intVal);
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
   };
 
   const formatNumber = (val: number) => {
@@ -984,49 +991,45 @@ export default function DashboardPage() {
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const sortedPayload = [...payload].sort((a, b) => {
-        const order: Record<string, number> = { envios: 1, abertos: 2, clicados: 3 };
-        const keyA = a.dataKey || "";
-        const keyB = b.dataKey || "";
-        return (order[keyA] || 99) - (order[keyB] || 99);
-      });
+      const itemData = payload[0]?.payload || {};
+      const totalEnvios = itemData.totalEnvios || 0;
+      const abertosUnicos = itemData.abertosUnicos || 0;
+      const clicadosUnicos = itemData.clicadosUnicos || 0;
 
-      const enviosItem = payload.find((x: any) => x.dataKey === "envios");
-      const abertosItem = payload.find((x: any) => x.dataKey === "abertos");
-      const clicadosItem = payload.find((x: any) => x.dataKey === "clicados");
-
-      const enviosVal = enviosItem?.value || 0;
-      const abertosVal = abertosItem?.value || 0;
-      const clicadosVal = clicadosItem?.value || 0;
-
-      const taxaAbertura = enviosVal > 0 ? Math.round((abertosVal / enviosVal) * 100) : 0;
-      const taxaClique = enviosVal > 0 ? Math.round((clicadosVal / enviosVal) * 100) : 0;
+      const taxaAbertura = totalEnvios > 0 ? ((abertosUnicos / totalEnvios) * 100).toFixed(1).replace(".", ",") : "0,0";
+      const taxaClique = totalEnvios > 0 ? ((clicadosUnicos / totalEnvios) * 100).toFixed(1).replace(".", ",") : "0,0";
 
       return (
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-lg space-y-2 min-w-[220px]">
-          <p className="text-xs font-black text-slate-500 border-b border-slate-100 pb-1">{label}</p>
-          <div className="space-y-1.5">
-            {sortedPayload.map((item: any) => {
-              let percentageStr = "";
-              if (item.dataKey === "abertos") {
-                percentageStr = ` ("${taxaAbertura}%")`;
-              } else if (item.dataKey === "clicados") {
-                percentageStr = ` ("${taxaClique}%")`;
-              }
+        <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-4 shadow-2xl space-y-2.5 min-w-[220px] text-xs font-sans">
+          <p className="font-black text-slate-300 border-b border-slate-800 pb-2 text-sm">{label}</p>
+          <div className="space-y-2 pt-0.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
+                <span className="text-slate-300 font-medium">E-mails Entregues:</span>
+              </div>
+              <span className="font-black text-white">{formatNumber(totalEnvios)}</span>
+            </div>
 
-              return (
-                <div key={item.dataKey} className="flex items-center justify-between gap-4 text-xs animate-fadeIn">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color || item.stroke }} />
-                    <span className="text-slate-500 font-medium">{item.name}</span>
-                  </div>
-                  <span className="text-slate-800 font-bold">
-                    {formatNumber(item.value)}
-                    {percentageStr && <span className="text-indigo-600 font-bold ml-1">{percentageStr}</span>}
-                  </span>
-                </div>
-              );
-            })}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+                <span className="text-slate-300 font-medium">Aberturas Únicas:</span>
+              </div>
+              <span className="font-black text-cyan-400">
+                {formatNumber(abertosUnicos)} <span className="text-[11px] font-semibold text-cyan-300">({taxaAbertura}%)</span>
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                <span className="text-slate-300 font-medium">Cliques Únicos:</span>
+              </div>
+              <span className="font-black text-emerald-400">
+                {formatNumber(clicadosUnicos)} <span className="text-[11px] font-semibold text-emerald-300">({taxaClique}%)</span>
+              </span>
+            </div>
           </div>
         </div>
       );
@@ -1375,22 +1378,22 @@ export default function DashboardPage() {
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 12, marginTop: 10 }} />
                     <Bar
-                      dataKey="envios"
+                      dataKey="enviosApenas"
                       name="E-mails Entregues"
                       stackId="a"
                       fill="#4f46e5"
                       maxBarSize={44}
                     />
                     <Bar
-                      dataKey="abertos"
-                      name="E-mails Abertos"
+                      dataKey="abertosApenas"
+                      name="Aberturas Únicas"
                       stackId="a"
                       fill="#06b6d4"
                       maxBarSize={44}
                     />
                     <Bar
                       dataKey="clicados"
-                      name="E-mails Clicados"
+                      name="Cliques Únicos"
                       stackId="a"
                       fill="#10b981"
                       radius={[6, 6, 0, 0]}
