@@ -432,7 +432,7 @@ export default function ContactProfilePage({ params }: PageProps) {
         let rawEvents: any[] = [];
         const contactEmailLower = (contact.email || "").toLowerCase().trim();
 
-        // A. Campaign Sent Events
+        // A. Campaign Sent, Open and Click Events
         if (dbCampaignsData) {
           dbCampaignsData.forEach((c: any) => {
             if (c.status === "sent") {
@@ -457,6 +457,30 @@ export default function ContactProfilePage({ params }: PageProps) {
                   details: detailsStr,
                   timestamp: c.sent_at || c.created_at
                 });
+
+                if ((c.open_count || 0) > 0) {
+                  rawEvents.push({
+                    id: `open-${c.id}`,
+                    type: "open",
+                    label: "E-mail Aberto",
+                    details: flowName
+                      ? `Fluxo: ${flowName} • Abriu o e-mail da campanha '${c.name}'`
+                      : `Abriu o e-mail da campanha '${c.name}'`,
+                    timestamp: c.updated_at || c.sent_at || c.created_at
+                  });
+                }
+
+                if ((c.click_count || 0) > 0) {
+                  rawEvents.push({
+                    id: `click-${c.id}`,
+                    type: "click",
+                    label: "E-mail Clicado",
+                    details: flowName
+                      ? `Fluxo: ${flowName} • Clicou no link da campanha '${c.name}'`
+                      : `Clicou no link da campanha '${c.name}'`,
+                    timestamp: c.updated_at || c.sent_at || c.created_at
+                  });
+                }
               }
             }
           });

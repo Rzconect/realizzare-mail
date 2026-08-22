@@ -327,6 +327,18 @@ export default function DashboardPage() {
           let cContactId = payload.contact_id;
           let cName = "";
 
+          const campaignObj = dbCampaigns?.find((c: any) => c.id === payload.campaign_id);
+          const campTitle = campaignObj?.name || "Campanha Realizzare";
+
+          // Fallback: resolve recipient email from campaign target_list if missing in tracking payload
+          if (!cEmail && campaignObj?.target_list) {
+            const targetStr = campaignObj.target_list;
+            const matchEmail = targetStr.match(/\(([^)]+@[\w.-]+)\)/) || targetStr.match(/([\w.-]+@[\w.-]+)/);
+            if (matchEmail && matchEmail[1]) {
+              cEmail = matchEmail[1].trim();
+            }
+          }
+
           if (cContactId && contactsList) {
             const cObj = contactsList.find((c: any) => c.id === cContactId);
             if (cObj) {
@@ -335,9 +347,10 @@ export default function DashboardPage() {
             }
           }
 
-          if (!cName && cEmail && contactsList) {
+          if (cEmail && contactsList) {
             const cObj = contactsList.find((c: any) => (c.email || "").toLowerCase().trim() === cEmail.toLowerCase());
             if (cObj) {
+              if (!cContactId) cContactId = cObj.id;
               cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim();
             }
           }
@@ -350,7 +363,6 @@ export default function DashboardPage() {
             cName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
           }
 
-          const campTitle = campaignMap.get(payload.campaign_id) || "Campanha Realizzare";
           const isClick = te.event_type === "email.click";
 
           allEventsPool.push({
