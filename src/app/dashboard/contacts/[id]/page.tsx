@@ -493,7 +493,19 @@ export default function ContactProfilePage({ params }: PageProps) {
             let teEmail = (payload.email || payload.contact_email || "").toLowerCase().trim();
             let teContactId = payload.contact_id;
 
-            if (teContactId === contact.id || (teEmail && teEmail === contactEmailLower)) {
+            let isMatch = teContactId === contact.id || (teEmail && teEmail === contactEmailLower);
+
+            if (!isMatch && payload.campaign_id && dbCampaignsData) {
+              const camp = dbCampaignsData.find((c: any) => c.id === payload.campaign_id);
+              if (camp && camp.target_list) {
+                const tStr = camp.target_list.toLowerCase();
+                if (tStr.includes(contactEmailLower) || (contact.first_name && tStr.includes(contact.first_name.toLowerCase()))) {
+                  isMatch = true;
+                }
+              }
+            }
+
+            if (isMatch) {
               const isClick = te.event_type === "email.click";
               const isOpen = te.event_type === "email.open";
 

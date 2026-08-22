@@ -336,6 +336,10 @@ export default function DashboardPage() {
             const matchEmail = targetStr.match(/\(([^)]+@[\w.-]+)\)/) || targetStr.match(/([\w.-]+@[\w.-]+)/);
             if (matchEmail && matchEmail[1]) {
               cEmail = matchEmail[1].trim();
+            } else if (targetStr.includes("@")) {
+              const parts = targetStr.split(/\s+/);
+              const foundEmail = parts.find((p: string) => p.includes("@"));
+              if (foundEmail) cEmail = foundEmail.replace(/[()]/g, "").trim();
             }
           }
 
