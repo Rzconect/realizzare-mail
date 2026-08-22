@@ -12,6 +12,11 @@ export async function POST(req: Request) {
 
     // 1. CLONE CAMPAIGN
     if (cloneFromId) {
+      const { data: setRes } = await supabase.from("account_settings").select("settings").maybeSingle();
+      const defaultName = setRes?.settings?.default_sender_name || "Realizzare Cursos";
+      const defaultEmail = setRes?.settings?.default_sender_email || "contato@realizzarecursos.com.br";
+      const defaultReply = setRes?.settings?.default_reply_to || "contato@realizzare.com";
+
       const { data: target, error: targetErr } = await supabase
         .from("campaigns")
         .select("*")
@@ -27,9 +32,9 @@ export async function POST(req: Request) {
         name: `${target.name || "Campanha"} (Cópia)`,
         subject: target.subject || "",
         preview_text: target.preview_text || "",
-        from_name: target.from_name || "Realizzare Cursos",
-        from_email: target.from_email || "contato@realizzarecursos.com.br",
-        reply_to: target.reply_to || "contato@realizzare.com",
+        from_name: target.from_name || defaultName,
+        from_email: target.from_email || defaultEmail,
+        reply_to: target.reply_to || defaultReply,
         status: "draft",
         target_list: target.target_list || "Lista Geral",
         html_content: target.html_content || "",

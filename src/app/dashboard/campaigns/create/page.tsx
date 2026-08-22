@@ -1145,22 +1145,24 @@ function CreateCampaignForm() {
       const loadDraft = async () => {
         try {
           const supabase = createClient();
+          const { data: setRes } = await supabase.from("account_settings").select("settings").maybeSingle();
+          const defaultName = setRes?.settings?.default_sender_name || "Realizzare Cursos";
+          const defaultEmail = setRes?.settings?.default_sender_email || "contato@realizzarecursos.com.br";
+          const defaultReply = setRes?.settings?.default_reply_to || "contato@realizzare.com";
+
           const { data: found } = await supabase.from("campaigns").select("*").eq("id", editId).single();
           if (found) {
             setCampaignName(found.name || "");
             setSubjectLine(found.subject || "");
             setPreheader(found.preview_text || found.previewText || "");
-            setSenderName(found.from_name || found.fromName || "");
-            setSenderEmail(found.from_email || found.fromEmail || "");
+            setSenderName(found.from_name || found.fromName || defaultName);
+            setSenderEmail(found.from_email || found.fromEmail || defaultEmail);
             setHtmlContent(found.html_content || found.htmlContent || "");
             
-            const replyTo = found.reply_to || found.replyTo;
-            if (replyTo && replyTo !== found.from_email) {
-              setReplyToIsCustom(true);
-              setCustomReplyTo(replyTo);
-            } else {
-              setReplyToIsCustom(false);
-            }
+            const replyTo = found.reply_to || found.replyTo || defaultReply;
+            setReplyToIsCustom(true);
+            setCustomReplyTo(replyTo);
+            setReplyToEmail(replyTo);
             
             if (found.status === "scheduled" || found.status === "Agendado") {
               setSendType("scheduled");
@@ -1177,27 +1179,6 @@ function CreateCampaignForm() {
         } catch (e) {
           console.error("Erro ao carregar rascunho do Supabase:", e);
         }
-
-        // Fallback to localStorage
-        if (typeof window !== "undefined") {
-          const stored = localStorage.getItem("realizzare_mock_campaigns");
-          if (stored) {
-            try {
-              const list = JSON.parse(stored);
-              const found = list.find((c: any) => c.id === editId);
-              if (found) {
-                setCampaignName(found.name || "");
-                setSubjectLine(found.subject || "");
-                setPreheader(found.previewText || "");
-                setSenderName(found.fromName || "");
-                setSenderEmail(found.fromEmail || "");
-                setHtmlContent(found.htmlContent || "");
-              }
-            } catch (e) {
-              console.error(e);
-            }
-          }
-        }
       };
 
       loadDraft();
@@ -1211,17 +1192,16 @@ function CreateCampaignForm() {
         
         // Load account default sender
         const { data: setRes } = await supabase.from("account_settings").select("settings").maybeSingle();
-        if (setRes?.settings && !editId) {
-          if (setRes.settings.default_sender_name) setSenderName(setRes.settings.default_sender_name);
-          if (setRes.settings.default_sender_email) setSenderEmail(setRes.settings.default_sender_email);
-          if (setRes.settings.default_reply_to) setReplyToEmail(setRes.settings.default_reply_to);
-        } else if (typeof window !== "undefined" && !editId) {
-          const localEmail = localStorage.getItem("realizzare_sender_email");
-          const localName = localStorage.getItem("realizzare_sender_name");
-          const localReply = localStorage.getItem("realizzare_reply_to_email");
-          if (localEmail) setSenderEmail(localEmail);
-          if (localName) setSenderName(localName);
-          if (localReply) setReplyToEmail(localReply);
+        const defaultName = setRes?.settings?.default_sender_name || "Realizzare Cursos";
+        const defaultEmail = setRes?.settings?.default_sender_email || "contato@realizzarecursos.com.br";
+        const defaultReply = setRes?.settings?.default_reply_to || "contato@realizzare.com";
+
+        if (!editId) {
+          setSenderName(defaultName);
+          setSenderEmail(defaultEmail);
+          setReplyToEmail(defaultReply);
+          setReplyToIsCustom(true);
+          setCustomReplyTo(defaultReply);
         }
 
         // Load verified sending domains from Supabase
