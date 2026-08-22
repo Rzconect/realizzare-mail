@@ -902,18 +902,22 @@ export default function DashboardPage() {
             const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
             if (!email) return;
 
+            const campId = payload.campaign_id || payload.campaignId || "default";
             const dateObj = new Date(t.created_at || Date.now());
             const slotName = period === "today"
               ? `${String(dateObj.getHours()).padStart(2, "0")}:00`
               : `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
 
+            // Deduplication Key: Unique contact interaction PER CAMPAIGN
+            const uniqueKey = `${email}_${campId}`;
+
             if (t.event_type === "email.open") {
               if (!uniqueOpensPerSlot.has(slotName)) uniqueOpensPerSlot.set(slotName, new Set());
-              uniqueOpensPerSlot.get(slotName)!.add(email);
+              uniqueOpensPerSlot.get(slotName)!.add(uniqueKey);
             }
             if (t.event_type === "email.click") {
               if (!uniqueClicksPerSlot.has(slotName)) uniqueClicksPerSlot.set(slotName, new Set());
-              uniqueClicksPerSlot.get(slotName)!.add(email);
+              uniqueClicksPerSlot.get(slotName)!.add(uniqueKey);
             }
           });
         }
