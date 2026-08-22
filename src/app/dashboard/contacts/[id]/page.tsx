@@ -408,11 +408,19 @@ export default function ContactProfilePage({ params }: PageProps) {
           entered_at: fe.entered_at ? new Date(fe.entered_at).toISOString().split("T")[0] : ""
         })) || [];
 
-        // 3. Fetch Timeline & Course Events for this Contact
-        const { data: timelineData } = await supabase
-          .from("contact_timeline_view")
+        // 3. Fetch Timeline, Tracking Events, Campaigns & Course Events for this Contact
+        const { data: dbCampaignsData } = await supabase
+          .from("campaigns")
+          .select("id, name, target_list, status, sent_at, created_at");
+
+        const campaignMap = new Map<string, string>();
+        if (dbCampaignsData) {
+          dbCampaignsData.forEach((c: any) => campaignMap.set(c.id, c.name));
+        }
+
+        const { data: trackingEventsData } = await supabase
+          .from("inbound_webhook_events")
           .select("*")
-          .eq("contact_id", contact.id)
           .order("created_at", { ascending: false });
 
         const { data: courseEventsData } = await supabase
@@ -422,35 +430,65 @@ export default function ContactProfilePage({ params }: PageProps) {
           .order("created_at", { ascending: false });
 
         let rawEvents: any[] = [];
+        const contactEmailLower = (contact.email || "").toLowerCase().trim();
 
-        if (timelineData && timelineData.length > 0) {
-          timelineData.forEach((t: any) => {
-            let type = t.event_group;
-            let label = t.event_group;
-            let details = "";
-            
-            if (t.event_group === 'email') {
-              type = t.label === 'open' ? 'open' : t.label === 'click' ? 'click' : 'send';
-              label = t.label === 'open' ? 'E-mail Aberto' : t.label === 'click' ? 'E-mail Clicado' : 'E-mail Enviado';
-              details = `Campanha: ${t.metadata?.campaign_id || 'Não especificada'}`;
-            } else if (t.event_group === 'purchase') {
-              label = 'Compra Aprovada';
-              details = `Comprou '${t.label}' - R$ ${t.metadata?.amount || '0,00'}`;
-            } else if (t.event_group === 'enrollment') {
-              label = 'Matrícula Realizada';
-              details = `Matriculado no curso '${t.label}'`;
-            } else if (t.event_group === 'flow') {
-              label = t.label === 'entered' ? 'Entrou no Fluxo' : 'Saiu do Fluxo';
-              details = `Ação: ${t.label} (Nó: ${t.metadata?.node_id})`;
+        // A. Campaign Sent Events
+        if (dbCampaignsData) {
+          dbCampaignsData.forEach((c: any) => {
+            if (c.status === "sent") {
+              const targetStr = (c.target_list || "").toLowerCase();
+              const isTargeted =
+                targetStr.includes(contactEmailLower) ||
+                (contact.first_name && targetStr.includes(contact.first_name.toLowerCase())) ||
+                targetStr.includes("geral") ||
+                targetStr.includes("alunos") ||
+                targetStr.includes("leads");
+
+              if (isTargeted) {
+                const flowName = c.flow_name || c.flowName || "";
+                const detailsStr = flowName
+                  ? `Fluxo: ${flowName} • Campanha: '${c.name}'`
+                  : `Enviado e-mail da campanha '${c.name}'`;
+
+                rawEvents.push({
+                  id: `send-${c.id}`,
+                  type: "send",
+                  label: "E-mail Enviado",
+                  details: detailsStr,
+                  timestamp: c.sent_at || c.created_at
+                });
+              }
             }
+          });
+        }
 
-            rawEvents.push({
-              id: t.id || `evt-${Math.random()}`,
-              type,
-              label,
-              details,
-              timestamp: t.created_at
-            });
+        // B. Tracking Open and Click Events
+        if (trackingEventsData && trackingEventsData.length > 0) {
+          trackingEventsData.forEach((te: any) => {
+            const payload = te.payload || {};
+            let teEmail = (payload.email || payload.contact_email || "").toLowerCase().trim();
+            let teContactId = payload.contact_id;
+
+            if (teContactId === contact.id || (teEmail && teEmail === contactEmailLower)) {
+              const isClick = te.event_type === "email.click";
+              const isOpen = te.event_type === "email.open";
+
+              if (isOpen || isClick) {
+                const campTitle = campaignMap.get(payload.campaign_id) || "Campanha Realizzare";
+                const flowName = payload.flow_name || payload.flowName || "";
+                const flowPrefix = flowName ? `Fluxo: ${flowName} • ` : "";
+
+                rawEvents.push({
+                  id: te.id || Math.random().toString(),
+                  type: isClick ? "click" : "open",
+                  label: isClick ? "E-mail Clicado" : "E-mail Aberto",
+                  details: isClick
+                    ? `${flowPrefix}Clicou no link da campanha '${campTitle}'`
+                    : `${flowPrefix}Abriu o e-mail da campanha '${campTitle}'`,
+                  timestamp: te.created_at
+                });
+              }
+            }
           });
         }
 
@@ -500,7 +538,7 @@ export default function ContactProfilePage({ params }: PageProps) {
         const seenEvtKeys = new Set();
         const timeline = rawEvents
           .filter(e => {
-            const key = `${e.label}-${e.timestamp}`;
+            const key = `${e.label}-${e.details}-${e.timestamp}`;
             if (seenEvtKeys.has(key)) return false;
             seenEvtKeys.add(key);
             return true;
@@ -514,6 +552,9 @@ export default function ContactProfilePage({ params }: PageProps) {
             note: e.note || "",
             timestamp: e.timestamp
           }));
+
+        const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
+        const emailsOpenedCount = rawEvents.filter((e) => e.type === "open").length;
 
         const profileObj = {
           first_name: contact.first_name || "",
@@ -535,6 +576,8 @@ export default function ContactProfilePage({ params }: PageProps) {
           enrollments,
           purchases,
           flows,
+          emails_sent: emailsSentCount,
+          emails_opened: emailsOpenedCount,
           timeline
         };
 
@@ -1550,8 +1593,10 @@ export default function ContactProfilePage({ params }: PageProps) {
             <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">E-mails Enviados</span>
               <div className="flex items-baseline gap-1.5 mt-1.5">
-                <span className="text-xl font-black text-slate-850">0</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">0%</span>
+                <span className="text-xl font-black text-slate-850">{draft.emails_sent || 0}</span>
+                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">
+                  {draft.emails_sent > 0 ? "100%" : "0%"}
+                </span>
               </div>
             </div>
 
@@ -1559,8 +1604,10 @@ export default function ContactProfilePage({ params }: PageProps) {
             <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">E-mails Abertos</span>
               <div className="flex items-baseline gap-1.5 mt-1.5">
-                <span className="text-xl font-black text-slate-850">0</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">0%</span>
+                <span className="text-xl font-black text-slate-850">{draft.emails_opened || 0}</span>
+                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">
+                  {draft.emails_sent > 0 ? `${Math.round(((draft.emails_opened || 0) / draft.emails_sent) * 100)}%` : "0%"}
+                </span>
               </div>
             </div>
 
