@@ -50,7 +50,7 @@ import {
 } from "recharts";
 
 import { createClient } from "@/lib/supabase/client";
-import { getEmailAttributionSummary } from "@/lib/attribution";
+import { getEmailAttributionSummary, isPurchaseAttributedToEmail } from "@/lib/attribution";
 
 // ==========================================
 // MOCK DATA (to be replaced gradually)
@@ -249,6 +249,46 @@ export default function DashboardPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
+      // Fetch tracking events (open and click)
+      const { data: trackingEvents } = await supabase
+        .from("inbound_webhook_events")
+        .select("*")
+        .in("event_type", ["email.open", "email.click"])
+        .order("created_at", { ascending: false });
+
+      // Fetch campaigns for title mapping
+      const { data: dbCampaigns } = await supabase
+        .from("campaigns")
+        .select("id, name, sent_count, open_count, click_count, sent_at, created_at");
+
+      const campaignMap = new Map<string, string>();
+      if (dbCampaigns) {
+        dbCampaigns.forEach((c: any) => campaignMap.set(c.id, c.name));
+      }
+
+      // Map last email interaction per recipient for last-touch attribution (5-day window)
+      const emailLastInteractionMap = new Map<string, { type: "click" | "open"; timestampMs: number }>();
+      if (trackingEvents) {
+        trackingEvents.forEach((te: any) => {
+          const payload = te.payload || {};
+          let cEmail = (payload.email || payload.contact_email || "").toLowerCase().trim();
+          if (!cEmail && payload.contact_id && contactsList) {
+            const cObj = contactsList.find((c: any) => c.id === payload.contact_id);
+            if (cObj) cEmail = (cObj.email || "").toLowerCase().trim();
+          }
+          if (cEmail) {
+            const teMs = new Date(te.created_at || Date.now()).getTime();
+            const existing = emailLastInteractionMap.get(cEmail);
+            if (!existing || teMs > existing.timestampMs) {
+              emailLastInteractionMap.set(cEmail, {
+                type: te.event_type === "email.click" ? "click" : "open",
+                timestampMs: teMs
+              });
+            }
+          }
+        });
+      }
+
       let allEventsPool: any[] = [];
 
       if (eventsData && eventsData.length > 0) {
@@ -278,6 +318,44 @@ export default function DashboardPage() {
         });
       }
 
+      // Add email open and click events to the recent events pool
+      if (trackingEvents) {
+        trackingEvents.forEach((te: any) => {
+          const dateObj = new Date(te.created_at || Date.now());
+          const payload = te.payload || {};
+          let cEmail = payload.email || payload.contact_email || "";
+          let cName = "Contato Realizzare";
+
+          if (payload.contact_id && contactsList) {
+            const cObj = contactsList.find((c: any) => c.id === payload.contact_id);
+            if (cObj) {
+              cEmail = cObj.email || cEmail;
+              cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim() || cEmail;
+            }
+          }
+          if (!cEmail) cEmail = "aluno@realizzare.com.br";
+
+          const campTitle = campaignMap.get(payload.campaign_id) || "Campanha de E-mail";
+          const isClick = te.event_type === "email.click";
+
+          allEventsPool.push({
+            id: te.id || Math.random().toString(),
+            contactId: payload.contact_id || null,
+            name: cName,
+            email: cEmail,
+            date: dateObj.toLocaleDateString("pt-BR"),
+            time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+            eventLabel: isClick ? `Clicou na campanha: ${campTitle}` : `Abriu a campanha: ${campTitle}`,
+            itemTitle: campTitle,
+            amount: 0,
+            category: isClick ? "click" : "open",
+            timestampMs: dateObj.getTime(),
+            type: isClick ? "click" : "open",
+            provider: "realizzare"
+          });
+        });
+      }
+
       if (typeof window !== "undefined") {
         localStorage.removeItem("realizzare_simulated_events");
       }
@@ -291,13 +369,26 @@ export default function DashboardPage() {
       let finalCerts = 0;
       let finalSubs = 0;
 
+      // Calculate Store Revenue vs Attributed Email Revenue
+      let emailRevenue = 0;
+      let emailPaidCount = 0;
+
       filteredPeriodEvents.forEach(evt => {
-        finalRevenue += evt.amount || 0;
-        if (evt.category === "certificado") finalCerts += 1;
-        if (evt.category === "assinatura") finalSubs += 1;
+        if (evt.type === "purchase") {
+          finalRevenue += evt.amount || 0;
+          if (evt.category === "certificado") finalCerts += 1;
+          if (evt.category === "assinatura") finalSubs += 1;
+
+          const cEmail = (evt.email || "").toLowerCase().trim();
+          const lastInt = emailLastInteractionMap.get(cEmail);
+          if (lastInt && isPurchaseAttributedToEmail(evt.timestampMs, lastInt)) {
+            emailRevenue += evt.amount || 0;
+            emailPaidCount += 1;
+          }
+        }
       });
 
-      setRecentEventsList(filteredPeriodEvents.slice(0, 10));
+      setRecentEventsList(filteredPeriodEvents.slice(0, 15));
 
       // Calculate dynamic active leads, active students, and enrolled in period
       let dynamicActiveLeads = 0;
@@ -317,7 +408,6 @@ export default function DashboardPage() {
           if (tagsLower.includes("leads") || tagsLower.includes("lead")) isLead = true;
           if (tagsLower.includes("alunos") || tagsLower.includes("clientes") || tagsLower.includes("cliente realizzare") || tagsLower.includes("pagar.me")) isStudent = true;
           
-          // By default, if they don't have tags but are in the db, we count them as leads for now
           if (tagsLower.length === 0) isLead = true;
 
           if (isLead) uniqueLeads.add(c.id);
@@ -386,15 +476,6 @@ export default function DashboardPage() {
       const activeLeadsVal = Math.max(dynamicActiveLeads, dbLeadsCount);
       const activeStudentsVal = Math.max(dynamicActiveStudents, dbStudentsCount);
       const enrolledPeriodVal = Math.max(dynamicEnrolledPeriod, dbEnrolledPeriod);
-
-      let emailRevenue = 0;
-      let emailPaidCount = 0;
-      filteredPeriodEvents.forEach(evt => {
-        if (evt.amount && evt.amount > 0) {
-          emailRevenue += evt.amount;
-          emailPaidCount += 1;
-        }
-      });
 
       setMetrics({
         active_leads: activeLeadsVal,
@@ -634,44 +715,63 @@ export default function DashboardPage() {
       setIsLoadingDailyStats(true);
       const supabase = createClient();
       try {
-        let start = new Date();
-        let end = new Date();
-        
-        if (period === "today") {
-          start.setHours(0, 0, 0, 0);
-        } else if (period === "7") {
-          start.setDate(start.getDate() - 7);
-        } else if (period === "30") {
-          start.setDate(start.getDate() - 30);
-        } else if (period === "90") {
-          start.setDate(start.getDate() - 90);
-        } else if (period === "custom") {
-          start = new Date(customStartDate);
-          end = new Date(customEndDate);
-          end.setHours(23, 59, 59, 999);
-        }
+        const slots = getMockDailyStats();
+        const slotMap = new Map<string, { envios: number; abertos: number; clicados: number }>();
+        slots.forEach((s) => slotMap.set(s.name, { envios: 0, abertos: 0, clicados: 0 }));
 
-        const { data, error } = await supabase
-          .from('daily_email_stats_view')
-          .select('*')
-          .gte('date', start.toISOString().split('T')[0])
-          .lte('date', end.toISOString().split('T')[0])
-          .order('date', { ascending: true });
+        // 1. Fetch campaigns for sent, open, click counts
+        const { data: dbCampaigns } = await supabase
+          .from("campaigns")
+          .select("sent_count, open_count, click_count, sent_at, created_at");
 
-        if (error || !data || data.length === 0) {
-          setDailyStats(getMockDailyStats());
-        } else {
-          const formatted = data.map((d: any) => {
-            const dateStr = d.date + "T12:00:00Z";
-            return {
-              name: new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-              envios: parseInt(d.envios) || 0,
-              abertos: parseInt(d.abertos) || 0,
-              clicados: parseInt(d.clicados) || 0
-            };
+        if (dbCampaigns && dbCampaigns.length > 0) {
+          dbCampaigns.forEach((c: any) => {
+            const dateObj = new Date(c.sent_at || c.created_at);
+            const slotName = period === "today"
+              ? `${String(dateObj.getHours()).padStart(2, "0")}:00`
+              : `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+
+            const entry = slotMap.get(slotName);
+            if (entry) {
+              entry.envios += c.sent_count || 0;
+              entry.abertos += c.open_count || 0;
+              entry.clicados += c.click_count || 0;
+            }
           });
-          setDailyStats(formatted);
         }
+
+        // 2. Fetch real tracking events (open and click)
+        const { data: trackingEvents } = await supabase
+          .from("inbound_webhook_events")
+          .select("event_type, created_at")
+          .in("event_type", ["email.open", "email.click"]);
+
+        if (trackingEvents && trackingEvents.length > 0) {
+          trackingEvents.forEach((t: any) => {
+            const dateObj = new Date(t.created_at);
+            const slotName = period === "today"
+              ? `${String(dateObj.getHours()).padStart(2, "0")}:00`
+              : `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+
+            const entry = slotMap.get(slotName);
+            if (entry) {
+              if (t.event_type === "email.open" && entry.abertos === 0) entry.abertos = 1;
+              if (t.event_type === "email.click" && entry.clicados === 0) entry.clicados = 1;
+            }
+          });
+        }
+
+        const result = slots.map((s) => {
+          const entry = slotMap.get(s.name);
+          return {
+            name: s.name,
+            envios: entry ? entry.envios : 0,
+            abertos: entry ? entry.abertos : 0,
+            clicados: entry ? entry.clicados : 0
+          };
+        });
+
+        setDailyStats(result);
       } catch (e) {
         setDailyStats(getMockDailyStats());
       } finally {
@@ -1206,47 +1306,77 @@ export default function DashboardPage() {
                   )}
                 </div>
               ) : (
-                filteredEventsList.map((evt) => (
-                  <div
-                    key={evt.id}
-                    onClick={() => setSelectedEventModal(evt)}
-                    className="flex flex-col space-y-1.5 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50/20 transition-all cursor-pointer group w-full overflow-hidden shadow-2xs"
-                  >
-                    {/* Top Row: Avatar + Name + Pagar.me Badge */}
-                    <div className="flex items-center justify-between gap-2 w-full">
-                      <div className="flex items-center gap-2 overflow-hidden min-w-0">
-                        <div className="h-7 w-7 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-[10px] font-black shrink-0">
-                          {evt.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2)}
+                filteredEventsList.map((evt) => {
+                  const isPurchase = evt.type === "purchase";
+                  const isOpen = evt.type === "open";
+                  const isClick = evt.type === "click";
+
+                  return (
+                    <div
+                      key={evt.id}
+                      onClick={() => setSelectedEventModal(evt)}
+                      className="flex flex-col space-y-1.5 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50/20 transition-all cursor-pointer group w-full overflow-hidden shadow-2xs"
+                    >
+                      {/* Top Row: Avatar + Name + Badge */}
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                          <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                            isPurchase
+                              ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                              : isOpen
+                              ? "bg-purple-50 border border-purple-200 text-purple-700"
+                              : "bg-teal-50 border border-teal-200 text-teal-700"
+                          }`}>
+                            {isOpen ? (
+                              <Eye className="h-3.5 w-3.5" />
+                            ) : isClick ? (
+                              <MousePointerClick className="h-3.5 w-3.5" />
+                            ) : (
+                              evt.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2)
+                            )}
+                          </div>
+                          <span className="text-xs font-extrabold text-slate-850 truncate group-hover:text-indigo-600 transition-colors">
+                            {evt.name}
+                          </span>
                         </div>
-                        <span className="text-xs font-extrabold text-slate-850 truncate group-hover:text-indigo-600 transition-colors">
-                          {evt.name}
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border shrink-0 ${
+                          isPurchase
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : isOpen
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-teal-50 text-teal-700 border-teal-200"
+                        }`}>
+                          {isPurchase ? "Pagar.me" : isOpen ? "Abertura" : "Clique"}
                         </span>
                       </div>
-                      <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
-                        Pagar.me
+
+                      {/* Email line */}
+                      <span className="text-[10px] text-slate-500 font-medium truncate block w-full pl-9">
+                        {evt.email}
                       </span>
-                    </div>
 
-                    {/* Email line */}
-                    <span className="text-[10px] text-slate-500 font-medium truncate block w-full pl-9">
-                      {evt.email}
-                    </span>
+                      {/* Item Description line */}
+                      <span className={`text-[11px] font-bold block w-full pl-9 leading-snug line-clamp-2 ${
+                        isPurchase ? "text-emerald-700" : isOpen ? "text-purple-700" : "text-teal-700"
+                      }`}>
+                        {evt.eventLabel || evt.itemTitle}
+                      </span>
 
-                    {/* Item Description line */}
-                    <span className="text-[11px] font-bold text-emerald-700 block w-full pl-9 leading-snug line-clamp-2">
-                      {evt.itemTitle || evt.eventLabel}
-                    </span>
-
-                    {/* Bottom row: Timestamp */}
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-100/80 w-full">
-                      <span className="font-bold text-slate-700">R$ {evt.amount ? evt.amount.toFixed(2) : "49.90"}</span>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-slate-400 shrink-0" />
-                        <span>{evt.date} às {evt.time}</span>
+                      {/* Bottom row: Timestamp */}
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-100/80 w-full">
+                        {isPurchase ? (
+                          <span className="font-bold text-slate-700">R$ {evt.amount ? evt.amount.toFixed(2) : "0.00"}</span>
+                        ) : (
+                          <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">E-mail Engajado</span>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span>{evt.date} às {evt.time}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
