@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const campaignId = searchParams.get("c");
-  const contactId = searchParams.get("u");
+  const campaignId = searchParams.get("cid") || searchParams.get("c") || searchParams.get("campaign_id");
+  const contactId = searchParams.get("uid") || searchParams.get("u") || searchParams.get("contact_id");
   const rawUrl = searchParams.get("url") || searchParams.get("target") || "https://realizzarecursos.com.br";
 
   let destinationUrl = "https://realizzarecursos.com.br";

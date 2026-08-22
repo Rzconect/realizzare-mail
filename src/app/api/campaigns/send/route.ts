@@ -115,7 +115,11 @@ export async function POST(req: Request) {
           replyTo: campaign.reply_to || 'contato@realizzare.com',
           to: email,
           subject: personalizedSubject,
-          html: personalizedHtml
+          html: personalizedHtml,
+          headers: {
+            "X-Campaign-ID": campaign.id,
+            "X-Contact-ID": contact?.id || ""
+          }
         });
         successCount++;
       } catch (err: any) {
