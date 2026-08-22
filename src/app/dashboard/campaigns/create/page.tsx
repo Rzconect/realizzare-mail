@@ -951,6 +951,13 @@ function CreateCampaignForm() {
             `)
             .order("created_at", { ascending: false });
 
+          const { data: dbSubs } = await supabase
+            .from("list_subscriptions")
+            .select("contact_id")
+            .eq("status", "subscribed");
+
+          const subscribedContactIds = new Set((dbSubs || []).map((s: any) => s.contact_id));
+
           if (dbContacts && dbContacts.length > 0) {
             const mapped = dbContacts.map((c: any) => ({
               id: c.id,
@@ -960,6 +967,7 @@ function CreateCampaignForm() {
               email: c.email || "",
               phone: c.phone || "",
               status: c.status || "active",
+              is_subscribed: subscribedContactIds.has(c.id),
               created_at: c.created_at,
               tags: c.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || []
             }));
@@ -3292,18 +3300,18 @@ function CreateCampaignForm() {
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2">
               {contacts.filter((c: any) => {
-                if (c.status !== "active") return false;
+                if (c.status !== "active" || c.is_subscribed === false) return false;
                 if (!contactSearchQuery) return true;
                 const q = contactSearchQuery.toLowerCase();
                 const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
                 const email = (c.email || "").toLowerCase();
                 return fullName.includes(q) || email.includes(q);
               }).length === 0 ? (
-                <div className="text-xs text-slate-400 p-6 text-center">Nenhum contato ativo encontrado nesta segmentação.</div>
+                <div className="text-xs text-slate-400 p-6 text-center">Nenhum contato ativo inscrito em lista encontrado nesta segmentação.</div>
               ) : (
                 contacts
                   .filter((c: any) => {
-                    if (c.status !== "active") return false;
+                    if (c.status !== "active" || c.is_subscribed === false) return false;
                     if (!contactSearchQuery) return true;
                     const q = contactSearchQuery.toLowerCase();
                     const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
@@ -3326,9 +3334,14 @@ function CreateCampaignForm() {
                           <span className="text-[11px] text-slate-500">{c.email}</span>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-full">
-                        Ativo
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-full">
+                          Ativo
+                        </span>
+                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded-full">
+                          Em Lista
+                        </span>
+                      </div>
                     </div>
                   ))
               )}
@@ -3336,7 +3349,7 @@ function CreateCampaignForm() {
 
             <div className="pt-4 border-t border-slate-200 flex items-center justify-between shrink-0">
               <span className="text-xs font-bold text-slate-600">
-                {contacts.filter((c: any) => c.status === "active").length} contatos ativos no total
+                {contacts.filter((c: any) => c.status === "active" && c.is_subscribed !== false).length} contatos ativos inscritos em lista
               </span>
               <button
                 type="button"

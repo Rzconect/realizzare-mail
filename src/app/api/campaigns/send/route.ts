@@ -119,14 +119,40 @@ export async function POST(req: Request) {
           }
         }
 
-        // 3. Fallback to all contacts ONLY if target_list explicitly specifies "Geral" or "Todos"
+        // 3. Fallback to all contacts ONLY if target_list explicitly specifies "Geral" or "Todos", requiring list subscription
         if ((!recipients || recipients.length === 0) && (targetListStr.toLowerCase().includes("geral") || targetListStr.toLowerCase().includes("todos"))) {
-          const { data: dbContacts } = await supabase.from("contacts").select("email").eq("status", "active");
-          if (dbContacts) {
-            recipients = dbContacts.map((c: any) => c.email).filter(Boolean);
+          const { data: subscribedSubs } = await supabase
+            .from("list_subscriptions")
+            .select("contacts(email, status)")
+            .eq("status", "subscribed");
+
+          if (subscribedSubs && subscribedSubs.length > 0) {
+            const emailSet = new Set<string>();
+            subscribedSubs.forEach((s: any) => {
+              if (s.contacts?.status === "active" && s.contacts?.email) {
+                emailSet.add(s.contacts.email);
+              }
+            });
+            recipients = Array.from(emailSet);
           }
         }
       }
+    }
+
+    // Filter recipients to strictly ensure they are in contacts AND subscribed to at least 1 list
+    if (recipients && recipients.length > 0) {
+      const { data: verifiedSubs } = await supabase
+        .from("list_subscriptions")
+        .select("contacts(email, status)")
+        .eq("status", "subscribed");
+
+      const subscribedSet = new Set(
+        (verifiedSubs || [])
+          .map((s: any) => s.contacts?.status === "active" ? s.contacts?.email?.toLowerCase() : null)
+          .filter(Boolean)
+      );
+
+      recipients = recipients.filter(e => subscribedSet.has(e.toLowerCase()));
     }
 
     let successCount = 0;
@@ -186,16 +212,18 @@ export async function POST(req: Request) {
       }
     }
 
-    // Update campaign status and count
+    // Update campaign status, success count and bounce/rejection count
     await supabase.from("campaigns").update({
       status: "sent",
       sent_at: new Date().toISOString(),
-      sent_count: successCount
+      sent_count: successCount,
+      bounce_count: sendErrors.length
     }).eq("id", campaign.id);
 
     return NextResponse.json({
       success: true,
       sent_count: successCount,
+      bounce_count: sendErrors.length,
       errors: sendErrors
     });
   } catch (err: any) {

@@ -456,6 +456,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   // Checklist for graphs visibility lines
   const [visibleLines, setVisibleLines] = useState({
+    bounce: true,
     entregue: true,
     aberta: true,
     clicada: true,
@@ -486,24 +487,25 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     };
   }, [data]);
 
-  // Hourly engagement mock data (BarChart styled like the print)
+  // Hourly engagement data (Stacked BarChart matching Home page style)
   const hourlyData = useMemo(() => {
+    const bounceVal = data.deliveryStats.bounced || 0;
+    const deliveredVal = data.deliveryStats.delivered || 0;
+    const openVal = data.openCount || 0;
+    const clickVal = data.clickCount || 0;
+    const salesVal = data.conversions || 0;
+
     return [
-      { time: "00:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "05:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "10:05", entregue: data.deliveryStats.delivered, aberta: Math.round(data.openCount * 0.5), clicada: Math.round(data.clickCount * 0.4), vendas: Math.round(data.conversions * 0.4) },
-      { time: "15:00", entregue: 0, aberta: Math.round(data.openCount * 0.25), clicada: Math.round(data.clickCount * 0.3), vendas: Math.round(data.conversions * 0.3) },
-      { time: "20:00", entregue: 0, aberta: Math.round(data.openCount * 0.15), clicada: Math.round(data.clickCount * 0.2), vendas: Math.round(data.conversions * 0.2) },
-      { time: "01:00", entregue: 0, aberta: Math.round(data.openCount * 0.06), clicada: Math.round(data.clickCount * 0.1), vendas: Math.round(data.conversions * 0.1) },
-      { time: "06:00", entregue: 0, aberta: Math.round(data.openCount * 0.02), clicada: 0, vendas: 0 },
-      { time: "11:00", entregue: 0, aberta: Math.round(data.openCount * 0.01), clicada: 0, vendas: 0 },
-      { time: "16:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "21:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "02:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "07:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "12:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "17:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "22:00", entregue: 0, aberta: 0, clicada: 0, vendas: 0 }
+      { time: "00:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "05:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "10:05", bounce: bounceVal, entregue: deliveredVal, aberta: openVal, clicada: clickVal, vendas: salesVal },
+      { time: "15:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "20:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "01:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "06:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "11:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "16:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+      { time: "21:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 }
     ];
   }, [data]);
 
@@ -589,7 +591,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* 3. Specific KPIs Line (reusing the visual style, updated subtext formatting to match the print layout) */}
+      {/* 3. Specific KPIs Line */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* KPI 1: Open Rate */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
@@ -598,32 +600,32 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-xs text-indigo-600 font-bold hover:underline transition-all mt-1 w-fit cursor-pointer">
             {data.openCount.toLocaleString("pt-BR")} destinatários
           </p>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-650" />
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-violet-600" />
         </div>
 
         {/* KPI 2: Click Rate */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-          <span className="text-slate-555 text-slate-500 text-xs font-bold uppercase tracking-wider block">Taxa de Cliques (CR)</span>
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Taxa de Cliques (CR)</span>
           <h3 className="text-2xl font-black text-slate-850 mt-2">{kpis.clickRate.toFixed(2).replace(".", ",")}%</h3>
           <p className="text-xs text-indigo-600 font-bold hover:underline transition-all mt-1 w-fit cursor-pointer">
             {data.clickCount.toLocaleString("pt-BR")} destinatários
           </p>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-650" />
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600" />
         </div>
 
         {/* KPI 3: Conversions */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-          <span className="text-slate-555 text-slate-500 text-xs font-bold uppercase tracking-wider block">Taxa de Pedido Realizado</span>
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Taxa de Pedido Realizado</span>
           <h3 className="text-2xl font-black text-slate-850 mt-2">{kpis.convRate.toFixed(2).replace(".", ",")}%</h3>
           <p className="text-xs text-slate-500 font-medium mt-1">
             {data.conversions} destinatário
           </p>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-650" />
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-amber-600" />
         </div>
 
         {/* KPI 4: Revenue */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-          <span className="text-slate-555 text-slate-500 text-xs font-bold uppercase tracking-wider block">Revenue</span>
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Revenue</span>
           <h3 className="text-2xl font-black text-slate-850 mt-2">
             {data.revenue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </h3>
@@ -638,70 +640,82 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
       {/* 4. Grid Layout: Chart & miniature Email Template Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Engagement Chart */}
+        {/* Left Column: Engagement Chart (Stacked Bar Chart matching Home style) */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-lg font-bold text-slate-800">Engajamento ao longo do tempo</h2>
             </div>
             
-            {/* Checkbox controls styled like print */}
-            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-700">
-              <label className="flex items-center gap-2 cursor-pointer">
+            {/* Checkbox controls with Bounce legend */}
+            <div className="flex flex-wrap items-center gap-3.5 text-xs font-semibold text-slate-700">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={visibleLines.bounce}
+                  onChange={(e) => setVisibleLines(prev => ({ ...prev, bounce: e.target.checked }))}
+                  className="rounded border-slate-300 text-red-600 h-3.5 w-3.5 focus:ring-0 focus:ring-offset-0"
+                />
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-red-500 inline-block" />
+                  Falha / Bounce
+                </span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={visibleLines.entregue}
                   onChange={(e) => setVisibleLines(prev => ({ ...prev, entregue: e.target.checked }))}
                   className="rounded border-slate-300 text-indigo-600 h-3.5 w-3.5 focus:ring-0 focus:ring-offset-0"
                 />
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded bg-blue-500 inline-block" />
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-indigo-500 inline-block" />
                   Entregue
                 </span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={visibleLines.aberta}
                   onChange={(e) => setVisibleLines(prev => ({ ...prev, aberta: e.target.checked }))}
                   className="rounded border-slate-300 text-indigo-600 h-3.5 w-3.5 focus:ring-0 focus:ring-offset-0"
                 />
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-violet-500 inline-block" />
                   Aberta
                 </span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={visibleLines.clicada}
                   onChange={(e) => setVisibleLines(prev => ({ ...prev, clicada: e.target.checked }))}
                   className="rounded border-slate-300 text-indigo-600 h-3.5 w-3.5 focus:ring-0 focus:ring-offset-0"
                 />
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded bg-amber-500 inline-block" />
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
                   Clicada
                 </span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={visibleLines.vendas}
                   onChange={(e) => setVisibleLines(prev => ({ ...prev, vendas: e.target.checked }))}
                   className="rounded border-slate-300 text-indigo-600 h-3.5 w-3.5 focus:ring-0 focus:ring-offset-0"
                 />
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded bg-orange-500 inline-block" />
-                  Pedido Realizado
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-amber-500 inline-block" />
+                  Venda
                 </span>
               </label>
             </div>
           </div>
 
-          {/* Recharts BarChart Wrapper */}
+          {/* Recharts Stacked BarChart Wrapper */}
           <div className="h-80 w-full pr-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourlyData} barGap={3} barSize={8}>
+              <BarChart data={hourlyData} barGap={0} barSize={44}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis 
@@ -722,17 +736,20 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   itemStyle={{ fontWeight: "bold" }}
                   formatter={(value: any) => [Number(value).toLocaleString("pt-BR") + " destinatários"]}
                 />
+                {visibleLines.bounce && (
+                  <Bar stackId="a" dataKey="bounce" name="Falha / Bounce" fill="#ef4444" radius={[0, 0, 0, 0]} maxBarSize={44} />
+                )}
                 {visibleLines.entregue && (
-                  <Bar dataKey="entregue" name="Entregue" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                  <Bar stackId="a" dataKey="entregue" name="Entregue" fill="#6366f1" radius={[0, 0, 0, 0]} maxBarSize={44} />
                 )}
                 {visibleLines.aberta && (
-                  <Bar dataKey="aberta" name="Aberta" fill="#10b981" radius={[2, 2, 0, 0]} />
+                  <Bar stackId="a" dataKey="aberta" name="Aberta" fill="#8b5cf6" radius={[0, 0, 0, 0]} maxBarSize={44} />
                 )}
                 {visibleLines.clicada && (
-                  <Bar dataKey="clicada" name="Clicada" fill="#eab308" radius={[2, 2, 0, 0]} />
+                  <Bar stackId="a" dataKey="clicada" name="Clicada" fill="#10b981" radius={[0, 0, 0, 0]} maxBarSize={44} />
                 )}
                 {visibleLines.vendas && (
-                  <Bar dataKey="vendas" name="Pedido Realizado" fill="#f97316" radius={[2, 2, 0, 0]} />
+                  <Bar stackId="a" dataKey="vendas" name="Pedido Realizado" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={44} />
                 )}
               </BarChart>
             </ResponsiveContainer>
