@@ -625,21 +625,23 @@ export default function ContactProfilePage({ params }: PageProps) {
         let city = foundContact?.location?.city || foundContact?.city;
 
         if (matchingStudentInfo) {
-          const nameParts = matchingStudentInfo.name ? matchingStudentInfo.name.split(" ") : ["Aluno", "Realizzare"];
-          first_name = nameParts[0];
-          last_name = nameParts.slice(1).join(" ") || "Realizzare";
-          email = matchingStudentInfo.email;
-          phone = matchingStudentInfo.phone || "(65) 99234-8811";
-          state = matchingStudentInfo.state || "MT";
-          city = matchingStudentInfo.city || "Cuiabá";
+          const nameParts = matchingStudentInfo.name ? matchingStudentInfo.name.split(" ") : [];
+          if (nameParts.length > 0) {
+            first_name = nameParts[0];
+            last_name = nameParts.slice(1).join(" ") || "";
+          }
+          email = matchingStudentInfo.email || email;
+          phone = matchingStudentInfo.phone || phone;
+          state = matchingStudentInfo.state || state;
+          city = matchingStudentInfo.city || city;
         }
 
-        first_name = first_name || "Jhordanny";
-        last_name = (last_name || "Sayda").replace(/#\d+/, "").trim();
-        email = email || "saydajhordanny@gmail.com";
-        phone = phone || "(65) 99234-8811";
-        state = state || "MT";
-        city = city || "Cuiabá";
+        first_name = first_name || "Contato";
+        last_name = (last_name || "").replace(/#\d+/, "").trim();
+        email = email || "";
+        phone = phone || "";
+        state = state || "";
+        city = city || "";
         const status = foundContact?.status || "active";
         const created_at = foundContact?.created_at || "15/08/2026";
         const tags = foundContact?.tags || ["Pagar.me V5", "Cliente Realizzare"];
@@ -898,7 +900,10 @@ export default function ContactProfilePage({ params }: PageProps) {
           first_name: draft.first_name,
           last_name: draft.last_name,
           email: draft.email,
-          phone: draft.phone || null
+          phone: draft.phone || null,
+          city: draft.location?.city || draft.city || null,
+          state: draft.location?.state || draft.state || null,
+          birth_date: draft.birth_date || null
         } as any)
         .eq("id", id);
       if (updateError) throw updateError;
@@ -1251,23 +1256,93 @@ export default function ContactProfilePage({ params }: PageProps) {
                   </div>
                 </div>
 
+                {/* Cidade */}
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cidade</span>
-                    <span className="text-slate-800 font-semibold mt-0.5 truncate">
-                      {draft.location?.city || "Cuiabá"}
-                    </span>
+                    {editingFields.city ? (
+                      <div className="flex items-center gap-1.5 mt-1 animate-fadeIn">
+                        <input
+                          type="text"
+                          placeholder="Ex: São Paulo, Rio de Janeiro, etc."
+                          value={draft.location?.city || draft.city || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDraft({
+                              ...draft,
+                              city: val,
+                              location: { ...(draft.location || {}), city: val }
+                            });
+                          }}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 w-full font-medium"
+                        />
+                        <button
+                          onClick={() => toggleEdit("city")}
+                          className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
+                        >
+                          ✓
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1.5 group mt-0.5">
+                        <span className="text-slate-800 font-semibold truncate">
+                          {draft.location?.city || draft.city || "Não informado"}
+                        </span>
+                        <button
+                          onClick={() => toggleEdit("city")}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer"
+                          title="Editar Cidade"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {/* Estado (UF) */}
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-indigo-500 shrink-0" />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Estado (UF)</span>
-                    <span className="text-slate-800 font-semibold mt-0.5 truncate">
-                      {draft.location?.state || "MT"}
-                    </span>
+                    {editingFields.state ? (
+                      <div className="flex items-center gap-1.5 mt-1 animate-fadeIn">
+                        <input
+                          type="text"
+                          placeholder="Ex: SP, RJ, MG, etc."
+                          value={draft.location?.state || draft.state || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDraft({
+                              ...draft,
+                              state: val,
+                              location: { ...(draft.location || {}), state: val }
+                            });
+                          }}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 w-full font-medium uppercase"
+                        />
+                        <button
+                          onClick={() => toggleEdit("state")}
+                          className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
+                        >
+                          ✓
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1.5 group mt-0.5">
+                        <span className="text-slate-800 font-semibold truncate">
+                          {draft.location?.state || draft.state || "Não informado"}
+                        </span>
+                        <button
+                          onClick={() => toggleEdit("state")}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer"
+                          title="Editar Estado (UF)"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
