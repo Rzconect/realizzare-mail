@@ -897,6 +897,8 @@ function CreateCampaignForm() {
   const [tagFallbacks, setTagFallbacks] = useState<Record<string, string>>({});
   const [customFields, setCustomFields] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
+  const [showSelectContactsModal, setShowSelectContactsModal] = useState(false);
+  const [contactSearchQuery, setContactSearchQuery] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -924,30 +926,52 @@ function CreateCampaignForm() {
         setCustomFields(defaultCustomFields);
       }
 
-      const storedContacts = localStorage.getItem("realizzare_mock_contacts");
-      if (storedContacts) {
+      // Fetch real contacts from Supabase DB
+      const loadRealContacts = async () => {
         try {
-          setContacts(JSON.parse(storedContacts));
-        } catch (e) {
-          console.error(e);
+          const supabase = createClient();
+          const { data: dbContacts } = await supabase
+            .from("contacts")
+            .select(`
+              id,
+              first_name,
+              last_name,
+              email,
+              phone,
+              status,
+              created_at,
+              contact_tags (
+                tags (
+                  name
+                )
+              )
+            `)
+            .order("created_at", { ascending: false });
+
+          if (dbContacts && dbContacts.length > 0) {
+            const mapped = dbContacts.map((c: any) => ({
+              id: c.id,
+              first_name: c.first_name || "",
+              last_name: c.last_name || "",
+              name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email,
+              email: c.email || "",
+              phone: c.phone || "",
+              status: c.status || "active",
+              created_at: c.created_at,
+              tags: c.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || []
+            }));
+            setContacts(mapped);
+          } else {
+            const storedContacts = localStorage.getItem("realizzare_mock_contacts");
+            if (storedContacts) {
+              try { setContacts(JSON.parse(storedContacts)); } catch (e) {}
+            }
+          }
+        } catch (err) {
+          console.error("Error loading contacts for campaign creation:", err);
         }
-      } else {
-        const defaultContacts = [
-          { id: "c1", first_name: "Ana", last_name: "Oliveira", email: "ana.oliveira@gmail.com", phone: "(11) 98877-6655", status: "active", created_at: "2026-07-01", tags: ["Novo", "Matriculado"], course: "Introdução à Programação Web", total_spent: 197.00 },
-          { id: "c2", first_name: "Bruno", last_name: "Santos", email: "bruno.santos@yahoo.com", phone: "(21) 97766-5544", status: "active", created_at: "2026-06-28", tags: ["Interessado"], course: "Gestão Financeira para Negócios", total_spent: 0.00 },
-          { id: "c3", first_name: "Carla", last_name: "Lima", email: "carla.lima@outlook.com", phone: "(31) 96655-4433", status: "unsubscribed", created_at: "2026-06-25", tags: ["Ex-Aluno"], course: "Introdução à Programação Web", total_spent: 197.00 },
-          { id: "c4", first_name: "Daniel", last_name: "Costa", email: "daniel.costa@hotmail.com", phone: "(41) 95544-3322", status: "active", created_at: "2026-07-03", tags: ["Vip"], course: "Desenvolvimento de Carreira e Liderança", total_spent: 497.00 },
-          { id: "c5", first_name: "Eduarda", last_name: "Pereira", email: "eduarda.p@gmail.com", phone: "(51) 94433-2211", status: "bounced", created_at: "2026-06-20", tags: ["Bounced"], course: "Nenhum", total_spent: 0.00 },
-          { id: "c6", first_name: "Felipe", last_name: "Almeida", email: "felipe.almeida@gmail.com", phone: "(11) 93322-1100", status: "active", created_at: "2026-07-05", tags: ["Novo", "Matriculado"], course: "Marketing Digital de Performance", total_spent: 197.00 },
-          { id: "c7", first_name: "Gabriela", last_name: "Rocha", email: "gabriela.rocha@uol.com.br", phone: "(21) 92211-0099", status: "active", created_at: "2026-07-06", tags: ["Interessado"], course: "Introdução à Programação Web", total_spent: 0.00 },
-          { id: "c8", first_name: "Hugo", last_name: "Nunes", email: "hugo.nunes@gmail.com", phone: "(31) 91100-9988", status: "active", created_at: "2026-06-15", tags: ["Matriculado"], course: "Desenvolvimento de Carreira e Liderança", total_spent: 497.00 },
-          { id: "c9", first_name: "Isabela", last_name: "Martins", email: "isabela.m@live.com", phone: "(81) 99988-7766", status: "active", created_at: "2026-07-07", tags: ["Novo"], course: "Nenhum", total_spent: 0.00 },
-          { id: "c10", first_name: "João", last_name: "Silva", email: "joao.silva@gmail.com", phone: "(11) 98899-0011", status: "unsubscribed", created_at: "2026-05-10", tags: ["Ex-Aluno"], course: "Gestão Financeira para Negócios", total_spent: 297.00 },
-          { id: "c11", first_name: "Karina", last_name: "Dias", email: "karina.dias@gmail.com", phone: "(19) 97788-9900", status: "active", created_at: "2026-07-02", tags: ["Vip"], course: "Marketing Digital de Performance", total_spent: 197.00 },
-          { id: "c12", first_name: "Lucas", last_name: "Fernandes", email: "lucas.fer@gmail.com", phone: "(47) 96677-8899", status: "active", created_at: "2026-06-30", tags: ["Novo"], course: "Nenhum", total_spent: 0.00 }
-        ];
-        setContacts(defaultContacts);
-      }
+      };
+      loadRealContacts();
 
       // Seed detailed profile data if missing
       Object.keys(mockProfileData).forEach((key) => {
@@ -1462,7 +1486,7 @@ function CreateCampaignForm() {
           if (g.rules.length >= 4) return g;
           return {
             ...g,
-            rules: [...g.rules, { field: "status", operator: "eq", value: "active" }]
+            rules: [...g.rules, { field: "email", operator: "eq", value: "" }]
           };
         }
         return g;
@@ -1490,7 +1514,19 @@ function CreateCampaignForm() {
         if (g.id === groupId) {
           return {
             ...g,
-            rules: g.rules.map((r, idx) => (idx === ruleIdx ? { ...r, ...updates } : r))
+            rules: g.rules.map((r, idx) => {
+              if (idx === ruleIdx) {
+                const next = { ...r, ...updates };
+                if (updates.field && updates.field !== "status" && r.value === "active") {
+                  next.value = "";
+                }
+                if (updates.field === "status" && !next.value) {
+                  next.value = "active";
+                }
+                return next;
+              }
+              return r;
+            })
           };
         }
         return g;
@@ -1517,7 +1553,7 @@ function CreateCampaignForm() {
   const handleSaveSegment = () => {
     if (!newSegmentName.trim()) return;
     const newId = `segment-${Date.now()}`;
-    const newCount = previewCount || Math.floor(Math.random() * 1500) + 120;
+    const newCount = previewCount !== null ? previewCount : countMatchingContacts(contacts, segmentGroups, globalOperator, customFields);
     
     // Add new segment dynamically to selection lists
     setListsList((prev) => [
@@ -1535,7 +1571,7 @@ function CreateCampaignForm() {
       {
         id: "group-1",
         logicalOperator: "and",
-        rules: [{ field: "status", operator: "eq", value: "active" }]
+        rules: [{ field: "email", operator: "eq", value: "" }]
       }
     ]);
     setGlobalOperator("and");
@@ -2222,34 +2258,115 @@ function CreateCampaignForm() {
                   {showIncludeDropdown && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowIncludeDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-60 overflow-y-auto bg-white border border-slate-202 rounded-xl shadow-xl p-1.5 space-y-1 animate-fadeIn animate-scaleIn">
-                        {filteredIncludeOptions.length === 0 ? (
-                          <div className="text-xs text-slate-400 p-3 text-center">Nenhuma lista ou segmento encontrado.</div>
-                        ) : (
-                          filteredIncludeOptions.map((l) => {
-                            const isSelected = selectedIncludeLists.includes(l.id);
-                            return (
-                              <button
-                                key={l.id}
-                                type="button"
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setSelectedIncludeLists(prev => prev.filter(id => id !== l.id));
-                                  } else {
-                                    setSelectedIncludeLists(prev => [...prev, l.id]);
-                                  }
-                                  setIncludeSearchQuery("");
-                                }}
-                                className={`w-full text-left text-xs px-3 py-2.5 rounded-lg flex items-center justify-between transition-colors ${
-                                  isSelected ? "bg-indigo-50 text-indigo-700 font-bold" : "hover:bg-slate-50 text-slate-700"
-                                }`}
-                              >
-                                <span>{l.name}</span>
-                                <span className="text-[10px] text-slate-500 font-bold">({l.count.toLocaleString("pt-BR")} leads)</span>
-                              </button>
-                            );
-                          })
-                        )}
+                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-72 overflow-y-auto bg-white border border-slate-202 rounded-xl shadow-xl p-1.5 space-y-2 animate-fadeIn animate-scaleIn">
+                        {/* Section 1: Listas & Segmentações */}
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider px-2 py-1 block">Listas & Segmentações</span>
+                          {filteredIncludeOptions.length === 0 ? (
+                            <div className="text-xs text-slate-400 p-2 italic text-center">Nenhuma lista encontrada.</div>
+                          ) : (
+                            filteredIncludeOptions.map((l) => {
+                              const isSelected = selectedIncludeLists.includes(l.id);
+                              return (
+                                <button
+                                  key={l.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setSelectedIncludeLists(prev => prev.filter(id => id !== l.id));
+                                    } else {
+                                      setSelectedIncludeLists(prev => [...prev, l.id]);
+                                    }
+                                    setIncludeSearchQuery("");
+                                  }}
+                                  className={`w-full text-left text-xs px-3 py-2 rounded-lg flex items-center justify-between transition-colors ${
+                                    isSelected ? "bg-indigo-50 text-indigo-700 font-bold" : "hover:bg-slate-50 text-slate-700"
+                                  }`}
+                                >
+                                  <span>{l.name}</span>
+                                  <span className="text-[10px] text-slate-500 font-bold">({l.count.toLocaleString("pt-BR")} leads)</span>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Section 2: Contatos Individuais */}
+                        <div className="border-t border-slate-100 pt-1.5">
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Contatos Diretos ({contacts.length})</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowIncludeDropdown(false);
+                                setShowSelectContactsModal(true);
+                              }}
+                              className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline"
+                            >
+                              Ver Todos / Selecionar Vários
+                            </button>
+                          </div>
+                          {contacts.length === 0 ? (
+                            <div className="text-xs text-slate-400 p-2 italic text-center">Nenhum contato na base.</div>
+                          ) : (
+                            contacts
+                              .filter(c => {
+                                if (!includeSearchQuery.trim()) return true;
+                                const q = includeSearchQuery.toLowerCase().trim();
+                                return (
+                                  (c.name && c.name.toLowerCase().includes(q)) ||
+                                  (c.email && c.email.toLowerCase().includes(q)) ||
+                                  (c.first_name && c.first_name.toLowerCase().includes(q)) ||
+                                  (c.last_name && c.last_name.toLowerCase().includes(q))
+                                );
+                              })
+                              .slice(0, 5)
+                              .map((c) => {
+                                const contactListId = `contact-${c.id}`;
+                                const isSelected = selectedIncludeLists.includes(contactListId);
+                                const displayName = `👤 ${c.first_name || ""} ${c.last_name || ""} (${c.email})`.trim();
+                                return (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setListsList(prev => {
+                                        if (prev.some(item => item.id === contactListId)) return prev;
+                                        return [...prev, { id: contactListId, name: displayName, count: 1 }];
+                                      });
+                                      if (isSelected) {
+                                        setSelectedIncludeLists(prev => prev.filter(id => id !== contactListId));
+                                      } else {
+                                        setSelectedIncludeLists(prev => [...prev, contactListId]);
+                                      }
+                                      setIncludeSearchQuery("");
+                                    }}
+                                    className={`w-full text-left text-xs px-3 py-1.5 rounded-lg flex items-center justify-between transition-colors ${
+                                      isSelected ? "bg-emerald-50 text-emerald-800 font-bold" : "hover:bg-slate-50 text-slate-700"
+                                    }`}
+                                  >
+                                    <span className="truncate">{displayName}</span>
+                                    <span className="text-[9px] text-emerald-600 font-extrabold bg-emerald-100/60 px-1.5 py-0.5 rounded shrink-0">Contato Direto</span>
+                                  </button>
+                                );
+                              })
+                          )}
+                        </div>
+
+                        {/* Footer Action Button */}
+                        <div className="border-t border-slate-100 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowIncludeDropdown(false);
+                              setShowSelectContactsModal(true);
+                            }}
+                            className="w-full text-center text-xs py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>Pesquisar e Selecionar Contatos Específicos</span>
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}
@@ -2968,6 +3085,112 @@ function CreateCampaignForm() {
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-md transition-colors cursor-pointer"
               >
                 Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: SELEÇÃO DE CONTATOS ESPECÍFICOS DA BASE */}
+      {showSelectContactsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 animate-fadeIn">
+          <div className="relative w-full max-w-2xl bg-white border border-slate-202 rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Selecionar Contatos Específicos</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Escolha um ou mais alunos/leads cadastrados para receber esta campanha.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSelectContactsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="py-3 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar por nome ou e-mail do contato..."
+                  value={contactSearchQuery}
+                  onChange={(e) => setContactSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1 py-2 pr-1">
+              {contacts.length === 0 ? (
+                <div className="text-xs text-slate-400 p-6 text-center italic">Nenhum contato encontrado na base.</div>
+              ) : (
+                contacts
+                  .filter((c) => {
+                    if (!contactSearchQuery.trim()) return true;
+                    const q = contactSearchQuery.toLowerCase().trim();
+                    return (
+                      (c.name && c.name.toLowerCase().includes(q)) ||
+                      (c.email && c.email.toLowerCase().includes(q)) ||
+                      (c.first_name && c.first_name.toLowerCase().includes(q)) ||
+                      (c.last_name && c.last_name.toLowerCase().includes(q))
+                    );
+                  })
+                  .map((c) => {
+                    const contactListId = `contact-${c.id}`;
+                    const isSelected = selectedIncludeLists.includes(contactListId);
+                    const displayName = `👤 ${c.first_name || ""} ${c.last_name || ""} (${c.email})`.trim();
+
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setListsList((prev) => {
+                            if (prev.some((item) => item.id === contactListId)) return prev;
+                            return [...prev, { id: contactListId, name: displayName, count: 1 }];
+                          });
+                          if (isSelected) {
+                            setSelectedIncludeLists((prev) => prev.filter((id) => id !== contactListId));
+                          } else {
+                            setSelectedIncludeLists((prev) => [...prev, contactListId]);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                          isSelected ? "bg-indigo-50/80 border-indigo-300 text-indigo-900" : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="rounded border-slate-300 text-indigo-600 h-4 w-4 pointer-events-none"
+                          />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">{c.first_name} {c.last_name}</div>
+                            <div className="text-[11px] text-slate-500 font-medium">{c.email}</div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded-full">
+                          Contato Individual
+                        </span>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-200 flex items-center justify-between shrink-0">
+              <span className="text-xs font-bold text-slate-600">
+                {selectedIncludeLists.filter((id) => id.startsWith("contact-")).length} contatos selecionados
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSelectContactsModal(false)}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+              >
+                Concluir Seleção
               </button>
             </div>
           </div>
