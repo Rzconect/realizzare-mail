@@ -871,11 +871,12 @@ function CreateCampaignForm() {
   const [subjectLine, setSubjectLine] = useState("");
   const [preheader, setPreheader] = useState("");
   const [senderName, setSenderName] = useState("Realizzare Cursos");
-  const [senderEmail, setSenderEmail] = useState("contato@realizzare.com.br");
-  const [replyToEmail, setReplyToEmail] = useState("suporte@realizzare.com.br");
+  const [senderEmail, setSenderEmail] = useState("contato@realizzarecursos.com.br");
+  const [replyToEmail, setReplyToEmail] = useState("contato@realizzare.com");
   const [replyToIsCustom, setReplyToIsCustom] = useState(false);
   const [customReplyTo, setCustomReplyTo] = useState("");
   const [htmlContent, setHtmlContent] = useState("");
+  const [verifiedDomains, setVerifiedDomains] = useState<string[]>(["realizzarecursos.com.br", "realizzare.com.br"]);
 
   // Lists list state to support dynamic list creation/selection
   const [listsList, setListsList] = useState<ListSegment[]>(initialListsAndSegments);
@@ -1179,6 +1180,41 @@ function CreateCampaignForm() {
     }
   }, [editId]);
 
+  useEffect(() => {
+    const loadSenderSettingsAndDomains = async () => {
+      try {
+        const supabase = createClient();
+        
+        // Load account default sender
+        const { data: setRes } = await supabase.from("account_settings").select("settings").maybeSingle();
+        if (setRes?.settings && !editId) {
+          if (setRes.settings.default_sender_name) setSenderName(setRes.settings.default_sender_name);
+          if (setRes.settings.default_sender_email) setSenderEmail(setRes.settings.default_sender_email);
+          if (setRes.settings.default_reply_to) setReplyToEmail(setRes.settings.default_reply_to);
+        } else if (typeof window !== "undefined" && !editId) {
+          const localEmail = localStorage.getItem("realizzare_sender_email");
+          const localName = localStorage.getItem("realizzare_sender_name");
+          const localReply = localStorage.getItem("realizzare_reply_to_email");
+          if (localEmail) setSenderEmail(localEmail);
+          if (localName) setSenderName(localName);
+          if (localReply) setReplyToEmail(localReply);
+        }
+
+        // Load verified sending domains from Supabase
+        const { data: domData } = await supabase.from("sending_domains").select("domain, verification_status");
+        if (domData && domData.length > 0) {
+          const vList = domData
+            .filter((d: any) => d.verification_status === "verified" || d.verification_status === "ok")
+            .map((d: any) => d.domain.toLowerCase().trim());
+          if (vList.length > 0) {
+            setVerifiedDomains(vList);
+          }
+        }
+      } catch (e) {}
+    };
+    loadSenderSettingsAndDomains();
+  }, [editId]);
+
   // Domain Verification Checker
   const getDomainFromEmail = (email: string) => {
     const parts = email.split("@");
@@ -1188,8 +1224,8 @@ function CreateCampaignForm() {
   const isDomainVerified = useMemo(() => {
     if (!senderEmail.trim()) return true;
     const dom = getDomainFromEmail(senderEmail);
-    return dom === "realizzare.com.br";
-  }, [senderEmail]);
+    return verifiedDomains.includes(dom);
+  }, [senderEmail, verifiedDomains]);
 
   // Extract dynamic tags (e.g. {{primeiro_nome}}) to let user write fallback options
   const getTagsInText = (text: string) => {

@@ -1770,11 +1770,28 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (typeof window !== "undefined") {
                       localStorage.setItem("realizzare_sender_name", senderName);
                       localStorage.setItem("realizzare_sender_email", senderEmail);
                       localStorage.setItem("realizzare_reply_to_email", replyToEmail);
+                    }
+                    try {
+                      const supabase = createClient();
+                      const { data: existing } = await supabase.from("account_settings").select("*").maybeSingle();
+                      const updatedSettings = {
+                        ...(existing?.settings || {}),
+                        default_sender_name: senderName,
+                        default_sender_email: senderEmail,
+                        default_reply_to: replyToEmail
+                      };
+                      await supabase.from("account_settings").upsert({
+                        org_id: "00000000-0000-0000-0000-000000000001",
+                        settings: updatedSettings,
+                        updated_at: new Date().toISOString()
+                      }, { onConflict: "org_id" });
+                    } catch (err) {
+                      console.error("Error saving sender settings:", err);
                     }
                     setShowCascadeSenderModal(true);
                   }}
