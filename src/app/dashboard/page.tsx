@@ -887,26 +887,54 @@ export default function DashboardPage() {
           });
         }
 
-        // 2. Fetch real tracking events (open and click)
+        // 2. Fetch real tracking events (open and click) with Unique Email Deduplication
         const { data: trackingEvents } = await supabase
           .from("inbound_webhook_events")
-          .select("event_type, created_at")
+          .select("*")
           .in("event_type", ["email.open", "email.click"]);
+
+        const uniqueOpensPerSlot = new Map<string, Set<string>>();
+        const uniqueClicksPerSlot = new Map<string, Set<string>>();
 
         if (trackingEvents && trackingEvents.length > 0) {
           trackingEvents.forEach((t: any) => {
-            const dateObj = new Date(t.created_at);
+            const payload = t.payload || {};
+            const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
+            if (!email) return;
+
+            const dateObj = new Date(t.created_at || Date.now());
             const slotName = period === "today"
               ? `${String(dateObj.getHours()).padStart(2, "0")}:00`
               : `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
 
-            const entry = slotMap.get(slotName);
-            if (entry) {
-              if (t.event_type === "email.open" && entry.abertos === 0) entry.abertos = 1;
-              if (t.event_type === "email.click" && entry.clicados === 0) entry.clicados = 1;
+            if (t.event_type === "email.open") {
+              if (!uniqueOpensPerSlot.has(slotName)) uniqueOpensPerSlot.set(slotName, new Set());
+              uniqueOpensPerSlot.get(slotName)!.add(email);
+            }
+            if (t.event_type === "email.click") {
+              if (!uniqueClicksPerSlot.has(slotName)) uniqueClicksPerSlot.set(slotName, new Set());
+              uniqueClicksPerSlot.get(slotName)!.add(email);
             }
           });
         }
+
+        // Calculate final unique open and click counts per slot
+        slotMap.forEach((entry, slotName) => {
+          const openSet = uniqueOpensPerSlot.get(slotName);
+          const clickSet = uniqueClicksPerSlot.get(slotName);
+
+          if (openSet && openSet.size > 0) {
+            entry.abertos = openSet.size; // UNIQUE OPENS
+          } else if (entry.abertos > 0) {
+            entry.abertos = Math.min(entry.abertos, entry.envios || 2);
+          }
+
+          if (clickSet && clickSet.size > 0) {
+            entry.clicados = clickSet.size; // UNIQUE CLICKS
+          } else if (entry.clicados > 0) {
+            entry.clicados = Math.min(entry.clicados, entry.abertos || 1);
+          }
+        });
 
         const result = slots.map((s) => {
           const entry = slotMap.get(s.name);
@@ -1297,7 +1325,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-[10px] text-cyan-700 font-bold pt-1.5 border-t border-slate-100 mt-1.5 truncate">
-                    {formatNumber(emailTotalOpened)} abertos
+                    {formatNumber(emailTotalOpened)} aberturas únicas
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-500" />
                 </div>
