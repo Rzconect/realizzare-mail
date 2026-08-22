@@ -848,10 +848,10 @@ export default function DashboardPage() {
         const slotMap = new Map<string, { envios: number; abertos: number; clicados: number }>();
         slots.forEach((s) => slotMap.set(s.name, { envios: 0, abertos: 0, clicados: 0 }));
 
-        // 1. Fetch campaigns for sent, open, click counts
+        // 1. Fetch campaigns for sent, bounce, open, click counts
         const { data: dbCampaigns } = await supabase
           .from("campaigns")
-          .select("sent_count, open_count, click_count, sent_at, created_at");
+          .select("sent_count, bounce_count, open_count, click_count, sent_at, created_at");
 
         if (dbCampaigns && dbCampaigns.length > 0) {
           dbCampaigns.forEach((c: any) => {
@@ -862,7 +862,9 @@ export default function DashboardPage() {
 
             const entry = slotMap.get(slotName);
             if (entry) {
-              entry.envios += c.sent_count || 0;
+              // Strictly count ONLY emails delivered with success (exclude bounces/rejections)
+              const deliveredSuccessful = Math.max(0, (c.sent_count || 0) - (c.bounce_count || 0));
+              entry.envios += deliveredSuccessful;
               entry.abertos += c.open_count || 0;
               entry.clicados += c.click_count || 0;
             }
@@ -1242,12 +1244,12 @@ export default function DashboardPage() {
               {/* Row 2: 3 Email KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 
-                {/* Card 1: Total de E-mails Disparados */}
+                {/* Card 1: Total de E-mails Entregues com Sucesso */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-3.5 relative overflow-hidden shadow-sm flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">E-mails Disparados</span>
-                      <span className="p-1 bg-purple-50 rounded-lg text-purple-600">
+                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">E-mails Entregues</span>
+                      <span className="p-1 bg-indigo-50 rounded-lg text-indigo-600">
                         <Send className="h-3.5 w-3.5" />
                       </span>
                     </div>
@@ -1258,9 +1260,9 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-[10px] text-slate-400 font-medium pt-1.5 border-t border-slate-100 mt-1.5 truncate">
-                    Total de envios no período
+                    Entregues com sucesso no período
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-500" />
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-600" />
                 </div>
 
                 {/* Card 2: Taxa Média de Abertura */}
@@ -1268,7 +1270,7 @@ export default function DashboardPage() {
                   <div>
                     <div className="flex justify-between items-start">
                       <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Taxa de Abertura</span>
-                      <span className="p-1 bg-violet-50 rounded-lg text-violet-600">
+                      <span className="p-1 bg-cyan-50 rounded-lg text-cyan-600">
                         <Eye className="h-3.5 w-3.5" />
                       </span>
                     </div>
@@ -1278,10 +1280,10 @@ export default function DashboardPage() {
                       </h3>
                     </div>
                   </div>
-                  <div className="text-[10px] text-violet-700 font-bold pt-1.5 border-t border-slate-100 mt-1.5 truncate">
+                  <div className="text-[10px] text-cyan-700 font-bold pt-1.5 border-t border-slate-100 mt-1.5 truncate">
                     {formatNumber(emailTotalOpened)} abertos
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-purple-600" />
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-500" />
                 </div>
 
                 {/* Card 3: Taxa Média de Clique */}
@@ -1302,7 +1304,7 @@ export default function DashboardPage() {
                   <div className="text-[10px] text-emerald-700 font-bold pt-1.5 border-t border-slate-100 mt-1.5 truncate">
                     {formatNumber(emailTotalClicked)} cliques
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-600" />
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-600" />
                 </div>
 
               </div>
@@ -1311,13 +1313,13 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* Row 2: Engagement Graph (AreaChart) */}
+          {/* Row 2: Engagement Graph (Stacked BarChart) */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-lg font-bold text-slate-800">Envios de E-mails & Engajamento Diário</h2>
-                  <p className="text-xs text-slate-500">Relação entre e-mails enviados, abertos e cliques gerados no período.</p>
+                  <p className="text-xs text-slate-500">Relação entre e-mails entregues com sucesso, abertos e cliques gerados no período.</p>
                 </div>
               </div>
               <div className="h-80 w-full">
@@ -1329,24 +1331,24 @@ export default function DashboardPage() {
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 12, marginTop: 10 }} />
                     <Bar
-                      dataKey="clicados"
-                      name="E-mails Clicados"
+                      dataKey="envios"
+                      name="E-mails Entregues"
                       stackId="a"
-                      fill="#10b981"
+                      fill="#4f46e5"
                       maxBarSize={44}
                     />
                     <Bar
                       dataKey="abertos"
                       name="E-mails Abertos"
                       stackId="a"
-                      fill="#8b5cf6"
+                      fill="#06b6d4"
                       maxBarSize={44}
                     />
                     <Bar
-                      dataKey="envios"
-                      name="E-mails Enviados"
+                      dataKey="clicados"
+                      name="E-mails Clicados"
                       stackId="a"
-                      fill="#6366f1"
+                      fill="#10b981"
                       radius={[6, 6, 0, 0]}
                       maxBarSize={44}
                     />
