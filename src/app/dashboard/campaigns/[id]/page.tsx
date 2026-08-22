@@ -21,7 +21,8 @@ import {
   ExternalLink,
   X,
   Laptop,
-  Smartphone
+  Smartphone,
+  Search
 } from "lucide-react";
 import {
   BarChart,
@@ -295,25 +296,51 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             "contato@realizzarecursos.com.br"
           ]);
 
-          // Build factual recipient row details with STRICT ATTRIBUTION
+          // Build factual recipient row details with LAST-TOUCH ATTRIBUTION
           const recipientRows = recipientsPool.map(r => {
             const emailLower = r.email.toLowerCase();
             const hasOpened = campOpens.has(emailLower);
             const hasClicked = campClicks.has(emailLower);
 
-            // STRICT ATTRIBUTION: Sale ONLY counts if the contact OPENED or CLICKED AND purchased AFTER email send time!
+            // LAST-TOUCH ATTRIBUTION ENGINE:
+            // For each purchase by this contact, find the MOST RECENT email interaction (open or click) that occurred before the purchase.
+            // The sale is attributed EXCLUSIVELY to the campaign of that LAST interaction (preventing duplicates)!
             let revAmount = 0;
-            if (hasOpened || hasClicked) {
-              const pEvent = (purchaseEvents || []).find((pe: any) => {
-                const peEmail = (pe.contact_email || "").toLowerCase();
-                if (peEmail !== emailLower) return false;
-                const peTime = pe.created_at ? new Date(pe.created_at).getTime() : 0;
-                return peTime > campaignSentTimestamp; // Must be purchased AFTER campaign interaction!
+
+            const contactPurchases = (purchaseEvents || []).filter((pe: any) => 
+              (pe.contact_email || "").toLowerCase() === emailLower
+            );
+
+            contactPurchases.forEach((pe: any) => {
+              const purchaseTime = pe.created_at ? new Date(pe.created_at).getTime() : Date.now();
+
+              // Find all interactions (open or click) by this email across ALL campaigns before purchaseTime
+              const priorInteractions = (trackingEvents || []).filter((te: any) => {
+                const payload = te.payload || {};
+                const teEmail = (payload.email || payload.contact_email || "").toLowerCase().trim();
+                if (teEmail !== emailLower) return false;
+
+                const eventTime = te.created_at ? new Date(te.created_at).getTime() : 0;
+                return eventTime <= purchaseTime;
               });
-              if (pEvent) {
-                revAmount = Number(pEvent.metadata?.amount || pEvent.amount || 0);
+
+              // Sort by eventTime descending to get the LATEST interaction before purchase
+              priorInteractions.sort((a: any, b: any) => {
+                const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return tB - tA;
+              });
+
+              const latestInteraction = priorInteractions[0];
+              if (latestInteraction) {
+                const payload = latestInteraction.payload || {};
+                const lastCampId = payload.campaign_id || payload.campaignId;
+                // Attribute revenue ONLY if the LAST interaction belonged to THIS campaign!
+                if (lastCampId === campaignId) {
+                  revAmount += Number(pe.metadata?.amount || pe.amount || 0);
+                }
               }
-            }
+            });
 
             return {
               email: r.email,
@@ -494,6 +521,42 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     clicada: true,
     vendas: true
   });
+
+  // Recipient table search, filter and pagination state (20 contacts max per page)
+  const [recipientSearch, setRecipientSearch] = useState("");
+  const [recipientFilter, setRecipientFilter] = useState<"all" | "opened" | "clicked" | "converted" | "bounced">("all");
+  const [recipientPage, setRecipientPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Filtered recipient rows
+  const filteredRecipientRows = useMemo(() => {
+    const rows = data.recipientRows || [];
+    return rows.filter((r: any) => {
+      // 1. Search Filter (name or email)
+      if (recipientSearch.trim()) {
+        const q = recipientSearch.toLowerCase().trim();
+        const nameMatch = (r.name || "").toLowerCase().includes(q);
+        const emailMatch = (r.email || "").toLowerCase().includes(q);
+        if (!nameMatch && !emailMatch) return false;
+      }
+
+      // 2. Status Filter
+      if (recipientFilter === "opened") return r.opened;
+      if (recipientFilter === "clicked") return r.clicked;
+      if (recipientFilter === "converted") return r.revenue > 0;
+      if (recipientFilter === "bounced") return !r.opened && !r.clicked;
+
+      return true;
+    });
+  }, [data.recipientRows, recipientSearch, recipientFilter]);
+
+  // Paginated recipient rows
+  const paginatedRecipientRows = useMemo(() => {
+    const start = (recipientPage - 1) * itemsPerPage;
+    return filteredRecipientRows.slice(start, start + itemsPerPage);
+  }, [filteredRecipientRows, recipientPage]);
+
+  const totalRecipientPages = Math.ceil(filteredRecipientRows.length / itemsPerPage);
 
   // Calculate detailed financial KPIs
   const kpis = useMemo(() => {
@@ -894,13 +957,50 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* 6. Factual Recipient Engagement Table */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-        <div>
-          <h3 className="text-base font-bold text-slate-800">Destinatários & Engajamento Individual (Dados Reais)</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Relação factual dos contatos que receberam esta campanha, status de abertura, cliques e conversões de vendas.</p>
+      {/* 6. Factual Recipient Engagement Table with Search, Filter & Pagination */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4 font-sans">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Destinatários & Engajamento Individual (Dados Reais)</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Relação factual dos contatos com atribuição pelo último e-mail interagido (Last-Touch).</p>
+          </div>
+
+          {/* Search & Filter Toolbar */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Pesquisar por nome ou e-mail..."
+                value={recipientSearch}
+                onChange={(e) => {
+                  setRecipientSearch(e.target.value);
+                  setRecipientPage(1);
+                }}
+                className="bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 w-64"
+              />
+            </div>
+
+            {/* Filter Select */}
+            <select
+              value={recipientFilter}
+              onChange={(e) => {
+                setRecipientFilter(e.target.value as any);
+                setRecipientPage(1);
+              }}
+              className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="all">Todos os Destinatários</option>
+              <option value="opened">Apenas quem abriu</option>
+              <option value="clicked">Apenas quem clicou</option>
+              <option value="converted">Apenas com venda atribuída</option>
+              <option value="bounced">Apenas falhas / Bounce</option>
+            </select>
+          </div>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto pt-2">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -908,18 +1008,18 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <th className="py-3 px-4">Aluno / Lead</th>
                 <th className="py-3 px-4 text-center">Aberto?</th>
                 <th className="py-3 px-4 text-center">Clicado?</th>
-                <th className="py-3 px-4 text-right">Atribuição de Venda (5 dias)</th>
+                <th className="py-3 px-4 text-right">Atribuição de Venda (Last-Touch)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-              {!data.recipientRows || data.recipientRows.length === 0 ? (
+              {paginatedRecipientRows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-slate-400 font-medium">
-                    Nenhum destinatário específico registrado para esta campanha.
+                  <td colSpan={4} className="py-8 text-center text-slate-400 font-medium">
+                    Nenhum destinatário encontrado com os filtros aplicados.
                   </td>
                 </tr>
               ) : (
-                data.recipientRows.map((row: any, idx: number) => (
+                paginatedRecipientRows.map((row: any, idx: number) => (
                   <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -971,6 +1071,39 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {filteredRecipientRows.length > 0 && (
+          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <span>
+              Exibindo <strong>{(recipientPage - 1) * 20 + 1}</strong> a <strong>{Math.min(recipientPage * 20, filteredRecipientRows.length)}</strong> de <strong>{filteredRecipientRows.length}</strong> contatos
+            </span>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={recipientPage === 1}
+                onClick={() => setRecipientPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Anterior
+              </button>
+
+              <span className="font-bold text-slate-700 px-2">
+                Página {recipientPage} de {totalRecipientPages || 1}
+              </span>
+
+              <button
+                type="button"
+                disabled={recipientPage >= totalRecipientPages}
+                onClick={() => setRecipientPage(p => Math.min(totalRecipientPages, p + 1))}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MODAL: VISUALIZAR CAMPANHA (PREVIEW HTML) */}
