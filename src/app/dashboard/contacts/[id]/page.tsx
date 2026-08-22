@@ -331,16 +331,32 @@ export default function ContactProfilePage({ params }: PageProps) {
           .select("name, type, tag");
         const globalFields: any[] = globalFieldsData || [];
 
-        // 3. Fetch real system lists from DB
+        // 3. Fetch real system lists from DB and localStorage
+        let localListsNames: string[] = [];
+        if (typeof window !== "undefined") {
+          try {
+            const stored = localStorage.getItem("realizzare_lists");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                localListsNames = parsed.map((l: any) => l.name).filter(Boolean);
+              }
+            }
+          } catch (e) {}
+        }
+
         const { data: allListsData } = await supabase
           .from("lists")
           .select("name")
           .order("name");
+
+        let dbListsNames: string[] = [];
         if (allListsData && allListsData.length > 0) {
-          setSystemLists(allListsData.map((l: any) => l.name));
-        } else {
-          setSystemLists(["Leads", "Alunos", "Clientes", "Professores"]);
+          dbListsNames = allListsData.map((l: any) => l.name);
         }
+
+        const mergedLists = localListsNames.length > 0 ? localListsNames : (dbListsNames.length > 0 ? dbListsNames : ["Leads", "Alunos", "Clientes", "Professores"]);
+        setSystemLists(mergedLists);
 
         // Format RLS result to frontend schema
         const tags = contact.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || [];
