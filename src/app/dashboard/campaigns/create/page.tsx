@@ -900,6 +900,7 @@ function CreateCampaignForm() {
   const [customFields, setCustomFields] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [showSelectContactsModal, setShowSelectContactsModal] = useState(false);
+  const [showPreviewSegmentContactsModal, setShowPreviewSegmentContactsModal] = useState(false);
   const [contactSearchQuery, setContactSearchQuery] = useState("");
 
   useEffect(() => {
@@ -1436,7 +1437,7 @@ function CreateCampaignForm() {
         }
       }
 
-      const status = sendType === "immediate" ? "sent" : "scheduled";
+      const initialStatus = sendType === "immediate" ? "Enviando" : "scheduled";
       const scheduledAt = sendType === "immediate" ? new Date().toISOString() : `${scheduledDate}T${scheduledTime}:00Z`;
 
       const campaignData = {
@@ -1447,11 +1448,11 @@ function CreateCampaignForm() {
         from_name: senderName,
         from_email: senderEmail,
         reply_to: replyToIsCustom ? customReplyTo : replyToEmail,
-        status: status,
+        status: initialStatus,
         target_list: listNames || "Lista Geral de Alunos",
         send_type: sendType,
-        scheduled_at: status === "scheduled" ? scheduledAt : null,
-        sent_at: status === "sent" ? scheduledAt : null,
+        scheduled_at: sendType === "scheduled" ? scheduledAt : null,
+        sent_at: sendType === "immediate" ? scheduledAt : null,
         html_content: htmlContent,
         sent_count: sendType === "immediate" ? (targetEmailsList.length || audienceEstimateCount || 0) : 0
       };
@@ -1467,28 +1468,28 @@ function CreateCampaignForm() {
 
       const insertedId = saveJson.id || editId;
 
-      // If sending immediately, invoke real email dispatch API
-      if (sendType === "immediate" && insertedId) {
-        try {
-          const res = await fetch("/api/campaigns/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              campaignId: insertedId,
-              targetEmails: targetEmailsList.length > 0 ? targetEmailsList : undefined
-            })
-          });
-          const resData = await res.json();
-          if (!res.ok) {
-            alert(`Aviso de envio: ${resData.error || "Não foi possível conectar ao servidor SMTP da AWS SES."}`);
-          }
-        } catch (dispatchErr) {
-          console.error("Error triggering email dispatch API:", dispatchErr);
-        }
-      }
+      // Close confirm modal immediately to prevent double clicks
+      setShowConfirmSendModal(false);
 
-      alert(sendType === "immediate" ? "Campanha disparada com sucesso!" : "Campanha agendada com sucesso!");
-      router.push("/dashboard/campaigns");
+      if (sendType === "immediate" && insertedId) {
+        // Asynchronous background dispatch - non-blocking for UI
+        fetch("/api/campaigns/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId: insertedId,
+            targetEmails: targetEmailsList.length > 0 ? targetEmailsList : undefined
+          })
+        }).catch(dispatchErr => {
+          console.error("Background email dispatch notice:", dispatchErr);
+        });
+
+        // Instant redirect back to campaigns list
+        router.push("/dashboard/campaigns");
+      } else {
+        alert("Campanha agendada com sucesso!");
+        router.push("/dashboard/campaigns");
+      }
     } catch (err: any) {
       console.error(err);
       alert(`Erro ao salvar campanha: ${err.message || err}`);
@@ -2483,12 +2484,29 @@ function CreateCampaignForm() {
                   )}
                 </div>
 
+                {/* Active contacts notice banner */}
+                <div className="p-3 bg-indigo-50/70 border border-indigo-150 rounded-xl text-xs text-indigo-900 flex items-start gap-2.5">
+                  <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <span>Os e-mails serão disparados <strong>exclusivamente para contatos com status ATIVO</strong> inscritos nas listas ou segmentações selecionadas abaixo.</span>
+                </div>
+
                 {/* Estimate sum */}
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs select-none">
                   <span className="text-slate-500 font-semibold">Total estimado de destinatários:</span>
                   <strong className="text-sm text-indigo-650 font-black">
                     {audienceEstimateCount.toLocaleString("pt-BR")} contatos
                   </strong>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowPreviewSegmentContactsModal(true)}
+                    className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border border-indigo-200"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    <span>Visualizar Contatos desta Segmentação</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -3241,6 +3259,96 @@ function CreateCampaignForm() {
         </div>
       )}
 
+      {/* MODAL: VISUALIZAR CONTATOS DA SEGMENTAÇÃO / LISTA SELECIONADA */}
+      {showPreviewSegmentContactsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Contatos da Segmentação Selecionada</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Exibindo os contatos ativos que receberão esta campanha.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPreviewSegmentContactsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="py-3 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar por nome ou e-mail..."
+                  value={contactSearchQuery}
+                  onChange={(e) => setContactSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2">
+              {contacts.filter((c: any) => {
+                if (c.status !== "active") return false;
+                if (!contactSearchQuery) return true;
+                const q = contactSearchQuery.toLowerCase();
+                const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
+                const email = (c.email || "").toLowerCase();
+                return fullName.includes(q) || email.includes(q);
+              }).length === 0 ? (
+                <div className="text-xs text-slate-400 p-6 text-center">Nenhum contato ativo encontrado nesta segmentação.</div>
+              ) : (
+                contacts
+                  .filter((c: any) => {
+                    if (c.status !== "active") return false;
+                    if (!contactSearchQuery) return true;
+                    const q = contactSearchQuery.toLowerCase();
+                    const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
+                    const email = (c.email || "").toLowerCase();
+                    return fullName.includes(q) || email.includes(q);
+                  })
+                  .map((c: any) => (
+                    <div
+                      key={c.id}
+                      className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-150 flex items-center justify-between transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
+                          {(c.first_name ? c.first_name.charAt(0) : "A").toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">
+                            {c.first_name || ""} {c.last_name || ""}
+                          </h4>
+                          <span className="text-[11px] text-slate-500">{c.email}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-full">
+                        Ativo
+                      </span>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-200 flex items-center justify-between shrink-0">
+              <span className="text-xs font-bold text-slate-600">
+                {contacts.filter((c: any) => c.status === "active").length} contatos ativos no total
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPreviewSegmentContactsModal(false)}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

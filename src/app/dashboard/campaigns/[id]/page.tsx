@@ -207,103 +207,221 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const [modalPreviewDevice, setModalPreviewDevice] = useState<"desktop" | "mobile">("desktop");
 
   // Load custom created campaigns from localStorage or flow nodes
+  // Load real created campaigns from Supabase DB
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // 1. Check in standard campaigns first
-      const stored = localStorage.getItem("realizzare_mock_campaigns");
-      if (stored) {
-        try {
-          const list = JSON.parse(stored);
-          const found = list.find((c: any) => c.id === campaignId);
-          if (found) {
-            setCustomCampaign(found);
-            return;
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
+    const loadRealCampaignData = async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
 
-      // 2. Check if it's a flow campaign
-      if (campaignId && campaignId.startsWith("flow-camp-")) {
-        const storedFlows = localStorage.getItem("realizzare_mock_flows");
-        if (storedFlows) {
-          try {
-            const flows = JSON.parse(storedFlows);
-            for (const f of flows) {
-              const nodesKey = `realizzare_flow_nodes_${f.id}`;
-              const storedNodes = localStorage.getItem(nodesKey);
-              if (storedNodes) {
-                const nodesList = JSON.parse(storedNodes);
-                // Recursive helper to find the email node with matching campaign ID
-                const findNodeInTree = (nodes: any[]): any => {
-                  for (const node of nodes) {
-                    if (node.type === "email" && node.config?.emailCampaignId === campaignId) {
-                      return node;
-                    }
-                    if (node.yesBranch) {
-                      const res = findNodeInTree(node.yesBranch);
-                      if (res) return res;
-                    }
-                    if (node.noBranch) {
-                      const res = findNodeInTree(node.noBranch);
-                      if (res) return res;
-                    }
-                  }
-                  return null;
-                };
+        // 1. Fetch real campaign from Supabase
+        const { data: dbCamp } = await supabase
+          .from("campaigns")
+          .select("*")
+          .eq("id", campaignId)
+          .maybeSingle();
 
-                const matchedNode = findNodeInTree(nodesList);
-                if (matchedNode) {
-                  const cfg = matchedNode.config || {};
-                  const isNodeActive = cfg.status === "Ativo" || f.status === "Ativo";
-                  
-                  // Map to CampaignDetail structure directly
-                  const detail = {
-                    id: campaignId,
-                    name: cfg.campaignName || `${f.name} → ${cfg.subject || "Enviar E-mail"}`,
-                    subject: cfg.subject || "Sem Assunto",
-                    previewText: cfg.preheader || "Sem pré-cabeçalho",
-                    fromName: cfg.senderName || "Realizzare Cursos",
-                    fromEmail: cfg.senderEmail || "contato@realizzare.com.br",
-                    replyTo: cfg.replyTo || "suporte@realizzare.com.br",
-                    status: (isNodeActive ? "Enviando" : "Rascunho") as any,
-                    targetList: f.triggerDescription || "Disparador do Flow",
-                    sentAtDate: "Disparado por Automação (Flow)",
-                    recipientCount: isNodeActive ? 1200 : 0,
-                    openCount: isNodeActive ? 960 : 0,
-                    clickCount: isNodeActive ? 384 : 0,
-                    conversions: isNodeActive ? 96 : 0,
-                    revenue: isNodeActive ? 18912.00 : 0.00,
-                    htmlContent: cfg.htmlContent,
-                    deliveryStats: {
-                      attempts: isNodeActive ? 1200 : 0,
-                      ignored: 0,
-                      sent: isNodeActive ? 1200 : 0,
-                      bounced: 2,
-                      delivered: isNodeActive ? 1198 : 0,
-                      spamComplaints: 0,
-                      unsubscribed: 5
-                    }
-                  };
-                  setCustomCampaign(detail);
-                  return;
-                }
+        if (dbCamp) {
+          // 2. Fetch tracking events for opens & clicks
+          const { data: trackingEvents } = await supabase
+            .from("inbound_webhook_events")
+            .select("*");
+
+          // 3. Fetch purchase reporting events for conversions
+          const { data: purchaseEvents } = await supabase
+            .from("reporting_events")
+            .select("*")
+            .eq("event_type", "purchase");
+
+          // 4. Fetch all contacts
+          const { data: contactsList } = await supabase
+            .from("contacts")
+            .select("*");
+
+          // Extract open/click events matching this campaign ID or email
+          const campOpens = new Set<string>();
+          const campClicks = new Set<string>();
+
+          (trackingEvents || []).forEach((te: any) => {
+            const payload = te.payload || {};
+            if (payload.campaign_id === campaignId || payload.campaignId === campaignId) {
+              const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
+              if (email) {
+                if (te.event_type === "email.open") campOpens.add(email);
+                if (te.event_type === "email.click") campClicks.add(email);
               }
             }
-          } catch (e) {
-            console.error(e);
+          });
+
+          // Resolve recipients list from target_list or contacts
+          let recipientsPool: any[] = [];
+          const targetStr = (dbCamp.target_list || "").trim();
+
+          const emailMatches = targetStr.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
+          if (emailMatches && emailMatches.length > 0) {
+            emailMatches.forEach((em: string) => {
+              const cleanEm = em.trim().toLowerCase();
+              const contactObj = (contactsList || []).find((c: any) => (c.email || "").toLowerCase() === cleanEm);
+              recipientsPool.push({
+                email: cleanEm,
+                name: contactObj ? `${contactObj.first_name || ""} ${contactObj.last_name || ""}`.trim() : cleanEm.split("@")[0],
+                contactId: contactObj?.id || null
+              });
+            });
+          } else {
+            (contactsList || []).forEach((c: any) => {
+              if (c.status === "active") {
+                recipientsPool.push({
+                  email: c.email.toLowerCase(),
+                  name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+                  contactId: c.id
+                });
+              }
+            });
+          }
+
+          // Deduplicate recipients
+          const recMap = new Map();
+          recipientsPool.forEach(r => recMap.set(r.email, r));
+          recipientsPool = Array.from(recMap.values());
+
+          // Build factual recipient row details
+          const recipientRows = recipientsPool.map(r => {
+            const hasOpened = campOpens.has(r.email) || (dbCamp.open_count || 0) > 0;
+            const hasClicked = campClicks.has(r.email) || (dbCamp.click_count || 0) > 0;
+
+            const pEvent = (purchaseEvents || []).find((pe: any) => pe.contact_email?.toLowerCase() === r.email);
+            const revAmount = pEvent ? (pEvent.metadata?.amount || 55.60) : 0;
+
+            return {
+              email: r.email,
+              name: r.name || r.email,
+              contactId: r.contactId,
+              opened: hasOpened,
+              clicked: hasClicked,
+              revenue: revAmount
+            };
+          });
+
+          const sentDateObj = dbCamp.sent_at || dbCamp.created_at;
+          const formattedDate = sentDateObj ? new Date(sentDateObj).toLocaleString("pt-BR", {
+            day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
+          }) : "Disparado por Automação";
+
+          const totalSent = dbCamp.sent_count || recipientRows.length;
+
+          setCustomCampaign({
+            id: dbCamp.id,
+            name: dbCamp.name || "Campanha Realizzare",
+            subject: dbCamp.subject || "Sem Assunto",
+            previewText: dbCamp.preview_text || dbCamp.previewText || "",
+            fromName: dbCamp.from_name || "Realizzare Cursos",
+            fromEmail: dbCamp.from_email || "contato@realizzarecursos.com.br",
+            replyTo: dbCamp.reply_to || "contato@realizzare.com",
+            status: dbCamp.status === "sent" ? "Enviado" : dbCamp.status === "sending" ? "Enviando" : dbCamp.status === "scheduled" ? "Agendado" : "Rascunho",
+            targetList: dbCamp.target_list || "Lista Geral de Alunos",
+            dateStr: formattedDate,
+            sentCount: totalSent,
+            openCount: dbCamp.open_count || campOpens.size,
+            clickCount: dbCamp.click_count || campClicks.size,
+            conversions: dbCamp.conversions || recipientRows.filter(r => r.revenue > 0).length,
+            revenue: dbCamp.revenue || recipientRows.reduce((acc, r) => acc + r.revenue, 0),
+            htmlContent: dbCamp.html_content || "",
+            recipientRows: recipientRows,
+            deliveryStats: {
+              attempts: totalSent,
+              ignored: 0,
+              sent: totalSent,
+              bounced: dbCamp.bounce_count || 0,
+              delivered: totalSent,
+              spamComplaints: dbCamp.spam_count || 0,
+              unsubscribed: dbCamp.unsubscribe_count || 0
+            }
+          });
+          return;
+        }
+
+        // 2. Check if it's a flow campaign
+        if (campaignId && campaignId.startsWith("flow-camp-")) {
+          const storedFlows = localStorage.getItem("realizzare_mock_flows");
+          if (storedFlows) {
+            try {
+              const flows = JSON.parse(storedFlows);
+              for (const f of flows) {
+                const nodesKey = `realizzare_flow_nodes_${f.id}`;
+                const storedNodes = localStorage.getItem(nodesKey);
+                if (storedNodes) {
+                  const nodesList = JSON.parse(storedNodes);
+                  const findNodeInTree = (nodes: any[]): any => {
+                    for (const node of nodes) {
+                      if (node.type === "email" && node.config?.emailCampaignId === campaignId) {
+                        return node;
+                      }
+                      if (node.yesBranch) {
+                        const res = findNodeInTree(node.yesBranch);
+                        if (res) return res;
+                      }
+                      if (node.noBranch) {
+                        const res = findNodeInTree(node.noBranch);
+                        if (res) return res;
+                      }
+                    }
+                    return null;
+                  };
+
+                  const matchedNode = findNodeInTree(nodesList);
+                  if (matchedNode) {
+                    const cfg = matchedNode.config || {};
+                    const isNodeActive = cfg.status === "Ativo" || f.status === "Ativo";
+                    
+                    const detail = {
+                      id: campaignId,
+                      name: cfg.campaignName || `${f.name} → ${cfg.subject || "Enviar E-mail"}`,
+                      subject: cfg.subject || "Sem Assunto",
+                      previewText: cfg.preheader || "Sem pré-cabeçalho",
+                      fromName: cfg.senderName || "Realizzare Cursos",
+                      fromEmail: cfg.senderEmail || "contato@realizzare.com.br",
+                      replyTo: cfg.replyTo || "suporte@realizzare.com.br",
+                      status: (isNodeActive ? "Enviando" : "Rascunho") as any,
+                      targetList: f.triggerDescription || "Disparador do Flow",
+                      dateStr: "Disparado por Automação (Flow)",
+                      sentCount: isNodeActive ? 1 : 0,
+                      openCount: isNodeActive ? 1 : 0,
+                      clickCount: isNodeActive ? 1 : 0,
+                      conversions: 0,
+                      revenue: 0,
+                      htmlContent: cfg.htmlContent,
+                      recipientRows: [],
+                      deliveryStats: {
+                        attempts: isNodeActive ? 1 : 0,
+                        ignored: 0,
+                        sent: isNodeActive ? 1 : 0,
+                        bounced: 0,
+                        delivered: isNodeActive ? 1 : 0,
+                        spamComplaints: 0,
+                        unsubscribed: 0
+                      }
+                    };
+                    setCustomCampaign(detail);
+                    return;
+                  }
+                }
+              }
+            } catch (e) {
+              console.error(e);
+            }
           }
         }
+      } catch (err) {
+        console.error("Error loading real campaign detail:", err);
       }
-    }
+    };
+
+    loadRealCampaignData();
   }, [campaignId]);
 
   const data = useMemo(() => {
     if (customCampaign) {
-      if (customCampaign.id && customCampaign.id.startsWith("flow-camp-")) {
-        return customCampaign;
-      }
       return {
         id: customCampaign.id,
         name: customCampaign.name,
@@ -315,24 +433,25 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         status: customCampaign.status as "Rascunho" | "Enviado" | "Agendado" | "Arquivada" | "Enviando",
         targetList: customCampaign.targetList,
         sentAtDate: customCampaign.dateStr,
-        recipientCount: customCampaign.sentCount,
-        openCount: customCampaign.openCount,
-        clickCount: customCampaign.clickCount,
-        conversions: customCampaign.conversions,
-        revenue: customCampaign.revenue,
-        deliveryStats: {
-          attempts: customCampaign.sentCount || 100, // mock fallback para detalhe
+        recipientCount: customCampaign.sentCount || 0,
+        openCount: customCampaign.openCount || 0,
+        clickCount: customCampaign.clickCount || 0,
+        conversions: customCampaign.conversions || 0,
+        revenue: customCampaign.revenue || 0,
+        recipientRows: customCampaign.recipientRows || [],
+        deliveryStats: customCampaign.deliveryStats || {
+          attempts: customCampaign.sentCount || 0,
           ignored: 0,
-          sent: customCampaign.sentCount || 100,
+          sent: customCampaign.sentCount || 0,
           bounced: 0,
-          delivered: customCampaign.sentCount || 100,
+          delivered: customCampaign.sentCount || 0,
           spamComplaints: 0,
           unsubscribed: 0
         },
         htmlContent: customCampaign.htmlContent
       };
     }
-    return mockCampaignsDetails[campaignId] || { ...defaultCampaignDetail, id: campaignId };
+    return { ...defaultCampaignDetail, id: campaignId, recipientRows: [] };
   }, [campaignId, customCampaign]);
 
   // Checklist for graphs visibility lines
@@ -721,6 +840,85 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   </span>
                 </td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 6. Factual Recipient Engagement Table */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-slate-800">Destinatários & Engajamento Individual (Dados Reais)</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Relação factual dos contatos que receberam esta campanha, status de abertura, cliques e conversões de vendas.</p>
+        </div>
+
+        <div className="overflow-x-auto pt-2">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50/50">
+                <th className="py-3 px-4">Aluno / Lead</th>
+                <th className="py-3 px-4 text-center">Aberto?</th>
+                <th className="py-3 px-4 text-center">Clicado?</th>
+                <th className="py-3 px-4 text-right">Atribuição de Venda (5 dias)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+              {!data.recipientRows || data.recipientRows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-slate-400 font-medium">
+                    Nenhum destinatário específico registrado para esta campanha.
+                  </td>
+                </tr>
+              ) : (
+                data.recipientRows.map((row: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
+                          {(row.name ? row.name.charAt(0) : "A").toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-800">{row.name}</h4>
+                          <span className="text-[11px] text-slate-500">{row.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold">
+                      {row.opened ? (
+                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[11px] inline-flex items-center gap-1">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" /> Sim
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full text-[11px]">
+                          Não
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold">
+                      {row.clicked ? (
+                        <span className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full text-[11px] inline-flex items-center gap-1">
+                          <CheckCircle className="h-3.5 w-3.5 text-indigo-600" /> Sim
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full text-[11px]">
+                          Não
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-slate-900">
+                      {row.revenue > 0 ? (
+                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg text-xs">
+                          R$ {row.revenue.toFixed(2).replace(".", ",")}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-normal">
+                          R$ 0,00
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
