@@ -2543,12 +2543,13 @@ export default function SettingsPage() {
                           return;
                         }
                         try {
+                          const thirtyDaysAgoISO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
                           const res = await fetch("/api/integrations/sync-pagarme", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               secretKey: pagarmeSecretKey,
-                              createdSince: "2026-08-01T00:00:00Z"
+                              createdSince: thirtyDaysAgoISO
                             })
                           });
                           const data = await res.json();
@@ -2582,7 +2583,7 @@ export default function SettingsPage() {
                             };
                             localStorage.setItem("realizzare_synced_kpis", JSON.stringify(syncedKpis));
 
-                            alert(`Sincronização concluída com sucesso!\n\nForam importadas ${data.syncedOrdersCount} vendas realizadas a partir de 01/08/2026.\nTotal faturado: R$ ${(data.totalRevenueSynced || 2823.60).toFixed(2)}.\nCertificados: ${data.totalCertsSynced || 40} | Assinaturas: ${data.totalSubsSynced || 19}.\n\nRedirecionando para o Painel de Controle...`);
+                            alert(`Sincronização concluída com sucesso!\n\nForam processadas ${data.syncedOrdersCount || 0} transações dos últimos 30 dias do Pagar.me.\nOs cadastros de alunos, histórico financeiro e eventos recentes foram atualizados com sucesso.\n\nRedirecionando para o Painel de Controle...`);
                             window.location.href = "/dashboard";
                           } else {
                             alert(data.error || "Aviso ao sincronizar dados com a API do Pagar.me.");
@@ -2595,7 +2596,7 @@ export default function SettingsPage() {
                       className="w-full py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
-                      <span>Sincronizar Vendas do Mês (Desde 01/Ago/2026)</span>
+                      <span>Sincronizar Vendas dos Últimos 30 Dias</span>
                     </button>
                   </div>
                 </div>

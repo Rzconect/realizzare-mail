@@ -44,28 +44,14 @@ export async function POST(req: Request) {
       authHeader = "Basic " + Buffer.from(secretKey.trim() + ":").toString("base64");
     }
 
-    // 1. Calculate Incremental Start Date based on latest record in Supabase (with safety margin)
+    // 1. Calculate Start Date: 30 days ago default if not provided
     let startDateISO = createdSince;
     if (!startDateISO) {
-      try {
-        const { data: lastRecord } = await supabaseAdmin
-          .from("reporting_events")
-          .select("created_at")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (lastRecord && lastRecord.length > 0 && lastRecord[0].created_at) {
-          // Subtract 24 hours buffer to ensure no events on the same day are missed
-          const lastDateMs = new Date(lastRecord[0].created_at).getTime();
-          const bufferMs = 24 * 60 * 60 * 1000;
-          startDateISO = new Date(lastDateMs - bufferMs).toISOString().replace(/\.\d{3}Z$/, "Z");
-        }
-      } catch (e) {
-        console.warn("Notice querying latest event timestamp:", e);
-      }
+      const thirtyDaysAgoMs = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      startDateISO = new Date(thirtyDaysAgoMs).toISOString();
     }
 
-    const startDate = startDateISO || "2026-08-01T00:00:00Z";
+    const startDate = startDateISO;
     console.log(`--> Sincronização incremental do Pagar.me iniciada a partir de ${startDate}...`);
 
     let allPaidItems: any[] = [];
@@ -232,13 +218,22 @@ export async function POST(req: Request) {
               });
             }
 
-            // Insert into Contacts
+            // Insert or Update Contacts intelligently
             let contactId;
-            const { data: existingC } = await supabaseAdmin.from("contacts").select("id").eq("email", evt.email).single();
+            const { data: existingC } = await supabaseAdmin.from("contacts").select("id, first_name, last_name, phone").eq("email", evt.email).maybeSingle();
+            const { firstName, lastName } = formatName(evt.name);
             if (existingC) {
               contactId = existingC.id;
+              const updatePayload: any = {
+                status: "active",
+                updated_at: new Date().toISOString()
+              };
+              if (firstName && (!existingC.first_name || existingC.first_name === "Aluno")) updatePayload.first_name = firstName;
+              if (lastName && (!existingC.last_name || existingC.last_name === "Realizzare")) updatePayload.last_name = lastName;
+              if (evt.phone && !existingC.phone) updatePayload.phone = evt.phone;
+
+              await supabaseAdmin.from("contacts").update(updatePayload).eq("id", existingC.id);
             } else {
-              const { firstName, lastName } = formatName(evt.name);
               const { data: newC } = await supabaseAdmin.from("contacts").insert({
                 org_id: "00000000-0000-0000-0000-000000000001",
                 email: evt.email,
@@ -246,6 +241,7 @@ export async function POST(req: Request) {
                 last_name: lastName,
                 phone: evt.phone,
                 status: "active",
+                source: "Pagar.me Integration",
                 created_at: new Date(evt.timestampMs).toISOString()
               }).select("id").single();
               contactId = newC?.id;
