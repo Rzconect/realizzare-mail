@@ -60,6 +60,15 @@ export async function POST(req: Request) {
       processedHtml += openTrackingPixel;
     }
 
+    // Rewrite links for click tracking
+    if (processedHtml && processedHtml.includes("href=")) {
+      processedHtml = processedHtml.replace(/href=["'](https?:\/\/[^"']+)["']/gi, (match: string, p1: string) => {
+        if (p1.includes("/api/tracking")) return match;
+        const trackingUrl = `${appUrl}/api/tracking/click?cid=${campaign.id}&url=${encodeURIComponent(p1)}`;
+        return `href="${trackingUrl}"`;
+      });
+    }
+
     let recipients: string[] = targetEmails || [];
     if (!recipients || recipients.length === 0) {
       const { data: dbContacts } = await supabase.from("contacts").select("email").eq("status", "active");
