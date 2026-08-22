@@ -1382,10 +1382,10 @@ export default function DashboardPage() {
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 12, marginTop: 10 }} />
                     <Bar
-                      dataKey="enviosApenas"
-                      name="E-mails Entregues"
+                      dataKey="clicados"
+                      name="Cliques Únicos"
                       stackId="a"
-                      fill="#4f46e5"
+                      fill="#10b981"
                       maxBarSize={44}
                     />
                     <Bar
@@ -1396,10 +1396,10 @@ export default function DashboardPage() {
                       maxBarSize={44}
                     />
                     <Bar
-                      dataKey="clicados"
-                      name="Cliques Únicos"
+                      dataKey="enviosApenas"
+                      name="E-mails Entregues"
                       stackId="a"
-                      fill="#10b981"
+                      fill="#4f46e5"
                       radius={[6, 6, 0, 0]}
                       maxBarSize={44}
                     />
