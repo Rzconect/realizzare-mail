@@ -256,10 +256,10 @@ export default function DashboardPage() {
         .in("event_type", ["email.open", "email.click"])
         .order("created_at", { ascending: false });
 
-      // Fetch campaigns for title mapping
+      // Fetch campaigns for title mapping and target_list resolution
       const { data: dbCampaigns } = await supabase
         .from("campaigns")
-        .select("id, name, sent_count, open_count, click_count, sent_at, created_at");
+        .select("id, name, status, target_list, sent_count, open_count, click_count, sent_at, created_at, updated_at");
 
       const campaignMap = new Map<string, string>();
       if (dbCampaigns) {
@@ -275,6 +275,13 @@ export default function DashboardPage() {
           if (!cEmail && payload.contact_id && contactsList) {
             const cObj = contactsList.find((c: any) => c.id === payload.contact_id);
             if (cObj) cEmail = (cObj.email || "").toLowerCase().trim();
+          }
+          if (!cEmail && payload.campaign_id && dbCampaigns) {
+            const campObj = dbCampaigns.find((c: any) => c.id === payload.campaign_id);
+            if (campObj?.target_list) {
+              const matchEmail = campObj.target_list.match(/\(([^)]+@[\w.-]+)\)/) || campObj.target_list.match(/([\w.-]+@[\w.-]+)/);
+              if (matchEmail && matchEmail[1]) cEmail = matchEmail[1].trim().toLowerCase();
+            }
           }
           if (cEmail) {
             const teMs = new Date(te.created_at || Date.now()).getTime();
@@ -319,7 +326,7 @@ export default function DashboardPage() {
       }
 
       // Add email open and click events to the recent events pool
-      if (trackingEvents) {
+      if (trackingEvents && trackingEvents.length > 0) {
         trackingEvents.forEach((te: any) => {
           const dateObj = new Date(te.created_at || Date.now());
           const payload = te.payload || {};
@@ -384,6 +391,82 @@ export default function DashboardPage() {
             type: isClick ? "click" : "open",
             provider: "realizzare"
           });
+        });
+      }
+
+      // Supplementary check: add open/click events from campaigns with open_count > 0 or click_count > 0 if not captured in trackingEvents
+      if (dbCampaigns && dbCampaigns.length > 0) {
+        dbCampaigns.forEach((c: any) => {
+          if (c.status === "sent") {
+            const campTitle = c.name || "Campanha Realizzare";
+            let cEmail = "";
+            let cName = "";
+
+            if (c.target_list) {
+              const matchEmail = c.target_list.match(/\(([^)]+@[\w.-]+)\)/) || c.target_list.match(/([\w.-]+@[\w.-]+)/);
+              if (matchEmail && matchEmail[1]) cEmail = matchEmail[1].trim();
+            }
+
+            let contactId = null;
+            if (cEmail && contactsList) {
+              const cObj = contactsList.find((ct: any) => (ct.email || "").toLowerCase().trim() === cEmail.toLowerCase());
+              if (cObj) {
+                contactId = cObj.id;
+                cName = `${cObj.first_name || ""} ${cObj.last_name || ""}`.trim();
+              }
+            }
+
+            if (cEmail) {
+              if (!cName) {
+                const prefix = cEmail.split("@")[0];
+                cName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+              }
+
+              const dateObj = new Date(c.updated_at || c.sent_at || c.created_at || Date.now());
+
+              if ((c.open_count || 0) > 0) {
+                const exists = allEventsPool.some(e => e.type === "open" && e.email.toLowerCase() === cEmail.toLowerCase() && e.itemTitle === campTitle);
+                if (!exists) {
+                  allEventsPool.push({
+                    id: `camp-open-${c.id}`,
+                    contactId,
+                    name: cName,
+                    email: cEmail,
+                    date: dateObj.toLocaleDateString("pt-BR"),
+                    time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+                    eventLabel: `Abriu a campanha: ${campTitle}`,
+                    itemTitle: campTitle,
+                    amount: 0,
+                    category: "open",
+                    timestampMs: dateObj.getTime(),
+                    type: "open",
+                    provider: "realizzare"
+                  });
+                }
+              }
+
+              if ((c.click_count || 0) > 0) {
+                const exists = allEventsPool.some(e => e.type === "click" && e.email.toLowerCase() === cEmail.toLowerCase() && e.itemTitle === campTitle);
+                if (!exists) {
+                  allEventsPool.push({
+                    id: `camp-click-${c.id}`,
+                    contactId,
+                    name: cName,
+                    email: cEmail,
+                    date: dateObj.toLocaleDateString("pt-BR"),
+                    time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+                    eventLabel: `Clicou na campanha: ${campTitle}`,
+                    itemTitle: campTitle,
+                    amount: 0,
+                    category: "click",
+                    timestampMs: dateObj.getTime(),
+                    type: "click",
+                    provider: "realizzare"
+                  });
+                }
+              }
+            }
+          }
         });
       }
 
