@@ -1322,32 +1322,33 @@ export default function DashboardPage() {
               </div>
               <div className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyStats} barGap={4} barCategoryGap="20%">
+                  <BarChart data={dailyStats} barCategoryGap="25%">
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                     <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} minTickGap={25} />
                     <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 12, marginTop: 10 }} />
                     <Bar
-                      dataKey="envios"
-                      name="E-mails Enviados"
-                      fill="#6366f1"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={32}
+                      dataKey="clicados"
+                      name="E-mails Clicados"
+                      stackId="a"
+                      fill="#10b981"
+                      maxBarSize={44}
                     />
                     <Bar
                       dataKey="abertos"
                       name="E-mails Abertos"
+                      stackId="a"
                       fill="#8b5cf6"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={32}
+                      maxBarSize={44}
                     />
                     <Bar
-                      dataKey="clicados"
-                      name="E-mails Clicados"
-                      fill="#10b981"
+                      dataKey="envios"
+                      name="E-mails Enviados"
+                      stackId="a"
+                      fill="#6366f1"
                       radius={[6, 6, 0, 0]}
-                      maxBarSize={32}
+                      maxBarSize={44}
                     />
                   </BarChart>
                 </ResponsiveContainer>
