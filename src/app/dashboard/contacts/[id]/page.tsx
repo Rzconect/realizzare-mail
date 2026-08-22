@@ -591,6 +591,7 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
         const emailsOpenedCount = rawEvents.filter((e) => e.type === "open").length;
+        const emailsClickedCount = rawEvents.filter((e) => e.type === "click").length;
 
         const profileObj = {
           first_name: contact.first_name || "",
@@ -614,6 +615,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           flows,
           emails_sent: emailsSentCount,
           emails_opened: emailsOpenedCount,
+          emails_clicked: emailsClickedCount,
           timeline
         };
 
@@ -1625,25 +1627,41 @@ export default function ContactProfilePage({ params }: PageProps) {
         <section className="lg:col-span-6 space-y-6 lg:h-full lg:overflow-y-auto px-1.5 py-1 scrollbar-none pb-6">
           {/* Middle Top KPI Metrics Cards (Light and Minimal layout) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* KPI 1: Emails Sent */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">E-mails Enviados</span>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <span className="text-xl font-black text-slate-850">{draft.emails_sent || 0}</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">
-                  {draft.emails_sent > 0 ? "100%" : "0%"}
-                </span>
+            {/* Combined Email Engagement Card (Occupies 2 columns) */}
+            <div className="col-span-2 bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">Engajamento de E-mails</span>
+                <Mail className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
               </div>
-            </div>
 
-            {/* KPI 2: Emails Opened */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">E-mails Abertos</span>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <span className="text-xl font-black text-slate-850">{draft.emails_opened || 0}</span>
-                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">
-                  {draft.emails_sent > 0 ? `${Math.round(((draft.emails_opened || 0) / draft.emails_sent) * 100)}%` : "0%"}
-                </span>
+              <div className="space-y-1.5 pt-0.5">
+                {/* Line 1: Emails enviados */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Emails enviados:</span>
+                  <span className="font-black text-slate-850 text-xs">{draft.emails_sent || 0}</span>
+                </div>
+
+                {/* Line 2: Emails abertos */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Emails abertos:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-slate-850 text-xs">{draft.emails_opened || 0}</span>
+                    <span className="text-[9px] font-extrabold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-150">
+                      {draft.emails_sent > 0 ? `${Math.round(((draft.emails_opened || 0) / draft.emails_sent) * 100)}%` : "0%"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Line 3: Emails clicados */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Emails clicados:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-slate-850 text-xs">{draft.emails_clicked || 0}</span>
+                    <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150">
+                      {(draft.emails_opened || 0) > 0 ? `${Math.round(((draft.emails_clicked || 0) / draft.emails_opened) * 100)}%` : "0%"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
