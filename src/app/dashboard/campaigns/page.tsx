@@ -132,7 +132,7 @@ export default function CampaignsPage() {
             targetList: c.target_list || "Todos os Contatos",
             dateStr,
             sentAtDate,
-            sentCount: c.sent_count || 0,
+            sentCount: Math.max(0, (c.sent_count || 0) - (c.bounce_count || 0)),
             openCount: c.open_count || 0,
             clickCount: c.click_count || 0,
             conversions: c.conversions || 0,

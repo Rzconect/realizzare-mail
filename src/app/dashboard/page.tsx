@@ -489,8 +489,24 @@ export default function DashboardPage() {
         localStorage.removeItem("realizzare_simulated_events");
       }
 
+      // Deduplicate purchase events in allEventsPool by email + amount + date (YYYY-MM-DD)
+      const seenPurchaseKeys = new Set<string>();
+      const deduplicatedEventsPool: any[] = [];
+
+      allEventsPool.forEach(evt => {
+        if (evt.type === "purchase") {
+          const email = (evt.email || "").toLowerCase().trim();
+          const amt = Number(evt.amount || 0).toFixed(2);
+          const dateStr = new Date(evt.timestampMs).toISOString().split("T")[0];
+          const key = `${email}_${amt}_${dateStr}`;
+          if (seenPurchaseKeys.has(key)) return; // Skip duplicate transaction!
+          seenPurchaseKeys.add(key);
+        }
+        deduplicatedEventsPool.push(evt);
+      });
+
       // Filter events by period date bounds and sort descending (newest first)
-      const filteredPeriodEvents = allEventsPool
+      const filteredPeriodEvents = deduplicatedEventsPool
         .filter(evt => evt.timestampMs >= startMs && evt.timestampMs <= endMs)
         .sort((a, b) => b.timestampMs - a.timestampMs);
 

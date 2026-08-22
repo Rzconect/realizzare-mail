@@ -198,16 +198,25 @@ export async function POST(req: Request) {
         const batch = allEventsToInsert.slice(i, i + batchSize);
         await Promise.all(batch.map(async (evt) => {
           try {
-            // Check if reporting event already exists
-            const { data: existingEvent } = await supabaseAdmin
-              .from("reporting_events")
-              .select("id")
-              .eq("contact_email", evt.email)
-              .eq("event_type", "purchase")
-              .eq("metadata->>pagarme_id", evt.id)
-              .maybeSingle();
+            // Check if reporting event already exists by email + amount + date (YYYY-MM-DD) or pagarme_id
+            const evtDateStr = new Date(evt.timestampMs).toISOString().split("T")[0];
+            const evtAmtStr = Number(evt.amount || 0).toFixed(2);
 
-            if (!existingEvent) {
+            const { data: existingEvents } = await supabaseAdmin
+              .from("reporting_events")
+              .select("id, created_at, metadata")
+              .eq("contact_email", evt.email)
+              .eq("event_type", "purchase");
+
+            const isAlreadyInserted = (existingEvents || []).some((ee: any) => {
+              const meta = ee.metadata || {};
+              if (meta.pagarme_id && meta.pagarme_id === evt.id) return true;
+              const eeDate = new Date(ee.created_at).toISOString().split("T")[0];
+              const eeAmt = Number(meta.amount || 0).toFixed(2);
+              return eeDate === evtDateStr && eeAmt === evtAmtStr;
+            });
+
+            if (!isAlreadyInserted) {
               await supabaseAdmin.from("reporting_events").insert({
                 org_id: "00000000-0000-0000-0000-000000000001",
                 contact_email: evt.email,
