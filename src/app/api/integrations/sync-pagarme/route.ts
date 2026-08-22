@@ -32,7 +32,7 @@ export async function POST(req: Request) {
           .maybeSingle();
         if (settingsData && settingsData.settings) {
           const settings = settingsData.settings as any;
-          secretKey = settings.pagarme_secret_key || "";
+          secretKey = settings.pagarme_secret_key || settings.pagarmeSecretKey || "";
         }
       } catch (e) {
         console.warn("Could not load secret key from DB settings:", e);
@@ -44,9 +44,9 @@ export async function POST(req: Request) {
       authHeader = "Basic " + Buffer.from(secretKey.trim() + ":").toString("base64");
     }
 
-    // 1. Calculate Incremental Start Date based on latest record in Supabase
-    let incrementalStartDate = createdSince;
-    if (!incrementalStartDate) {
+    // 1. Calculate Incremental Start Date based on latest record in Supabase (with safety margin)
+    let startDateISO = createdSince;
+    if (!startDateISO) {
       try {
         const { data: lastRecord } = await supabaseAdmin
           .from("reporting_events")
@@ -55,22 +55,28 @@ export async function POST(req: Request) {
           .limit(1);
 
         if (lastRecord && lastRecord.length > 0 && lastRecord[0].created_at) {
-          incrementalStartDate = lastRecord[0].created_at;
+          // Subtract 24 hours buffer to ensure no events on the same day are missed
+          const lastDateMs = new Date(lastRecord[0].created_at).getTime();
+          const bufferMs = 24 * 60 * 60 * 1000;
+          startDateISO = new Date(lastDateMs - bufferMs).toISOString().replace(/\.\d{3}Z$/, "Z");
         }
       } catch (e) {
         console.warn("Notice querying latest event timestamp:", e);
       }
     }
 
-    const startDate = incrementalStartDate || "2026-08-01T00:00:00Z";
+    const startDate = startDateISO || "2026-08-01T00:00:00Z";
     console.log(`--> Sincronização incremental do Pagar.me iniciada a partir de ${startDate}...`);
 
     let allPaidItems: any[] = [];
+    const seenIds = new Set<string>();
 
     if (authHeader) {
+      // Fetch /charges
       for (let page = 1; page <= 5; page++) {
         try {
-          const pagRes = await fetch(`https://api.pagar.me/core/v5/charges?created_since=${encodeURIComponent(startDate)}&status=paid&page=${page}&size=100`, {
+          const url = `https://api.pagar.me/core/v5/charges?created_since=${encodeURIComponent(startDate)}&status=paid&page=${page}&size=100`;
+          const pagRes = await fetch(url, {
             headers: {
               Authorization: authHeader,
               "Content-Type": "application/json"
@@ -81,20 +87,28 @@ export async function POST(req: Request) {
             const pagData = await pagRes.json();
             const pageData = pagData?.data || [];
             if (pageData.length === 0) break;
-            allPaidItems = [...allPaidItems, ...pageData];
+            for (const item of pageData) {
+              if (item?.id && !seenIds.has(item.id)) {
+                seenIds.add(item.id);
+                allPaidItems.push(item);
+              }
+            }
           } else {
+            const errText = await pagRes.text().catch(() => "");
+            console.warn(`Pagar.me /charges notice on page ${page}:`, pagRes.status, errText);
             break;
           }
         } catch (e) {
+          console.error("Fetch charges error:", e);
           break;
         }
       }
-    }
 
-    if (allPaidItems.length === 0) {
+      // Fetch /orders as well (not skipping if charges has items)
       for (let page = 1; page <= 5; page++) {
         try {
-          const pagOrdersRes = await fetch(`https://api.pagar.me/core/v5/orders?created_since=${encodeURIComponent(startDate)}&status=paid&page=${page}&size=100`, {
+          const url = `https://api.pagar.me/core/v5/orders?created_since=${encodeURIComponent(startDate)}&status=paid&page=${page}&size=100`;
+          const pagOrdersRes = await fetch(url, {
             headers: {
               Authorization: authHeader,
               "Content-Type": "application/json"
@@ -105,14 +119,24 @@ export async function POST(req: Request) {
             const pagOrdersData = await pagOrdersRes.json();
             const pageData = pagOrdersData?.data || [];
             if (pageData.length === 0) break;
-            allPaidItems = [...allPaidItems, ...pageData];
+            for (const item of pageData) {
+              if (item?.id && !seenIds.has(item.id)) {
+                seenIds.add(item.id);
+                allPaidItems.push(item);
+              }
+            }
           } else {
+            const errText = await pagOrdersRes.text().catch(() => "");
+            console.warn(`Pagar.me /orders notice on page ${page}:`, pagOrdersRes.status, errText);
             break;
           }
         } catch (e) {
+          console.error("Fetch orders error:", e);
           break;
         }
       }
+    } else {
+      console.warn("Nenhuma chave secreta do Pagar.me foi encontrada.");
     }
 
     let syncedCount = 0;

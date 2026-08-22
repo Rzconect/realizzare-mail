@@ -145,7 +145,20 @@ export default function DashboardPage() {
     setIsSyncing(true);
     const syncStart = Date.now();
     try {
-      const savedKey = typeof window !== "undefined" ? (localStorage.getItem("realizzare_pagarme_secret_key") || "") : "";
+      let savedKey = "";
+      if (typeof window !== "undefined") {
+        savedKey = localStorage.getItem("realizzare_pagarme_secret_key") || "";
+        if (!savedKey) {
+          try {
+            const cfgStr = localStorage.getItem("realizzare_integrations_config");
+            if (cfgStr) {
+              const cfg = JSON.parse(cfgStr);
+              savedKey = cfg.pagarmeSecretKey || cfg.pagarme_secret_key || "";
+            }
+          } catch (e) {}
+        }
+      }
+
       const res = await fetch("/api/integrations/sync-pagarme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -374,6 +387,15 @@ export default function DashboardPage() {
       const activeStudentsVal = Math.max(dynamicActiveStudents, dbStudentsCount);
       const enrolledPeriodVal = Math.max(dynamicEnrolledPeriod, dbEnrolledPeriod);
 
+      let emailRevenue = 0;
+      let emailPaidCount = 0;
+      filteredPeriodEvents.forEach(evt => {
+        if (evt.amount && evt.amount > 0) {
+          emailRevenue += evt.amount;
+          emailPaidCount += 1;
+        }
+      });
+
       setMetrics({
         active_leads: activeLeadsVal,
         students_count: activeStudentsVal,
@@ -381,6 +403,8 @@ export default function DashboardPage() {
         certificates_issued: finalCerts,
         total_paid: finalRevenue,
         active_subscriptions: finalSubs,
+        email_revenue: emailRevenue,
+        email_paid_count: emailPaidCount,
         changes: { 
           leads: activeLeadsVal > 0 ? `+${activeLeadsVal}%` : "0%", 
           students: activeStudentsVal > 0 ? `+${activeStudentsVal}%` : "0%", 

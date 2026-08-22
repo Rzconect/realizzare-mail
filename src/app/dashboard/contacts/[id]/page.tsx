@@ -331,6 +331,17 @@ export default function ContactProfilePage({ params }: PageProps) {
           .select("name, type, tag");
         const globalFields: any[] = globalFieldsData || [];
 
+        // 3. Fetch real system lists from DB
+        const { data: allListsData } = await supabase
+          .from("lists")
+          .select("name")
+          .order("name");
+        if (allListsData && allListsData.length > 0) {
+          setSystemLists(allListsData.map((l: any) => l.name));
+        } else {
+          setSystemLists(["Leads", "Alunos", "Clientes", "Professores"]);
+        }
+
         // Format RLS result to frontend schema
         const tags = contact.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || [];
         
@@ -728,6 +739,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   const [tagInput, setTagInput] = useState("");
 
   // List Management states
+  const [systemLists, setSystemLists] = useState<string[]>([]);
   const [selectedListToJoin, setSelectedListToJoin] = useState("");
   const [showListConfirmModal, setShowListConfirmModal] = useState(false);
   const [listConfirmAction, setListConfirmAction] = useState<{ type: "add" | "remove"; listName: string } | null>(null);
@@ -735,9 +747,9 @@ export default function ContactProfilePage({ params }: PageProps) {
   // Get other available lists the user is NOT subscribed to
   const allOtherAvailableLists = useMemo(() => {
     const existingListNames = (draft?.lists || []).map((l: any) => l.name);
-    const globalLists = ["Lista Geral de Alunos", "Carrinho Abandonado - 24h", "Interessados em Programação", "Clientes VIP", "Newsletter Geral"];
-    return globalLists.filter(lname => !existingListNames.includes(lname));
-  }, [draft?.lists]);
+    const baseLists = systemLists.length > 0 ? systemLists : ["Leads", "Alunos", "Clientes", "Professores"];
+    return baseLists.filter(lname => !existingListNames.includes(lname));
+  }, [draft?.lists, systemLists]);
 
   const handleToggleListSubscription = (listName: string) => {
     const listObj = draft.lists.find((l: any) => l.name === listName);
