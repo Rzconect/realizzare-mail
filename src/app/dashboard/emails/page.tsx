@@ -261,17 +261,18 @@ export default function EmailsLibraryPage() {
           // Fetch email nodes inside flows
           const { data: dbEmailNodes } = await supabase
             .from("flow_nodes")
-            .select("*, flows(name, status)")
+            .select("*, flows(id, name, status)")
             .eq("node_type", "email")
             .eq("is_deleted", false);
 
           if (dbEmailNodes && dbEmailNodes.length > 0) {
             dbEmailNodes.forEach((node: any) => {
               const flowName = node.flows?.name || "Automação";
+              const flowId = node.flows?.id || node.flow_id;
               const isFlowActive = node.flows?.status === "active";
               const cfg = node.config || {};
               const nodeStatus = cfg.status || (isFlowActive ? "Ativo" : "Rascunho");
-              const folderId = `folder-${node.flow_id}`;
+              const folderId = `folder-${flowId}`;
 
               // Ensure folder exists
               if (!loadedFolders.some((f) => f.id === folderId || f.name.trim().toLowerCase() === flowName.trim().toLowerCase())) {
@@ -282,7 +283,7 @@ export default function EmailsLibraryPage() {
               const tplName = cfg.campaignName || cfg.campaign_name || node.name || `E-mail do Fluxo ${flowName}`;
 
               const existingIdx = loadedTemplates.findIndex(
-                (t: any) => t.id === tplId || (t.flowId === node.flow_id && t.name.trim().toLowerCase() === tplName.trim().toLowerCase())
+                (t: any) => t.id === tplId || (t.flowId === flowId && t.name.trim().toLowerCase() === tplName.trim().toLowerCase())
               );
 
               if (existingIdx < 0) {
@@ -298,14 +299,16 @@ export default function EmailsLibraryPage() {
 </div>`,
                   folderId: folderId,
                   folderName: flowName,
-                  flowId: node.flow_id,
+                  flowId: flowId,
                   flowName: flowName,
                   status: nodeStatus,
                   updatedAt: new Date(node.created_at || Date.now()).toLocaleDateString("pt-BR"),
                   metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
                 });
               } else {
-                // Keep node status synced with flow/node setting
+                // Ensure flowName and flowId are linked and status synced
+                loadedTemplates[existingIdx].flowId = flowId;
+                loadedTemplates[existingIdx].flowName = flowName;
                 loadedTemplates[existingIdx].status = nodeStatus;
               }
             });
@@ -851,24 +854,26 @@ export default function EmailsLibraryPage() {
                       <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
                     </div>
                   ) : (
-                    /* REDEFINED 3:4 CARDS GRID WITH FULL NAME & LIVE SCROLLABLE PREVIEW */
+                    /* TIGHTER 3:4 CARDS GRID WITH FULL NAME & MAXIMUM HEIGHT SCROLLABLE PREVIEW */
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                       {visibleTemplates.map((template) => {
                         const isActive = template.status === "Ativo";
                         const isFlipped = !!flippedCardIds[template.id];
+                        const flowNameDisp = template.flowName || (folder.type === "flow" ? folder.name : null);
+                        const flowIdDisp = template.flowId || (folder.type === "flow" ? folder.id.replace("folder-", "") : null);
 
                         return (
                           <div
                             key={template.id}
-                            className="card-perspective h-[440px] w-full max-w-[250px] mx-auto"
+                            className="card-perspective h-[450px] w-full max-w-[250px] mx-auto"
                           >
                             <div className={`card-inner relative w-full h-full ${isFlipped ? "is-flipped" : ""}`}>
                               
-                              {/* FRONT FACE OF CARD (FULL UNTRUNCATED NAME + LIVE SCROLLABLE MINIATURE PREVIEW) */}
-                              <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-500 rounded-xl p-3 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
-                                <div className="flex-1 flex flex-col justify-between space-y-2">
+                              {/* FRONT FACE OF CARD (COMPACT VERTICAL LAYOUT WITH MAXIMUM PREVIEW HEIGHT & ALWAYS-ON FLOW LINK) */}
+                              <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-500 rounded-xl p-2.5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
+                                <div className="flex-1 flex flex-col justify-between space-y-1 overflow-hidden">
                                   {/* 1. CAMPAIGN NAME AT VERY TOP (FULL WRAP - NOT TRUNCATED) */}
-                                  <div className="flex items-start justify-between gap-1.5 pb-1.5 border-b border-slate-100">
+                                  <div className="flex items-start justify-between gap-1 pb-1 border-b border-slate-100 shrink-0">
                                     <h3
                                       className="font-extrabold text-slate-900 text-[11px] leading-snug break-words flex-1"
                                       title={template.name}
@@ -876,7 +881,7 @@ export default function EmailsLibraryPage() {
                                       {template.name}
                                     </h3>
                                     <span
-                                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
+                                      className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase shrink-0 ${
                                         isActive ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-slate-100 text-slate-650 border border-slate-200"
                                       }`}
                                     >
@@ -884,47 +889,48 @@ export default function EmailsLibraryPage() {
                                     </span>
                                   </div>
 
-                                  {/* 2. SUBJECT LINE & PREHEADER BOX */}
-                                  <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-1.5 space-y-0.5 shrink-0">
+                                  {/* 2. SUBJECT LINE & PREHEADER BOX (COMPACT - ZERO EMPTY GAPS) */}
+                                  <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-1.5 space-y-0.5 shrink-0 my-0.5">
                                     <div className="flex items-center gap-1">
-                                      <span className="text-[9px] font-bold uppercase text-indigo-600 tracking-wider">Assunto:</span>
+                                      <span className="text-[8.5px] font-bold uppercase text-indigo-600 tracking-wider shrink-0">Assunto:</span>
                                       <span className="font-bold text-slate-800 text-[10px] truncate">
                                         {template.subject || "(Sem assunto)"}
                                       </span>
                                     </div>
                                     {template.previewText && (
-                                      <p className="text-[9.5px] text-slate-500 italic line-clamp-1 border-t border-slate-100 pt-0.5">
+                                      <p className="text-[9px] text-slate-500 italic line-clamp-1 border-t border-slate-100 pt-0.5">
                                         "{template.previewText}"
                                       </p>
                                     )}
                                   </div>
 
-                                  {/* 3. HTML PREVIEW CONTAINER (LIVE SCROLLABLE WITH MOUSE WHEEL ON HOVER) */}
+                                  {/* 3. HTML PREVIEW CONTAINER (EXPANDED TO MAXIMUM HEIGHT & LIVE SCROLLABLE ON MOUSE HOVER) */}
                                   <div
-                                    className="flex-1 min-h-[160px] max-h-[190px] w-full bg-white border border-slate-200 rounded-lg overflow-y-auto mini-preview-scroll relative shadow-inner select-text"
+                                    className="flex-1 min-h-[190px] w-full bg-white border border-slate-200 rounded-lg overflow-y-auto mini-preview-scroll relative shadow-inner select-text my-0.5"
                                     onWheel={(e) => e.stopPropagation()}
                                     title="Role o mouse nesta área para navegar pelo e-mail"
                                   >
-                                    <div className="w-full min-h-full">
+                                    <div className="w-full h-full min-h-[220px]">
                                       <iframe
                                         title={`Mini preview - ${template.name}`}
                                         srcDoc={template.htmlContent || "<div></div>"}
-                                        className="w-full min-h-[420px] border-0 pointer-events-auto"
+                                        className="w-full min-h-[440px] border-0 pointer-events-auto"
                                         style={{ transform: "scale(0.86)", transformOrigin: "top left", width: "116%", height: "116%" }}
                                       />
                                     </div>
                                   </div>
 
-                                  {/* 4. FLOW LINK (SITS NEATLY AT THE BOTTOM ABOVE ACTIONS) */}
-                                  {isActive && template.flowName && (
-                                    <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50/70 p-1.5 rounded-md border border-emerald-200 shrink-0">
-                                      <GitBranch className="h-3 w-3 shrink-0 text-emerald-600" />
-                                      <span className="truncate">Flow:</span>
+                                  {/* 4. ALWAYS-ON FLOW LINK (FOR ALL FLOW-LINKED TEMPLATES EVEN WHEN IN RASCUNHO/PAUSED) */}
+                                  {flowNameDisp && (
+                                    <div className="flex items-center gap-1 text-[9.5px] text-indigo-700 font-bold bg-indigo-50/80 px-2 py-1 rounded-md border border-indigo-200 shrink-0 my-0.5">
+                                      <GitBranch className="h-3 w-3 shrink-0 text-indigo-600" />
+                                      <span className="shrink-0">Flow:</span>
                                       <Link
-                                        href={template.flowId ? `/flows/${template.flowId}` : "/dashboard/automations"}
+                                        href={flowIdDisp ? `/flows/${flowIdDisp}` : "/dashboard/automations"}
                                         className="text-indigo-600 hover:underline flex items-center gap-0.5 font-extrabold truncate"
+                                        title={`Ir para o fluxo "${flowNameDisp}"`}
                                       >
-                                        {template.flowName}
+                                        <span className="truncate">{flowNameDisp}</span>
                                         <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                                       </Link>
                                     </div>
@@ -932,7 +938,7 @@ export default function EmailsLibraryPage() {
                                 </div>
 
                                 {/* 5. TIGHT ACTION TOOLBAR AT THE BOTTOM */}
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 mt-1.5 shrink-0">
+                                <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1 mt-1 shrink-0">
                                   {/* Grouped Ver & Editar */}
                                   <div className="flex items-center gap-1">
                                     <button
