@@ -22,6 +22,7 @@ import {
   X,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   FolderOpen,
   Filter,
   Check,
@@ -29,6 +30,8 @@ import {
   DollarSign,
   Mail,
   Users,
+  Laptop,
+  Smartphone,
   MousePointerClick
 } from "lucide-react";
 
@@ -44,10 +47,14 @@ export default function EmailsLibraryPage() {
   const [flows, setFlows] = useState<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Accordion Drawer State: set of folder IDs that are open
+  const [openFolderIds, setOpenFolderIds] = useState<Record<string, boolean>>({});
+
   // Modal: New Campaign / Template
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateSubject, setNewTemplateSubject] = useState("");
+  const [newTemplatePreheader, setNewTemplatePreheader] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState("");
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
   const [customFolderName, setCustomFolderName] = useState("");
@@ -58,6 +65,10 @@ export default function EmailsLibraryPage() {
   const [editPreviewText, setEditPreviewText] = useState("");
   const [editHtmlContent, setEditHtmlContent] = useState("");
   const [editorTab, setEditorTab] = useState<"edit" | "preview">("preview");
+
+  // Modal: Full Web & Mobile Preview
+  const [fullPreviewTemplate, setFullPreviewTemplate] = useState<any | null>(null);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
 
   // Modal: Metrics Popover/Modal
   const [metricsTemplate, setMetricsTemplate] = useState<any | null>(null);
@@ -108,10 +119,12 @@ export default function EmailsLibraryPage() {
           name: "E-mail 01 - Boas-vindas ao Aluno",
           subject: "🎓 Seja bem-vindo à Realizzare Cursos!",
           previewText: "Confira como acessar suas primeiras aulas gratuitas...",
-          htmlContent: `<div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-  <h2 style="color: #4f46e5;">Olá {{primeiro_nome}}, seja muito bem-vindo!</h2>
-  <p>Estamos felizes em ter você conosco na Realizzare Cursos. Sua jornada de aprendizado começa agora!</p>
-  <p><a href="https://www.realizzarecursos.com.br" style="background: #4f46e5; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Minha Conta</a></p>
+          htmlContent: `<div style="font-family: Arial, sans-serif; padding: 24px; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px;">
+  <h2 style="color: #4f46e5; margin-top: 0;">Olá {{primeiro_nome}}, seja muito bem-vindo!</h2>
+  <p>Estamos felizes em ter você conosco na Realizzare Cursos. Sua jornada de aprendizado profissional começa agora!</p>
+  <p style="margin: 24px 0;"><a href="https://www.realizzarecursos.com.br" style="background: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Acessar Minha Conta</a></p>
+  <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+  <p style="font-size: 12px; color: #888;">Realizzare Cursos • Plataforma EAD</p>
 </div>`,
           folderId: "folder-boas-vindas",
           folderName: "Boas-vindas",
@@ -133,10 +146,15 @@ export default function EmailsLibraryPage() {
           id: "tpl-2",
           name: "E-mail 02 - Recomendação de Cursos em Destaque",
           subject: "🔥 Veja os cursos mais acessados desta semana",
-          previewText: "Separamos 3 qualificações perfeitas para seu perfil.",
-          htmlContent: `<div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-  <h2>Olá {{primeiro_nome}}, que tal continuar aprendendo?</h2>
-  <p>Confira nossa seleção semanal de cursos com certificado reconhecido.</p>
+          previewText: "Separamos 3 qualificações perfeitas para seu perfil profissional.",
+          htmlContent: `<div style="font-family: Arial, sans-serif; padding: 24px; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px;">
+  <h2 style="color: #0284c7; margin-top: 0;">Olá {{primeiro_nome}}, continue se qualificando!</h2>
+  <p>Confira nossa seleção especial de cursos em alta neste mês:</p>
+  <ul>
+    <li>Curso de Excel Avançado</li>
+    <li>Curso de Comunicação e Oratória</li>
+    <li>Curso de Gestão de Projetos</li>
+  </ul>
 </div>`,
           folderId: "folder-boas-vindas",
           folderName: "Boas-vindas",
@@ -158,10 +176,11 @@ export default function EmailsLibraryPage() {
           id: "tpl-3",
           name: "Alerta de Carrinho Abandonado",
           subject: "⚠️ Você esqueceu seu certificado no carrinho!",
-          previewText: "Conclua sua emissão com desconto especial hoje.",
-          htmlContent: `<div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-  <h2>{{primeiro_nome}}, seu certificado está aguardando!</h2>
-  <p>Não perca a oportunidade de emitir seu certificado com preço promocional.</p>
+          previewText: "Conclua sua emissão com desconto especial antes de expirar.",
+          htmlContent: `<div style="font-family: Arial, sans-serif; padding: 24px; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px;">
+  <h2 style="color: #dc2626; margin-top: 0;">{{primeiro_nome}}, seu certificado está aguardando!</h2>
+  <p>Não perca a oportunidade de emitir seu certificado com validade IES/MEC por um valor promocional.</p>
+  <p style="margin-top: 20px;"><a href="https://www.realizzarecursos.com.br/checkout" style="background: #dc2626; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Finalizar Emissão</a></p>
 </div>`,
           folderId: "folder-carrinho",
           folderName: "Recuperação de Carrinho",
@@ -182,9 +201,12 @@ export default function EmailsLibraryPage() {
         {
           id: "tpl-4",
           name: "Rascunho Oferta Especial Black Friday",
-          subject: "🚀 Ofertas imperdíveis em todos os cursos!",
-          previewText: "Descontos de até 50% na emissão do certificado IES/MEC.",
-          htmlContent: `<div style="font-family: sans-serif; padding: 20px;"><h1>Oferta Especial Black Friday</h1></div>`,
+          subject: "🚀 Ofertas imperdíveis em todos os certificados!",
+          previewText: "Descontos exclusivos de até 50% por tempo limitado.",
+          htmlContent: `<div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #0f172a; color: #fff; border-radius: 8px;">
+  <h1 style="color: #f59e0b;">BLACK FRIDAY REALIZZARE</h1>
+  <p>Aproveite os descontos especiais em todos os certificados!</p>
+</div>`,
           folderId: "folder-pontual",
           folderName: "Campanhas Pontuais / Rascunhos",
           status: "Rascunho",
@@ -211,11 +233,35 @@ export default function EmailsLibraryPage() {
 
       setFolders(loadedFolders);
       setTemplates(loadedTemplates);
+
+      // Open first folder by default
+      if (loadedFolders.length > 0) {
+        const initialOpenMap: Record<string, boolean> = {};
+        initialOpenMap[loadedFolders[0].id] = true;
+        setOpenFolderIds(initialOpenMap);
+      }
+
       if (!storedFolders) localStorage.setItem("realizzare_email_folders", JSON.stringify(loadedFolders));
       if (!storedTemplates) localStorage.setItem("realizzare_email_templates", JSON.stringify(loadedTemplates));
       setIsLoaded(true);
     }
   }, []);
+
+  // Expand folders automatically when searching or selecting specific folder filter
+  useEffect(() => {
+    if (searchQuery.trim() || selectedFolderFilter !== "all") {
+      const allOpenMap: Record<string, boolean> = {};
+      folders.forEach((f) => (allOpenMap[f.id] = true));
+      setOpenFolderIds(allOpenMap);
+    }
+  }, [searchQuery, selectedFolderFilter, folders]);
+
+  const toggleFolderDrawer = (folderId: string) => {
+    setOpenFolderIds((prev) => ({
+      ...prev,
+      [folderId]: !prev[folderId]
+    }));
+  };
 
   const saveToStorage = (updatedFolders: any[], updatedTemplates: any[]) => {
     setFolders(updatedFolders);
@@ -253,7 +299,7 @@ export default function EmailsLibraryPage() {
       id: `tpl-${Date.now()}`,
       name: newTemplateName.trim(),
       subject: newTemplateSubject.trim() || "Assunto do E-mail",
-      previewText: "Texto de pré-visualização...",
+      previewText: newTemplatePreheader.trim() || "Texto de pré-visualização...",
       htmlContent: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.6;">
   <h2 style="color: #4f46e5;">Olá {{primeiro_nome}}!</h2>
   <p>Escreva o conteúdo do seu novo e-mail aqui...</p>
@@ -276,9 +322,15 @@ export default function EmailsLibraryPage() {
     const updatedTemplates = [newTpl, ...templates];
     saveToStorage(updatedFolders, updatedTemplates);
 
+    // Auto-open target folder
+    if (targetFolderId) {
+      setOpenFolderIds((prev) => ({ ...prev, [targetFolderId]: true }));
+    }
+
     setShowNewModal(false);
     setNewTemplateName("");
     setNewTemplateSubject("");
+    setNewTemplatePreheader("");
     setCustomFolderName("");
     setIsCreatingNewFolder(false);
     showToast("Nova campanha criada com sucesso como Rascunho!");
@@ -390,7 +442,7 @@ export default function EmailsLibraryPage() {
             </h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Crie, organize por pastas de fluxo e reutilize seus e-mails em automações ou campanhas pontuais.
+            Organize seus e-mails por pastas de fluxo em formato de gaveta e acompanhe o engajamento de cada modelo.
           </p>
         </div>
 
@@ -405,42 +457,42 @@ export default function EmailsLibraryPage() {
 
       {/* Stats Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total de E-mails</span>
+        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total de E-mails</span>
             <Mail className="h-4 w-4 text-indigo-500" />
           </div>
           <p className="text-2xl font-black text-slate-800">{totalCount}</p>
-          <p className="text-[11px] text-slate-500 mt-1">Templates criados no sistema</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Templates na biblioteca</p>
         </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Rascunhos</span>
+        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Rascunhos</span>
             <Clock className="h-4 w-4 text-slate-500" />
           </div>
           <p className="text-2xl font-black text-slate-700">{draftCount}</p>
-          <p className="text-[11px] text-slate-500 mt-1">Disponíveis para edição</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Disponíveis para edição</p>
         </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ativos em Fluxos</span>
+        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Ativos em Fluxos</span>
             <GitBranch className="h-4 w-4 text-emerald-500" />
           </div>
           <p className="text-2xl font-black text-emerald-600">{activeCount}</p>
-          <p className="text-[11px] text-slate-500 mt-1">Vinculados a automações</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Vinculados a automações</p>
         </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Receita Atribuída</span>
+        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Receita Atribuída</span>
             <DollarSign className="h-4 w-4 text-emerald-600" />
           </div>
           <p className="text-2xl font-black text-slate-800">
             {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalRevenue)}
           </p>
-          <p className="text-[11px] text-emerald-600 font-bold mt-1">Vendas via e-mails de fluxo</p>
+          <p className="text-[11px] text-emerald-600 font-bold mt-0.5">Vendas via e-mails de fluxo</p>
         </div>
       </div>
 
@@ -453,8 +505,8 @@ export default function EmailsLibraryPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pesquisar por nome do e-mail, fluxo ou pasta..."
-            className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+            placeholder="Pesquisar por nome do e-mail, assunto, fluxo..."
+            className="w-full pl-10 pr-4 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -468,19 +520,19 @@ export default function EmailsLibraryPage() {
           <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold">
             <button
               onClick={() => setFilterStatus("all")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${filterStatus === "all" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              className={`px-3 py-1 rounded-lg transition-all ${filterStatus === "all" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
               Todos
             </button>
             <button
               onClick={() => setFilterStatus("draft")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${filterStatus === "draft" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              className={`px-3 py-1 rounded-lg transition-all ${filterStatus === "draft" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
               Rascunhos
             </button>
             <button
               onClick={() => setFilterStatus("active")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${filterStatus === "active" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              className={`px-3 py-1 rounded-lg transition-all ${filterStatus === "active" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
               Ativos
             </button>
@@ -501,136 +553,191 @@ export default function EmailsLibraryPage() {
         </div>
       </div>
 
-      {/* Main Grid View: Grouped by Folder */}
-      {folders.map((folder) => {
-        const folderTemplates = filteredTemplates.filter((t) => t.folderId === folder.id);
-        if (selectedFolderFilter !== "all" && selectedFolderFilter !== folder.id) return null;
-        if (searchQuery && folderTemplates.length === 0) return null;
+      {/* Folders in Collapsible Drawer / Accordion Model */}
+      <div className="space-y-4">
+        {folders.map((folder) => {
+          const folderTemplates = filteredTemplates.filter((t) => t.folderId === folder.id);
+          if (selectedFolderFilter !== "all" && selectedFolderFilter !== folder.id) return null;
+          if (searchQuery && folderTemplates.length === 0) return null;
 
-        return (
-          <div key={folder.id} className="space-y-4">
-            {/* Folder Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5 pt-2">
-              <div className="flex items-center gap-2.5">
-                <FolderOpen className="h-5 w-5 text-indigo-600" />
-                <h2 className="text-base font-bold text-slate-800">{folder.name}</h2>
-                <span className="text-xs font-extrabold bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100">
-                  {folderTemplates.length} e-mail{folderTemplates.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-            </div>
+          const isOpen = !!openFolderIds[folder.id];
 
-            {/* Folder Empty State */}
-            {folderTemplates.length === 0 ? (
-              <div className="bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl p-6 text-center">
-                <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
-              </div>
-            ) : (
-              /* Templates Cards Grid */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {folderTemplates.map((template) => {
-                  const isActive = template.status === "Ativo";
-                  return (
-                    <div
-                      key={template.id}
-                      className="bg-white border border-slate-200 hover:border-slate-300 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
-                    >
-                      <div>
-                        {/* Top Card Bar: Status Badge & Actions */}
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-                              isActive
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-slate-100 text-slate-600 border border-slate-200"
-                            }`}
-                          >
-                            <span className={`h-2 w-2 rounded-full ${isActive ? "bg-emerald-500" : "bg-slate-400"}`} />
-                            {template.status}
-                          </span>
+          return (
+            <div
+              key={folder.id}
+              className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm transition-all"
+            >
+              {/* Folder Drawer Header (Clickable Accordion Bar) */}
+              <button
+                onClick={() => toggleFolderDrawer(folder.id)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left border-b border-slate-100 select-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                    <FolderOpen className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-extrabold text-slate-850">{folder.name}</h2>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      {folderTemplates.length} e-mail{folderTemplates.length !== 1 ? "s" : ""} registrado{folderTemplates.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
 
-                          <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
-                            {/* Metrics Popover Trigger */}
-                            <button
-                              onClick={() => setMetricsTemplate(template)}
-                              title="Visualizar Métricas"
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
-                            >
-                              <BarChart2 className="h-4 w-4" />
-                            </button>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+                    {folderTemplates.length} modelo{folderTemplates.length !== 1 ? "s" : ""}
+                  </span>
+                  <div className="p-1.5 bg-slate-100 rounded-lg text-slate-500">
+                    {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </div>
+                </div>
+              </button>
 
-                            {/* Duplicate Template */}
-                            <button
-                              onClick={() => handleDuplicateTemplate(template.id)}
-                              title="Duplicar E-mail"
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </button>
-
-                            {/* Delete Template */}
-                            <button
-                              onClick={() => handleDeleteTemplate(template.id)}
-                              title="Excluir E-mail"
-                              className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Title & Subject */}
-                        <h3 className="font-extrabold text-slate-850 text-base group-hover:text-indigo-600 transition-colors line-clamp-1">
-                          {template.name}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-1 italic">
-                          Assunto: "{template.subject}"
-                        </p>
-
-                        {/* Flow Status Link Sub-text */}
-                        {isActive && template.flowName && (
-                          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-1.5 text-xs text-emerald-700 font-bold">
-                            <GitBranch className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                            <span className="truncate">Ativo no flow:</span>
-                            <Link
-                              href={template.flowId ? `/flows/${template.flowId}` : "/dashboard/automations"}
-                              className="text-indigo-600 hover:underline flex items-center gap-1 font-extrabold truncate"
-                            >
-                              {template.flowName}
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                            </Link>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Card Footer: Metrics Summary & Edit Button */}
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <div className="text-[11px] text-slate-400 font-medium">
-                          Atualizado: {template.updatedAt}
-                        </div>
-
-                        <button
-                          onClick={() => {
-                            setEditingTemplate(template);
-                            setEditSubject(template.subject || "");
-                            setEditPreviewText(template.previewText || "");
-                            setEditHtmlContent(template.htmlContent || "");
-                            setEditorTab("preview");
-                          }}
-                          className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                          Editar HTML
-                        </button>
-                      </div>
+              {/* Drawer Content (Only rendered/visible when isOpen is true) */}
+              {isOpen && (
+                <div className="p-6 bg-slate-50/50 animate-fadeIn space-y-4">
+                  {folderTemplates.length === 0 ? (
+                    <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center">
+                      <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                  ) : (
+                    /* Compact Cards Grid */
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {folderTemplates.map((template) => {
+                        const isActive = template.status === "Ativo";
+                        return (
+                          <div
+                            key={template.id}
+                            className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden space-y-3"
+                          >
+                            {/* TOP OF CARD: Subject & Pre-header Line */}
+                            <div className="space-y-1.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">
+                                  Assunto:
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                                    isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
+                                  }`}
+                                >
+                                  {template.status}
+                                </span>
+                              </div>
+                              <h4 className="font-extrabold text-slate-850 text-xs line-clamp-1">
+                                {template.subject || "(Sem assunto)"}
+                              </h4>
+                              {template.previewText && (
+                                <p className="text-[11px] text-slate-500 italic line-clamp-1">
+                                  Pré-header: "{template.previewText}"
+                                </p>
+                              )}
+                            </div>
+
+                            {/* CARD MIDDLE: Title & Mini HTML Thumbnail Preview */}
+                            <div className="space-y-2">
+                              <h3 className="font-black text-slate-850 text-sm group-hover:text-indigo-600 transition-colors truncate">
+                                {template.name}
+                              </h3>
+
+                              {/* Mini Thumbnail Preview Container */}
+                              <div className="h-24 w-full bg-slate-100 border border-slate-200 rounded-xl overflow-hidden relative shadow-inner">
+                                <iframe
+                                  title={`Mini preview - ${template.name}`}
+                                  srcDoc={template.htmlContent || "<div></div>"}
+                                  className="w-[200%] h-[200%] transform scale-50 origin-top-left pointer-events-none border-0"
+                                />
+                                <div className="absolute inset-0 bg-transparent" />
+                              </div>
+
+                              {/* Flow Link if Active */}
+                              {isActive && template.flowName && (
+                                <div className="pt-1.5 flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+                                  <GitBranch className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                  <span className="truncate">Ativo no flow:</span>
+                                  <Link
+                                    href={template.flowId ? `/flows/${template.flowId}` : "/dashboard/automations"}
+                                    className="text-indigo-600 hover:underline flex items-center gap-1 font-extrabold truncate"
+                                  >
+                                    {template.flowName}
+                                    <ExternalLink className="h-3 w-3 shrink-0" />
+                                  </Link>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* COMPACT ACTIONS FOOTER */}
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                              {/* Full Preview Modal Button */}
+                              <button
+                                onClick={() => {
+                                  setFullPreviewTemplate(template);
+                                  setPreviewDevice("desktop");
+                                }}
+                                title="Pré-visualizar E-mail (Web & Mobile)"
+                                className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-indigo-600" />
+                                <span>Ver</span>
+                              </button>
+
+                              {/* Edit HTML */}
+                              <button
+                                onClick={() => {
+                                  setEditingTemplate(template);
+                                  setEditSubject(template.subject || "");
+                                  setEditPreviewText(template.previewText || "");
+                                  setEditHtmlContent(template.htmlContent || "");
+                                  setEditorTab("preview");
+                                }}
+                                title="Editar Código HTML"
+                                className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all shadow-xs"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                                <span>Editar</span>
+                              </button>
+
+                              <div className="flex items-center gap-1">
+                                {/* Metrics Button */}
+                                <button
+                                  onClick={() => setMetricsTemplate(template)}
+                                  title="Métricas de Desempenho"
+                                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
+                                >
+                                  <BarChart2 className="h-3.5 w-3.5" />
+                                </button>
+
+                                {/* Duplicate Button */}
+                                <button
+                                  onClick={() => handleDuplicateTemplate(template.id)}
+                                  title="Duplicar Template"
+                                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+
+                                {/* Delete Button */}
+                                <button
+                                  onClick={() => handleDeleteTemplate(template.id)}
+                                  title="Excluir Template"
+                                  className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {/* MODAL: Criar Nova Campanha / Template */}
       {showNewModal && (
@@ -665,13 +772,26 @@ export default function EmailsLibraryPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Assunto Inicial
+                  Linha de Assunto
                 </label>
                 <input
                   type="text"
                   value={newTemplateSubject}
                   onChange={(e) => setNewTemplateSubject(e.target.value)}
                   placeholder="Ex: 🎓 Seja bem-vindo à Realizzare Cursos!"
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Pré-cabeçalho (Texto de Apoio)
+                </label>
+                <input
+                  type="text"
+                  value={newTemplatePreheader}
+                  onChange={(e) => setNewTemplatePreheader(e.target.value)}
+                  placeholder="Ex: Confira como acessar suas aulas gratuitas..."
                   className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
               </div>
@@ -748,7 +868,90 @@ export default function EmailsLibraryPage() {
         </div>
       )}
 
-      {/* MODAL: HTML Editor & Preview */}
+      {/* MODAL: Full Web & Mobile Preview Modal */}
+      {fullPreviewTemplate && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 md:p-6">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-4xl w-full h-[85vh] shadow-2xl flex flex-col justify-between overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-base font-black text-slate-850">{fullPreviewTemplate.name}</h2>
+                <p className="text-xs text-slate-500">Assunto: "{fullPreviewTemplate.subject}"</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Device Selector */}
+                <div className="flex border border-slate-200 rounded-xl bg-slate-100 p-1 text-xs font-bold">
+                  <button
+                    onClick={() => setPreviewDevice("desktop")}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                      previewDevice === "desktop" ? "bg-white text-indigo-600 shadow-sm font-extrabold" : "text-slate-500"
+                    }`}
+                  >
+                    <Laptop className="h-3.5 w-3.5" /> Desktop / Web
+                  </button>
+                  <button
+                    onClick={() => setPreviewDevice("mobile")}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                      previewDevice === "mobile" ? "bg-white text-indigo-600 shadow-sm font-extrabold" : "text-slate-500"
+                    }`}
+                  >
+                    <Smartphone className="h-3.5 w-3.5" /> Mobile
+                  </button>
+                </div>
+
+                <button onClick={() => setFullPreviewTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Preview Frame Body */}
+            <div className="flex-1 bg-slate-100 rounded-2xl p-4 overflow-y-auto flex justify-center items-center">
+              {previewDevice === "desktop" ? (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-md w-full max-w-2xl h-full overflow-hidden flex flex-col">
+                  <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-500 font-semibold flex items-center justify-between">
+                    <span>De: contato@realizzarecursos.com.br</span>
+                    <span>Para: aluno@exemplo.com.br</span>
+                  </div>
+                  <iframe
+                    title="Full Desktop Preview"
+                    srcDoc={fullPreviewTemplate.htmlContent || "<div></div>"}
+                    className="w-full flex-1 border-0 bg-white"
+                  />
+                </div>
+              ) : (
+                /* Mobile Device Simulation Frame */
+                <div className="w-[340px] h-[540px] bg-slate-900 rounded-[36px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col relative">
+                  <div className="w-20 h-4 bg-slate-800 rounded-full mx-auto mb-2 shrink-0" />
+                  <div className="bg-white rounded-[24px] flex-1 overflow-hidden flex flex-col">
+                    <div className="bg-slate-50 border-b border-slate-200 p-2.5 text-[9px] text-slate-600 font-bold border-b border-slate-100">
+                      Assunto: {fullPreviewTemplate.subject}
+                    </div>
+                    <iframe
+                      title="Full Mobile Preview"
+                      srcDoc={fullPreviewTemplate.htmlContent || "<div></div>"}
+                      className="w-full flex-1 border-0 bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+              <button
+                onClick={() => setFullPreviewTemplate(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all"
+              >
+                Fechar Visualização
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: HTML Editor */}
       {editingTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col justify-between">
@@ -756,7 +959,7 @@ export default function EmailsLibraryPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-black text-slate-850">{editingTemplate.name}</h2>
-                <p className="text-xs text-slate-500">Edite o assunto e o template HTML do e-mail.</p>
+                <p className="text-xs text-slate-500">Edite o assunto, pré-header e o template HTML do e-mail.</p>
               </div>
 
               <div className="flex items-center gap-3">
@@ -786,7 +989,7 @@ export default function EmailsLibraryPage() {
             {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Assunto do E-mail</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Linha de Assunto</label>
                 <input
                   type="text"
                   value={editSubject}
@@ -796,7 +999,7 @@ export default function EmailsLibraryPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Texto de Pré-visualização (Preheader)</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pré-cabeçalho (Preheader)</label>
                 <input
                   type="text"
                   value={editPreviewText}
