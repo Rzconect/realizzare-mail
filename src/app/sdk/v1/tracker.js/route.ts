@@ -43,19 +43,23 @@ export async function GET() {
 
     const jsonStr = JSON.stringify(body);
 
-    if (navigator.sendBeacon) {
-      const blob = new Blob([jsonStr], { type: "application/json" });
-      navigator.sendBeacon(ENDPOINT, blob);
-    } else {
-      fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: jsonStr,
-        keepalive: true
-      }).catch(function(err) {
-        console.error("[RealizzareMail Tracker] Erro ao enviar evento:", err);
-      });
-    }
+    fetch(ENDPOINT, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "application/json" },
+      body: jsonStr,
+      keepalive: true
+    })
+    .then(function(response) {
+      if (response.ok) {
+        console.log("[RealizzareMail Tracker] Evento '" + eventType + "' enviado com sucesso!");
+      } else {
+        console.error("[RealizzareMail Tracker] Erro HTTP " + response.status + " ao enviar evento.");
+      }
+    })
+    .catch(function(err) {
+      console.error("[RealizzareMail Tracker] Erro na requisição do evento:", err);
+    });
   }
 
   window.rzMail = {
