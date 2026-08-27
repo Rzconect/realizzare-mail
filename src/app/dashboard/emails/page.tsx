@@ -268,7 +268,9 @@ export default function EmailsLibraryPage() {
           if (dbEmailNodes && dbEmailNodes.length > 0) {
             dbEmailNodes.forEach((node: any) => {
               const flowName = node.flows?.name || "Automação";
-              const flowStatus = node.flows?.status === "active" ? "Ativo" : "Rascunho";
+              const isFlowActive = node.flows?.status === "active";
+              const cfg = node.config || {};
+              const nodeStatus = cfg.status || (isFlowActive ? "Ativo" : "Rascunho");
               const folderId = `folder-${node.flow_id}`;
 
               // Ensure folder exists
@@ -277,14 +279,13 @@ export default function EmailsLibraryPage() {
               }
 
               const tplId = `node-tpl-${node.id}`;
-              const cfg = node.config || {};
               const tplName = cfg.campaignName || cfg.campaign_name || node.name || `E-mail do Fluxo ${flowName}`;
 
-              const exists = loadedTemplates.some(
+              const existingIdx = loadedTemplates.findIndex(
                 (t: any) => t.id === tplId || (t.flowId === node.flow_id && t.name.trim().toLowerCase() === tplName.trim().toLowerCase())
               );
 
-              if (!exists) {
+              if (existingIdx < 0) {
                 loadedTemplates.unshift({
                   id: tplId,
                   nodeId: node.id,
@@ -299,10 +300,13 @@ export default function EmailsLibraryPage() {
                   folderName: flowName,
                   flowId: node.flow_id,
                   flowName: flowName,
-                  status: flowStatus,
+                  status: nodeStatus,
                   updatedAt: new Date(node.created_at || Date.now()).toLocaleDateString("pt-BR"),
                   metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
                 });
+              } else {
+                // Keep node status synced with flow/node setting
+                loadedTemplates[existingIdx].status = nodeStatus;
               }
             });
           }
@@ -638,7 +642,7 @@ export default function EmailsLibraryPage() {
 
   return (
     <div className="space-y-6 pb-12 font-sans text-slate-800">
-      {/* CSS 3D Card Flip Styles */}
+      {/* CSS 3D Card Flip & Scrollbar Styles */}
       <style jsx global>{`
         .card-perspective {
           perspective: 1000px;
@@ -656,6 +660,16 @@ export default function EmailsLibraryPage() {
         }
         .card-back {
           transform: rotateY(180deg);
+        }
+        .mini-preview-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .mini-preview-scroll::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+        .mini-preview-scroll::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
       `}</style>
 
@@ -837,7 +851,7 @@ export default function EmailsLibraryPage() {
                       <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
                     </div>
                   ) : (
-                    /* REDEFINED 3:4 CARDS GRID WITH FULL NAME & EXPANDED PREVIEW */
+                    /* REDEFINED 3:4 CARDS GRID WITH FULL NAME & LIVE SCROLLABLE PREVIEW */
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                       {visibleTemplates.map((template) => {
                         const isActive = template.status === "Ativo";
@@ -850,7 +864,7 @@ export default function EmailsLibraryPage() {
                           >
                             <div className={`card-inner relative w-full h-full ${isFlipped ? "is-flipped" : ""}`}>
                               
-                              {/* FRONT FACE OF CARD (FULL UNTRUNCATED NAME + FLEX EXPANDED PREVIEW) */}
+                              {/* FRONT FACE OF CARD (FULL UNTRUNCATED NAME + LIVE SCROLLABLE MINIATURE PREVIEW) */}
                               <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-500 rounded-xl p-3 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
                                 <div className="flex-1 flex flex-col justify-between space-y-2">
                                   {/* 1. CAMPAIGN NAME AT VERY TOP (FULL WRAP - NOT TRUNCATED) */}
@@ -885,14 +899,20 @@ export default function EmailsLibraryPage() {
                                     )}
                                   </div>
 
-                                  {/* 3. HTML PREVIEW CONTAINER (FLEX-1 EXPANDED TO FILL SPACE) */}
-                                  <div className="flex-1 min-h-[160px] w-full bg-slate-100 border border-slate-200 rounded-lg overflow-hidden relative shadow-inner">
-                                    <iframe
-                                      title={`Mini preview - ${template.name}`}
-                                      srcDoc={template.htmlContent || "<div></div>"}
-                                      className="w-[200%] h-[200%] transform scale-50 origin-top-left pointer-events-none border-0"
-                                    />
-                                    <div className="absolute inset-0 bg-transparent" />
+                                  {/* 3. HTML PREVIEW CONTAINER (LIVE SCROLLABLE WITH MOUSE WHEEL ON HOVER) */}
+                                  <div
+                                    className="flex-1 min-h-[160px] max-h-[190px] w-full bg-white border border-slate-200 rounded-lg overflow-y-auto mini-preview-scroll relative shadow-inner select-text"
+                                    onWheel={(e) => e.stopPropagation()}
+                                    title="Role o mouse nesta área para navegar pelo e-mail"
+                                  >
+                                    <div className="w-full min-h-full">
+                                      <iframe
+                                        title={`Mini preview - ${template.name}`}
+                                        srcDoc={template.htmlContent || "<div></div>"}
+                                        className="w-full min-h-[420px] border-0 pointer-events-auto"
+                                        style={{ transform: "scale(0.86)", transformOrigin: "top left", width: "116%", height: "116%" }}
+                                      />
+                                    </div>
                                   </div>
 
                                   {/* 4. FLOW LINK (SITS NEATLY AT THE BOTTOM ABOVE ACTIONS) */}

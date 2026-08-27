@@ -237,6 +237,26 @@ export default function AutomationsPage() {
       setFlows((prev) =>
         prev.map((f) => (f.id === id ? { ...f, status: newStatus === "active" ? "Ativo" : "Pausado" } : f))
       );
+
+      // Sync linked email templates to Rascunho when flow is paused, or Ativo when flow is active
+      if (typeof window !== "undefined") {
+        const storedTemplates = localStorage.getItem("realizzare_email_templates");
+        if (storedTemplates) {
+          try {
+            let templatesList = JSON.parse(storedTemplates);
+            const folderId = `folder-${id}`;
+            templatesList = templatesList.map((t: any) => {
+              if (t.flowId === id || t.folderId === folderId) {
+                return { ...t, status: newStatus === "active" ? "Ativo" : "Rascunho" };
+              }
+              return t;
+            });
+            localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
     } catch (err) {
       console.error(err);
     }
@@ -402,13 +422,35 @@ export default function AutomationsPage() {
     if (!flowToDelete) return;
 
     try {
+      const targetFlow = flows.find(f => f.id === flowToDelete);
       const supabase = createClient();
       await supabase.from("flows").delete().eq("id", flowToDelete);
+
+      // Keep folder intact in E-mails library, but change all linked templates to Rascunho status
+      if (typeof window !== "undefined") {
+        const storedTemplates = localStorage.getItem("realizzare_email_templates");
+        if (storedTemplates) {
+          try {
+            let templatesList = JSON.parse(storedTemplates);
+            const folderId = `folder-${flowToDelete}`;
+            const flowName = targetFlow?.name || "";
+            templatesList = templatesList.map((t: any) => {
+              if (t.flowId === flowToDelete || t.folderId === folderId || (flowName && t.folderName?.trim().toLowerCase() === flowName.trim().toLowerCase())) {
+                return { ...t, status: "Rascunho" };
+              }
+              return t;
+            });
+            localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
 
       setFlows((prev) => prev.filter((f) => f.id !== flowToDelete));
       setShowDeleteModal(false);
       setFlowToDelete(null);
-      alert("Automação excluída com sucesso!");
+      alert("Automação excluída! A pasta permanece preservada na biblioteca de E-mails com os templates convertidos para Rascunho.");
     } catch (err) {
       console.error(err);
     }
