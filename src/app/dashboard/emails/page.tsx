@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -32,6 +32,8 @@ import {
   Users,
   Laptop,
   Smartphone,
+  RotateCcw,
+  Layers,
   MousePointerClick
 } from "lucide-react";
 
@@ -47,8 +49,14 @@ export default function EmailsLibraryPage() {
   const [flows, setFlows] = useState<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Accordion Drawer State: set of folder IDs that are open
+  // Accordion Drawer State: map of folder IDs that are open
   const [openFolderIds, setOpenFolderIds] = useState<Record<string, boolean>>({});
+
+  // Card 3D Flip State: record of template IDs currently flipped to metrics side
+  const [flippedCardIds, setFlippedCardIds] = useState<Record<string, boolean>>({});
+
+  // Pagination limit per folder for large volume performance (e.g. 6 items initially)
+  const [folderDisplayLimits, setFolderDisplayLimits] = useState<Record<string, number>>({});
 
   // Modal: New Campaign / Template
   const [showNewModal, setShowNewModal] = useState(false);
@@ -58,6 +66,15 @@ export default function EmailsLibraryPage() {
   const [selectedFolderId, setSelectedFolderId] = useState("");
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
   const [customFolderName, setCustomFolderName] = useState("");
+
+  // Modal: Standalone New Folder
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+  const [standaloneFolderName, setStandaloneFolderName] = useState("");
+  const [standaloneFolderType, setStandaloneFolderType] = useState<"flow" | "pontual">("flow");
+
+  // Modal: Duplicate Whole Folder
+  const [duplicatingFolder, setDuplicatingFolder] = useState<any | null>(null);
+  const [duplicateFolderName, setDuplicateFolderName] = useState("");
 
   // Modal: HTML Editor
   const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
@@ -70,10 +87,7 @@ export default function EmailsLibraryPage() {
   const [fullPreviewTemplate, setFullPreviewTemplate] = useState<any | null>(null);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
 
-  // Modal: Metrics Popover/Modal
-  const [metricsTemplate, setMetricsTemplate] = useState<any | null>(null);
-
-  // Success Toast
+  // Toast
   const [toastMessage, setToastMessage] = useState("");
 
   const showToast = (msg: string) => {
@@ -234,7 +248,6 @@ export default function EmailsLibraryPage() {
       setFolders(loadedFolders);
       setTemplates(loadedTemplates);
 
-      // Open first folder by default
       if (loadedFolders.length > 0) {
         const initialOpenMap: Record<string, boolean> = {};
         initialOpenMap[loadedFolders[0].id] = true;
@@ -247,7 +260,7 @@ export default function EmailsLibraryPage() {
     }
   }, []);
 
-  // Expand folders automatically when searching or selecting specific folder filter
+  // Auto-expand drawers when searching or selecting folder filter
   useEffect(() => {
     if (searchQuery.trim() || selectedFolderFilter !== "all") {
       const allOpenMap: Record<string, boolean> = {};
@@ -263,6 +276,13 @@ export default function EmailsLibraryPage() {
     }));
   };
 
+  const toggleCardFlip = (templateId: string) => {
+    setFlippedCardIds((prev) => ({
+      ...prev,
+      [templateId]: !prev[templateId]
+    }));
+  };
+
   const saveToStorage = (updatedFolders: any[], updatedTemplates: any[]) => {
     setFolders(updatedFolders);
     setTemplates(updatedTemplates);
@@ -272,7 +292,79 @@ export default function EmailsLibraryPage() {
     }
   };
 
-  // Handlers
+  // Create Standalone Folder
+  const handleCreateStandaloneFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!standaloneFolderName.trim()) return;
+
+    const newFolder = {
+      id: `folder-${Date.now()}`,
+      name: standaloneFolderName.trim(),
+      type: standaloneFolderType
+    };
+
+    const updatedFolders = [...folders, newFolder];
+    saveToStorage(updatedFolders, templates);
+
+    // Auto open new folder
+    setOpenFolderIds((prev) => ({ ...prev, [newFolder.id]: true }));
+
+    setShowNewFolderModal(false);
+    setStandaloneFolderName("");
+    showToast(`Pasta "${newFolder.name}" criada com sucesso!`);
+  };
+
+  // Duplicate Whole Folder and all templates inside it
+  const handleConfirmDuplicateFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!duplicatingFolder || !duplicateFolderName.trim()) return;
+
+    const newFolderId = `folder-${Date.now()}`;
+    const newFolderName = duplicateFolderName.trim();
+
+    const newFolderObj = {
+      id: newFolderId,
+      name: newFolderName,
+      type: duplicatingFolder.type || "flow"
+    };
+
+    const updatedFolders = [...folders, newFolderObj];
+
+    // Duplicate all templates inside original folder
+    const originalTemplates = templates.filter((t) => t.folderId === duplicatingFolder.id);
+    const clonedTemplates = originalTemplates.map((orig, index) => ({
+      ...orig,
+      id: `tpl-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 7)}`,
+      name: `Cópia - ${orig.name}`,
+      folderId: newFolderId,
+      folderName: newFolderName,
+      status: "Rascunho", // Always draft
+      flowId: undefined, // Unlinked from flow
+      flowName: undefined,
+      updatedAt: new Date().toLocaleDateString("pt-BR"),
+      metrics: {
+        sentCount: 0,
+        openCount: 0,
+        openRate: 0,
+        clickCount: 0,
+        clickRate: 0,
+        conversionCount: 0,
+        conversionRevenue: 0
+      }
+    }));
+
+    const updatedTemplates = [...clonedTemplates, ...templates];
+    saveToStorage(updatedFolders, updatedTemplates);
+
+    // Open new folder
+    setOpenFolderIds((prev) => ({ ...prev, [newFolderId]: true }));
+
+    setDuplicatingFolder(null);
+    setDuplicateFolderName("");
+    showToast(`Pasta "${newFolderName}" duplicada com ${clonedTemplates.length} e-mails (como Rascunhos)!`);
+  };
+
+  // Create Template
   const handleCreateTemplate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTemplateName.trim()) return;
@@ -296,12 +388,12 @@ export default function EmailsLibraryPage() {
     }
 
     const newTpl = {
-      id: `tpl-${Date.now()}`,
+      id: `tpl-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: newTemplateName.trim(),
       subject: newTemplateSubject.trim() || "Assunto do E-mail",
       previewText: newTemplatePreheader.trim() || "Texto de pré-visualização...",
-      htmlContent: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-  <h2 style="color: #4f46e5;">Olá {{primeiro_nome}}!</h2>
+      htmlContent: `<div style="font-family: Arial, sans-serif; padding: 24px; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px;">
+  <h2 style="color: #4f46e5; margin-top: 0;">Olá {{primeiro_nome}}!</h2>
   <p>Escreva o conteúdo do seu novo e-mail aqui...</p>
 </div>`,
       folderId: targetFolderId || "folder-pontual",
@@ -322,7 +414,6 @@ export default function EmailsLibraryPage() {
     const updatedTemplates = [newTpl, ...templates];
     saveToStorage(updatedFolders, updatedTemplates);
 
-    // Auto-open target folder
     if (targetFolderId) {
       setOpenFolderIds((prev) => ({ ...prev, [targetFolderId]: true }));
     }
@@ -342,8 +433,8 @@ export default function EmailsLibraryPage() {
 
     const cloned = {
       ...target,
-      id: `tpl-${Date.now()}`,
-      name: `${target.name} (Cópia)`,
+      id: `tpl-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: `Cópia - ${target.name}`,
       status: "Rascunho",
       flowId: undefined,
       flowName: undefined,
@@ -361,7 +452,7 @@ export default function EmailsLibraryPage() {
 
     const updatedTemplates = [cloned, ...templates];
     saveToStorage(folders, updatedTemplates);
-    showToast(`Campanha "${target.name}" duplicada como Rascunho!`);
+    showToast(`Campanha "Cópia - ${target.name}" duplicada como Rascunho!`);
   };
 
   const handleDeleteTemplate = (templateId: string) => {
@@ -394,34 +485,57 @@ export default function EmailsLibraryPage() {
   };
 
   // Filtered Templates
-  const filteredTemplates = templates.filter((t) => {
-    const query = searchQuery.toLowerCase().trim();
-    const matchesSearch =
-      !query ||
-      t.name.toLowerCase().includes(query) ||
-      t.subject.toLowerCase().includes(query) ||
-      (t.flowName && t.flowName.toLowerCase().includes(query)) ||
-      (t.folderName && t.folderName.toLowerCase().includes(query));
+  const filteredTemplates = useMemo(() => {
+    return templates.filter((t) => {
+      const query = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !query ||
+        t.name.toLowerCase().includes(query) ||
+        t.subject.toLowerCase().includes(query) ||
+        (t.flowName && t.flowName.toLowerCase().includes(query)) ||
+        (t.folderName && t.folderName.toLowerCase().includes(query));
 
-    const matchesStatus =
-      filterStatus === "all" ||
-      (filterStatus === "draft" && t.status === "Rascunho") ||
-      (filterStatus === "active" && t.status === "Ativo");
+      const matchesStatus =
+        filterStatus === "all" ||
+        (filterStatus === "draft" && t.status === "Rascunho") ||
+        (filterStatus === "active" && t.status === "Ativo");
 
-    const matchesFolder =
-      selectedFolderFilter === "all" || t.folderId === selectedFolderFilter;
+      const matchesFolder =
+        selectedFolderFilter === "all" || t.folderId === selectedFolderFilter;
 
-    return matchesSearch && matchesStatus && matchesFolder;
-  });
+      return matchesSearch && matchesStatus && matchesFolder;
+    });
+  }, [templates, searchQuery, filterStatus, selectedFolderFilter]);
 
-  // Calculate Metrics Header Totals
+  // Header Stats
   const totalCount = templates.length;
   const draftCount = templates.filter((t) => t.status === "Rascunho").length;
   const activeCount = templates.filter((t) => t.status === "Ativo").length;
-  const totalRevenue = templates.reduce((acc, t) => acc + (t.metrics?.conversionRevenue || 0), 0);
+  const totalFoldersCount = folders.length;
 
   return (
     <div className="space-y-6 pb-12 font-sans">
+      {/* CSS 3D Card Flip Styles */}
+      <style jsx global>{`
+        .card-perspective {
+          perspective: 1000px;
+        }
+        .card-inner {
+          transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+          transform-style: preserve-3d;
+        }
+        .card-inner.is-flipped {
+          transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+        }
+        .card-back {
+          transform: rotateY(180deg);
+        }
+      `}</style>
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce border border-slate-700">
@@ -442,17 +556,28 @@ export default function EmailsLibraryPage() {
             </h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Organize seus e-mails por pastas de fluxo em formato de gaveta e acompanhe o engajamento de cada modelo.
+            Organize seus e-mails por pastas de fluxo, pré-visualize o HTML ao vivo e vire o card para ver métricas.
           </p>
         </div>
 
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-indigo-200 transition-all hover:scale-[1.02] text-sm"
-        >
-          <Plus className="h-5 w-5" />
-          Nova Campanha / Template
-        </button>
+        {/* Top Header Buttons */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setShowNewFolderModal(true)}
+            className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold px-4 py-3 rounded-2xl border border-slate-200 transition-all text-sm"
+          >
+            <FolderPlus className="h-4.5 w-4.5 text-slate-600" />
+            + Nova Pasta
+          </button>
+
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-indigo-200 transition-all hover:scale-[1.02] text-sm"
+          >
+            <Plus className="h-5 w-5" />
+            + Nova Campanha / Template
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards Row */}
@@ -464,6 +589,15 @@ export default function EmailsLibraryPage() {
           </div>
           <p className="text-2xl font-black text-slate-800">{totalCount}</p>
           <p className="text-[11px] text-slate-500 mt-0.5">Templates na biblioteca</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pastas de Fluxo</span>
+            <Folder className="h-4 w-4 text-indigo-500" />
+          </div>
+          <p className="text-2xl font-black text-slate-800">{totalFoldersCount}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Pastas organizadas</p>
         </div>
 
         <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
@@ -483,29 +617,17 @@ export default function EmailsLibraryPage() {
           <p className="text-2xl font-black text-emerald-600">{activeCount}</p>
           <p className="text-[11px] text-slate-500 mt-0.5">Vinculados a automações</p>
         </div>
-
-        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Receita Atribuída</span>
-            <DollarSign className="h-4 w-4 text-emerald-600" />
-          </div>
-          <p className="text-2xl font-black text-slate-800">
-            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalRevenue)}
-          </p>
-          <p className="text-[11px] text-emerald-600 font-bold mt-0.5">Vendas via e-mails de fluxo</p>
-        </div>
       </div>
 
       {/* Filter Toolbar */}
       <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Search Input */}
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pesquisar por nome do e-mail, assunto, fluxo..."
+            placeholder="Pesquisar por e-mail, assunto, pasta ou fluxo..."
             className="w-full pl-10 pr-4 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
           />
           {searchQuery && (
@@ -515,7 +637,6 @@ export default function EmailsLibraryPage() {
           )}
         </div>
 
-        {/* Filter Controls */}
         <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
           <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold">
             <button
@@ -553,7 +674,7 @@ export default function EmailsLibraryPage() {
         </div>
       </div>
 
-      {/* Folders in Collapsible Drawer / Accordion Model */}
+      {/* Folders in Collapsible Drawers */}
       <div className="space-y-4">
         {folders.map((folder) => {
           const folderTemplates = filteredTemplates.filter((t) => t.folderId === folder.id);
@@ -561,175 +682,272 @@ export default function EmailsLibraryPage() {
           if (searchQuery && folderTemplates.length === 0) return null;
 
           const isOpen = !!openFolderIds[folder.id];
+          const displayLimit = folderDisplayLimits[folder.id] || 6;
+          const visibleTemplates = folderTemplates.slice(0, displayLimit);
+          const hasMore = folderTemplates.length > displayLimit;
 
           return (
             <div
               key={folder.id}
               className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm transition-all"
             >
-              {/* Folder Drawer Header (Clickable Accordion Bar) */}
-              <button
-                onClick={() => toggleFolderDrawer(folder.id)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left border-b border-slate-100 select-none"
-              >
-                <div className="flex items-center gap-3">
+              {/* Folder Drawer Header Bar */}
+              <div className="w-full px-6 py-4 flex items-center justify-between bg-white border-b border-slate-100 select-none">
+                <button
+                  onClick={() => toggleFolderDrawer(folder.id)}
+                  className="flex items-center gap-3 hover:bg-slate-50 p-1.5 rounded-2xl transition-colors text-left flex-1"
+                >
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                     <FolderOpen className="h-5 w-5" />
                   </div>
                   <div>
                     <h2 className="text-base font-extrabold text-slate-850">{folder.name}</h2>
                     <p className="text-[11px] text-slate-400 font-medium">
-                      {folderTemplates.length} e-mail{folderTemplates.length !== 1 ? "s" : ""} registrado{folderTemplates.length !== 1 ? "s" : ""}
+                      {folderTemplates.length} e-mail{folderTemplates.length !== 1 ? "s" : ""} cadastrado{folderTemplates.length !== 1 ? "s" : ""}
                     </p>
                   </div>
-                </div>
+                </button>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-                    {folderTemplates.length} modelo{folderTemplates.length !== 1 ? "s" : ""}
-                  </span>
-                  <div className="p-1.5 bg-slate-100 rounded-lg text-slate-500">
+                <div className="flex items-center gap-2.5">
+                  {/* Action: Duplicate Entire Folder */}
+                  <button
+                    onClick={() => {
+                      setDuplicatingFolder(folder);
+                      setDuplicateFolderName(`Cópia de ${folder.name}`);
+                    }}
+                    title="Duplicar esta pasta com todos os e-mails"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 px-3 py-1.5 rounded-xl transition-all"
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    <span>Duplicar Pasta</span>
+                  </button>
+
+                  <button
+                    onClick={() => toggleFolderDrawer(folder.id)}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-500 transition-colors"
+                  >
                     {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                  </div>
+                  </button>
                 </div>
-              </button>
+              </div>
 
-              {/* Drawer Content (Only rendered/visible when isOpen is true) */}
+              {/* Lazy Loaded Drawer Content (Only renders when isOpen is true) */}
               {isOpen && (
-                <div className="p-6 bg-slate-50/50 animate-fadeIn space-y-4">
+                <div className="p-6 bg-slate-50/50 space-y-4">
                   {folderTemplates.length === 0 ? (
                     <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center">
                       <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
                     </div>
                   ) : (
-                    /* Compact Cards Grid */
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {folderTemplates.map((template) => {
+                    /* 3:4 Proportional Aspect Cards Grid */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {visibleTemplates.map((template) => {
                         const isActive = template.status === "Ativo";
+                        const isFlipped = !!flippedCardIds[template.id];
+
                         return (
                           <div
                             key={template.id}
-                            className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden space-y-3"
+                            className="card-perspective h-[440px] w-full"
                           >
-                            {/* TOP OF CARD: Subject & Pre-header Line */}
-                            <div className="space-y-1.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">
-                                  Assunto:
-                                </span>
-                                <span
-                                  className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
-                                    isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
-                                  }`}
-                                >
-                                  {template.status}
-                                </span>
-                              </div>
-                              <h4 className="font-extrabold text-slate-850 text-xs line-clamp-1">
-                                {template.subject || "(Sem assunto)"}
-                              </h4>
-                              {template.previewText && (
-                                <p className="text-[11px] text-slate-500 italic line-clamp-1">
-                                  Pré-header: "{template.previewText}"
-                                </p>
-                              )}
-                            </div>
+                            <div className={`card-inner relative w-full h-full ${isFlipped ? "is-flipped" : ""}`}>
+                              
+                              {/* FRONT FACE OF CARD */}
+                              <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-400 rounded-3xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
+                                <div>
+                                  {/* Subject Header Box */}
+                                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-2.5 space-y-1">
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Assunto:</span>
+                                      <span
+                                        className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                                          isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
+                                        }`}
+                                      >
+                                        {template.status}
+                                      </span>
+                                    </div>
+                                    <h4 className="font-extrabold text-slate-850 text-xs line-clamp-1">
+                                      {template.subject || "(Sem assunto)"}
+                                    </h4>
+                                    {template.previewText && (
+                                      <p className="text-[10px] text-slate-500 italic line-clamp-1">
+                                        "{template.previewText}"
+                                      </p>
+                                    )}
+                                  </div>
 
-                            {/* CARD MIDDLE: Title & Mini HTML Thumbnail Preview */}
-                            <div className="space-y-2">
-                              <h3 className="font-black text-slate-850 text-sm group-hover:text-indigo-600 transition-colors truncate">
-                                {template.name}
-                              </h3>
+                                  {/* Title & Large HTML Preview Thumbnail (~180px) */}
+                                  <div className="mt-2.5 space-y-2">
+                                    <h3 className="font-black text-slate-850 text-xs truncate" title={template.name}>
+                                      {template.name}
+                                    </h3>
 
-                              {/* Mini Thumbnail Preview Container */}
-                              <div className="h-24 w-full bg-slate-100 border border-slate-200 rounded-xl overflow-hidden relative shadow-inner">
-                                <iframe
-                                  title={`Mini preview - ${template.name}`}
-                                  srcDoc={template.htmlContent || "<div></div>"}
-                                  className="w-[200%] h-[200%] transform scale-50 origin-top-left pointer-events-none border-0"
-                                />
-                                <div className="absolute inset-0 bg-transparent" />
-                              </div>
+                                    {/* HTML Preview Thumbnail Box */}
+                                    <div className="h-44 w-full bg-slate-100 border border-slate-200 rounded-xl overflow-hidden relative shadow-inner">
+                                      <iframe
+                                        title={`Mini preview - ${template.name}`}
+                                        srcDoc={template.htmlContent || "<div></div>"}
+                                        className="w-[200%] h-[200%] transform scale-50 origin-top-left pointer-events-none border-0"
+                                      />
+                                      <div className="absolute inset-0 bg-transparent" />
+                                    </div>
 
-                              {/* Flow Link if Active */}
-                              {isActive && template.flowName && (
-                                <div className="pt-1.5 flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
-                                  <GitBranch className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                                  <span className="truncate">Ativo no flow:</span>
-                                  <Link
-                                    href={template.flowId ? `/flows/${template.flowId}` : "/dashboard/automations"}
-                                    className="text-indigo-600 hover:underline flex items-center gap-1 font-extrabold truncate"
-                                  >
-                                    {template.flowName}
-                                    <ExternalLink className="h-3 w-3 shrink-0" />
-                                  </Link>
+                                    {/* Flow Link if Active */}
+                                    {isActive && template.flowName && (
+                                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+                                        <GitBranch className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                        <span className="truncate">Flow:</span>
+                                        <Link
+                                          href={template.flowId ? `/flows/${template.flowId}` : "/dashboard/automations"}
+                                          className="text-indigo-600 hover:underline flex items-center gap-1 font-extrabold truncate"
+                                        >
+                                          {template.flowName}
+                                          <ExternalLink className="h-3 w-3 shrink-0" />
+                                        </Link>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
 
-                            {/* COMPACT ACTIONS FOOTER */}
-                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                              {/* Full Preview Modal Button */}
-                              <button
-                                onClick={() => {
-                                  setFullPreviewTemplate(template);
-                                  setPreviewDevice("desktop");
-                                }}
-                                title="Pré-visualizar E-mail (Web & Mobile)"
-                                className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all"
-                              >
-                                <Eye className="h-3.5 w-3.5 text-indigo-600" />
-                                <span>Ver</span>
-                              </button>
+                                {/* FRONT ACTIONS FOOTER */}
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setFullPreviewTemplate(template);
+                                      setPreviewDevice("desktop");
+                                    }}
+                                    title="Pré-visualização Completa Web/Mobile"
+                                    className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all"
+                                  >
+                                    <Eye className="h-3.5 w-3.5 text-indigo-600" />
+                                    <span>Ver</span>
+                                  </button>
 
-                              {/* Edit HTML */}
-                              <button
-                                onClick={() => {
-                                  setEditingTemplate(template);
-                                  setEditSubject(template.subject || "");
-                                  setEditPreviewText(template.previewText || "");
-                                  setEditHtmlContent(template.htmlContent || "");
-                                  setEditorTab("preview");
-                                }}
-                                title="Editar Código HTML"
-                                className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all shadow-xs"
-                              >
-                                <Edit3 className="h-3.5 w-3.5" />
-                                <span>Editar</span>
-                              </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingTemplate(template);
+                                      setEditSubject(template.subject || "");
+                                      setEditPreviewText(template.previewText || "");
+                                      setEditHtmlContent(template.htmlContent || "");
+                                      setEditorTab("preview");
+                                    }}
+                                    title="Editar Código HTML"
+                                    className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all shadow-xs"
+                                  >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                    <span>Editar</span>
+                                  </button>
 
-                              <div className="flex items-center gap-1">
-                                {/* Metrics Button */}
-                                <button
-                                  onClick={() => setMetricsTemplate(template)}
-                                  title="Métricas de Desempenho"
-                                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
-                                >
-                                  <BarChart2 className="h-3.5 w-3.5" />
-                                </button>
+                                  <div className="flex items-center gap-0.5">
+                                    {/* 3D Flip to Back Metrics Card */}
+                                    <button
+                                      onClick={() => toggleCardFlip(template.id)}
+                                      title="Virar Card (Métricas)"
+                                      className="p-1.5 hover:bg-indigo-50 rounded-lg text-indigo-600 transition-colors"
+                                    >
+                                      <BarChart2 className="h-4 w-4" />
+                                    </button>
 
-                                {/* Duplicate Button */}
-                                <button
-                                  onClick={() => handleDuplicateTemplate(template.id)}
-                                  title="Duplicar Template"
-                                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                </button>
+                                    <button
+                                      onClick={() => handleDuplicateTemplate(template.id)}
+                                      title="Duplicar Template"
+                                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
+                                    >
+                                      <Copy className="h-4 w-4" />
+                                    </button>
 
-                                {/* Delete Button */}
-                                <button
-                                  onClick={() => handleDeleteTemplate(template.id)}
-                                  title="Excluir Template"
-                                  className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                                    <button
+                                      onClick={() => handleDeleteTemplate(template.id)}
+                                      title="Excluir Template"
+                                      className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
+
+                              {/* BACK FACE OF CARD (FLIPPED 3D METRICS) */}
+                              <div className="card-back absolute inset-0 bg-slate-900 text-white border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between overflow-hidden">
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <BarChart2 className="h-4 w-4 text-indigo-400" />
+                                      <h4 className="text-xs font-black text-white truncate max-w-[170px]">
+                                        Métricas do E-mail
+                                      </h4>
+                                    </div>
+                                    <button
+                                      onClick={() => toggleCardFlip(template.id)}
+                                      className="text-xs font-bold text-indigo-400 hover:text-white flex items-center gap-1"
+                                    >
+                                      <RotateCcw className="h-3.5 w-3.5" /> Voltar
+                                    </button>
+                                  </div>
+
+                                  <div className="space-y-2.5 text-xs">
+                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
+                                      <span className="text-slate-400">Entregues:</span>
+                                      <span className="font-black text-white">{template.metrics?.sentCount || 0}</span>
+                                    </div>
+
+                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
+                                      <span className="text-cyan-400 font-bold">Aberturas Únicas:</span>
+                                      <span className="font-black text-cyan-300">
+                                        {template.metrics?.openCount || 0} ({template.metrics?.openRate || 0}%)
+                                      </span>
+                                    </div>
+
+                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
+                                      <span className="text-emerald-400 font-bold">Cliques Únicos:</span>
+                                      <span className="font-black text-emerald-300">
+                                        {template.metrics?.clickCount || 0} ({template.metrics?.clickRate || 0}%)
+                                      </span>
+                                    </div>
+
+                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
+                                      <span className="text-indigo-400 font-bold">Conversões:</span>
+                                      <span className="font-black text-indigo-300">
+                                        {template.metrics?.conversionCount || 0} compras
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="pt-3 border-t border-slate-800">
+                                  <button
+                                    onClick={() => toggleCardFlip(template.id)}
+                                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                                  >
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    <span>Voltar para o Card</span>
+                                  </button>
+                                </div>
+                              </div>
+
                             </div>
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {/* Load More Button for High Volume Optimization */}
+                  {hasMore && (
+                    <div className="pt-2 text-center">
+                      <button
+                        onClick={() =>
+                          setFolderDisplayLimits((prev) => ({
+                            ...prev,
+                            [folder.id]: displayLimit + 12
+                          }))
+                        }
+                        className="inline-flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm transition-all"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Carregar mais e-mails (+{folderTemplates.length - displayLimit})
+                      </button>
                     </div>
                   )}
                 </div>
@@ -738,6 +956,127 @@ export default function EmailsLibraryPage() {
           );
         })}
       </div>
+
+      {/* MODAL: Nova Pasta Standalone */}
+      {showNewFolderModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <FolderPlus className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-black text-slate-850">Nova Pasta</h2>
+              </div>
+              <button onClick={() => setShowNewFolderModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStandaloneFolder} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Nome da Pasta *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={standaloneFolderName}
+                  onChange={(e) => setStandaloneFolderName(e.target.value)}
+                  placeholder="Ex: Nutrição de Leads 2026"
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Tipo de Pasta
+                </label>
+                <select
+                  value={standaloneFolderType}
+                  onChange={(e) => setStandaloneFolderType(e.target.value as any)}
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="flow">Pasta para Fluxos de Automação</option>
+                  <option value="pontual">Pasta para Campanhas Pontuais / Rascunhos</option>
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNewFolderModal(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all"
+                >
+                  <Plus className="h-4 w-4" />
+                  Criar Pasta
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Duplicar Pasta Inteira */}
+      {duplicatingFolder && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-black text-slate-850">Duplicar Pasta Inteira</h2>
+              </div>
+              <button onClick={() => setDuplicatingFolder(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmDuplicateFolder} className="space-y-4">
+              <p className="text-xs text-slate-500">
+                Todos os e-mails contidos nesta pasta serão duplicados como <strong>Rascunho</strong> com a indicação "Cópia" e desvinculados de qualquer fluxo.
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Nome da Nova Pasta *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={duplicateFolderName}
+                  onChange={(e) => setDuplicateFolderName(e.target.value)}
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDuplicatingFolder(null)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all"
+                >
+                  <Copy className="h-4 w-4" />
+                  Duplicar Pasta e E-mails
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: Criar Nova Campanha / Template */}
       {showNewModal && (
@@ -796,7 +1135,6 @@ export default function EmailsLibraryPage() {
                 />
               </div>
 
-              {/* Atribuir ao Fluxo ou Pasta */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Atribuir à Pasta / Fluxo
@@ -872,7 +1210,6 @@ export default function EmailsLibraryPage() {
       {fullPreviewTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 md:p-6">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-4xl w-full h-[85vh] shadow-2xl flex flex-col justify-between overflow-hidden">
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-base font-black text-slate-850">{fullPreviewTemplate.name}</h2>
@@ -880,7 +1217,6 @@ export default function EmailsLibraryPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                {/* Device Selector */}
                 <div className="flex border border-slate-200 rounded-xl bg-slate-100 p-1 text-xs font-bold">
                   <button
                     onClick={() => setPreviewDevice("desktop")}
@@ -906,7 +1242,6 @@ export default function EmailsLibraryPage() {
               </div>
             </div>
 
-            {/* Preview Frame Body */}
             <div className="flex-1 bg-slate-100 rounded-2xl p-4 overflow-y-auto flex justify-center items-center">
               {previewDevice === "desktop" ? (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-md w-full max-w-2xl h-full overflow-hidden flex flex-col">
@@ -921,7 +1256,6 @@ export default function EmailsLibraryPage() {
                   />
                 </div>
               ) : (
-                /* Mobile Device Simulation Frame */
                 <div className="w-[340px] h-[540px] bg-slate-900 rounded-[36px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col relative">
                   <div className="w-20 h-4 bg-slate-800 rounded-full mx-auto mb-2 shrink-0" />
                   <div className="bg-white rounded-[24px] flex-1 overflow-hidden flex flex-col">
@@ -938,7 +1272,6 @@ export default function EmailsLibraryPage() {
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
               <button
                 onClick={() => setFullPreviewTemplate(null)}
@@ -955,7 +1288,6 @@ export default function EmailsLibraryPage() {
       {editingTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col justify-between">
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-black text-slate-850">{editingTemplate.name}</h2>
@@ -986,7 +1318,6 @@ export default function EmailsLibraryPage() {
               </div>
             </div>
 
-            {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Linha de Assunto</label>
@@ -1009,7 +1340,6 @@ export default function EmailsLibraryPage() {
               </div>
             </div>
 
-            {/* Editor Body */}
             <div className="flex-1 overflow-y-auto min-h-[300px] border border-slate-200 rounded-2xl bg-slate-50 p-4">
               {editorTab === "edit" ? (
                 <textarea
@@ -1025,7 +1355,6 @@ export default function EmailsLibraryPage() {
               )}
             </div>
 
-            {/* Footer Buttons */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
               <button
                 type="button"
@@ -1040,76 +1369,6 @@ export default function EmailsLibraryPage() {
               >
                 <Check className="h-4 w-4" />
                 Salvar Alterações
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: Visualizar Métricas da Campanha */}
-      {metricsTemplate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                  <BarChart2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-slate-850">Métricas de Desempenho</h2>
-                  <p className="text-xs text-slate-500 truncate max-w-[280px]">{metricsTemplate.name}</p>
-                </div>
-              </div>
-              <button onClick={() => setMetricsTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">E-mails Entregues</span>
-                <p className="text-lg font-black text-slate-800 mt-1">{metricsTemplate.metrics?.sentCount || 0}</p>
-              </div>
-
-              <div className="bg-cyan-50/60 border border-cyan-100 p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold text-cyan-700 uppercase">Aberturas Únicas</span>
-                <p className="text-lg font-black text-cyan-800 mt-1">
-                  {metricsTemplate.metrics?.openCount || 0}{" "}
-                  <span className="text-xs font-semibold text-cyan-600">({metricsTemplate.metrics?.openRate || 0}%)</span>
-                </p>
-              </div>
-
-              <div className="bg-emerald-50/60 border border-emerald-100 p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase">Cliques Únicos</span>
-                <p className="text-lg font-black text-emerald-800 mt-1">
-                  {metricsTemplate.metrics?.clickCount || 0}{" "}
-                  <span className="text-xs font-semibold text-emerald-600">({metricsTemplate.metrics?.clickRate || 0}%)</span>
-                </p>
-              </div>
-
-              <div className="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold text-indigo-700 uppercase">Conversões</span>
-                <p className="text-lg font-black text-indigo-800 mt-1">
-                  {metricsTemplate.metrics?.conversionCount || 0} compras
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-1">
-              <span className="text-xs text-slate-400 font-medium">Receita Atribuída ao E-mail (Last-Touch)</span>
-              <p className="text-xl font-black text-emerald-400">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-                  metricsTemplate.metrics?.conversionRevenue || 0
-                )}
-              </p>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setMetricsTemplate(null)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition-all"
-              >
-                Fechar
               </button>
             </div>
           </div>
