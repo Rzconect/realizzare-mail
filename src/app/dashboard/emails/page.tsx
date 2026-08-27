@@ -96,7 +96,7 @@ export default function EmailsLibraryPage() {
     setTimeout(() => setToastMessage(""), 3500);
   };
 
-  // Initial Data & Persistence
+  // Initial Data & Persistence (Syncing flows with email folders)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedFolders = localStorage.getItem("realizzare_email_folders");
@@ -122,6 +122,19 @@ export default function EmailsLibraryPage() {
       if (storedFlows) {
         try {
           loadedFlows = JSON.parse(storedFlows);
+          // Ensure every flow has a corresponding folder in email library!
+          loadedFlows.forEach((flow: any) => {
+            const exists = loadedFolders.some(
+              (f) => f.name.trim().toLowerCase() === flow.name.trim().toLowerCase() || f.id === `folder-${flow.id}`
+            );
+            if (!exists) {
+              loadedFolders.push({
+                id: `folder-${flow.id}`,
+                name: flow.name.trim(),
+                type: "flow"
+              });
+            }
+          });
         } catch (e) {
           console.error(e);
         }
@@ -255,8 +268,8 @@ export default function EmailsLibraryPage() {
         setOpenFolderIds(initialOpenMap);
       }
 
-      if (!storedFolders) localStorage.setItem("realizzare_email_folders", JSON.stringify(loadedFolders));
-      if (!storedTemplates) localStorage.setItem("realizzare_email_templates", JSON.stringify(loadedTemplates));
+      localStorage.setItem("realizzare_email_folders", JSON.stringify(loadedFolders));
+      localStorage.setItem("realizzare_email_templates", JSON.stringify(loadedTemplates));
       setIsLoaded(true);
     }
   }, []);
@@ -293,14 +306,21 @@ export default function EmailsLibraryPage() {
     }
   };
 
-  // Create Standalone Folder
+  // Create Standalone Folder (with uniqueness validation against existing flow/folder names)
   const handleCreateStandaloneFolder = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!standaloneFolderName.trim()) return;
+    const folderNameTrimmed = standaloneFolderName.trim();
+    if (!folderNameTrimmed) return;
+
+    const exists = folders.some((f) => f.name.trim().toLowerCase() === folderNameTrimmed.toLowerCase());
+    if (exists) {
+      alert(`⚠️ Já existe uma pasta com o nome "${folderNameTrimmed}". Escolha um nome exclusivo.`);
+      return;
+    }
 
     const newFolder = {
       id: `folder-${Date.now()}`,
-      name: standaloneFolderName.trim(),
+      name: folderNameTrimmed,
       type: standaloneFolderType
     };
 
@@ -319,8 +339,14 @@ export default function EmailsLibraryPage() {
     e.preventDefault();
     if (!duplicatingFolder || !duplicateFolderName.trim()) return;
 
-    const newFolderId = `folder-${Date.now()}`;
     const newFolderName = duplicateFolderName.trim();
+    const exists = folders.some((f) => f.name.trim().toLowerCase() === newFolderName.toLowerCase());
+    if (exists) {
+      alert(`⚠️ Já existe uma pasta ou fluxo com o nome "${newFolderName}". Escolha um nome exclusivo.`);
+      return;
+    }
+
+    const newFolderId = `folder-${Date.now()}`;
 
     const newFolderObj = {
       id: newFolderId,
@@ -372,9 +398,16 @@ export default function EmailsLibraryPage() {
     let updatedFolders = [...folders];
 
     if (isCreatingNewFolder && customFolderName.trim()) {
+      const customTrimmed = customFolderName.trim();
+      const exists = folders.some((f) => f.name.trim().toLowerCase() === customTrimmed.toLowerCase());
+      if (exists) {
+        alert(`⚠️ Já existe uma pasta ou fluxo com o nome "${customTrimmed}". Escolha um nome diferente.`);
+        return;
+      }
+
       const newF = {
         id: `folder-${Date.now()}`,
-        name: customFolderName.trim(),
+        name: customTrimmed,
         type: "flow"
       };
       updatedFolders.push(newF);
@@ -650,17 +683,16 @@ export default function EmailsLibraryPage() {
           const visibleTemplates = folderTemplates.slice(0, displayLimit);
           const hasMore = folderTemplates.length > displayLimit;
 
-          // Folder Subtotals Calculation (No Mock Revenue)
+          // Folder Subtotals Calculation (Mock Revenue Badge Completely Removed!)
           const activeInFolder = folderTemplates.filter((t) => t.status === "Ativo").length;
           const draftInFolder = folderTemplates.filter((t) => t.status === "Rascunho").length;
-          const revenueInFolder = folderTemplates.reduce((acc, t) => acc + (t.metrics?.conversionRevenue || 0), 0);
 
           return (
             <div
               key={folder.id}
               className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs transition-all"
             >
-              {/* Folder Drawer Header Bar with Subtotals */}
+              {/* Folder Drawer Header Bar with Subtotals (NO MOCK REVENUE BADGE) */}
               <div className="w-full px-5 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border-b border-slate-100 select-none">
                 <button
                   onClick={() => toggleFolderDrawer(folder.id)}
@@ -687,10 +719,6 @@ export default function EmailsLibraryPage() {
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-bold bg-slate-100 text-slate-650 border border-slate-200 px-2.5 py-0.5 rounded-md">
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                     Rascunhos: {draftInFolder}
-                  </span>
-
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-0.5 rounded-md">
-                    Receita: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(revenueInFolder)}
                   </span>
 
                   <button

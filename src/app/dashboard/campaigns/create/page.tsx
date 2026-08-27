@@ -1351,11 +1351,66 @@ function CreateCampaignForm() {
     return htmlContent.trim().length > 0 && hasUnsubscribeLink;
   }, [htmlContent, hasUnsubscribeLink]);
 
+  const syncCampaignToEmailLibrary = (name: string, subject: string, previewText: string, html: string, status: "Rascunho" | "Ativo") => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const storedFolders = localStorage.getItem("realizzare_email_folders");
+      let folders = storedFolders ? JSON.parse(storedFolders) : [
+        { id: "folder-boas-vindas", name: "Boas-vindas", type: "flow" },
+        { id: "folder-carrinho", name: "Recuperação de Carrinho", type: "flow" },
+        { id: "folder-nutricao", name: "Nutrição de Leads", type: "flow" },
+        { id: "folder-pontual", name: "Campanhas Pontuais / Rascunhos", type: "pontual" }
+      ];
+
+      if (!folders.some((f: any) => f.id === "folder-pontual")) {
+        folders.push({ id: "folder-pontual", name: "Campanhas Pontuais / Rascunhos", type: "pontual" });
+        localStorage.setItem("realizzare_email_folders", JSON.stringify(folders));
+      }
+
+      const storedTemplates = localStorage.getItem("realizzare_email_templates");
+      let templates = storedTemplates ? JSON.parse(storedTemplates) : [];
+
+      const existingIdx = templates.findIndex(
+        (t: any) => t.folderId === "folder-pontual" && t.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+
+      if (existingIdx >= 0) {
+        templates[existingIdx] = {
+          ...templates[existingIdx],
+          subject: subject || templates[existingIdx].subject,
+          previewText: previewText || templates[existingIdx].previewText,
+          htmlContent: html || templates[existingIdx].htmlContent,
+          status: status,
+          updatedAt: new Date().toLocaleDateString("pt-BR")
+        };
+      } else {
+        templates.unshift({
+          id: `tpl-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          name: name.trim() || "Campanha Pontual",
+          subject: subject || "Assunto do E-mail",
+          previewText: previewText || "",
+          htmlContent: html || "<div></div>",
+          folderId: "folder-pontual",
+          folderName: "Campanhas Pontuais / Rascunhos",
+          status: status,
+          updatedAt: new Date().toLocaleDateString("pt-BR"),
+          metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
+        });
+      }
+
+      localStorage.setItem("realizzare_email_templates", JSON.stringify(templates));
+    } catch (e) {
+      console.error("Erro ao sincronizar template com biblioteca de e-mails:", e);
+    }
+  };
+
   const handleSaveDraft = async () => {
     try {
+      const campaignNameVal = campaignName.trim() || "Rascunho de Campanha";
       const campaignData = {
         org_id: "00000000-0000-0000-0000-000000000001",
-        name: campaignName.trim() || "Rascunho de Campanha",
+        name: campaignNameVal,
         subject: subjectLine,
         preview_text: preheader,
         from_name: senderName,
@@ -1374,7 +1429,10 @@ function CreateCampaignForm() {
       const resData = await res.json();
       if (!res.ok) throw new Error(resData.error || "Erro ao salvar rascunho");
 
-      alert("Rascunho salvo com sucesso!");
+      // Auto-sync into "Campanhas Pontuais / Rascunhos" folder in E-mails library
+      syncCampaignToEmailLibrary(campaignNameVal, subjectLine, preheader, htmlContent, "Rascunho");
+
+      alert("Rascunho salvo com sucesso e sincronizado na pasta 'Campanhas Pontuais / Rascunhos'!");
       router.push("/dashboard/campaigns");
     } catch (e: any) {
       console.error(e);
@@ -1475,6 +1533,9 @@ function CreateCampaignForm() {
       if (!saveRes.ok) throw new Error(saveJson.error || "Erro ao salvar dados da campanha");
 
       const insertedId = saveJson.id || editId;
+
+      // Auto-sync into "Campanhas Pontuais / Rascunhos" folder in E-mails library
+      syncCampaignToEmailLibrary(campaignName, subjectLine, preheader, htmlContent, "Ativo");
 
       // Close confirm modal immediately to prevent double clicks
       setShowConfirmSendModal(false);

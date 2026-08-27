@@ -278,7 +278,14 @@ export default function AutomationsPage() {
   };
 
   const handleConfirmCloneFlow = async () => {
-    if (!flowToClone) return;
+    if (!flowToClone || !cloneFlowName.trim()) return;
+
+    const trimmedName = cloneFlowName.trim();
+    const nameExists = flows.some((f) => f.name.trim().toLowerCase() === trimmedName.toLowerCase());
+    if (nameExists) {
+      alert(`⚠️ Já existe uma automação com o nome "${trimmedName}". Por favor, escolha um nome diferente para evitar conflitos de pasta.`);
+      return;
+    }
 
     try {
       const supabase = createClient();
@@ -291,7 +298,7 @@ export default function AutomationsPage() {
         // @ts-ignore
         .insert({
           org_id: "00000000-0000-0000-0000-000000000001",
-          name: cloneFlowName,
+          name: trimmedName,
           description: triggerDesc,
           status: "draft",
           trigger_type: "event",
@@ -314,9 +321,43 @@ export default function AutomationsPage() {
       };
 
       setFlows((prev) => [newFlow, ...prev]);
+
+      // Sync folder and clone email templates into E-mails library
+      if (typeof window !== "undefined") {
+        const storedFolders = localStorage.getItem("realizzare_email_folders");
+        let foldersList = storedFolders ? JSON.parse(storedFolders) : [];
+        const newFolderId = `folder-${newFlow.id}`;
+        foldersList.unshift({ id: newFolderId, name: trimmedName, type: "flow" });
+        localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
+
+        // Duplicate templates belonging to cloned flow as Drafts
+        const storedTemplates = localStorage.getItem("realizzare_email_templates");
+        if (storedTemplates) {
+          try {
+            const templatesList = JSON.parse(storedTemplates);
+            const sourceTemplates = templatesList.filter((t: any) => t.flowId === flowToClone.id || t.folderName === flowToClone.name);
+            const clonedTemplates = sourceTemplates.map((orig: any, idx: number) => ({
+              ...orig,
+              id: `tpl-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+              name: `Cópia - ${orig.name}`,
+              folderId: newFolderId,
+              folderName: trimmedName,
+              flowId: newFlow.id,
+              flowName: trimmedName,
+              status: "Rascunho",
+              updatedAt: new Date().toLocaleDateString("pt-BR"),
+              metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0 }
+            }));
+            localStorage.setItem("realizzare_email_templates", JSON.stringify([...clonedTemplates, ...templatesList]));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+
       setShowCloneFlowModal(false);
       setFlowToClone(null);
-      alert("Automação clonada como Rascunho!");
+      alert("Automação clonada como Rascunho e pasta criada na biblioteca de E-mails!");
     } catch (err) {
       console.error(err);
       alert("Erro ao clonar automação");
@@ -389,8 +430,15 @@ export default function AutomationsPage() {
   };
 
   const handleCreateFlow = async () => {
-    if (!newFlowName.trim()) {
+    const trimmedName = newFlowName.trim();
+    if (!trimmedName) {
       alert("Por favor, insira o nome do flow!");
+      return;
+    }
+
+    const nameExists = flows.some((f) => f.name.trim().toLowerCase() === trimmedName.toLowerCase());
+    if (nameExists) {
+      alert(`⚠️ Já existe uma automação com o nome "${trimmedName}". Por favor, escolha um nome diferente para evitar conflitos nas pastas de e-mail.`);
       return;
     }
 
@@ -398,7 +446,7 @@ export default function AutomationsPage() {
       const supabase = createClient();
       const payload: any = {
         org_id: "00000000-0000-0000-0000-000000000001",
-        name: newFlowName.trim(),
+        name: trimmedName,
         status: "draft",
         trigger_type: newFlowTrigger || "event"
       };
@@ -411,6 +459,17 @@ export default function AutomationsPage() {
         .single();
       
       if (error) throw error;
+
+      // Sync folder to email library
+      if (typeof window !== "undefined") {
+        const storedFolders = localStorage.getItem("realizzare_email_folders");
+        let foldersList = storedFolders ? JSON.parse(storedFolders) : [];
+        const newFolderId = `folder-${(data as any).id}`;
+        if (!foldersList.some((f: any) => f.id === newFolderId || f.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+          foldersList.unshift({ id: newFolderId, name: trimmedName, type: "flow" });
+          localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
+        }
+      }
 
       setShowCreateFlowModal(false);
       router.push(`/flows/${(data as any).id}`);
