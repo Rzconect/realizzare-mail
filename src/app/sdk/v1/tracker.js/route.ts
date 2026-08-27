@@ -10,7 +10,7 @@ export async function GET() {
   if (window.rzMailLoaded) return;
   window.rzMailLoaded = true;
 
-  const ENDPOINT = "https://realizzareconect.com.br/api/v1/client-events";
+  const ENDPOINT = "https://www.realizzareconect.com.br/api/v1/client-events";
 
   function getStudentEmail() {
     if (window.rzUser && window.rzUser.email) return window.rzUser.email.trim().toLowerCase();
