@@ -39,7 +39,9 @@ import {
   ExternalLink,
   BookOpen,
   DollarSign,
-  MoreHorizontal
+  MoreHorizontal,
+  FileText,
+  Check
 } from "lucide-react";
 
 interface FlowNode {
@@ -347,6 +349,58 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [queueModalStatusName, setQueueModalStatusName] = useState<string>("");
   const [queueModalCount, setQueueModalCount] = useState<number>(0);
   const [queueSearchQuery, setQueueSearchQuery] = useState<string>("");
+
+  // Email Gallery Modal state
+  const [showEmailGalleryModal, setShowEmailGalleryModal] = useState(false);
+  const [gallerySearchQuery, setGallerySearchQuery] = useState("");
+  const [galleryTemplates, setGalleryTemplates] = useState<any[]>([]);
+
+  const openEmailGallery = () => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("realizzare_email_templates");
+      if (stored) {
+        try {
+          setGalleryTemplates(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    setShowEmailGalleryModal(true);
+  };
+
+  const handleSelectTemplateFromGallery = (tpl: any) => {
+    setEditNodeCampaignName(tpl.name || "");
+    setEditNodeSubject(tpl.subject || "");
+    setEditNodePreheader(tpl.previewText || "");
+    setEditNodeHtmlContent(tpl.htmlContent || "");
+    setEditNodeEmailStatus("Ativo");
+
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("realizzare_email_templates");
+      if (stored) {
+        try {
+          const list = JSON.parse(stored);
+          const updated = list.map((item: any) => {
+            if (item.id === tpl.id) {
+              return {
+                ...item,
+                status: "Ativo",
+                flowId: flow.id,
+                flowName: flow.name || "Automação"
+              };
+            }
+            return item;
+          });
+          localStorage.setItem("realizzare_email_templates", JSON.stringify(updated));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    setShowEmailGalleryModal(false);
+  };
 
   const handleOpenQueueModal = (node: FlowNode, statusName: string, count: number) => {
     setQueueModalNode(node);
@@ -2781,7 +2835,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* HTML preview & editor block */}
                       <div className="space-y-2.5 border-t border-slate-100 pt-4">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Modelo de E-mail</label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Modelo de E-mail</label>
+                          <button
+                            type="button"
+                            onClick={openEmailGallery}
+                            className="text-xs font-bold text-indigo-650 hover:text-indigo-800 flex items-center gap-1 cursor-pointer hover:underline"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            <span>🖼️ Escolher da Galeria</span>
+                          </button>
+                        </div>
 
                         {!isEditingHtml ? (
                           <>
@@ -3670,6 +3734,88 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           </div>
         );
       })()}
+
+      {/* Email Gallery Picker Modal */}
+      {showEmailGalleryModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 select-none animate-fadeIn text-slate-800">
+          <div className="bg-white rounded-3xl w-full max-w-3xl h-[80vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-scaleIn">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="h-4.5 w-4.5 text-indigo-600" />
+                  <span>Galeria de E-mails & Templates</span>
+                </h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Selecione um e-mail previamente criado na biblioteca para usar neste fluxo.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEmailGalleryModal(false)}
+                className="p-1.5 hover:bg-slate-150 text-slate-450 hover:text-slate-700 rounded-lg cursor-pointer transition-all border border-slate-200 bg-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="px-6 py-3 border-b border-slate-100 flex items-center bg-white">
+              <input
+                type="text"
+                placeholder="Pesquisar por nome do e-mail, assunto ou pasta..."
+                value={gallerySearchQuery}
+                onChange={(e) => setGallerySearchQuery(e.target.value)}
+                className="w-full text-xs font-semibold px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none"
+              />
+            </div>
+
+            {/* Gallery Grid */}
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {galleryTemplates
+                .filter((t) => {
+                  const q = gallerySearchQuery.toLowerCase();
+                  return (
+                    !q ||
+                    t.name?.toLowerCase().includes(q) ||
+                    t.subject?.toLowerCase().includes(q) ||
+                    t.folderName?.toLowerCase().includes(q)
+                  );
+                })
+                .map((tpl) => (
+                  <div
+                    key={tpl.id}
+                    className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-3xs hover:shadow-md transition-all flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1.5">
+                        <span className="truncate bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-100">
+                          📁 {tpl.folderName || "Galeria"}
+                        </span>
+                        <span className="uppercase text-slate-400">{tpl.status}</span>
+                      </div>
+                      <h4 className="font-extrabold text-slate-850 text-sm group-hover:text-indigo-600 transition-colors truncate">
+                        {tpl.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-1 italic">
+                        Assunto: "{tpl.subject}"
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTemplateFromGallery(tpl)}
+                      className="mt-4 w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Usar este Template</span>
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: CONFIRM MOVE LEADS */}
       {showMoveLeadsModal && moveLeadsNode && (
