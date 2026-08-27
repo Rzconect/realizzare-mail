@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   FileText,
   Search,
@@ -96,9 +97,11 @@ export default function EmailsLibraryPage() {
     setTimeout(() => setToastMessage(""), 3500);
   };
 
-  // Initial Data & Persistence (Syncing flows with email folders)
+  // Initial Data & Persistence (Syncing past campaigns from Supabase)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    const initializeLibrary = async () => {
+      if (typeof window === "undefined") return;
+
       const storedFolders = localStorage.getItem("realizzare_email_folders");
       const storedTemplates = localStorage.getItem("realizzare_email_templates");
       const storedFlows = localStorage.getItem("realizzare_mock_flows");
@@ -122,7 +125,6 @@ export default function EmailsLibraryPage() {
       if (storedFlows) {
         try {
           loadedFlows = JSON.parse(storedFlows);
-          // Ensure every flow has a corresponding folder in email library!
           loadedFlows.forEach((flow: any) => {
             const exists = loadedFolders.some(
               (f) => f.name.trim().toLowerCase() === flow.name.trim().toLowerCase() || f.id === `folder-${flow.id}`
@@ -160,15 +162,7 @@ export default function EmailsLibraryPage() {
           flowName: "Boas-vindas - Novo Aluno",
           status: "Ativo",
           updatedAt: "22/08/2026",
-          metrics: {
-            sentCount: 1420,
-            openCount: 688,
-            openRate: 48.5,
-            clickCount: 258,
-            clickRate: 18.2,
-            conversionCount: 0,
-            conversionRevenue: 0.0
-          }
+          metrics: { sentCount: 1420, openCount: 688, openRate: 48.5, clickCount: 258, clickRate: 18.2, conversionCount: 0, conversionRevenue: 0.0 }
         },
         {
           id: "tpl-2",
@@ -190,15 +184,7 @@ export default function EmailsLibraryPage() {
           flowName: "Boas-vindas - Novo Aluno",
           status: "Ativo",
           updatedAt: "20/08/2026",
-          metrics: {
-            sentCount: 1210,
-            openCount: 440,
-            openRate: 36.4,
-            clickCount: 146,
-            clickRate: 12.1,
-            conversionCount: 0,
-            conversionRevenue: 0.0
-          }
+          metrics: { sentCount: 1210, openCount: 440, openRate: 36.4, clickCount: 146, clickRate: 12.1, conversionCount: 0, conversionRevenue: 0.0 }
         },
         {
           id: "tpl-3",
@@ -216,15 +202,7 @@ export default function EmailsLibraryPage() {
           flowName: "Recuperação de Checkout",
           status: "Ativo",
           updatedAt: "19/08/2026",
-          metrics: {
-            sentCount: 480,
-            openCount: 250,
-            openRate: 52.1,
-            clickCount: 118,
-            clickRate: 24.5,
-            conversionCount: 0,
-            conversionRevenue: 0.0
-          }
+          metrics: { sentCount: 480, openCount: 250, openRate: 52.1, clickCount: 118, clickRate: 24.5, conversionCount: 0, conversionRevenue: 0.0 }
         },
         {
           id: "tpl-4",
@@ -239,15 +217,7 @@ export default function EmailsLibraryPage() {
           folderName: "Campanhas Pontuais / Rascunhos",
           status: "Rascunho",
           updatedAt: "15/08/2026",
-          metrics: {
-            sentCount: 0,
-            openCount: 0,
-            openRate: 0,
-            clickCount: 0,
-            clickRate: 0,
-            conversionCount: 0,
-            conversionRevenue: 0.0
-          }
+          metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
         }
       ];
 
@@ -257,6 +227,59 @@ export default function EmailsLibraryPage() {
         } catch (e) {
           console.error(e);
         }
+      }
+
+      // Clear any legacy mock revenue values from stored templates
+      loadedTemplates = loadedTemplates.map((t: any) => ({
+        ...t,
+        metrics: {
+          ...t.metrics,
+          conversionRevenue: 0.0
+        }
+      }));
+
+      // Fetch all real past campaigns from Supabase database
+      try {
+        const supabase = createClient();
+        const { data: dbCampaigns } = await supabase.from("campaigns").select("*").order("created_at", { ascending: false });
+
+        if (dbCampaigns && dbCampaigns.length > 0) {
+          dbCampaigns.forEach((camp: any) => {
+            const exists = loadedTemplates.some(
+              (t: any) =>
+                t.id === `c-tpl-${camp.id}` ||
+                (t.name.trim().toLowerCase() === camp.name.trim().toLowerCase() && t.folderId === "folder-pontual")
+            );
+
+            if (!exists) {
+              loadedTemplates.unshift({
+                id: `c-tpl-${camp.id}`,
+                name: camp.name,
+                subject: camp.subject || camp.name,
+                previewText: camp.preview_text || "",
+                htmlContent: camp.html_content || `<div style="font-family: Arial, sans-serif; padding: 24px; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px;">
+  <h2 style="color: #4f46e5; margin-top: 0;">${camp.name}</h2>
+  <p>${camp.subject || ""}</p>
+</div>`,
+                folderId: "folder-pontual",
+                folderName: "Campanhas Pontuais / Rascunhos",
+                status: camp.status === "sent" || camp.status === "Enviado" || camp.status === "Enviando" || camp.status === "scheduled" ? "Ativo" : "Rascunho",
+                updatedAt: new Date(camp.created_at || Date.now()).toLocaleDateString("pt-BR"),
+                metrics: {
+                  sentCount: camp.sent_count || 0,
+                  openCount: camp.open_count || 0,
+                  openRate: camp.open_rate || 0,
+                  clickCount: camp.click_count || 0,
+                  clickRate: camp.click_rate || 0,
+                  conversionCount: 0,
+                  conversionRevenue: 0.0
+                }
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao carregar campanhas passadas do Supabase:", err);
       }
 
       setFolders(loadedFolders);
@@ -271,7 +294,9 @@ export default function EmailsLibraryPage() {
       localStorage.setItem("realizzare_email_folders", JSON.stringify(loadedFolders));
       localStorage.setItem("realizzare_email_templates", JSON.stringify(loadedTemplates));
       setIsLoaded(true);
-    }
+    };
+
+    initializeLibrary();
   }, []);
 
   // Auto-expand drawers when searching or selecting folder filter
@@ -306,7 +331,7 @@ export default function EmailsLibraryPage() {
     }
   };
 
-  // Create Standalone Folder (with uniqueness validation against existing flow/folder names)
+  // Create Standalone Folder
   const handleCreateStandaloneFolder = (e: React.FormEvent) => {
     e.preventDefault();
     const folderNameTrimmed = standaloneFolderName.trim();
@@ -367,15 +392,7 @@ export default function EmailsLibraryPage() {
       flowId: undefined,
       flowName: undefined,
       updatedAt: new Date().toLocaleDateString("pt-BR"),
-      metrics: {
-        sentCount: 0,
-        openCount: 0,
-        openRate: 0,
-        clickCount: 0,
-        clickRate: 0,
-        conversionCount: 0,
-        conversionRevenue: 0
-      }
+      metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0 }
     }));
 
     const updatedTemplates = [...clonedTemplates, ...templates];
@@ -431,15 +448,7 @@ export default function EmailsLibraryPage() {
       folderName: targetFolderName,
       status: "Rascunho",
       updatedAt: new Date().toLocaleDateString("pt-BR"),
-      metrics: {
-        sentCount: 0,
-        openCount: 0,
-        openRate: 0,
-        clickCount: 0,
-        clickRate: 0,
-        conversionCount: 0,
-        conversionRevenue: 0
-      }
+      metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0 }
     };
 
     const updatedTemplates = [newTpl, ...templates];
@@ -470,15 +479,7 @@ export default function EmailsLibraryPage() {
       flowId: undefined,
       flowName: undefined,
       updatedAt: new Date().toLocaleDateString("pt-BR"),
-      metrics: {
-        sentCount: 0,
-        openCount: 0,
-        openRate: 0,
-        clickCount: 0,
-        clickRate: 0,
-        conversionCount: 0,
-        conversionRevenue: 0
-      }
+      metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0 }
     };
 
     const updatedTemplates = [cloned, ...templates];
@@ -683,7 +684,7 @@ export default function EmailsLibraryPage() {
           const visibleTemplates = folderTemplates.slice(0, displayLimit);
           const hasMore = folderTemplates.length > displayLimit;
 
-          // Folder Subtotals Calculation (Mock Revenue Badge Completely Removed!)
+          // Folder Subtotals Calculation (Zero Mock Revenue Badges)
           const activeInFolder = folderTemplates.filter((t) => t.status === "Ativo").length;
           const draftInFolder = folderTemplates.filter((t) => t.status === "Rascunho").length;
 
@@ -692,7 +693,7 @@ export default function EmailsLibraryPage() {
               key={folder.id}
               className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs transition-all"
             >
-              {/* Folder Drawer Header Bar with Subtotals (NO MOCK REVENUE BADGE) */}
+              {/* Folder Drawer Header Bar with Subtotals (Clean Ativos & Rascunhos ONLY) */}
               <div className="w-full px-5 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border-b border-slate-100 select-none">
                 <button
                   onClick={() => toggleFolderDrawer(folder.id)}
@@ -933,11 +934,7 @@ export default function EmailsLibraryPage() {
 
                                     <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
                                       <span className="text-slate-400 font-bold">Receita:</span>
-                                      <span className="font-black text-emerald-400">
-                                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-                                          template.metrics?.conversionRevenue || 0
-                                        )}
-                                      </span>
+                                      <span className="font-black text-emerald-400">R$ 0,00</span>
                                     </div>
                                   </div>
                                 </div>
