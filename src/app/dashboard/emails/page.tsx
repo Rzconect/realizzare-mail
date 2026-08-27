@@ -571,6 +571,15 @@ export default function EmailsLibraryPage() {
   const handleDeleteTemplate = (templateId: string) => {
     const target = templates.find((t) => t.id === templateId);
     if (!target) return;
+
+    // Block deletion of email templates belonging to automation flows
+    if (target.flowId || target.nodeId) {
+      alert(
+        `⚠️ Não é possível excluir este e-mail por aqui pois ele faz parte de um funil de automação ("${target.flowName || "do fluxo"}"), estando ele ativo ou não.\n\nA exclusão deste e-mail específico deve ser feita diretamente na tela do fluxo no editor de Automações.`
+      );
+      return;
+    }
+
     if (confirm(`Tem certeza que deseja excluir a campanha "${target.name}"?`)) {
       const updated = templates.filter((t) => t.id !== templateId);
       saveToStorage(folders, updated);
