@@ -56,6 +56,9 @@ export default function EmailsLibraryPage() {
   // Card 3D Flip State: record of template IDs currently flipped to metrics side
   const [flippedCardIds, setFlippedCardIds] = useState<Record<string, boolean>>({});
 
+  // Folder Metrics Modal State
+  const [folderMetricsModal, setFolderMetricsModal] = useState<any | null>(null);
+
   // Pagination limit per folder for large volume performance (e.g. 6 items initially)
   const [folderDisplayLimits, setFolderDisplayLimits] = useState<Record<string, number>>({});
 
@@ -466,6 +469,7 @@ export default function EmailsLibraryPage() {
       status: "Rascunho",
       flowId: undefined,
       flowName: undefined,
+      nodeId: undefined,
       updatedAt: new Date().toLocaleDateString("pt-BR"),
       metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0 }
     }));
@@ -542,6 +546,7 @@ export default function EmailsLibraryPage() {
     showToast("Nova campanha criada com sucesso como Rascunho!");
   };
 
+  // Duplicate Single Template (UNLINKED FROM FLOW - Standalone Draft in Folder)
   const handleDuplicateTemplate = (templateId: string) => {
     const target = templates.find((t) => t.id === templateId);
     if (!target) return;
@@ -551,15 +556,16 @@ export default function EmailsLibraryPage() {
       id: `tpl-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: `Cópia - ${target.name}`,
       status: "Rascunho",
-      flowId: undefined,
-      flowName: undefined,
+      flowId: undefined, // Unlinked from flow
+      flowName: undefined, // Unlinked from flow
+      nodeId: undefined, // Unlinked from flow node
       updatedAt: new Date().toLocaleDateString("pt-BR"),
       metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0 }
     };
 
     const updatedTemplates = [cloned, ...templates];
     saveToStorage(folders, updatedTemplates);
-    showToast(`Campanha "Cópia - ${target.name}" duplicada como Rascunho!`);
+    showToast(`Campanha "Cópia - ${target.name}" duplicada como Rascunho sem vínculo ao fluxo!`);
   };
 
   const handleDeleteTemplate = (templateId: string) => {
@@ -787,16 +793,17 @@ export default function EmailsLibraryPage() {
           const visibleTemplates = folderTemplates.slice(0, displayLimit);
           const hasMore = folderTemplates.length > displayLimit;
 
-          // Folder Subtotals Calculation (Zero Mock Revenue Badges)
+          // Folder Subtotals & Revenue Calculation
           const activeInFolder = folderTemplates.filter((t) => t.status === "Ativo").length;
           const draftInFolder = folderTemplates.filter((t) => t.status === "Rascunho").length;
+          const revenueInFolder = folderTemplates.reduce((acc, t) => acc + (t.metrics?.conversionRevenue || 0), 0);
 
           return (
             <div
               key={folder.id}
               className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs transition-all"
             >
-              {/* Folder Drawer Header Bar with Subtotals (Clean Ativos & Rascunhos ONLY) */}
+              {/* Folder Drawer Header Bar with Subtotals and Folder Metrics Button */}
               <div className="w-full px-5 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border-b border-slate-100 select-none">
                 <button
                   onClick={() => toggleFolderDrawer(folder.id)}
@@ -813,7 +820,7 @@ export default function EmailsLibraryPage() {
                   </div>
                 </button>
 
-                {/* Subtotals & Actions Row inside Folder Header */}
+                {/* Subtotals, Revenue & Action Buttons inside Folder Header */}
                 <div className="flex items-center flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-md">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -824,6 +831,20 @@ export default function EmailsLibraryPage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                     Rascunhos: {draftInFolder}
                   </span>
+
+                  {/* RESTORED FOLDER REVENUE SUB-TOTAL BADGE */}
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-0.5 rounded-md">
+                    Receita: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(revenueInFolder)}
+                  </span>
+
+                  {/* FOLDER METRICS OVERVIEW ICON BUTTON */}
+                  <button
+                    onClick={() => setFolderMetricsModal({ folder, templates: folderTemplates })}
+                    title="Ver Métricas Agregadas de todos os e-mails desta pasta"
+                    className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg transition-all cursor-pointer"
+                  >
+                    <BarChart2 className="h-3.5 w-3.5" />
+                  </button>
 
                   <button
                     onClick={() => {
@@ -859,8 +880,8 @@ export default function EmailsLibraryPage() {
                       {visibleTemplates.map((template) => {
                         const isActive = template.status === "Ativo";
                         const isFlipped = !!flippedCardIds[template.id];
-                        const flowNameDisp = template.flowName || (folder.type === "flow" ? folder.name : null);
-                        const flowIdDisp = template.flowId || (folder.type === "flow" ? folder.id.replace("folder-", "") : null);
+                        const flowNameDisp = template.flowName || (folder.type === "flow" && template.flowId ? folder.name : null);
+                        const flowIdDisp = template.flowId || (folder.type === "flow" && template.flowId ? folder.id.replace("folder-", "") : null);
 
                         return (
                           <div
@@ -920,7 +941,7 @@ export default function EmailsLibraryPage() {
                                     </div>
                                   </div>
 
-                                  {/* 4. ALWAYS-ON FLOW LINK (FOR ALL FLOW-LINKED TEMPLATES EVEN WHEN IN RASCUNHO/PAUSED) */}
+                                  {/* 4. FLOW LINK BADGE (HIDDEN FOR STANDALONE / CLONED TEMPLATES WITHOUT FLOW LINK) */}
                                   {flowNameDisp && (
                                     <div className="flex items-center gap-1 text-[9.5px] text-indigo-700 font-bold bg-indigo-50/80 px-2 py-1 rounded-md border border-indigo-200 shrink-0 my-0.5">
                                       <GitBranch className="h-3 w-3 shrink-0 text-indigo-600" />
@@ -982,7 +1003,7 @@ export default function EmailsLibraryPage() {
 
                                     <button
                                       onClick={() => handleDuplicateTemplate(template.id)}
-                                      title="Duplicar Template"
+                                      title="Duplicar Template nesta pasta (Sem vínculo ao fluxo)"
                                       className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
                                     >
                                       <Copy className="h-3.5 w-3.5" />
@@ -1092,6 +1113,117 @@ export default function EmailsLibraryPage() {
           );
         })}
       </div>
+
+      {/* MODAL: Métricas Agregadas da Pasta */}
+      {folderMetricsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl w-full shadow-xl space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <BarChart2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900">
+                    Métricas Agregadas — {folderMetricsModal.folder.name}
+                  </h2>
+                  <p className="text-xs text-slate-500">Resumo de desempenho de todos os e-mails desta pasta.</p>
+                </div>
+              </div>
+              <button onClick={() => setFolderMetricsModal(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Folder Metrics Totals */}
+            {(() => {
+              const items = folderMetricsModal.templates || [];
+              const totalSent = items.reduce((acc: number, t: any) => acc + (t.metrics?.sentCount || 0), 0);
+              const totalOpen = items.reduce((acc: number, t: any) => acc + (t.metrics?.openCount || 0), 0);
+              const totalClick = items.reduce((acc: number, t: any) => acc + (t.metrics?.clickCount || 0), 0);
+              const totalConv = items.reduce((acc: number, t: any) => acc + (t.metrics?.conversionCount || 0), 0);
+              const avgOpenRate = totalSent > 0 ? ((totalOpen / totalSent) * 100).toFixed(1) : "0.0";
+              const avgClickRate = totalSent > 0 ? ((totalClick / totalSent) * 100).toFixed(1) : "0.0";
+
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                      <span className="text-[10px] font-bold uppercase text-slate-500">Enviados</span>
+                      <p className="text-base font-extrabold text-slate-900 mt-1">{totalSent}</p>
+                    </div>
+
+                    <div className="bg-cyan-50 border border-cyan-200 p-3 rounded-xl">
+                      <span className="text-[10px] font-bold uppercase text-cyan-700">Aberturas</span>
+                      <p className="text-base font-extrabold text-cyan-900 mt-1">
+                        {totalOpen} <span className="text-xs font-semibold text-cyan-700">({avgOpenRate}%)</span>
+                      </p>
+                    </div>
+
+                    <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+                      <span className="text-[10px] font-bold uppercase text-emerald-700">Cliques</span>
+                      <p className="text-base font-extrabold text-emerald-900 mt-1">
+                        {totalClick} <span className="text-xs font-semibold text-emerald-700">({avgClickRate}%)</span>
+                      </p>
+                    </div>
+
+                    <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl">
+                      <span className="text-[10px] font-bold uppercase text-indigo-700">Conversões</span>
+                      <p className="text-base font-extrabold text-indigo-900 mt-1">{totalConv} vendas</p>
+                    </div>
+                  </div>
+
+                  {/* Template Metrics Table */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500">
+                        <tr>
+                          <th className="p-2.5">E-mail / Campanha</th>
+                          <th className="p-2.5">Status</th>
+                          <th className="p-2.5 text-right">Enviados</th>
+                          <th className="p-2.5 text-right">Aberturas</th>
+                          <th className="p-2.5 text-right">Cliques</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                        {items.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-4 text-center text-slate-400">Nenhum e-mail nesta pasta.</td>
+                          </tr>
+                        ) : (
+                          items.map((tpl: any) => (
+                            <tr key={tpl.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="p-2.5 font-bold text-slate-900 max-w-[180px] truncate">{tpl.name}</td>
+                              <td className="p-2.5">
+                                <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase ${tpl.status === "Ativo" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-650"}`}>
+                                  {tpl.status}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-right">{tpl.metrics?.sentCount || 0}</td>
+                              <td className="p-2.5 text-right text-cyan-600">{tpl.metrics?.openCount || 0} ({tpl.metrics?.openRate || 0}%)</td>
+                              <td className="p-2.5 text-right text-emerald-600">{tpl.metrics?.clickCount || 0} ({tpl.metrics?.clickRate || 0}%)</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setFolderMetricsModal(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: Nova Pasta Standalone */}
       {showNewFolderModal && (
