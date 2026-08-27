@@ -82,6 +82,7 @@ export default function EmailsLibraryPage() {
   const [editPreviewText, setEditPreviewText] = useState("");
   const [editHtmlContent, setEditHtmlContent] = useState("");
   const [editorTab, setEditorTab] = useState<"edit" | "preview">("preview");
+  const [editorPreviewDevice, setEditorPreviewDevice] = useState<"desktop" | "mobile">("desktop");
 
   // Modal: Full Web & Mobile Preview
   const [fullPreviewTemplate, setFullPreviewTemplate] = useState<any | null>(null);
@@ -152,8 +153,8 @@ export default function EmailsLibraryPage() {
             openRate: 48.5,
             clickCount: 258,
             clickRate: 18.2,
-            conversionCount: 38,
-            conversionRevenue: 2128.0
+            conversionCount: 0,
+            conversionRevenue: 0.0
           }
         },
         {
@@ -182,8 +183,8 @@ export default function EmailsLibraryPage() {
             openRate: 36.4,
             clickCount: 146,
             clickRate: 12.1,
-            conversionCount: 19,
-            conversionRevenue: 1064.0
+            conversionCount: 0,
+            conversionRevenue: 0.0
           }
         },
         {
@@ -208,8 +209,8 @@ export default function EmailsLibraryPage() {
             openRate: 52.1,
             clickCount: 118,
             clickRate: 24.5,
-            conversionCount: 42,
-            conversionRevenue: 2352.0
+            conversionCount: 0,
+            conversionRevenue: 0.0
           }
         },
         {
@@ -232,7 +233,7 @@ export default function EmailsLibraryPage() {
             clickCount: 0,
             clickRate: 0,
             conversionCount: 0,
-            conversionRevenue: 0
+            conversionRevenue: 0.0
           }
         }
       ];
@@ -306,7 +307,6 @@ export default function EmailsLibraryPage() {
     const updatedFolders = [...folders, newFolder];
     saveToStorage(updatedFolders, templates);
 
-    // Auto open new folder
     setOpenFolderIds((prev) => ({ ...prev, [newFolder.id]: true }));
 
     setShowNewFolderModal(false);
@@ -330,7 +330,6 @@ export default function EmailsLibraryPage() {
 
     const updatedFolders = [...folders, newFolderObj];
 
-    // Duplicate all templates inside original folder
     const originalTemplates = templates.filter((t) => t.folderId === duplicatingFolder.id);
     const clonedTemplates = originalTemplates.map((orig, index) => ({
       ...orig,
@@ -338,8 +337,8 @@ export default function EmailsLibraryPage() {
       name: `Cópia - ${orig.name}`,
       folderId: newFolderId,
       folderName: newFolderName,
-      status: "Rascunho", // Always draft
-      flowId: undefined, // Unlinked from flow
+      status: "Rascunho",
+      flowId: undefined,
       flowName: undefined,
       updatedAt: new Date().toLocaleDateString("pt-BR"),
       metrics: {
@@ -356,7 +355,6 @@ export default function EmailsLibraryPage() {
     const updatedTemplates = [...clonedTemplates, ...templates];
     saveToStorage(updatedFolders, updatedTemplates);
 
-    // Open new folder
     setOpenFolderIds((prev) => ({ ...prev, [newFolderId]: true }));
 
     setDuplicatingFolder(null);
@@ -465,8 +463,19 @@ export default function EmailsLibraryPage() {
     }
   };
 
+  // Save HTML Content with Confirmation if overwritten
   const handleSaveHtmlContent = () => {
     if (!editingTemplate) return;
+
+    // Check if HTML content was modified and has non-empty prior content
+    const isModified = editHtmlContent !== editingTemplate.htmlContent;
+    if (isModified && editingTemplate.htmlContent) {
+      const confirmed = confirm(
+        "Tem certeza que deseja salvar as alterações nesta campanha?\n\nQualquer conteúdo anterior será sobreposto e as alterações serão salvas."
+      );
+      if (!confirmed) return;
+    }
+
     const updatedTemplates = templates.map((t) => {
       if (t.id === editingTemplate.id) {
         return {
@@ -479,6 +488,7 @@ export default function EmailsLibraryPage() {
       }
       return t;
     });
+
     saveToStorage(folders, updatedTemplates);
     setEditingTemplate(null);
     showToast("Conteúdo do e-mail salvo com sucesso!");
@@ -506,12 +516,6 @@ export default function EmailsLibraryPage() {
       return matchesSearch && matchesStatus && matchesFolder;
     });
   }, [templates, searchQuery, filterStatus, selectedFolderFilter]);
-
-  // Header Stats
-  const totalCount = templates.length;
-  const draftCount = templates.filter((t) => t.status === "Rascunho").length;
-  const activeCount = templates.filter((t) => t.status === "Ativo").length;
-  const totalFoldersCount = folders.length;
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -556,7 +560,7 @@ export default function EmailsLibraryPage() {
             </h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Organize seus e-mails por pastas de fluxo, pré-visualize o HTML ao vivo e vire o card para ver métricas.
+            Organize seus e-mails por pastas de fluxo, pré-visualize o HTML ao vivo e vire o card em 3D para ver métricas.
           </p>
         </div>
 
@@ -564,7 +568,7 @@ export default function EmailsLibraryPage() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setShowNewFolderModal(true)}
-            className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold px-4 py-3 rounded-2xl border border-slate-200 transition-all text-sm"
+            className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold px-4 py-3 rounded-2xl border border-slate-200 transition-all text-sm cursor-pointer"
           >
             <FolderPlus className="h-4.5 w-4.5 text-slate-600" />
             + Nova Pasta
@@ -572,50 +576,11 @@ export default function EmailsLibraryPage() {
 
           <button
             onClick={() => setShowNewModal(true)}
-            className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-indigo-200 transition-all hover:scale-[1.02] text-sm"
+            className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-indigo-200 transition-all hover:scale-[1.02] text-sm cursor-pointer"
           >
             <Plus className="h-5 w-5" />
             + Nova Campanha / Template
           </button>
-        </div>
-      </div>
-
-      {/* Stats Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total de E-mails</span>
-            <Mail className="h-4 w-4 text-indigo-500" />
-          </div>
-          <p className="text-2xl font-black text-slate-800">{totalCount}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">Templates na biblioteca</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pastas de Fluxo</span>
-            <Folder className="h-4 w-4 text-indigo-500" />
-          </div>
-          <p className="text-2xl font-black text-slate-800">{totalFoldersCount}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">Pastas organizadas</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Rascunhos</span>
-            <Clock className="h-4 w-4 text-slate-500" />
-          </div>
-          <p className="text-2xl font-black text-slate-700">{draftCount}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">Disponíveis para edição</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4.5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Ativos em Fluxos</span>
-            <GitBranch className="h-4 w-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-black text-emerald-600">{activeCount}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">Vinculados a automações</p>
         </div>
       </div>
 
@@ -641,19 +606,19 @@ export default function EmailsLibraryPage() {
           <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold">
             <button
               onClick={() => setFilterStatus("all")}
-              className={`px-3 py-1 rounded-lg transition-all ${filterStatus === "all" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${filterStatus === "all" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
               Todos
             </button>
             <button
               onClick={() => setFilterStatus("draft")}
-              className={`px-3 py-1 rounded-lg transition-all ${filterStatus === "draft" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${filterStatus === "draft" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
               Rascunhos
             </button>
             <button
               onClick={() => setFilterStatus("active")}
-              className={`px-3 py-1 rounded-lg transition-all ${filterStatus === "active" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${filterStatus === "active" ? "bg-white text-slate-850 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
               Ativos
             </button>
@@ -662,7 +627,7 @@ export default function EmailsLibraryPage() {
           <select
             value={selectedFolderFilter}
             onChange={(e) => setSelectedFolderFilter(e.target.value)}
-            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
           >
             <option value="all">Todas as Pastas</option>
             {folders.map((f) => (
@@ -686,16 +651,21 @@ export default function EmailsLibraryPage() {
           const visibleTemplates = folderTemplates.slice(0, displayLimit);
           const hasMore = folderTemplates.length > displayLimit;
 
+          // Folder Subtotals Calculation (No Mock Revenue)
+          const activeInFolder = folderTemplates.filter((t) => t.status === "Ativo").length;
+          const draftInFolder = folderTemplates.filter((t) => t.status === "Rascunho").length;
+          const revenueInFolder = folderTemplates.reduce((acc, t) => acc + (t.metrics?.conversionRevenue || 0), 0);
+
           return (
             <div
               key={folder.id}
               className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm transition-all"
             >
-              {/* Folder Drawer Header Bar */}
-              <div className="w-full px-6 py-4 flex items-center justify-between bg-white border-b border-slate-100 select-none">
+              {/* Folder Drawer Header Bar with Subtotals */}
+              <div className="w-full px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border-b border-slate-100 select-none">
                 <button
                   onClick={() => toggleFolderDrawer(folder.id)}
-                  className="flex items-center gap-3 hover:bg-slate-50 p-1.5 rounded-2xl transition-colors text-left flex-1"
+                  className="flex items-center gap-3 hover:bg-slate-50 p-1.5 rounded-2xl transition-colors text-left flex-1 cursor-pointer"
                 >
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                     <FolderOpen className="h-5 w-5" />
@@ -703,20 +673,34 @@ export default function EmailsLibraryPage() {
                   <div>
                     <h2 className="text-base font-extrabold text-slate-850">{folder.name}</h2>
                     <p className="text-[11px] text-slate-400 font-medium">
-                      {folderTemplates.length} e-mail{folderTemplates.length !== 1 ? "s" : ""} cadastrado{folderTemplates.length !== 1 ? "s" : ""}
+                      {folderTemplates.length} e-mail{folderTemplates.length !== 1 ? "s" : ""} na pasta
                     </p>
                   </div>
                 </button>
 
-                <div className="flex items-center gap-2.5">
-                  {/* Action: Duplicate Entire Folder */}
+                {/* Subtotals & Actions Row inside Folder Header */}
+                <div className="flex items-center flex-wrap gap-2.5">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Ativos: {activeInFolder}
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-slate-100 text-slate-650 border border-slate-200 px-3 py-1 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                    Rascunhos: {draftInFolder}
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 rounded-full">
+                    Receita: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(revenueInFolder)}
+                  </span>
+
                   <button
                     onClick={() => {
                       setDuplicatingFolder(folder);
                       setDuplicateFolderName(`Cópia de ${folder.name}`);
                     }}
                     title="Duplicar esta pasta com todos os e-mails"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 px-3 py-1.5 rounded-xl transition-all"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 px-3 py-1 rounded-xl transition-all cursor-pointer"
                   >
                     <Layers className="h-3.5 w-3.5" />
                     <span>Duplicar Pasta</span>
@@ -724,14 +708,14 @@ export default function EmailsLibraryPage() {
 
                   <button
                     onClick={() => toggleFolderDrawer(folder.id)}
-                    className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-500 transition-colors"
+                    className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-500 transition-colors cursor-pointer"
                   >
                     {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Lazy Loaded Drawer Content (Only renders when isOpen is true) */}
+              {/* Lazy Loaded Drawer Content */}
               {isOpen && (
                 <div className="p-6 bg-slate-50/50 space-y-4">
                   {folderTemplates.length === 0 ? (
@@ -739,8 +723,8 @@ export default function EmailsLibraryPage() {
                       <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
                     </div>
                   ) : (
-                    /* 3:4 Proportional Aspect Cards Grid */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    /* 3:4 Proportion Compact Cards Grid (Narrower width, Taller, Close Action Buttons) */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                       {visibleTemplates.map((template) => {
                         const isActive = template.status === "Ativo";
                         const isFlipped = !!flippedCardIds[template.id];
@@ -748,26 +732,28 @@ export default function EmailsLibraryPage() {
                         return (
                           <div
                             key={template.id}
-                            className="card-perspective h-[440px] w-full"
+                            className="card-perspective h-[420px] max-w-[270px] w-full mx-auto"
                           >
                             <div className={`card-inner relative w-full h-full ${isFlipped ? "is-flipped" : ""}`}>
                               
-                              {/* FRONT FACE OF CARD */}
-                              <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-400 rounded-3xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
+                              {/* FRONT FACE OF CARD (3:4 Proportion) */}
+                              <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-400 rounded-3xl p-3.5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
                                 <div>
-                                  {/* Subject Header Box */}
-                                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-2.5 space-y-1">
-                                    <div className="flex items-center justify-between gap-1.5">
-                                      <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Assunto:</span>
+                                  {/* Top Subject & Pre-header Box */}
+                                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-2 space-y-1">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="text-[9px] font-black uppercase text-indigo-600 tracking-wider truncate">
+                                        Assunto:
+                                      </span>
                                       <span
-                                        className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                                        className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
                                           isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
                                         }`}
                                       >
                                         {template.status}
                                       </span>
                                     </div>
-                                    <h4 className="font-extrabold text-slate-850 text-xs line-clamp-1">
+                                    <h4 className="font-extrabold text-slate-850 text-[11px] line-clamp-1">
                                       {template.subject || "(Sem assunto)"}
                                     </h4>
                                     {template.previewText && (
@@ -778,12 +764,12 @@ export default function EmailsLibraryPage() {
                                   </div>
 
                                   {/* Title & Large HTML Preview Thumbnail (~180px) */}
-                                  <div className="mt-2.5 space-y-2">
+                                  <div className="mt-2 space-y-1.5">
                                     <h3 className="font-black text-slate-850 text-xs truncate" title={template.name}>
                                       {template.name}
                                     </h3>
 
-                                    {/* HTML Preview Thumbnail Box */}
+                                    {/* Large HTML Preview Thumbnail Box */}
                                     <div className="h-44 w-full bg-slate-100 border border-slate-200 rounded-xl overflow-hidden relative shadow-inner">
                                       <iframe
                                         title={`Mini preview - ${template.name}`}
@@ -795,130 +781,143 @@ export default function EmailsLibraryPage() {
 
                                     {/* Flow Link if Active */}
                                     {isActive && template.flowName && (
-                                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
-                                        <GitBranch className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                      <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold">
+                                        <GitBranch className="h-3 w-3 shrink-0 text-emerald-600" />
                                         <span className="truncate">Flow:</span>
                                         <Link
                                           href={template.flowId ? `/flows/${template.flowId}` : "/dashboard/automations"}
-                                          className="text-indigo-600 hover:underline flex items-center gap-1 font-extrabold truncate"
+                                          className="text-indigo-600 hover:underline flex items-center gap-0.5 font-extrabold truncate"
                                         >
                                           {template.flowName}
-                                          <ExternalLink className="h-3 w-3 shrink-0" />
+                                          <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                                         </Link>
                                       </div>
                                     )}
                                   </div>
                                 </div>
 
-                                {/* FRONT ACTIONS FOOTER */}
+                                {/* FRONT ACTIONS FOOTER (Tight Action Bar: Ver & Editar Close Together) */}
                                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
-                                  <button
-                                    onClick={() => {
-                                      setFullPreviewTemplate(template);
-                                      setPreviewDevice("desktop");
-                                    }}
-                                    title="Pré-visualização Completa Web/Mobile"
-                                    className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all"
-                                  >
-                                    <Eye className="h-3.5 w-3.5 text-indigo-600" />
-                                    <span>Ver</span>
-                                  </button>
+                                  {/* Ver & Editar grouped together */}
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setFullPreviewTemplate(template);
+                                        setPreviewDevice("desktop");
+                                      }}
+                                      title="Pré-visualização Completa Web/Mobile"
+                                      className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-1.5 rounded-lg transition-all cursor-pointer"
+                                    >
+                                      <Eye className="h-3 w-3 text-indigo-600" />
+                                      <span>Ver</span>
+                                    </button>
 
-                                  <button
-                                    onClick={() => {
-                                      setEditingTemplate(template);
-                                      setEditSubject(template.subject || "");
-                                      setEditPreviewText(template.previewText || "");
-                                      setEditHtmlContent(template.htmlContent || "");
-                                      setEditorTab("preview");
-                                    }}
-                                    title="Editar Código HTML"
-                                    className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all shadow-xs"
-                                  >
-                                    <Edit3 className="h-3.5 w-3.5" />
-                                    <span>Editar</span>
-                                  </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingTemplate(template);
+                                        setEditSubject(template.subject || "");
+                                        setEditPreviewText(template.previewText || "");
+                                        setEditHtmlContent(template.htmlContent || "");
+                                        setEditorTab("preview");
+                                        setEditorPreviewDevice("desktop");
+                                      }}
+                                      title="Editar Código HTML"
+                                      className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer"
+                                    >
+                                      <Edit3 className="h-3 w-3" />
+                                      <span>Editar</span>
+                                    </button>
+                                  </div>
 
+                                  {/* Metric Flip, Duplicate & Delete Icons */}
                                   <div className="flex items-center gap-0.5">
-                                    {/* 3D Flip to Back Metrics Card */}
                                     <button
                                       onClick={() => toggleCardFlip(template.id)}
                                       title="Virar Card (Métricas)"
-                                      className="p-1.5 hover:bg-indigo-50 rounded-lg text-indigo-600 transition-colors"
+                                      className="p-1.5 hover:bg-indigo-50 rounded-lg text-indigo-600 transition-colors cursor-pointer"
                                     >
-                                      <BarChart2 className="h-4 w-4" />
+                                      <BarChart2 className="h-3.5 w-3.5" />
                                     </button>
 
                                     <button
                                       onClick={() => handleDuplicateTemplate(template.id)}
                                       title="Duplicar Template"
-                                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
+                                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
                                     >
-                                      <Copy className="h-4 w-4" />
+                                      <Copy className="h-3.5 w-3.5" />
                                     </button>
 
                                     <button
                                       onClick={() => handleDeleteTemplate(template.id)}
                                       title="Excluir Template"
-                                      className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors"
+                                      className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                   </div>
                                 </div>
                               </div>
 
                               {/* BACK FACE OF CARD (FLIPPED 3D METRICS) */}
-                              <div className="card-back absolute inset-0 bg-slate-900 text-white border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between overflow-hidden">
-                                <div className="space-y-4">
-                                  <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                                    <div className="flex items-center gap-2">
-                                      <BarChart2 className="h-4 w-4 text-indigo-400" />
-                                      <h4 className="text-xs font-black text-white truncate max-w-[170px]">
+                              <div className="card-back absolute inset-0 bg-slate-900 text-white border border-slate-800 rounded-3xl p-4 shadow-xl flex flex-col justify-between overflow-hidden">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />
+                                      <h4 className="text-[11px] font-black text-white truncate max-w-[140px]">
                                         Métricas do E-mail
                                       </h4>
                                     </div>
                                     <button
                                       onClick={() => toggleCardFlip(template.id)}
-                                      className="text-xs font-bold text-indigo-400 hover:text-white flex items-center gap-1"
+                                      className="text-[10px] font-bold text-indigo-400 hover:text-white flex items-center gap-0.5 cursor-pointer"
                                     >
-                                      <RotateCcw className="h-3.5 w-3.5" /> Voltar
+                                      <RotateCcw className="h-3 w-3" /> Voltar
                                     </button>
                                   </div>
 
-                                  <div className="space-y-2.5 text-xs">
-                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
+                                  <div className="space-y-2 text-[11px]">
+                                    <div className="bg-slate-800/80 p-2 rounded-xl flex items-center justify-between">
                                       <span className="text-slate-400">Entregues:</span>
                                       <span className="font-black text-white">{template.metrics?.sentCount || 0}</span>
                                     </div>
 
-                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
-                                      <span className="text-cyan-400 font-bold">Aberturas Únicas:</span>
+                                    <div className="bg-slate-800/80 p-2 rounded-xl flex items-center justify-between">
+                                      <span className="text-cyan-400 font-bold">Aberturas:</span>
                                       <span className="font-black text-cyan-300">
                                         {template.metrics?.openCount || 0} ({template.metrics?.openRate || 0}%)
                                       </span>
                                     </div>
 
-                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
-                                      <span className="text-emerald-400 font-bold">Cliques Únicos:</span>
+                                    <div className="bg-slate-800/80 p-2 rounded-xl flex items-center justify-between">
+                                      <span className="text-emerald-400 font-bold">Cliques:</span>
                                       <span className="font-black text-emerald-300">
                                         {template.metrics?.clickCount || 0} ({template.metrics?.clickRate || 0}%)
                                       </span>
                                     </div>
 
-                                    <div className="bg-slate-800/80 p-2.5 rounded-xl flex items-center justify-between">
+                                    <div className="bg-slate-800/80 p-2 rounded-xl flex items-center justify-between">
                                       <span className="text-indigo-400 font-bold">Conversões:</span>
                                       <span className="font-black text-indigo-300">
                                         {template.metrics?.conversionCount || 0} compras
                                       </span>
                                     </div>
+
+                                    <div className="bg-slate-800/80 p-2 rounded-xl flex items-center justify-between">
+                                      <span className="text-slate-400 font-bold">Receita:</span>
+                                      <span className="font-black text-emerald-400">
+                                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                                          template.metrics?.conversionRevenue || 0
+                                        )}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
 
-                                <div className="pt-3 border-t border-slate-800">
+                                <div className="pt-2 border-t border-slate-800">
                                   <button
                                     onClick={() => toggleCardFlip(template.id)}
-                                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                                    className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                   >
                                     <RotateCcw className="h-3.5 w-3.5" />
                                     <span>Voltar para o Card</span>
@@ -943,7 +942,7 @@ export default function EmailsLibraryPage() {
                             [folder.id]: displayLimit + 12
                           }))
                         }
-                        className="inline-flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm transition-all"
+                        className="inline-flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer"
                       >
                         <Plus className="h-4 w-4" />
                         Carregar mais e-mails (+{folderTemplates.length - displayLimit})
@@ -968,7 +967,7 @@ export default function EmailsLibraryPage() {
                 </div>
                 <h2 className="text-lg font-black text-slate-850">Nova Pasta</h2>
               </div>
-              <button onClick={() => setShowNewFolderModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setShowNewFolderModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -995,7 +994,7 @@ export default function EmailsLibraryPage() {
                 <select
                   value={standaloneFolderType}
                   onChange={(e) => setStandaloneFolderType(e.target.value as any)}
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
                 >
                   <option value="flow">Pasta para Fluxos de Automação</option>
                   <option value="pontual">Pasta para Campanhas Pontuais / Rascunhos</option>
@@ -1006,13 +1005,13 @@ export default function EmailsLibraryPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewFolderModal(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   Criar Pasta
@@ -1034,14 +1033,14 @@ export default function EmailsLibraryPage() {
                 </div>
                 <h2 className="text-lg font-black text-slate-850">Duplicar Pasta Inteira</h2>
               </div>
-              <button onClick={() => setDuplicatingFolder(null)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setDuplicatingFolder(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleConfirmDuplicateFolder} className="space-y-4">
               <p className="text-xs text-slate-500">
-                Todos os e-mails contidos nesta pasta serão duplicados como <strong>Rascunho</strong> com a indicação "Cópia" e desvinculados de qualquer fluxo.
+                Todos os e-mails contidos nesta pasta serão duplicados com a indicação "Cópia", convertidos para <strong>Rascunho</strong> e desvinculados de qualquer fluxo.
               </p>
 
               <div>
@@ -1061,13 +1060,13 @@ export default function EmailsLibraryPage() {
                 <button
                   type="button"
                   onClick={() => setDuplicatingFolder(null)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   <Copy className="h-4 w-4" />
                   Duplicar Pasta e E-mails
@@ -1089,7 +1088,7 @@ export default function EmailsLibraryPage() {
                 </div>
                 <h2 className="text-lg font-black text-slate-850">Nova Campanha / Template</h2>
               </div>
-              <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -1150,7 +1149,7 @@ export default function EmailsLibraryPage() {
                           setSelectedFolderId(e.target.value);
                         }
                       }}
-                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
                     >
                       <option value="">Selecione uma pasta existente ou crie uma nova...</option>
                       {folders.map((f) => (
@@ -1176,7 +1175,7 @@ export default function EmailsLibraryPage() {
                       <button
                         type="button"
                         onClick={() => setIsCreatingNewFolder(false)}
-                        className="text-xs text-slate-500 hover:text-slate-800 underline shrink-0 px-2"
+                        className="text-xs text-slate-500 hover:text-slate-800 underline shrink-0 px-2 cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -1189,13 +1188,13 @@ export default function EmailsLibraryPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewModal(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   Criar Rascunho
@@ -1206,7 +1205,7 @@ export default function EmailsLibraryPage() {
         </div>
       )}
 
-      {/* MODAL: Full Web & Mobile Preview Modal */}
+      {/* MODAL: Full Web & Mobile Standalone Preview Modal */}
       {fullPreviewTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 md:p-6">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-4xl w-full h-[85vh] shadow-2xl flex flex-col justify-between overflow-hidden">
@@ -1220,7 +1219,7 @@ export default function EmailsLibraryPage() {
                 <div className="flex border border-slate-200 rounded-xl bg-slate-100 p-1 text-xs font-bold">
                   <button
                     onClick={() => setPreviewDevice("desktop")}
-                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                       previewDevice === "desktop" ? "bg-white text-indigo-600 shadow-sm font-extrabold" : "text-slate-500"
                     }`}
                   >
@@ -1228,7 +1227,7 @@ export default function EmailsLibraryPage() {
                   </button>
                   <button
                     onClick={() => setPreviewDevice("mobile")}
-                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                       previewDevice === "mobile" ? "bg-white text-indigo-600 shadow-sm font-extrabold" : "text-slate-500"
                     }`}
                   >
@@ -1236,7 +1235,7 @@ export default function EmailsLibraryPage() {
                   </button>
                 </div>
 
-                <button onClick={() => setFullPreviewTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                <button onClick={() => setFullPreviewTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -1275,7 +1274,7 @@ export default function EmailsLibraryPage() {
             <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
               <button
                 onClick={() => setFullPreviewTemplate(null)}
-                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all"
+                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer"
               >
                 Fechar Visualização
               </button>
@@ -1284,40 +1283,41 @@ export default function EmailsLibraryPage() {
         </div>
       )}
 
-      {/* MODAL: HTML Editor */}
+      {/* MODAL: HTML Editor with Web & Mobile Preview Tab Option */}
       {editingTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-black text-slate-850">{editingTemplate.name}</h2>
-                <p className="text-xs text-slate-500">Edite o assunto, pré-header e o template HTML do e-mail.</p>
+                <p className="text-xs text-slate-500">Edite o assunto, pré-header e o código HTML da campanha.</p>
               </div>
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
                   <button
                     onClick={() => setEditorTab("preview")}
-                    className={`px-3 py-1.5 rounded-lg transition-all ${editorTab === "preview" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${editorTab === "preview" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}
                   >
                     <Eye className="h-3.5 w-3.5 inline mr-1" />
                     Pré-visualização
                   </button>
                   <button
                     onClick={() => setEditorTab("edit")}
-                    className={`px-3 py-1.5 rounded-lg transition-all ${editorTab === "edit" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${editorTab === "edit" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}
                   >
                     <Code className="h-3.5 w-3.5 inline mr-1" />
                     Código HTML
                   </button>
                 </div>
 
-                <button onClick={() => setEditingTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                <button onClick={() => setEditingTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
+            {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Linha de Assunto</label>
@@ -1340,6 +1340,7 @@ export default function EmailsLibraryPage() {
               </div>
             </div>
 
+            {/* Editor Body with Desktop / Mobile Device Selector inside Preview Tab */}
             <div className="flex-1 overflow-y-auto min-h-[300px] border border-slate-200 rounded-2xl bg-slate-50 p-4">
               {editorTab === "edit" ? (
                 <textarea
@@ -1349,23 +1350,62 @@ export default function EmailsLibraryPage() {
                   className="w-full h-72 font-mono text-xs p-3 bg-slate-900 text-emerald-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-slate-800"
                 />
               ) : (
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 min-h-[280px]">
-                  <div dangerouslySetInnerHTML={{ __html: editHtmlContent || "<p class='text-slate-400 text-xs italic'>Nenhum conteúdo HTML definido.</p>" }} />
+                <div className="space-y-3 h-full flex flex-col">
+                  {/* Inline Preview Device Toggle inside Editor */}
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <span className="text-xs font-bold text-slate-500">Visualização de Renderização:</span>
+                    <div className="flex border border-slate-200 rounded-lg bg-slate-200/60 p-0.5 text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setEditorPreviewDevice("desktop")}
+                        className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                          editorPreviewDevice === "desktop" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600"
+                        }`}
+                      >
+                        <Laptop className="h-3 w-3" /> Web / Desktop
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditorPreviewDevice("mobile")}
+                        className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                          editorPreviewDevice === "mobile" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600"
+                        }`}
+                      >
+                        <Smartphone className="h-3 w-3" /> Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 flex justify-center items-center bg-slate-100 p-3 rounded-xl">
+                    {editorPreviewDevice === "desktop" ? (
+                      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 w-full h-full overflow-y-auto">
+                        <div dangerouslySetInnerHTML={{ __html: editHtmlContent || "<p class='text-slate-400 text-xs italic'>Nenhum conteúdo HTML definido.</p>" }} />
+                      </div>
+                    ) : (
+                      <div className="w-[320px] h-[340px] bg-slate-900 rounded-[28px] p-2.5 shadow-xl border-4 border-slate-800 flex flex-col">
+                        <div className="w-16 h-3 bg-slate-800 rounded-full mx-auto mb-1.5 shrink-0" />
+                        <div className="bg-white rounded-[18px] flex-1 overflow-y-auto p-3 text-xs">
+                          <div dangerouslySetInnerHTML={{ __html: editHtmlContent || "<p class='text-slate-400 text-xs italic'>Nenhum conteúdo HTML definido.</p>" }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* Footer Buttons with Save Confirmation */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setEditingTemplate(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800"
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveHtmlContent}
-                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all"
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
               >
                 <Check className="h-4 w-4" />
                 Salvar Alterações
