@@ -722,7 +722,7 @@ export default function EmailsLibraryPage() {
                       <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
                     </div>
                   ) : (
-                    /* REDEFINED ULTRA-PROFESSIONAL 3:4 CARDS GRID (NARROWER GAP & NAME AT TOP) */
+                    /* REDEFINED 3:4 CARDS GRID WITH FULL NAME & EXPANDED PREVIEW */
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                       {visibleTemplates.map((template) => {
                         const isActive = template.status === "Ativo";
@@ -731,17 +731,17 @@ export default function EmailsLibraryPage() {
                         return (
                           <div
                             key={template.id}
-                            className="card-perspective h-[425px] w-full max-w-[250px] mx-auto"
+                            className="card-perspective h-[440px] w-full max-w-[250px] mx-auto"
                           >
                             <div className={`card-inner relative w-full h-full ${isFlipped ? "is-flipped" : ""}`}>
                               
-                              {/* FRONT FACE OF CARD (Redefined SaaS Card Layout: Name at Top, Less Rounded Borders) */}
+                              {/* FRONT FACE OF CARD (FULL UNTRUNCATED NAME + FLEX EXPANDED PREVIEW) */}
                               <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-500 rounded-xl p-3 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
-                                <div className="space-y-2">
-                                  {/* 1. CAMPAIGN NAME AT VERY TOP */}
-                                  <div className="flex items-start justify-between gap-1.5 pb-1 border-b border-slate-100">
+                                <div className="flex-1 flex flex-col justify-between space-y-2">
+                                  {/* 1. CAMPAIGN NAME AT VERY TOP (FULL WRAP - NOT TRUNCATED) */}
+                                  <div className="flex items-start justify-between gap-1.5 pb-1.5 border-b border-slate-100">
                                     <h3
-                                      className="font-extrabold text-slate-900 text-xs tracking-tight line-clamp-1 leading-tight flex-1"
+                                      className="font-extrabold text-slate-900 text-[11px] leading-snug break-words flex-1"
                                       title={template.name}
                                     >
                                       {template.name}
@@ -756,7 +756,7 @@ export default function EmailsLibraryPage() {
                                   </div>
 
                                   {/* 2. SUBJECT LINE & PREHEADER BOX */}
-                                  <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 space-y-1">
+                                  <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-1.5 space-y-0.5 shrink-0">
                                     <div className="flex items-center gap-1">
                                       <span className="text-[9px] font-bold uppercase text-indigo-600 tracking-wider">Assunto:</span>
                                       <span className="font-bold text-slate-800 text-[10px] truncate">
@@ -764,14 +764,14 @@ export default function EmailsLibraryPage() {
                                       </span>
                                     </div>
                                     {template.previewText && (
-                                      <p className="text-[10px] text-slate-500 italic line-clamp-1 border-t border-slate-100 pt-0.5">
+                                      <p className="text-[9.5px] text-slate-500 italic line-clamp-1 border-t border-slate-100 pt-0.5">
                                         "{template.previewText}"
                                       </p>
                                     )}
                                   </div>
 
-                                  {/* 3. HTML PREVIEW THUMBNAIL CONTAINER (~165px Height) */}
-                                  <div className="h-40 w-full bg-slate-100 border border-slate-200 rounded-lg overflow-hidden relative shadow-inner">
+                                  {/* 3. HTML PREVIEW CONTAINER (FLEX-1 EXPANDED TO FILL SPACE) */}
+                                  <div className="flex-1 min-h-[160px] w-full bg-slate-100 border border-slate-200 rounded-lg overflow-hidden relative shadow-inner">
                                     <iframe
                                       title={`Mini preview - ${template.name}`}
                                       srcDoc={template.htmlContent || "<div></div>"}
@@ -780,9 +780,9 @@ export default function EmailsLibraryPage() {
                                     <div className="absolute inset-0 bg-transparent" />
                                   </div>
 
-                                  {/* 4. FLOW LINK IF ACTIVE */}
+                                  {/* 4. FLOW LINK (SITS NEATLY AT THE BOTTOM ABOVE ACTIONS) */}
                                   {isActive && template.flowName && (
-                                    <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50/60 p-1.5 rounded-md border border-emerald-100">
+                                    <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50/70 p-1.5 rounded-md border border-emerald-200 shrink-0">
                                       <GitBranch className="h-3 w-3 shrink-0 text-emerald-600" />
                                       <span className="truncate">Flow:</span>
                                       <Link
@@ -796,8 +796,8 @@ export default function EmailsLibraryPage() {
                                   )}
                                 </div>
 
-                                {/* 5. TIGHT ACTION TOOLBAR (VER & EDITAR CLOSE TOGETHER) */}
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                                {/* 5. TIGHT ACTION TOOLBAR AT THE BOTTOM */}
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 mt-1.5 shrink-0">
                                   {/* Grouped Ver & Editar */}
                                   <div className="flex items-center gap-1">
                                     <button
