@@ -97,7 +97,7 @@ export default function EmailsLibraryPage() {
     setTimeout(() => setToastMessage(""), 3500);
   };
 
-  // Initial Data & Persistence (Syncing past campaigns from Supabase)
+  // Initial Data & 2-Way Sync with Supabase (Flows, Flow Nodes, Campaigns)
   useEffect(() => {
     const initializeLibrary = async () => {
       if (typeof window === "undefined") return;
@@ -141,9 +141,8 @@ export default function EmailsLibraryPage() {
           console.error(e);
         }
       }
-      setFlows(loadedFlows);
 
-      let loadedTemplates = [
+      let loadedTemplates: any[] = [
         {
           id: "tpl-1",
           name: "E-mail 01 - Boas-vindas ao Aluno",
@@ -238,9 +237,78 @@ export default function EmailsLibraryPage() {
         }
       }));
 
-      // Fetch all real past campaigns from Supabase database
+      // Fetch all real past campaigns & flows from Supabase database
       try {
         const supabase = createClient();
+
+        // 1. Fetch Flows from Supabase and build folders
+        const { data: dbFlows } = await supabase.from("flows").select("*").order("created_at", { ascending: false });
+
+        if (dbFlows && dbFlows.length > 0) {
+          dbFlows.forEach((flow: any) => {
+            const exists = loadedFolders.some(
+              (f) => f.name.trim().toLowerCase() === flow.name.trim().toLowerCase() || f.id === `folder-${flow.id}`
+            );
+            if (!exists) {
+              loadedFolders.push({
+                id: `folder-${flow.id}`,
+                name: flow.name.trim(),
+                type: "flow"
+              });
+            }
+          });
+
+          // Fetch email nodes inside flows
+          const { data: dbEmailNodes } = await supabase
+            .from("flow_nodes")
+            .select("*, flows(name, status)")
+            .eq("node_type", "email")
+            .eq("is_deleted", false);
+
+          if (dbEmailNodes && dbEmailNodes.length > 0) {
+            dbEmailNodes.forEach((node: any) => {
+              const flowName = node.flows?.name || "Automação";
+              const flowStatus = node.flows?.status === "active" ? "Ativo" : "Rascunho";
+              const folderId = `folder-${node.flow_id}`;
+
+              // Ensure folder exists
+              if (!loadedFolders.some((f) => f.id === folderId || f.name.trim().toLowerCase() === flowName.trim().toLowerCase())) {
+                loadedFolders.push({ id: folderId, name: flowName, type: "flow" });
+              }
+
+              const tplId = `node-tpl-${node.id}`;
+              const cfg = node.config || {};
+              const tplName = cfg.campaignName || cfg.campaign_name || node.name || `E-mail do Fluxo ${flowName}`;
+
+              const exists = loadedTemplates.some(
+                (t: any) => t.id === tplId || (t.flowId === node.flow_id && t.name.trim().toLowerCase() === tplName.trim().toLowerCase())
+              );
+
+              if (!exists) {
+                loadedTemplates.unshift({
+                  id: tplId,
+                  nodeId: node.id,
+                  name: tplName,
+                  subject: cfg.subject || cfg.subject_line || tplName,
+                  previewText: cfg.preheader || cfg.preview_text || "",
+                  htmlContent: cfg.htmlContent || cfg.html_content || cfg.html || `<div style="font-family: Arial, sans-serif; padding: 24px; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px;">
+  <h2 style="color: #4f46e5; margin-top: 0;">${tplName}</h2>
+  <p>${cfg.subject || ""}</p>
+</div>`,
+                  folderId: folderId,
+                  folderName: flowName,
+                  flowId: node.flow_id,
+                  flowName: flowName,
+                  status: flowStatus,
+                  updatedAt: new Date(node.created_at || Date.now()).toLocaleDateString("pt-BR"),
+                  metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
+                });
+              }
+            });
+          }
+        }
+
+        // 2. Fetch past campaigns from Supabase
         const { data: dbCampaigns } = await supabase.from("campaigns").select("*").order("created_at", { ascending: false });
 
         if (dbCampaigns && dbCampaigns.length > 0) {
@@ -279,7 +347,7 @@ export default function EmailsLibraryPage() {
           });
         }
       } catch (err) {
-        console.error("Erro ao carregar campanhas passadas do Supabase:", err);
+        console.error("Erro ao sincronizar com Supabase:", err);
       }
 
       setFolders(loadedFolders);
@@ -497,8 +565,8 @@ export default function EmailsLibraryPage() {
     }
   };
 
-  // Save HTML Content with Confirmation if overwritten
-  const handleSaveHtmlContent = () => {
+  // Save HTML Content with Confirmation and 2-Way Sync to Flow Nodes
+  const handleSaveHtmlContent = async () => {
     if (!editingTemplate) return;
 
     const isModified = editHtmlContent !== editingTemplate.htmlContent;
@@ -521,6 +589,24 @@ export default function EmailsLibraryPage() {
       }
       return t;
     });
+
+    // 2-Way Live Sync back to Supabase flow_nodes if this template belongs to a flow node
+    if (editingTemplate.nodeId) {
+      try {
+        const supabase = createClient();
+        const { data: nodeData } = await supabase.from("flow_nodes").select("config").eq("id", editingTemplate.nodeId).single();
+        const newConfig = {
+          ...(nodeData?.config || {}),
+          subject: editSubject,
+          preheader: editPreviewText,
+          htmlContent: editHtmlContent,
+          campaignName: editingTemplate.name
+        };
+        await supabase.from("flow_nodes").update({ config: newConfig }).eq("id", editingTemplate.nodeId);
+      } catch (e) {
+        console.error("Erro ao sincronizar alteração com o nó do fluxo:", e);
+      }
+    }
 
     saveToStorage(folders, updatedTemplates);
     setEditingTemplate(null);

@@ -795,6 +795,54 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         htmlContent: editNodeHtmlContent,
         status: editNodeEmailStatus
       };
+
+      // 2-Way Sync node email template into E-mails library
+      if (typeof window !== "undefined") {
+        try {
+          const storedFolders = localStorage.getItem("realizzare_email_folders");
+          let foldersList = storedFolders ? JSON.parse(storedFolders) : [];
+          const folderId = `folder-${flow.id}`;
+          const currentFlowName = (flow.name || "Automação").trim();
+
+          if (!foldersList.some((f: any) => f.id === folderId || f.name.trim().toLowerCase() === currentFlowName.toLowerCase())) {
+            foldersList.push({ id: folderId, name: currentFlowName, type: "flow" });
+            localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
+          }
+
+          const storedTemplates = localStorage.getItem("realizzare_email_templates");
+          let templatesList = storedTemplates ? JSON.parse(storedTemplates) : [];
+          const tplId = `node-tpl-${selectedNodeForConfig.id}`;
+          const tplName = editNodeCampaignName.trim();
+          const existingIdx = templatesList.findIndex(
+            (t: any) => t.id === tplId || (t.flowId === flow.id && t.name.trim().toLowerCase() === tplName.toLowerCase())
+          );
+
+          const tplData = {
+            id: tplId,
+            nodeId: selectedNodeForConfig.id,
+            name: tplName,
+            subject: editNodeSubject || tplName,
+            previewText: editNodePreheader || "",
+            htmlContent: editNodeHtmlContent || "<div></div>",
+            folderId: folderId,
+            folderName: currentFlowName,
+            flowId: flow.id,
+            flowName: currentFlowName,
+            status: editNodeEmailStatus || "Ativo",
+            updatedAt: new Date().toLocaleDateString("pt-BR"),
+            metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
+          };
+
+          if (existingIdx >= 0) {
+            templatesList[existingIdx] = { ...templatesList[existingIdx], ...tplData };
+          } else {
+            templatesList.unshift(tplData);
+          }
+          localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
+        } catch (e) {
+          console.error("Erro ao sincronizar nó com e-mails library:", e);
+        }
+      }
     } else if (selectedNodeForConfig.type === "delay") {
       lockedName = "Aguardar Atraso";
       updatedConfig = {
