@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   FileText
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface SidebarItem {
   name: string;
@@ -202,34 +203,46 @@ export default function DashboardLayout({
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // Load account usage statistics
+  // Load account usage statistics from Database
   useEffect(() => {
-    const loadUsage = () => {
-      if (typeof window !== "undefined") {
-        const stored = localStorage.getItem("realizzare_account_usage");
-        if (stored) {
-          try {
-            setUsage(JSON.parse(stored));
-          } catch (e) {
-            console.error(e);
-          }
-        } else {
-          const defaults = {
-            profilesLimit: 5000,
-            profilesUsed: 4585,
-            emailsLimit: 50000,
-            emailsUsed: 30972,
-            mobileLimit: 5.00,
-            mobileUsed: 0.00
-          };
-          localStorage.setItem("realizzare_account_usage", JSON.stringify(defaults));
-          setUsage(defaults);
+    const fetchRealUsage = async () => {
+      try {
+        const supabase = createClient();
+        
+        // 1. Get total contacts (Leads Inscritos)
+        const { count: profilesUsed } = await supabase
+          .from("contacts")
+          .select("*", { count: "exact", head: true });
+
+        // 2. Get emails sent this month
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const { data: campaigns } = await supabase
+          .from("campaigns")
+          .select("sent_count")
+          .gte("sent_at", startOfMonth.toISOString());
+          
+        let emailsUsed = 0;
+        if (campaigns) {
+          emailsUsed = campaigns.reduce((acc: number, curr: any) => acc + (curr.sent_count || 0), 0);
         }
+
+        setUsage({
+          profilesLimit: 5000,
+          profilesUsed: profilesUsed || 0,
+          emailsLimit: 50000,
+          emailsUsed: emailsUsed,
+          mobileLimit: 5.00,
+          mobileUsed: 0.00
+        });
+      } catch (e) {
+        console.error("Erro ao carregar uso real da conta:", e);
       }
     };
-    loadUsage();
-    window.addEventListener("storage", loadUsage);
-    return () => window.removeEventListener("storage", loadUsage);
+    
+    fetchRealUsage();
   }, [pathname]);
 
   const isNiltonUser = currentUser?.role?.includes("Desenvolvedor") || currentUser?.email?.includes("nilton");

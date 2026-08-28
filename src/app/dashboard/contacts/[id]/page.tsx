@@ -221,7 +221,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   // State initialized as null to fetch from database
   const [profile, setProfile] = useState<any>(null);
   const [draft, setDraft] = useState<any>(null);
-  const [visibleTimelineCount, setVisibleTimelineCount] = useState(6);
+  const [visibleTimelineCount, setVisibleTimelineCount] = useState(10);
 
   const handleTimelineScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -425,24 +425,19 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         const { data: courseEventsData } = await supabase
           .from("course_events")
-          .select("*")
+          .select("*, courses(name)")
           .eq("contact_id", contact.id)
           .order("created_at", { ascending: false });
 
         let rawEvents: any[] = [];
         const contactEmailLower = (contact.email || "").toLowerCase().trim();
 
-        // A. Campaign Sent, Open and Click Events
+        // A. Campaign Sent Events (only if explicitly targeted to this contact's email)
         if (dbCampaignsData) {
           dbCampaignsData.forEach((c: any) => {
             if (c.status === "sent") {
               const targetStr = (c.target_list || "").toLowerCase();
-              const isTargeted =
-                targetStr.includes(contactEmailLower) ||
-                (contact.first_name && targetStr.includes(contact.first_name.toLowerCase())) ||
-                targetStr.includes("geral") ||
-                targetStr.includes("alunos") ||
-                targetStr.includes("leads");
+              const isTargeted = targetStr.includes(contactEmailLower);
 
               if (isTargeted) {
                 const flowName = c.flow_name || c.flowName || "";
@@ -457,36 +452,12 @@ export default function ContactProfilePage({ params }: PageProps) {
                   details: detailsStr,
                   timestamp: c.sent_at || c.created_at
                 });
-
-                if ((c.open_count || 0) > 0) {
-                  rawEvents.push({
-                    id: `open-${c.id}`,
-                    type: "open",
-                    label: "E-mail Aberto",
-                    details: flowName
-                      ? `Fluxo: ${flowName} • Abriu o e-mail da campanha '${c.name}'`
-                      : `Abriu o e-mail da campanha '${c.name}'`,
-                    timestamp: c.updated_at || c.sent_at || c.created_at
-                  });
-                }
-
-                if ((c.click_count || 0) > 0) {
-                  rawEvents.push({
-                    id: `click-${c.id}`,
-                    type: "click",
-                    label: "E-mail Clicado",
-                    details: flowName
-                      ? `Fluxo: ${flowName} • Clicou no link da campanha '${c.name}'`
-                      : `Clicou no link da campanha '${c.name}'`,
-                    timestamp: c.updated_at || c.sent_at || c.created_at
-                  });
-                }
               }
             }
           });
         }
 
-        // B. Tracking Open and Click Events
+        // B. Tracking Open and Click Events (Strictly per-contact)
         if (trackingEventsData && trackingEventsData.length > 0) {
           trackingEventsData.forEach((te: any) => {
             const payload = te.payload || {};
@@ -494,16 +465,6 @@ export default function ContactProfilePage({ params }: PageProps) {
             let teContactId = payload.contact_id;
 
             let isMatch = teContactId === contact.id || (teEmail && teEmail === contactEmailLower);
-
-            if (!isMatch && payload.campaign_id && dbCampaignsData) {
-              const camp = dbCampaignsData.find((c: any) => c.id === payload.campaign_id);
-              if (camp && camp.target_list) {
-                const tStr = camp.target_list.toLowerCase();
-                if (tStr.includes(contactEmailLower) || (contact.first_name && tStr.includes(contact.first_name.toLowerCase()))) {
-                  isMatch = true;
-                }
-              }
-            }
 
             if (isMatch) {
               const isClick = te.event_type === "email.click";
@@ -530,22 +491,23 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         if (courseEventsData && courseEventsData.length > 0) {
           courseEventsData.forEach((ce: any) => {
+            const cName = ce.metadata?.course_name || ce.courses?.name || "Realizzare";
             let label = "Evento do Curso (WordPress)";
-            let details = `Curso: ${ce.metadata?.course_name || "Realizzare"}`;
+            let details = `Curso: ${cName}`;
             let type = "enrollment";
             let note = "";
 
             if (ce.event_type === "started") {
               label = "Matrícula em Curso (WordPress)";
-              details = `Matriculado no curso '${ce.metadata?.course_name || "Introdução à Programação Web"}'`;
+              details = `Matriculado no curso '${cName}'`;
               type = "enrollment";
             } else if (ce.event_type === "progress_updated") {
               label = `Progresso de Aulas (${ce.metadata?.progress_percent || 0}%)`;
-              details = `Concluiu ${ce.metadata?.completed_lessons || 0} aulas do curso '${ce.metadata?.course_name || "Realizzare"}'`;
+              details = `Concluiu ${ce.metadata?.completed_lessons || 0} aulas do curso '${cName}'`;
               type = "enrollment";
             } else if (ce.event_type === "certificate_issued") {
               label = "Certificado Emitido (WordPress)";
-              details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${ce.metadata?.course_name || "Realizzare"}'`;
+              details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${cName}'`;
               type = "enrollment";
               note = "(1 crédito de certificado consumido)";
             }
@@ -1989,9 +1951,13 @@ export default function ContactProfilePage({ params }: PageProps) {
                 ))}
 
                 {visibleTimelineCount < draft.timeline.length ? (
-                  <div className="pt-2 text-center text-[10px] font-bold text-slate-400 animate-pulse">
-                    Role para carregar mais... ({Math.min(visibleTimelineCount, draft.timeline.length)} de {draft.timeline.length})
-                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setVisibleTimelineCount(prev => Math.min(prev + 10, draft.timeline.length))}
+                    className="w-full pt-2.5 pb-1 text-center text-[11px] font-bold text-indigo-650 hover:text-indigo-800 hover:underline cursor-pointer transition-colors"
+                  >
+                    Clique ou role para carregar mais ({Math.min(visibleTimelineCount, draft.timeline.length)} de {draft.timeline.length}) ↓
+                  </button>
                 ) : (
                   <div className="pt-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Fim do histórico ({draft.timeline.length} eventos)

@@ -132,6 +132,7 @@ export async function POST(request: Request) {
           course_id: courseDbId,
           event_type: "progress_updated",
           metadata: {
+            course_name: courseName,
             progress_percent: progressPercent,
             completed_lessons: payload.completed_lessons || 1,
             total_lessons: payload.total_lessons || 1,
