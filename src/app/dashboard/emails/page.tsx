@@ -413,20 +413,29 @@ export default function EmailsLibraryPage() {
   };
 
   const getFolderCategoryInfo = (folder: any) => {
-    const nameLower = (folder.name || "").toLowerCase();
+    const nameLower = (folder.name || "").toLowerCase().trim();
     const isPontual = folder.id === "folder-pontual" || folder.type === "pontual";
 
-    const isCustomFolder =
-      folder.isCustom ||
-      folder.type === "standalone" ||
-      folder.type === "custom" ||
-      (!folder.id.startsWith("folder-flow-") &&
-       !folder.id.startsWith("folder-boas") &&
-       !folder.id.startsWith("folder-carrinho") &&
-       !folder.id.startsWith("folder-nutricao") &&
-       folder.id !== "folder-pontual");
+    // Match against active/loaded flows list (from Supabase / mock flows)
+    const matchedFlow = flows.find(
+      (fl: any) =>
+        fl.id === folder.flowId ||
+        fl.id === folder.id?.replace("folder-", "") ||
+        (fl.name && nameLower && fl.name.trim().toLowerCase() === nameLower)
+    );
+
+    const isFlowFolder =
+      folder.type === "flow" ||
+      folder.flowId ||
+      folder.id?.startsWith("folder-flow-") ||
+      folder.id?.startsWith("folder-boas") ||
+      folder.id?.startsWith("folder-carrinho") ||
+      folder.id?.startsWith("folder-nutricao") ||
+      !!matchedFlow;
 
     const isTransactional =
+      matchedFlow?.type === "Transacional" ||
+      matchedFlow?.type === "transactional" ||
       folder.type === "transactional" ||
       folder.category === "transactional" ||
       nameLower.includes("carrinho") ||
@@ -447,32 +456,32 @@ export default function EmailsLibraryPage() {
       };
     }
 
-    if (isCustomFolder) {
+    if (isFlowFolder) {
+      if (isTransactional) {
+        return {
+          category: "transacionais",
+          label: "Fluxo Transacional",
+          badgeBg: "bg-purple-50 text-purple-700 border-purple-200",
+          icon: "💳",
+          canDelete: false
+        };
+      }
       return {
-        category: "campanhas",
-        label: "Pasta Manual (Campanhas)",
-        badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
-        icon: "📁",
-        canDelete: true
-      };
-    }
-
-    if (isTransactional) {
-      return {
-        category: "transacionais",
-        label: "Fluxo Transacional",
-        badgeBg: "bg-purple-50 text-purple-700 border-purple-200",
-        icon: "💳",
+        category: "cursos",
+        label: "Fluxo de Automação (Cursos)",
+        badgeBg: "bg-indigo-50 text-indigo-700 border-indigo-200",
+        icon: "⚡",
         canDelete: false
       };
     }
 
+    // Custom Standalone Manual Folder
     return {
-      category: "cursos",
-      label: "Fluxo de Automação (Cursos)",
-      badgeBg: "bg-indigo-50 text-indigo-700 border-indigo-200",
-      icon: "⚡",
-      canDelete: false
+      category: "campanhas",
+      label: "Pasta Manual (Campanhas)",
+      badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
+      icon: "📁",
+      canDelete: true
     };
   };
 
@@ -1563,130 +1572,163 @@ export default function EmailsLibraryPage() {
 
       {/* MODAL: Criar Nova Campanha / Template */}
       {showNewModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-lg w-full shadow-xl space-y-5 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                  <Plus className="h-5 w-5" />
-                </div>
-                <h2 className="text-base font-extrabold text-slate-900">Nova Campanha / Template</h2>
-              </div>
-              <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        (() => {
+          const currentTargetFolder = folders.find((f) => f.id === selectedFolderId);
 
-            <form onSubmit={handleCreateTemplate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Nome da Campanha / Template *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newTemplateName}
-                  onChange={(e) => setNewTemplateName(e.target.value)}
-                  placeholder="Ex: E-mail 01 - Boas-vindas ao Aluno"
-                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Linha de Assunto
-                </label>
-                <input
-                  type="text"
-                  value={newTemplateSubject}
-                  onChange={(e) => setNewTemplateSubject(e.target.value)}
-                  placeholder="Ex: 🎓 Seja bem-vindo à Realizzare Cursos!"
-                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Pré-cabeçalho (Texto de Apoio)
-                </label>
-                <input
-                  type="text"
-                  value={newTemplatePreheader}
-                  onChange={(e) => setNewTemplatePreheader(e.target.value)}
-                  placeholder="Ex: Confira como acessar suas aulas gratuitas..."
-                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Atribuir à Pasta / Fluxo
-                </label>
-                {!isCreatingNewFolder ? (
-                  <div className="space-y-2">
-                    <select
-                      value={selectedFolderId}
-                      onChange={(e) => {
-                        if (e.target.value === "NEW_FOLDER") {
-                          setIsCreatingNewFolder(true);
-                        } else {
-                          setSelectedFolderId(e.target.value);
-                        }
-                      }}
-                      className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
-                    >
-                      <option value="">Selecione uma pasta existente ou crie uma nova...</option>
-                      {folders.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          📁 {f.name}
-                        </option>
-                      ))}
-                      <option value="NEW_FOLDER" className="font-bold text-indigo-600">
-                        ➕ Criar Novo Fluxo / Pasta...
-                      </option>
-                    </select>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={customFolderName}
-                        onChange={(e) => setCustomFolderName(e.target.value)}
-                        placeholder="Digite o nome da nova pasta/fluxo..."
-                        className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setIsCreatingNewFolder(false)}
-                        className="text-xs text-slate-500 hover:text-slate-800 underline shrink-0 px-2 cursor-pointer"
-                      >
-                        Cancelar
-                      </button>
+          return (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-lg w-full shadow-xl space-y-5 animate-scaleUp">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                      <Plus className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-extrabold text-slate-900">
+                        {currentTargetFolder ? `Nova Campanha em "${currentTargetFolder.name}"` : "Nova Campanha / Template"}
+                      </h2>
+                      {currentTargetFolder && (
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Criando um novo e-mail diretamente nesta pasta
+                        </p>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
+                  <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" />
-                  Criar Rascunho
-                </button>
+                <form onSubmit={handleCreateTemplate} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Nome da Campanha / Template *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newTemplateName}
+                      onChange={(e) => setNewTemplateName(e.target.value)}
+                      placeholder="Ex: E-mail 01 - Boas-vindas ao Aluno"
+                      className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Linha de Assunto
+                    </label>
+                    <input
+                      type="text"
+                      value={newTemplateSubject}
+                      onChange={(e) => setNewTemplateSubject(e.target.value)}
+                      placeholder="Ex: 🎓 Seja bem-vindo à Realizzare Cursos!"
+                      className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Pré-cabeçalho (Texto de Apoio)
+                    </label>
+                    <input
+                      type="text"
+                      value={newTemplatePreheader}
+                      onChange={(e) => setNewTemplatePreheader(e.target.value)}
+                      placeholder="Ex: Confira como acessar suas aulas gratuitas..."
+                      className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    />
+                  </div>
+
+                  {/* FOLDER SELECTION - SHOWN ONLY IF OPENED WITHOUT PRE-SELECTED FOLDER */}
+                  {!currentTargetFolder ? (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Atribuir à Pasta / Fluxo
+                      </label>
+                      {!isCreatingNewFolder ? (
+                        <div className="space-y-2">
+                          <select
+                            value={selectedFolderId}
+                            onChange={(e) => {
+                              if (e.target.value === "NEW_FOLDER") {
+                                setIsCreatingNewFolder(true);
+                              } else {
+                                setSelectedFolderId(e.target.value);
+                              }
+                            }}
+                            className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                          >
+                            <option value="">Selecione uma pasta existente ou crie uma nova...</option>
+                            {folders.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                📁 {f.name}
+                              </option>
+                            ))}
+                            <option value="NEW_FOLDER" className="font-bold text-indigo-600">
+                              ➕ Criar Novo Fluxo / Pasta...
+                            </option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={customFolderName}
+                              onChange={(e) => setCustomFolderName(e.target.value)}
+                              placeholder="Digite o nome da nova pasta/fluxo..."
+                              className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setIsCreatingNewFolder(false)}
+                              className="text-xs text-slate-500 hover:text-slate-800 underline shrink-0 px-2 cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
+                          <FolderOpen className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] font-bold uppercase text-indigo-600 tracking-wider block">Pasta de Destino</span>
+                          <span className="text-xs font-extrabold text-slate-900">{currentTargetFolder.name}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold bg-white text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-md">
+                        Pasta Fixa
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowNewModal(false)}
+                      className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Criar Rascunho
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+          );
+        })()
       )}
 
       {/* MODAL: Full Web & Mobile Standalone Preview Modal */}

@@ -394,17 +394,57 @@ export default function AutomationsPage() {
   const handleSaveRename = async () => {
     if (!flowToRename || !renameValue.trim()) return;
 
+    const oldName = flowToRename.name;
+    const newName = renameValue.trim();
+
     try {
       const supabase = createClient();
       await supabase
         .from("flows")
         // @ts-ignore
-        .update({ name: renameValue } as any)
+        .update({ name: newName } as any)
         .eq("id", flowToRename.id);
 
       setFlows((prev) =>
-        prev.map((f) => (f.id === flowToRename.id ? { ...f, name: renameValue } : f))
+        prev.map((f) => (f.id === flowToRename.id ? { ...f, name: newName } : f))
       );
+
+      // 2-Way Sync: Update matching folder name and templates in localStorage
+      if (typeof window !== "undefined") {
+        const storedFolders = localStorage.getItem("realizzare_email_folders");
+        if (storedFolders) {
+          try {
+            let foldersList = JSON.parse(storedFolders);
+            const targetFolderId = `folder-${flowToRename.id}`;
+            foldersList = foldersList.map((f: any) => {
+              if (f.id === targetFolderId || f.name?.trim().toLowerCase() === oldName.trim().toLowerCase()) {
+                return { ...f, name: newName, type: "flow" };
+              }
+              return f;
+            });
+            localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        const storedTemplates = localStorage.getItem("realizzare_email_templates");
+        if (storedTemplates) {
+          try {
+            let templatesList = JSON.parse(storedTemplates);
+            templatesList = templatesList.map((t: any) => {
+              if (t.flowId === flowToRename.id || t.folderName?.trim().toLowerCase() === oldName.trim().toLowerCase()) {
+                return { ...t, folderName: newName, flowName: newName };
+              }
+              return t;
+            });
+            localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+
       setShowRenameModal(false);
       setFlowToRename(null);
     } catch (err) {
