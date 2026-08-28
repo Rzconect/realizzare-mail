@@ -222,6 +222,11 @@ export default function ContactProfilePage({ params }: PageProps) {
   const [profile, setProfile] = useState<any>(null);
   const [draft, setDraft] = useState<any>(null);
   const [visibleTimelineCount, setVisibleTimelineCount] = useState(10);
+  const [expandedEventIds, setExpandedEventIds] = useState<Record<string, boolean>>({});
+
+  const toggleEventExpand = (evtId: string) => {
+    setExpandedEventIds((prev) => ({ ...prev, [evtId]: !prev[evtId] }));
+  };
 
   const handleTimelineScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -478,29 +483,31 @@ export default function ContactProfilePage({ params }: PageProps) {
 
                 rawEvents.push({
                   id: te.id || Math.random().toString(),
-                  type: isClick ? "click" : "open",
+                  type: isClick ? "email_click" : "open",
                   label: isClick ? "E-mail Clicado" : "E-mail Aberto",
                   details: isClick
                     ? `${flowPrefix}Clicou no link da campanha '${campTitle}'`
                     : `${flowPrefix}Abriu o e-mail da campanha '${campTitle}'`,
+                  payload: payload,
                   timestamp: te.created_at
                 });
               } else if (isDataLayerAction) {
                 const actionPayload = payload.payload || {};
                 const actionType = actionPayload.action_type || payload.event || "checkout_click";
-                const itemTitle = actionPayload.item_title || actionPayload.item || "Certificado IES/MEC";
-                const sku = actionPayload.sku ? ` (SKU: ${actionPayload.sku})` : "";
+                const itemTitle = actionPayload.item_title || actionPayload.item || "Emitir Certificado";
+                const sku = actionPayload.sku ? `(SKU: ${actionPayload.sku})` : "";
 
-                let label = "Clique em Botão (DataLayer)";
-                if (actionType === "checkout_click") {
-                  label = "Intenção de Compra / Checkout (DataLayer)";
+                let label = `Botão acionado: ${itemTitle}`;
+                if (actionType === "checkout_click" && (!actionPayload.item_title && !actionPayload.item)) {
+                  label = "Botão acionado: Emitir Certificado";
                 }
 
                 rawEvents.push({
                   id: te.id || Math.random().toString(),
-                  type: "click",
+                  type: "button_click",
                   label,
-                  details: `Clicou no botão para adquirir '${itemTitle}'${sku}`,
+                  details: `'${itemTitle}' ${sku}`.trim(),
+                  payload: payload,
                   timestamp: te.created_at || payload.timestamp
                 });
               }
@@ -537,6 +544,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               label,
               details,
               note: ce.metadata?.note || note,
+              payload: ce.metadata || { course_name: cName, event_type: ce.event_type },
               timestamp: ce.created_at
             });
           });
@@ -554,6 +562,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               type: "purchase",
               label: isPaid ? "Compra Aprovada (Pagar.me)" : "Transação Registrada",
               details: `Adquiriu '${prodName}' - R$ ${amtStr}`,
+              payload: p,
               timestamp: p.paid_at || p.created_at
             });
           });
@@ -576,6 +585,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               type: "purchase",
               label: "Compra Aprovada (Pagar.me)",
               details: `Adquiriu '${title}' - R$ ${amtStr}`,
+              payload: meta,
               timestamp: re.created_at
             });
           });
@@ -587,6 +597,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           type: "import",
           label: "Contato Cadastrado",
           details: `Cadastrado via ${contact.source || "WordPress Realizzare Integration"}`,
+          payload: { contact_id: contact.id, source: contact.source, created_at: contact.created_at, email: contact.email },
           timestamp: contact.created_at
         });
 
@@ -606,12 +617,13 @@ export default function ContactProfilePage({ params }: PageProps) {
             label: e.label || "Evento Registrado",
             details: e.details || "",
             note: e.note || "",
+            payload: e.payload || null,
             timestamp: e.timestamp
           }));
 
         const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
         const emailsOpenedCount = rawEvents.filter((e) => e.type === "open").length;
-        const emailsClickedCount = rawEvents.filter((e) => e.type === "click").length;
+        const emailsClickedCount = rawEvents.filter((e) => e.type === "email_click").length;
 
         const profileObj = {
           first_name: contact.first_name || "",
@@ -1079,8 +1091,11 @@ export default function ContactProfilePage({ params }: PageProps) {
 
   const getTimelineIcon = (type: string) => {
     switch (type) {
-      case "click":
+      case "button_click":
         return <MousePointerClick className="h-3.5 w-3.5 text-emerald-650" />;
+      case "email_click":
+      case "click":
+        return <MousePointerClick className="h-3.5 w-3.5 text-blue-600" />;
       case "open":
         return <Eye className="h-3.5 w-3.5 text-indigo-600" />;
       case "send":
@@ -1096,8 +1111,11 @@ export default function ContactProfilePage({ params }: PageProps) {
 
   const getTimelineBadgeClass = (type: string) => {
     switch (type) {
-      case "click":
+      case "button_click":
         return "bg-emerald-50 border border-emerald-200";
+      case "email_click":
+      case "click":
+        return "bg-blue-50 border border-blue-200";
       case "open":
         return "bg-indigo-50 border border-indigo-200";
       case "send":
@@ -1107,7 +1125,7 @@ export default function ContactProfilePage({ params }: PageProps) {
       case "purchase":
         return "bg-amber-50 border border-amber-200";
       default:
-        return "bg-slate-105 bg-slate-100 border border-slate-200";
+        return "bg-slate-100 border border-slate-200";
     }
   };
 
@@ -1951,12 +1969,12 @@ export default function ContactProfilePage({ params }: PageProps) {
                     {/* Clean Content block */}
                     <div className="space-y-1 ml-1 animate-fadeIn">
                       <div className="flex items-center justify-between gap-2.5">
-                        <span className="text-xs font-bold text-slate-800">{event.label}</span>
+                        <span className="text-xs font-bold text-slate-800 leading-snug">{event.label}</span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0">
                           {formatTimelineTimestamp(event.timestamp)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 leading-normal">{event.details}</p>
+                      <p className="text-xs text-slate-600 font-medium leading-normal">{event.details}</p>
                       {event.note && (
                         <div className="pt-0.5">
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/90 text-[11px] font-extrabold shadow-2xs">
@@ -1965,6 +1983,30 @@ export default function ContactProfilePage({ params }: PageProps) {
                           </span>
                         </div>
                       )}
+
+                      {/* Advanced Data Payload Toggle */}
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleEventExpand(event.id)}
+                          className="text-[10px] font-bold text-indigo-650 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <span>{expandedEventIds[event.id] ? "Ocultar Dados Avançados" : "Ver Dados Avançados (Payload)"}</span>
+                          <span className="text-[8px]">{expandedEventIds[event.id] ? "▲" : "▼"}</span>
+                        </button>
+
+                        {expandedEventIds[event.id] && (
+                          <div className="mt-2 p-3 bg-slate-900 text-slate-100 rounded-2xl text-[11px] font-mono overflow-x-auto shadow-md border border-slate-800 animate-fadeIn space-y-1">
+                            <div className="text-[9px] font-sans font-extrabold text-slate-400 uppercase tracking-wider mb-1.5 border-b border-slate-800 pb-1 flex justify-between items-center">
+                              <span>Dados brutos recebidos (JSON)</span>
+                              <span className="text-emerald-400 font-mono">200 OK</span>
+                            </div>
+                            <pre className="whitespace-pre-wrap break-all text-emerald-400 leading-relaxed font-semibold">
+                              {JSON.stringify(event.payload || { label: event.label, details: event.details, timestamp: event.timestamp }, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
