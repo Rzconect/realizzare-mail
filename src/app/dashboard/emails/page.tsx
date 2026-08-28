@@ -682,10 +682,13 @@ export default function EmailsLibraryPage() {
     const target = templates.find((t) => t.id === templateId);
     if (!target) return;
 
-    // Block deletion of email templates belonging to automation flows
-    if (target.flowId || target.nodeId) {
+    // A template is a bound flow step ONLY if it has an active nodeId inside an automation canvas AND is not a copy/draft created in the folder
+    const isCopy = target.name.startsWith("Cópia");
+    const isBoundFlowNode = !!target.nodeId && target.status === "Ativo" && !isCopy;
+
+    if (isBoundFlowNode) {
       alert(
-        `⚠️ Não é possível excluir este e-mail por aqui pois ele faz parte de um funil de automação ("${target.flowName || "do fluxo"}"), estando ele ativo ou não.\n\nA exclusão deste e-mail específico deve ser feita diretamente na tela do fluxo no editor de Automações.`
+        `⚠️ Não é possível excluir este e-mail por aqui pois ele é uma etapa ativa no funil de automação ("${target.flowName || "do fluxo"}").\n\nA exclusão desta etapa específica deve ser feita diretamente no editor do fluxo em Automações.`
       );
       return;
     }
@@ -693,7 +696,7 @@ export default function EmailsLibraryPage() {
     if (confirm(`Tem certeza que deseja excluir a campanha "${target.name}"?`)) {
       const updated = templates.filter((t) => t.id !== templateId);
       saveToStorage(folders, updated);
-      showToast("Campanha excluída com sucesso.");
+      showToast(`Campanha "${target.name}" excluída com sucesso.`);
     }
   };
 
