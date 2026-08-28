@@ -201,6 +201,61 @@ function formatTimelineTimestamp(ts: string): string {
   return ts;
 }
 
+function formatPayloadKeyValues(payload: any): Array<{ key: string; value: string }> {
+  if (!payload || typeof payload !== "object") return [];
+
+  const data = payload.payload ? { ...payload, ...payload.payload } : { ...payload };
+  delete data.payload;
+
+  const labelMap: Record<string, string> = {
+    event: "Evento",
+    action_type: "Tipo de Ação",
+    item_title: "Item / Produto",
+    item: "Item / Produto",
+    sku: "SKU",
+    course_id: "ID do Curso",
+    course_name: "Nome do Curso",
+    progress_percent: "Progresso (%)",
+    completed_lessons: "Aulas Concluídas",
+    total_lessons: "Total de Aulas",
+    milestone: "Marco",
+    is_paid_course: "Curso Pago",
+    email: "E-mail do Aluno",
+    first_name: "Nome do Aluno",
+    url: "Link da Página",
+    page_url: "Link da Página",
+    timestamp: "Data / Hora",
+    source: "Origem",
+    provider: "Provedor",
+    status: "Status",
+    amount: "Valor",
+    code: "Código do Certificado"
+  };
+
+  const result: Array<{ key: string; value: string }> = [];
+
+  Object.entries(data).forEach(([rawKey, val]) => {
+    if (val === null || val === undefined || rawKey === "org_id" || rawKey === "contact_id") return;
+
+    const displayKey = labelMap[rawKey] || rawKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    let displayVal = String(val);
+
+    if (typeof val === "boolean") {
+      displayVal = val ? "Sim" : "Não";
+    } else if (typeof val === "object") {
+      try { displayVal = JSON.stringify(val); } catch (e) {}
+    }
+
+    if (rawKey === "amount" && typeof val === "number") {
+      displayVal = `R$ ${val.toFixed(2).replace(".", ",")}`;
+    }
+
+    result.push({ key: displayKey, value: displayVal });
+  });
+
+  return result;
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -1968,45 +2023,57 @@ export default function ContactProfilePage({ params }: PageProps) {
 
                     {/* Clean Content block */}
                     <div className="space-y-1 ml-1 animate-fadeIn">
-                      <div className="flex items-center justify-between gap-2.5">
-                        <span className="text-xs font-bold text-slate-800 leading-snug">{event.label}</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0">
+                      {/* Stacked Title & Timestamp for clean non-wrapping layout */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => toggleEventExpand(event.id)}
+                          className="w-full flex items-start justify-between gap-2 text-left group/title cursor-pointer py-0.5"
+                        >
+                          <span className="text-xs font-black text-slate-850 leading-snug group-hover/title:text-indigo-650 transition-colors">
+                            {event.label}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold shrink-0 pt-0.5 transition-transform">
+                            {expandedEventIds[event.id] ? "▲" : "▼"}
+                          </span>
+                        </button>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
                           {formatTimelineTimestamp(event.timestamp)}
-                        </span>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-600 font-medium leading-normal">{event.details}</p>
+
+                      <p className="text-xs text-slate-600 font-medium leading-relaxed pt-0.5">{event.details}</p>
+
                       {event.note && (
-                        <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/90 text-[11px] font-extrabold shadow-2xs">
+                        <div className="pt-1">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/90 text-[11px] font-extrabold">
                             <Coins className="h-3 w-3 text-amber-500 shrink-0" />
                             {event.note}
                           </span>
                         </div>
                       )}
 
-                      {/* Advanced Data Payload Toggle */}
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          onClick={() => toggleEventExpand(event.id)}
-                          className="text-[10px] font-bold text-indigo-650 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          <span>{expandedEventIds[event.id] ? "Ocultar Dados Avançados" : "Ver Dados Avançados (Payload)"}</span>
-                          <span className="text-[8px]">{expandedEventIds[event.id] ? "▲" : "▼"}</span>
-                        </button>
-
-                        {expandedEventIds[event.id] && (
-                          <div className="mt-2 p-3 bg-slate-900 text-slate-100 rounded-2xl text-[11px] font-mono overflow-x-auto shadow-md border border-slate-800 animate-fadeIn space-y-1">
-                            <div className="text-[9px] font-sans font-extrabold text-slate-400 uppercase tracking-wider mb-1.5 border-b border-slate-800 pb-1 flex justify-between items-center">
-                              <span>Dados brutos recebidos (JSON)</span>
-                              <span className="text-emerald-400 font-mono">200 OK</span>
-                            </div>
-                            <pre className="whitespace-pre-wrap break-all text-emerald-400 leading-relaxed font-semibold">
-                              {JSON.stringify(event.payload || { label: event.label, details: event.details, timestamp: event.timestamp }, null, 2)}
-                            </pre>
+                      {/* Collapsible Key-Value Details Panel */}
+                      {expandedEventIds[event.id] && (
+                        <div className="mt-2.5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-xs shadow-xs animate-fadeIn space-y-2">
+                          <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200/70 pb-1.5 flex justify-between items-center">
+                            <span>Informações do Evento</span>
+                            <span className="text-emerald-600 font-bold">● Processado</span>
                           </div>
-                        )}
-                      </div>
+                          <div className="space-y-2 pt-0.5">
+                            {formatPayloadKeyValues(event.payload).length > 0 ? (
+                              formatPayloadKeyValues(event.payload).map((item, i) => (
+                                <div key={i} className="flex flex-col text-xs leading-tight space-y-0.5">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.key}:</span>
+                                  <span className="font-semibold text-slate-800 break-all select-all">{item.value}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-xs text-slate-500 italic">Nenhum dado adicional recebido.</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
