@@ -45,7 +45,21 @@ export default function EmailsLibraryPage() {
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "active">("all");
   const [selectedFolderFilter, setSelectedFolderFilter] = useState<string>("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
+  const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
+  const [folderDropdownSearch, setFolderDropdownSearch] = useState("");
   const [deletingFolder, setDeletingFolder] = useState<any | null>(null);
+
+  // Close folder dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".folder-dropdown-container")) {
+        setIsFolderDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   // Storage states
   const [folders, setFolders] = useState<any[]>([]);
@@ -366,11 +380,8 @@ export default function EmailsLibraryPage() {
       setFolders(loadedFolders);
       setTemplates(loadedTemplates);
 
-      if (loadedFolders.length > 0) {
-        const initialOpenMap: Record<string, boolean> = {};
-        initialOpenMap[loadedFolders[0].id] = true;
-        setOpenFolderIds(initialOpenMap);
-      }
+      // Keep all folders closed by default on initial page load
+      setOpenFolderIds({});
 
       localStorage.setItem("realizzare_email_folders", JSON.stringify(loadedFolders));
       localStorage.setItem("realizzare_email_templates", JSON.stringify(loadedTemplates));
@@ -896,18 +907,101 @@ export default function EmailsLibraryPage() {
             </button>
           </div>
 
-          <select
-            value={selectedFolderFilter}
-            onChange={(e) => setSelectedFolderFilter(e.target.value)}
-            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
-          >
-            <option value="all">Todas as Pastas</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                📁 {f.name}
-              </option>
-            ))}
-          </select>
+          {/* SEARCHABLE FOLDER SELECT DROPDOWN */}
+          <div className="relative folder-dropdown-container">
+            <button
+              type="button"
+              onClick={() => setIsFolderDropdownOpen(!isFolderDropdownOpen)}
+              className="text-xs font-bold bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 flex items-center justify-between gap-2.5 min-w-[210px] cursor-pointer transition-all shadow-2xs"
+            >
+              <span className="truncate flex items-center gap-1.5">
+                <Folder className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                <span className="truncate">
+                  {selectedFolderFilter === "all"
+                    ? "Todas as Pastas"
+                    : folders.find((f) => f.id === selectedFolderFilter)?.name || "Todas as Pastas"}
+                </span>
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            </button>
+
+            {isFolderDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 w-72 space-y-1.5 animate-scaleUp">
+                {/* Search Input inside Dropdown */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={folderDropdownSearch}
+                    onChange={(e) => setFolderDropdownSearch(e.target.value)}
+                    placeholder="Pesquisar pasta..."
+                    className="w-full pl-8 pr-7 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  {folderDropdownSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setFolderDropdownSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Options List */}
+                <div className="max-h-56 overflow-y-auto space-y-0.5 pt-1 pr-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFolderFilter("all");
+                      setIsFolderDropdownOpen(false);
+                      setFolderDropdownSearch("");
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer transition-colors ${
+                      selectedFolderFilter === "all"
+                        ? "bg-indigo-50 text-indigo-700 font-extrabold"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>📁 Todas as Pastas</span>
+                    <span className="text-[10px] text-slate-400 font-normal">({folders.length})</span>
+                  </button>
+
+                  {folders
+                    .filter((f) => f.name.toLowerCase().includes(folderDropdownSearch.toLowerCase()))
+                    .map((f) => {
+                      const count = templates.filter((t) => t.folderId === f.id).length;
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedFolderFilter(f.id);
+                            // Auto open folder when selected
+                            setOpenFolderIds((prev) => ({ ...prev, [f.id]: true }));
+                            setIsFolderDropdownOpen(false);
+                            setFolderDropdownSearch("");
+                          }}
+                          className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer transition-colors ${
+                            selectedFolderFilter === f.id
+                              ? "bg-indigo-50 text-indigo-700 font-extrabold"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="truncate pr-2">📁 {f.name}</span>
+                          <span className="text-[10px] text-slate-400 font-normal shrink-0">({count})</span>
+                        </button>
+                      );
+                    })}
+
+                  {folders.filter((f) => f.name.toLowerCase().includes(folderDropdownSearch.toLowerCase())).length === 0 && (
+                    <p className="text-[11px] text-slate-400 text-center py-3 font-medium">Nenhuma pasta encontrada</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* NEW: FOLDER CATEGORY FILTER (Campanhas, Cursos/Automações, Transacionais) */}
           <select
@@ -1737,45 +1831,45 @@ export default function EmailsLibraryPage() {
       {/* MODAL: Full Web & Mobile Standalone Preview Modal */}
       {fullPreviewTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 md:p-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-4xl w-full h-[85vh] shadow-2xl flex flex-col justify-between overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-5xl w-full h-[90vh] max-h-[850px] shadow-2xl flex flex-col justify-between overflow-hidden animate-scaleUp">
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div>
                 <h2 className="text-base font-extrabold text-slate-900">{fullPreviewTemplate.name}</h2>
-                <p className="text-xs text-slate-500">Assunto: "{fullPreviewTemplate.subject}"</p>
+                <p className="text-xs text-slate-500 font-medium">Assunto: "{fullPreviewTemplate.subject}"</p>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex border border-slate-200 rounded-xl bg-slate-100 p-1 text-xs font-bold">
+                <div className="flex border border-slate-250 rounded-xl bg-slate-200/70 p-1 text-xs font-bold">
                   <button
                     onClick={() => setPreviewDevice("desktop")}
-                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                      previewDevice === "desktop" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-500"
+                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                      previewDevice === "desktop" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     <Laptop className="h-3.5 w-3.5" /> Desktop / Web
                   </button>
                   <button
                     onClick={() => setPreviewDevice("mobile")}
-                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                      previewDevice === "mobile" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-500"
+                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                      previewDevice === "mobile" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     <Smartphone className="h-3.5 w-3.5" /> Mobile
                   </button>
                 </div>
 
-                <button onClick={() => setFullPreviewTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <button onClick={() => setFullPreviewTemplate(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-xl transition-all cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 bg-slate-100 rounded-xl p-4 overflow-y-auto flex justify-center items-center">
+            <div className="flex-1 bg-slate-100/80 p-4 md:p-6 overflow-y-auto flex justify-center items-center relative shadow-inner">
               {previewDevice === "desktop" ? (
-                <div className="bg-white rounded-xl border border-slate-200 shadow-md w-full max-w-2xl h-full overflow-hidden flex flex-col">
-                  <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-500 font-semibold flex items-center justify-between">
-                    <span>De: contato@realizzarecursos.com.br</span>
-                    <span>Para: aluno@exemplo.com.br</span>
+                <div className="bg-white rounded-2xl border border-slate-300/80 shadow-md w-full max-w-3xl h-full overflow-hidden flex flex-col">
+                  <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-500 font-semibold flex items-center justify-between shrink-0">
+                    <span className="truncate">De: contato@realizzarecursos.com.br</span>
+                    <span className="truncate">Para: aluno@exemplo.com.br</span>
                   </div>
                   <iframe
                     title="Full Desktop Preview"
@@ -1784,11 +1878,27 @@ export default function EmailsLibraryPage() {
                   />
                 </div>
               ) : (
-                <div className="w-[340px] h-[540px] bg-slate-900 rounded-[32px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col relative">
-                  <div className="w-20 h-4 bg-slate-800 rounded-full mx-auto mb-2 shrink-0" />
-                  <div className="bg-white rounded-[20px] flex-1 overflow-hidden flex flex-col">
-                    <div className="bg-slate-50 border-b border-slate-200 p-2.5 text-[9px] text-slate-600 font-bold border-b border-slate-100">
-                      Assunto: {fullPreviewTemplate.subject}
+                /* REALISTIC SMARTPHONE MOCKUP FRAME */
+                <div className="w-[360px] h-[580px] bg-slate-900 rounded-[44px] p-3.5 shadow-2xl border-4 border-slate-800 flex flex-col relative mx-auto my-auto shrink-0 select-none">
+                  {/* Dynamic Island / Notch */}
+                  <div className="w-28 h-4 bg-black rounded-full mx-auto mb-2 shrink-0 flex items-center justify-center gap-1.5">
+                    <div className="w-2.5 h-2.5 bg-slate-900 rounded-full" />
+                    <div className="w-1.5 h-1.5 bg-indigo-950 rounded-full" />
+                  </div>
+
+                  {/* Status Bar */}
+                  <div className="px-5 pb-1.5 text-[10px] text-slate-300 font-bold flex items-center justify-between shrink-0">
+                    <span>9:41</span>
+                    <div className="flex items-center gap-1 text-[9px]">
+                      <span>5G</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  {/* Screen Content */}
+                  <div className="bg-white rounded-[28px] flex-1 overflow-hidden flex flex-col border border-slate-800 shadow-inner">
+                    <div className="bg-slate-50 border-b border-slate-100 p-2.5 text-[9.5px] text-slate-700 font-extrabold truncate shrink-0">
+                      Assunto: {fullPreviewTemplate.subject || "(Sem assunto)"}
                     </div>
                     <iframe
                       title="Full Mobile Preview"
@@ -1796,14 +1906,17 @@ export default function EmailsLibraryPage() {
                       className="w-full flex-1 border-0 bg-white"
                     />
                   </div>
+
+                  {/* Home Bar Indicator */}
+                  <div className="w-32 h-1 bg-slate-400/80 rounded-full mx-auto mt-2 shrink-0" />
                 </div>
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+            <div className="px-6 py-3.5 bg-white border-t border-slate-200 flex items-center justify-end shrink-0">
               <button
                 onClick={() => setFullPreviewTemplate(null)}
-                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer"
               >
                 Fechar Visualização
               </button>
@@ -1815,107 +1928,164 @@ export default function EmailsLibraryPage() {
       {/* MODAL: HTML Editor with Web & Mobile Preview Tab Option */}
       {editingTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col justify-between">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h2 className="text-base font-extrabold text-slate-900">{editingTemplate.name}</h2>
-                <p className="text-xs text-slate-500">Edite o assunto, pré-header e o código HTML da campanha.</p>
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-5xl w-full h-[90vh] max-h-[850px] shadow-2xl flex flex-col justify-between overflow-hidden animate-scaleUp">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl">
+                  <Edit3 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900 tracking-tight">{editingTemplate.name}</h2>
+                  <p className="text-xs text-slate-500 font-medium">Edite o assunto, pré-header e o código HTML da campanha.</p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
+              <div className="flex items-center gap-3 self-end sm:self-auto">
+                <div className="flex border border-slate-250 rounded-xl bg-slate-200/70 p-1 text-xs font-bold">
                   <button
+                    type="button"
                     onClick={() => setEditorTab("preview")}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${editorTab === "preview" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500"}`}
+                    className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      editorTab === "preview" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
+                    }`}
                   >
-                    <Eye className="h-3.5 w-3.5 inline mr-1" />
-                    Pré-visualização
+                    <Eye className="h-3.5 w-3.5 text-indigo-600" />
+                    <span>Pré-visualização</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setEditorTab("edit")}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${editorTab === "edit" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500"}`}
+                    className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      editorTab === "edit" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
+                    }`}
                   >
-                    <Code className="h-3.5 w-3.5 inline mr-1" />
-                    Código HTML
+                    <Code className="h-3.5 w-3.5 text-indigo-600" />
+                    <span>Código HTML</span>
                   </button>
                 </div>
 
-                <button onClick={() => setEditingTemplate(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setEditingTemplate(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-xl transition-all cursor-pointer"
+                >
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
             {/* Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="px-6 py-3.5 bg-white border-b border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Linha de Assunto</label>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
+                  Linha de Assunto
+                </label>
                 <input
                   type="text"
                   value={editSubject}
                   onChange={(e) => setEditSubject(e.target.value)}
-                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Ex: 🎓 Seja bem-vindo à Realizzare Cursos!"
+                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pré-cabeçalho (Preheader)</label>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
+                  Pré-cabeçalho (Preheader)
+                </label>
                 <input
                   type="text"
                   value={editPreviewText}
                   onChange={(e) => setEditPreviewText(e.target.value)}
-                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Ex: Confira como acessar suas primeiras aulas..."
+                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
               </div>
             </div>
 
-            {/* Editor Body with Desktop / Mobile Device Selector inside Preview Tab */}
-            <div className="flex-1 overflow-y-auto min-h-[300px] border border-slate-200 rounded-xl bg-slate-50 p-4">
+            {/* Editor Body */}
+            <div className="flex-1 bg-slate-100/80 p-4 md:p-6 overflow-hidden flex flex-col">
               {editorTab === "edit" ? (
                 <textarea
                   value={editHtmlContent}
                   onChange={(e) => setEditHtmlContent(e.target.value)}
                   placeholder="<div>Cole ou digite seu código HTML aqui...</div>"
-                  className="w-full h-72 font-mono text-xs p-3 bg-slate-900 text-emerald-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-slate-800"
+                  className="w-full h-full font-mono text-xs p-4 bg-slate-900 text-emerald-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-slate-800 resize-none shadow-inner"
                 />
               ) : (
-                <div className="space-y-3 h-full flex flex-col">
-                  {/* Inline Preview Device Toggle inside Editor */}
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                    <span className="text-xs font-bold text-slate-500">Visualização de Renderização:</span>
-                    <div className="flex border border-slate-200 rounded-lg bg-slate-200/60 p-0.5 text-xs font-bold">
+                <div className="h-full flex flex-col space-y-3 overflow-hidden">
+                  {/* Device Selector */}
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2.5 shrink-0">
+                    <span className="text-xs font-bold text-slate-600">Dispositivo de Renderização:</span>
+                    <div className="flex border border-slate-250 rounded-xl bg-slate-200/70 p-1 text-xs font-bold">
                       <button
                         type="button"
                         onClick={() => setEditorPreviewDevice("desktop")}
-                        className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
-                          editorPreviewDevice === "desktop" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600"
+                        className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                          editorPreviewDevice === "desktop" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        <Laptop className="h-3 w-3" /> Web / Desktop
+                        <Laptop className="h-3.5 w-3.5" /> Web / Desktop
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditorPreviewDevice("mobile")}
-                        className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
-                          editorPreviewDevice === "mobile" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600"
+                        className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                          editorPreviewDevice === "mobile" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        <Smartphone className="h-3 w-3" /> Mobile
+                        <Smartphone className="h-3.5 w-3.5" /> Mobile (Celular)
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex-1 flex justify-center items-center bg-slate-100 p-3 rounded-xl">
+                  {/* Render Container */}
+                  <div className="flex-1 bg-slate-200/50 rounded-2xl p-4 overflow-y-auto flex items-center justify-center relative shadow-inner">
                     {editorPreviewDevice === "desktop" ? (
-                      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 w-full h-full overflow-y-auto">
-                        <div dangerouslySetInnerHTML={{ __html: editHtmlContent || "<p class='text-slate-400 text-xs italic'>Nenhum conteúdo HTML definido.</p>" }} />
+                      <div className="bg-white rounded-2xl border border-slate-300/80 shadow-md w-full max-w-3xl h-full flex flex-col overflow-hidden">
+                        <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-500 font-semibold flex items-center justify-between shrink-0">
+                          <span className="truncate">De: contato@realizzarecursos.com.br</span>
+                          <span className="truncate">Para: aluno@exemplo.com.br</span>
+                        </div>
+                        <iframe
+                          title="Desktop Editor Preview"
+                          srcDoc={editHtmlContent || "<div style='padding: 24px; text-align: center; color: #94a3b8; font-family: sans-serif;'>Nenhum conteúdo HTML definido.</div>"}
+                          className="w-full flex-1 border-0 bg-white"
+                        />
                       </div>
                     ) : (
-                      <div className="w-[320px] h-[340px] bg-slate-900 rounded-[28px] p-2.5 shadow-xl border-4 border-slate-800 flex flex-col">
-                        <div className="w-16 h-3 bg-slate-800 rounded-full mx-auto mb-1.5 shrink-0" />
-                        <div className="bg-white rounded-[18px] flex-1 overflow-y-auto p-3 text-xs">
-                          <div dangerouslySetInnerHTML={{ __html: editHtmlContent || "<p class='text-slate-400 text-xs italic'>Nenhum conteúdo HTML definido.</p>" }} />
+                      /* REALISTIC SMARTPHONE MOCKUP FRAME */
+                      <div className="w-[360px] h-[580px] bg-slate-900 rounded-[44px] p-3.5 shadow-2xl border-4 border-slate-800 flex flex-col relative mx-auto my-auto shrink-0 select-none">
+                        {/* Dynamic Island / Notch */}
+                        <div className="w-28 h-4 bg-black rounded-full mx-auto mb-2 shrink-0 flex items-center justify-center gap-1.5">
+                          <div className="w-2.5 h-2.5 bg-slate-900 rounded-full" />
+                          <div className="w-1.5 h-1.5 bg-indigo-950 rounded-full" />
                         </div>
+
+                        {/* Status Bar */}
+                        <div className="px-5 pb-1.5 text-[10px] text-slate-300 font-bold flex items-center justify-between shrink-0">
+                          <span>9:41</span>
+                          <div className="flex items-center gap-1 text-[9px]">
+                            <span>5G</span>
+                            <span>100%</span>
+                          </div>
+                        </div>
+
+                        {/* Phone Screen Container */}
+                        <div className="bg-white rounded-[28px] flex-1 overflow-hidden flex flex-col border border-slate-800 shadow-inner">
+                          <div className="bg-slate-50 border-b border-slate-100 p-2.5 text-[9.5px] text-slate-700 font-extrabold truncate shrink-0">
+                            Assunto: {editSubject || "(Sem assunto)"}
+                          </div>
+                          <iframe
+                            title="Mobile Editor Preview"
+                            srcDoc={editHtmlContent || "<div style='padding: 20px; text-align: center; color: #94a3b8; font-family: sans-serif; font-size: 12px;'>Nenhum conteúdo HTML definido.</div>"}
+                            className="w-full flex-1 border-0 bg-white"
+                          />
+                        </div>
+
+                        {/* Home Indicator Bar */}
+                        <div className="w-32 h-1 bg-slate-400/80 rounded-full mx-auto mt-2 shrink-0" />
                       </div>
                     )}
                   </div>
@@ -1923,18 +2093,19 @@ export default function EmailsLibraryPage() {
               )}
             </div>
 
-            {/* Footer Buttons with Save Confirmation */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            {/* Footer Buttons */}
+            <div className="px-6 py-3.5 bg-white border-t border-slate-200 flex items-center justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setEditingTemplate(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
+                className="px-4.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handleSaveHtmlContent}
-                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer hover:scale-[1.01]"
               >
                 <Check className="h-4 w-4" />
                 Salvar Alterações
