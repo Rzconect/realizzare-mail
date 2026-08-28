@@ -1858,10 +1858,10 @@ export default function EmailsLibraryPage() {
         })()
       )}
 
-      {/* MODAL: Full Web & Mobile Standalone Preview Modal */}
+      {/* MODAL: Full Web & Mobile Standalone Preview Modal (Side-by-side Dual Preview) */}
       {fullPreviewTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 md:p-6">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-5xl w-full h-[90vh] max-h-[850px] shadow-2xl flex flex-col justify-between overflow-hidden animate-scaleUp">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-6xl w-full h-[90vh] max-h-[850px] shadow-2xl flex flex-col justify-between overflow-hidden animate-scaleUp">
             <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div>
                 <h2 className="text-base font-extrabold text-slate-900">{fullPreviewTemplate.name}</h2>
@@ -1869,78 +1869,61 @@ export default function EmailsLibraryPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex border border-slate-250 rounded-xl bg-slate-200/70 p-1 text-xs font-bold">
-                  <button
-                    onClick={() => setPreviewDevice("desktop")}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                      previewDevice === "desktop" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Laptop className="h-3.5 w-3.5" /> Desktop / Web
-                  </button>
-                  <button
-                    onClick={() => setPreviewDevice("mobile")}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                      previewDevice === "mobile" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Smartphone className="h-3.5 w-3.5" /> Mobile
-                  </button>
-                </div>
-
+                <span className="text-xs font-bold text-slate-600 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-200/60">
+                  ⚡ Visualização Dupla (Web + Mobile)
+                </span>
                 <button onClick={() => setFullPreviewTemplate(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-xl transition-all cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 bg-slate-100/80 p-4 md:p-6 overflow-y-auto flex justify-center items-center relative shadow-inner">
-              {previewDevice === "desktop" ? (
-                <div className="bg-white rounded-2xl border border-slate-300/80 shadow-md w-full max-w-3xl h-full overflow-hidden flex flex-col">
-                  <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-500 font-semibold flex items-center justify-between shrink-0">
-                    <span className="truncate">De: contato@realizzarecursos.com.br</span>
-                    <span className="truncate">Para: aluno@exemplo.com.br</span>
+            {/* DUAL PREVIEW BODY (LEFT: WEB / RIGHT: REALISTIC SMARTPHONE) */}
+            <div className="flex-1 bg-slate-100/80 p-4 md:p-5 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 relative shadow-inner">
+              {/* LEFT: Web / Desktop Preview */}
+              <div className="bg-white rounded-2xl border border-slate-300/80 shadow-md flex-1 w-full h-full flex flex-col overflow-hidden">
+                <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-600 font-bold flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <Laptop className="h-3.5 w-3.5 text-indigo-600" />
+                    <span>Versão Web / Desktop</span>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400 font-normal">
+                    <span>De: contato@realizzarecursos.com.br</span>
+                    <span>Para: aluno@exemplo.com.br</span>
+                  </div>
+                </div>
+                <iframe
+                  title="Full Desktop Preview"
+                  srcDoc={getScaledHtmlForPreview(fullPreviewTemplate.htmlContent, false)}
+                  className="w-full flex-1 border-0 bg-white"
+                />
+              </div>
+
+              {/* RIGHT: Smartphone Mockup (Tall 19.5:9 ratio) */}
+              <div className="w-[270px] md:w-[285px] h-[510px] max-h-full bg-slate-950 rounded-[42px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col relative shrink-0 select-none my-auto">
+                <div className="w-22 h-3.5 bg-black rounded-full mx-auto mb-1.5 shrink-0 flex items-center justify-center gap-1.5 border border-slate-800/80">
+                  <div className="w-2 h-2 bg-slate-900 rounded-full" />
+                  <div className="w-1.5 h-1.5 bg-indigo-950 rounded-full" />
+                </div>
+                <div className="px-4 pb-1 text-[9px] text-slate-300 font-bold flex items-center justify-between shrink-0">
+                  <span>9:41</span>
+                  <div className="flex items-center gap-1 text-[8px]">
+                    <span>5G</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-[26px] flex-1 overflow-hidden flex flex-col border border-slate-800/90 shadow-inner">
+                  <div className="bg-slate-50 border-b border-slate-100 p-2 text-[9px] text-slate-700 font-extrabold truncate shrink-0">
+                    Assunto: {fullPreviewTemplate.subject || "(Sem assunto)"}
                   </div>
                   <iframe
-                    title="Full Desktop Preview"
-                    srcDoc={getScaledHtmlForPreview(fullPreviewTemplate.htmlContent, false)}
+                    title="Full Mobile Preview"
+                    srcDoc={getScaledHtmlForPreview(fullPreviewTemplate.htmlContent, true)}
                     className="w-full flex-1 border-0 bg-white"
                   />
                 </div>
-              ) : (
-                /* REALISTIC SMARTPHONE MOCKUP FRAME - COMPACT FIT */
-                <div className="w-[300px] sm:w-[320px] h-[460px] sm:h-[480px] max-h-[100%] bg-slate-900 rounded-[38px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col relative mx-auto my-auto shrink-0 select-none">
-                  {/* Dynamic Island / Notch */}
-                  <div className="w-24 h-3.5 bg-black rounded-full mx-auto mb-1.5 shrink-0 flex items-center justify-center gap-1.5">
-                    <div className="w-2 h-2 bg-slate-900 rounded-full" />
-                    <div className="w-1.5 h-1.5 bg-indigo-950 rounded-full" />
-                  </div>
-
-                  {/* Status Bar */}
-                  <div className="px-4 pb-1 text-[9.5px] text-slate-300 font-bold flex items-center justify-between shrink-0">
-                    <span>9:41</span>
-                    <div className="flex items-center gap-1 text-[8.5px]">
-                      <span>5G</span>
-                      <span>100%</span>
-                    </div>
-                  </div>
-
-                  {/* Screen Content */}
-                  <div className="bg-white rounded-[24px] flex-1 overflow-hidden flex flex-col border border-slate-800 shadow-inner">
-                    <div className="bg-slate-50 border-b border-slate-100 p-2 text-[9px] text-slate-700 font-extrabold truncate shrink-0">
-                      Assunto: {fullPreviewTemplate.subject || "(Sem assunto)"}
-                    </div>
-                    <iframe
-                      title="Full Mobile Preview"
-                      srcDoc={getScaledHtmlForPreview(fullPreviewTemplate.htmlContent, true)}
-                      className="w-full flex-1 border-0 bg-white"
-                    />
-                  </div>
-
-                  {/* Home Bar Indicator */}
-                  <div className="w-28 h-1 bg-slate-400/80 rounded-full mx-auto mt-1.5 shrink-0" />
-                </div>
-              )}
+                <div className="w-24 h-1 bg-slate-400/80 rounded-full mx-auto mt-1.5 shrink-0" />
+              </div>
             </div>
 
             <div className="px-6 py-3.5 bg-white border-t border-slate-200 flex items-center justify-end shrink-0">
@@ -1955,10 +1938,10 @@ export default function EmailsLibraryPage() {
         </div>
       )}
 
-      {/* MODAL: HTML Editor with Web & Mobile Preview Tab Option */}
+      {/* MODAL: HTML Editor with Web & Mobile Dual Preview Option */}
       {editingTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-5xl w-full h-[90vh] max-h-[850px] shadow-2xl flex flex-col justify-between overflow-hidden animate-scaleUp">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-6xl w-full h-[90vh] max-h-[850px] shadow-2xl flex flex-col justify-between overflow-hidden animate-scaleUp">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
@@ -2035,7 +2018,7 @@ export default function EmailsLibraryPage() {
             </div>
 
             {/* Editor Body */}
-            <div className="flex-1 bg-slate-100/80 p-4 md:p-6 overflow-hidden flex flex-col">
+            <div className="flex-1 bg-slate-100/80 p-4 md:p-5 overflow-hidden flex flex-col">
               {editorTab === "edit" ? (
                 <textarea
                   value={editHtmlContent}
@@ -2044,80 +2027,58 @@ export default function EmailsLibraryPage() {
                   className="w-full h-full font-mono text-xs p-4 bg-slate-900 text-emerald-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-slate-800 resize-none shadow-inner"
                 />
               ) : (
-                <div className="h-full flex flex-col space-y-3 overflow-hidden">
-                  {/* Device Selector */}
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-2.5 shrink-0">
-                    <span className="text-xs font-bold text-slate-600">Dispositivo de Renderização:</span>
-                    <div className="flex border border-slate-250 rounded-xl bg-slate-200/70 p-1 text-xs font-bold">
-                      <button
-                        type="button"
-                        onClick={() => setEditorPreviewDevice("desktop")}
-                        className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                          editorPreviewDevice === "desktop" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        <Laptop className="h-3.5 w-3.5" /> Web / Desktop
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditorPreviewDevice("mobile")}
-                        className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                          editorPreviewDevice === "mobile" ? "bg-white text-indigo-600 shadow-xs font-extrabold" : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        <Smartphone className="h-3.5 w-3.5" /> Mobile (Celular)
-                      </button>
+                /* DUAL PREVIEW BODY (LEFT: WEB / RIGHT: REALISTIC SMARTPHONE) */
+                <div className="h-full flex flex-col md:flex-row items-center justify-between gap-4 md:gap-5 overflow-hidden">
+                  {/* LEFT: Web / Desktop Preview */}
+                  <div className="bg-white rounded-2xl border border-slate-300/80 shadow-md flex-1 w-full h-full flex flex-col overflow-hidden">
+                    <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-600 font-bold flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <Laptop className="h-3.5 w-3.5 text-indigo-600" />
+                        <span>Versão Web / Desktop</span>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400 font-normal">
+                        <span>De: contato@realizzarecursos.com.br</span>
+                        <span>Para: aluno@exemplo.com.br</span>
+                      </div>
                     </div>
+                    <iframe
+                      title="Desktop Editor Preview"
+                      srcDoc={getScaledHtmlForPreview(editHtmlContent, false)}
+                      className="w-full flex-1 border-0 bg-white"
+                    />
                   </div>
 
-                  {/* Render Container */}
-                  <div className="flex-1 bg-slate-200/50 rounded-2xl p-3 md:p-4 overflow-hidden flex items-center justify-center relative shadow-inner">
-                    {editorPreviewDevice === "desktop" ? (
-                      <div className="bg-white rounded-2xl border border-slate-300/80 shadow-md w-full max-w-3xl h-full flex flex-col overflow-hidden">
-                        <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-[11px] text-slate-500 font-semibold flex items-center justify-between shrink-0">
-                          <span className="truncate">De: contato@realizzarecursos.com.br</span>
-                          <span className="truncate">Para: aluno@exemplo.com.br</span>
-                        </div>
-                        <iframe
-                          title="Desktop Editor Preview"
-                          srcDoc={getScaledHtmlForPreview(editHtmlContent, false)}
-                          className="w-full flex-1 border-0 bg-white"
-                        />
+                  {/* RIGHT: Smartphone Mockup (Tall 19.5:9 ratio) */}
+                  <div className="w-[270px] md:w-[285px] h-[510px] max-h-full bg-slate-950 rounded-[42px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col relative shrink-0 select-none my-auto">
+                    {/* Dynamic Island / Notch */}
+                    <div className="w-22 h-3.5 bg-black rounded-full mx-auto mb-1.5 shrink-0 flex items-center justify-center gap-1.5 border border-slate-800/80">
+                      <div className="w-2 h-2 bg-slate-900 rounded-full" />
+                      <div className="w-1.5 h-1.5 bg-indigo-950 rounded-full" />
+                    </div>
+
+                    {/* Status Bar */}
+                    <div className="px-4 pb-1 text-[9px] text-slate-300 font-bold flex items-center justify-between shrink-0">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1 text-[8px]">
+                        <span>5G</span>
+                        <span>100%</span>
                       </div>
-                    ) : (
-                      /* REALISTIC SMARTPHONE MOCKUP FRAME - COMPACT FIT */
-                      <div className="w-[300px] sm:w-[320px] h-[460px] sm:h-[480px] max-h-[100%] bg-slate-900 rounded-[38px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col relative mx-auto my-auto shrink-0 select-none">
-                        {/* Dynamic Island / Notch */}
-                        <div className="w-24 h-3.5 bg-black rounded-full mx-auto mb-1.5 shrink-0 flex items-center justify-center gap-1.5">
-                          <div className="w-2 h-2 bg-slate-900 rounded-full" />
-                          <div className="w-1.5 h-1.5 bg-indigo-950 rounded-full" />
-                        </div>
+                    </div>
 
-                        {/* Status Bar */}
-                        <div className="px-4 pb-1 text-[9.5px] text-slate-300 font-bold flex items-center justify-between shrink-0">
-                          <span>9:41</span>
-                          <div className="flex items-center gap-1 text-[8.5px]">
-                            <span>5G</span>
-                            <span>100%</span>
-                          </div>
-                        </div>
-
-                        {/* Phone Screen Container */}
-                        <div className="bg-white rounded-[24px] flex-1 overflow-hidden flex flex-col border border-slate-800 shadow-inner">
-                          <div className="bg-slate-50 border-b border-slate-100 p-2 text-[9px] text-slate-700 font-extrabold truncate shrink-0">
-                            Assunto: {editSubject || "(Sem assunto)"}
-                          </div>
-                          <iframe
-                            title="Mobile Editor Preview"
-                            srcDoc={getScaledHtmlForPreview(editHtmlContent, true)}
-                            className="w-full flex-1 border-0 bg-white"
-                          />
-                        </div>
-
-                        {/* Home Indicator Bar */}
-                        <div className="w-28 h-1 bg-slate-400/80 rounded-full mx-auto mt-1.5 shrink-0" />
+                    {/* Phone Screen Container */}
+                    <div className="bg-white rounded-[26px] flex-1 overflow-hidden flex flex-col border border-slate-800/90 shadow-inner">
+                      <div className="bg-slate-50 border-b border-slate-100 p-2 text-[9px] text-slate-700 font-extrabold truncate shrink-0">
+                        Assunto: {editSubject || "(Sem assunto)"}
                       </div>
-                    )}
+                      <iframe
+                        title="Mobile Editor Preview"
+                        srcDoc={getScaledHtmlForPreview(editHtmlContent, true)}
+                        className="w-full flex-1 border-0 bg-white"
+                      />
+                    </div>
+
+                    {/* Home Indicator Bar */}
+                    <div className="w-24 h-1 bg-slate-400/80 rounded-full mx-auto mt-1.5 shrink-0" />
                   </div>
                 </div>
               )}
