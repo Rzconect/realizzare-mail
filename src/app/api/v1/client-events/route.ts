@@ -147,7 +147,7 @@ export async function POST(request: Request) {
     // 4. Log Raw Webhook Event
     await supabase.from("inbound_webhook_events").insert({
       org_id: DEFAULT_ORG_ID,
-      provider: "datalayer_js",
+      source: "datalayer_js",
       event_type: eventType,
       payload: body,
       status: "processed"

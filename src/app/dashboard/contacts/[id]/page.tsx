@@ -469,7 +469,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             if (isMatch) {
               const isClick = te.event_type === "email.click";
               const isOpen = te.event_type === "email.open";
-              const isDataLayerAction = te.event_type === "user.action" || te.provider === "datalayer_js" || payload.event === "checkout_click";
+              const isDataLayerAction = te.event_type === "user.action" || te.source === "datalayer_js" || te.provider === "datalayer_js" || payload.event === "checkout_click";
 
               if (isOpen || isClick) {
                 const campTitle = campaignMap.get(payload.campaign_id) || "Campanha Realizzare";
