@@ -22,6 +22,7 @@ import {
   ArrowRight,
   X,
   ExternalLink,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   FolderOpen,
@@ -43,6 +44,8 @@ export default function EmailsLibraryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "active">("all");
   const [selectedFolderFilter, setSelectedFolderFilter] = useState<string>("all");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
+  const [deletingFolder, setDeletingFolder] = useState<any | null>(null);
 
   // Storage states
   const [folders, setFolders] = useState<any[]>([]);
@@ -409,6 +412,102 @@ export default function EmailsLibraryPage() {
     }
   };
 
+  const getFolderCategoryInfo = (folder: any) => {
+    const nameLower = (folder.name || "").toLowerCase();
+    const isPontual = folder.id === "folder-pontual" || folder.type === "pontual";
+
+    const isCustomFolder =
+      folder.isCustom ||
+      folder.type === "standalone" ||
+      folder.type === "custom" ||
+      (!folder.id.startsWith("folder-flow-") &&
+       !folder.id.startsWith("folder-boas") &&
+       !folder.id.startsWith("folder-carrinho") &&
+       !folder.id.startsWith("folder-nutricao") &&
+       folder.id !== "folder-pontual");
+
+    const isTransactional =
+      folder.type === "transactional" ||
+      folder.category === "transactional" ||
+      nameLower.includes("carrinho") ||
+      nameLower.includes("checkout") ||
+      nameLower.includes("confirmação") ||
+      nameLower.includes("senha") ||
+      nameLower.includes("compra") ||
+      nameLower.includes("pagamento") ||
+      nameLower.includes("transacional");
+
+    if (isPontual) {
+      return {
+        category: "campanhas",
+        label: "Campanhas Pontuais / Rascunhos",
+        badgeBg: "bg-amber-50 text-amber-700 border-amber-200",
+        icon: "📌",
+        canDelete: false
+      };
+    }
+
+    if (isCustomFolder) {
+      return {
+        category: "campanhas",
+        label: "Pasta Manual (Campanhas)",
+        badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
+        icon: "📁",
+        canDelete: true
+      };
+    }
+
+    if (isTransactional) {
+      return {
+        category: "transacionais",
+        label: "Fluxo Transacional",
+        badgeBg: "bg-purple-50 text-purple-700 border-purple-200",
+        icon: "💳",
+        canDelete: false
+      };
+    }
+
+    return {
+      category: "cursos",
+      label: "Fluxo de Automação (Cursos)",
+      badgeBg: "bg-indigo-50 text-indigo-700 border-indigo-200",
+      icon: "⚡",
+      canDelete: false
+    };
+  };
+
+  const handleDeleteFolderClick = (folder: any) => {
+    const info = getFolderCategoryInfo(folder);
+    if (!info.canDelete) {
+      alert(`⚠️ A pasta "${folder.name}" não pode ser excluída pois foi criada automaticamente por um fluxo de automação ou é a pasta padrão de rascunhos.`);
+      return;
+    }
+    setDeletingFolder(folder);
+  };
+
+  const handleConfirmDeleteFolder = () => {
+    if (!deletingFolder) return;
+
+    const targetFolderId = deletingFolder.id;
+
+    const updatedTemplates = templates.map((t) => {
+      if (t.folderId === targetFolderId) {
+        return {
+          ...t,
+          folderId: "folder-pontual",
+          folderName: "Campanhas Pontuais / Rascunhos"
+        };
+      }
+      return t;
+    });
+
+    const updatedFolders = folders.filter((f) => f.id !== targetFolderId);
+
+    saveToStorage(updatedFolders, updatedTemplates);
+    setDeletingFolder(null);
+    showToast(`Pasta "${deletingFolder.name}" excluída com sucesso!`);
+  };
+
   // Create Standalone Folder
   const handleCreateStandaloneFolder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -424,7 +523,8 @@ export default function EmailsLibraryPage() {
     const newFolder = {
       id: `folder-${Date.now()}`,
       name: folderNameTrimmed,
-      type: standaloneFolderType
+      type: "standalone",
+      isCustom: true
     };
 
     const updatedFolders = [...folders, newFolder];
@@ -454,7 +554,8 @@ export default function EmailsLibraryPage() {
     const newFolderObj = {
       id: newFolderId,
       name: newFolderName,
-      type: duplicatingFolder.type || "flow"
+      type: "standalone",
+      isCustom: true
     };
 
     const updatedFolders = [...folders, newFolderObj];
@@ -658,6 +759,14 @@ export default function EmailsLibraryPage() {
     });
   }, [templates, searchQuery, filterStatus, selectedFolderFilter]);
 
+  const scrollFolderCarousel = (folderId: string, direction: "left" | "right") => {
+    const el = document.getElementById(`carousel-${folderId}`);
+    if (el) {
+      const scrollAmount = direction === "left" ? -300 : 300;
+      el.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12 font-sans text-slate-800">
       {/* CSS 3D Card Flip & Scrollbar Styles */}
@@ -787,20 +896,32 @@ export default function EmailsLibraryPage() {
               </option>
             ))}
           </select>
+
+          {/* NEW: FOLDER CATEGORY FILTER (Campanhas, Cursos/Automações, Transacionais) */}
+          <select
+            value={selectedCategoryFilter}
+            onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+          >
+            <option value="all">Todas as Categorias</option>
+            <option value="campanhas">📌 Campanhas (Manuais & Rascunhos)</option>
+            <option value="cursos">⚡ Cursos / Automações</option>
+            <option value="transacionais">💳 Transacionais</option>
+          </select>
         </div>
       </div>
 
       {/* Folders in Collapsible Drawers */}
       <div className="space-y-4">
         {folders.map((folder) => {
-          const folderTemplates = filteredTemplates.filter((t) => t.folderId === folder.id);
+          const catInfo = getFolderCategoryInfo(folder);
+          if (selectedCategoryFilter !== "all" && catInfo.category !== selectedCategoryFilter) return null;
           if (selectedFolderFilter !== "all" && selectedFolderFilter !== folder.id) return null;
+
+          const folderTemplates = filteredTemplates.filter((t) => t.folderId === folder.id);
           if (searchQuery && folderTemplates.length === 0) return null;
 
           const isOpen = !!openFolderIds[folder.id];
-          const displayLimit = folderDisplayLimits[folder.id] || 6;
-          const visibleTemplates = folderTemplates.slice(0, displayLimit);
-          const hasMore = folderTemplates.length > displayLimit;
 
           // Folder Subtotals & Revenue Calculation
           const activeInFolder = folderTemplates.filter((t) => t.status === "Ativo").length;
@@ -822,8 +943,14 @@ export default function EmailsLibraryPage() {
                     <FolderOpen className="h-4.5 w-4.5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">{folder.name}</h2>
-                    <p className="text-[10px] text-slate-400 font-medium">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm font-bold text-slate-900">{folder.name}</h2>
+                      <span className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded-md border flex items-center gap-1 ${catInfo.badgeBg}`}>
+                        <span>{catInfo.icon}</span>
+                        <span>{catInfo.label}</span>
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                       {folderTemplates.length} e-mail{folderTemplates.length !== 1 ? "s" : ""} na pasta
                     </p>
                   </div>
@@ -867,6 +994,22 @@ export default function EmailsLibraryPage() {
                     <span>Duplicar Pasta</span>
                   </button>
 
+                  {/* DELETE FOLDER BUTTON (ENABLED FOR MANUAL PASTAS, PROTECTED FOR FLOWS/DRAFTS) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFolderClick(folder);
+                    }}
+                    title={catInfo.canDelete ? "Excluir esta pasta" : "Pastas de fluxos ou de rascunhos não podem ser excluídas"}
+                    className={`inline-flex items-center gap-1 p-1.5 rounded-lg border transition-all cursor-pointer ${
+                      catInfo.canDelete
+                        ? "bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border-slate-200 hover:border-rose-200"
+                        : "bg-slate-50 text-slate-350 border-slate-200 opacity-40 cursor-not-allowed"
+                    }`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+
                   <button
                     onClick={() => toggleFolderDrawer(folder.id)}
                     className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors cursor-pointer"
@@ -878,244 +1021,267 @@ export default function EmailsLibraryPage() {
 
               {/* Lazy Loaded Drawer Content */}
               {isOpen && (
-                <div className="p-5 bg-slate-50/50 space-y-4">
-                  {folderTemplates.length === 0 ? (
-                    <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center">
-                      <p className="text-xs text-slate-400 font-medium">Nenhum e-mail nesta pasta ainda.</p>
-                    </div>
-                  ) : (
-                    /* TIGHTER 3:4 CARDS GRID WITH FULL NAME & MAXIMUM HEIGHT SCROLLABLE PREVIEW */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-                      {visibleTemplates.map((template) => {
-                        const isActive = template.status === "Ativo";
-                        const isFlipped = !!flippedCardIds[template.id];
-                        const flowNameDisp = template.flowName || (folder.type === "flow" && template.flowId ? folder.name : null);
-                        const flowIdDisp = template.flowId || (folder.type === "flow" && template.flowId ? folder.id.replace("folder-", "") : null);
+                <div className="p-4 bg-slate-50/50 relative group">
+                  {/* Left Carousel Navigation Button */}
+                  <button
+                    onClick={() => scrollFolderCarousel(folder.id, "left")}
+                    title="Rolar para a esquerda"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2 bg-white/90 hover:bg-white text-slate-700 shadow-md border border-slate-200 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer hover:scale-110"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-slate-600" />
+                  </button>
 
-                        return (
-                          <div
-                            key={template.id}
-                            className="card-perspective h-[450px] w-full max-w-[250px] mx-auto"
-                          >
-                            <div className={`card-inner relative w-full h-full ${isFlipped ? "is-flipped" : ""}`}>
-                              
-                              {/* FRONT FACE OF CARD (COMPACT VERTICAL LAYOUT WITH MAXIMUM PREVIEW HEIGHT & ALWAYS-ON FLOW LINK) */}
-                              <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-500 rounded-xl p-2.5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
-                                <div className="flex-1 flex flex-col justify-between space-y-1 overflow-hidden">
-                                  {/* 1. CAMPAIGN NAME AT VERY TOP (FULL WRAP - NOT TRUNCATED) */}
-                                  <div className="flex items-start justify-between gap-1 pb-1 border-b border-slate-100 shrink-0">
-                                    <h3
-                                      className="font-extrabold text-slate-900 text-[11px] leading-snug break-words flex-1"
-                                      title={template.name}
-                                    >
-                                      {template.name}
-                                    </h3>
-                                    <span
-                                      className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase shrink-0 ${
-                                        isActive ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-slate-100 text-slate-650 border border-slate-200"
-                                      }`}
-                                    >
-                                      {template.status}
+                  {/* Right Carousel Navigation Button */}
+                  <button
+                    onClick={() => scrollFolderCarousel(folder.id, "right")}
+                    title="Rolar para a direita"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 bg-white/90 hover:bg-white text-slate-700 shadow-md border border-slate-200 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer hover:scale-110"
+                  >
+                    <ChevronRight className="h-5 w-5 text-slate-600" />
+                  </button>
+
+                  {/* HORIZONTAL CAROUSEL CONTAINER (GAP-2.5 FOR CLOSER PROXIMITY) */}
+                  <div
+                    id={`carousel-${folder.id}`}
+                    className="flex items-center gap-2.5 overflow-x-auto scrollbar-thin pb-2 px-1 scroll-smooth snap-x snap-mandatory"
+                  >
+                    {folderTemplates.map((template) => {
+                      const isActive = template.status === "Ativo";
+                      const isFlipped = !!flippedCardIds[template.id];
+                      const flowNameDisp = template.flowName || (folder.type === "flow" && template.flowId ? folder.name : null);
+                      const flowIdDisp = template.flowId || (folder.type === "flow" && template.flowId ? folder.id.replace("folder-", "") : null);
+
+                      return (
+                        <div
+                          key={template.id}
+                          className="card-perspective h-[450px] w-[240px] shrink-0 snap-start"
+                        >
+                          <div className={`card-inner relative w-full h-full ${isFlipped ? "is-flipped" : ""}`}>
+                            
+                            {/* FRONT FACE OF CARD */}
+                            <div className="card-front absolute inset-0 bg-white border border-slate-200 hover:border-indigo-500 rounded-xl p-2.5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden">
+                              <div className="flex-1 flex flex-col justify-between space-y-1 overflow-hidden">
+                                {/* 1. CAMPAIGN NAME AT VERY TOP */}
+                                <div className="flex items-start justify-between gap-1 pb-1 border-b border-slate-100 shrink-0">
+                                  <h3
+                                    className="font-extrabold text-slate-900 text-[11px] leading-snug break-words flex-1"
+                                    title={template.name}
+                                  >
+                                    {template.name}
+                                  </h3>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase shrink-0 ${
+                                      isActive ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-slate-100 text-slate-650 border border-slate-200"
+                                    }`}
+                                  >
+                                    {template.status}
+                                  </span>
+                                </div>
+
+                                {/* 2. SUBJECT LINE & PREHEADER BOX */}
+                                <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-1.5 space-y-0.5 shrink-0 my-0.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[8.5px] font-bold uppercase text-indigo-600 tracking-wider shrink-0">Assunto:</span>
+                                    <span className="font-bold text-slate-800 text-[10px] truncate">
+                                      {template.subject || "(Sem assunto)"}
                                     </span>
                                   </div>
-
-                                  {/* 2. SUBJECT LINE & PREHEADER BOX (COMPACT - ZERO EMPTY GAPS) */}
-                                  <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-1.5 space-y-0.5 shrink-0 my-0.5">
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[8.5px] font-bold uppercase text-indigo-600 tracking-wider shrink-0">Assunto:</span>
-                                      <span className="font-bold text-slate-800 text-[10px] truncate">
-                                        {template.subject || "(Sem assunto)"}
-                                      </span>
-                                    </div>
-                                    {template.previewText && (
-                                      <p className="text-[9px] text-slate-500 italic line-clamp-1 border-t border-slate-100 pt-0.5">
-                                        "{template.previewText}"
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  {/* 3. HTML PREVIEW CONTAINER (EXPANDED TO MAXIMUM HEIGHT & LIVE SCROLLABLE ON MOUSE HOVER) */}
-                                  <div
-                                    className="flex-1 min-h-[190px] w-full bg-white border border-slate-200 rounded-lg overflow-y-auto mini-preview-scroll relative shadow-inner select-text my-0.5"
-                                    onWheel={(e) => e.stopPropagation()}
-                                    title="Role o mouse nesta área para navegar pelo e-mail"
-                                  >
-                                    <div className="w-full h-full min-h-[220px]">
-                                      <iframe
-                                        title={`Mini preview - ${template.name}`}
-                                        srcDoc={template.htmlContent || "<div></div>"}
-                                        className="w-full min-h-[440px] border-0 pointer-events-auto"
-                                        style={{ transform: "scale(0.86)", transformOrigin: "top left", width: "116%", height: "116%" }}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* 4. FLOW LINK BADGE (HIDDEN FOR STANDALONE / CLONED TEMPLATES WITHOUT FLOW LINK) */}
-                                  {flowNameDisp && (
-                                    <div className="flex items-center gap-1 text-[9.5px] text-indigo-700 font-bold bg-indigo-50/80 px-2 py-1 rounded-md border border-indigo-200 shrink-0 my-0.5">
-                                      <GitBranch className="h-3 w-3 shrink-0 text-indigo-600" />
-                                      <span className="shrink-0">Flow:</span>
-                                      <Link
-                                        href={flowIdDisp ? `/flows/${flowIdDisp}` : "/dashboard/automations"}
-                                        className="text-indigo-600 hover:underline flex items-center gap-0.5 font-extrabold truncate"
-                                        title={`Ir para o fluxo "${flowNameDisp}"`}
-                                      >
-                                        <span className="truncate">{flowNameDisp}</span>
-                                        <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-                                      </Link>
-                                    </div>
+                                  {template.previewText && (
+                                    <p className="text-[9px] text-slate-500 italic line-clamp-1 border-t border-slate-100 pt-0.5">
+                                      "{template.previewText}"
+                                    </p>
                                   )}
                                 </div>
 
-                                {/* 5. TIGHT ACTION TOOLBAR AT THE BOTTOM */}
-                                <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1 mt-1 shrink-0">
-                                  {/* Grouped Ver & Editar */}
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      onClick={() => {
-                                        setFullPreviewTemplate(template);
-                                        setPreviewDevice("desktop");
-                                      }}
-                                      title="Pré-visualização Completa Web/Mobile"
-                                      className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-md transition-all cursor-pointer"
-                                    >
-                                      <Eye className="h-3 w-3 text-indigo-600" />
-                                      <span>Ver</span>
-                                    </button>
-
-                                    <button
-                                      onClick={() => {
-                                        setEditingTemplate(template);
-                                        setEditSubject(template.subject || "");
-                                        setEditPreviewText(template.previewText || "");
-                                        setEditHtmlContent(template.htmlContent || "");
-                                        setEditorTab("preview");
-                                        setEditorPreviewDevice("desktop");
-                                      }}
-                                      title="Editar Código HTML"
-                                      className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1 rounded-md transition-all shadow-2xs cursor-pointer"
-                                    >
-                                      <Edit3 className="h-3 w-3" />
-                                      <span>Editar</span>
-                                    </button>
-                                  </div>
-
-                                  {/* Icon Toolbar */}
-                                  <div className="flex items-center gap-0.5">
-                                    <button
-                                      onClick={() => toggleCardFlip(template.id)}
-                                      title="Virar Card (Métricas 3D)"
-                                      className="p-1 hover:bg-indigo-50 rounded text-indigo-600 transition-colors cursor-pointer"
-                                    >
-                                      <BarChart2 className="h-3.5 w-3.5" />
-                                    </button>
-
-                                    <button
-                                      onClick={() => handleDuplicateTemplate(template.id)}
-                                      title="Duplicar Template nesta pasta (Sem vínculo ao fluxo)"
-                                      className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
-                                    >
-                                      <Copy className="h-3.5 w-3.5" />
-                                    </button>
-
-                                    <button
-                                      onClick={() => handleDeleteTemplate(template.id)}
-                                      title="Excluir Template"
-                                      className="p-1 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
+                                {/* 3. HTML PREVIEW CONTAINER */}
+                                <div
+                                  className="flex-1 min-h-[190px] w-full bg-white border border-slate-200 rounded-lg overflow-y-auto mini-preview-scroll relative shadow-inner select-text my-0.5"
+                                  onWheel={(e) => e.stopPropagation()}
+                                  title="Role o mouse nesta área para navegar pelo e-mail"
+                                >
+                                  <div className="w-full h-full min-h-[220px]">
+                                    <iframe
+                                      title={`Mini preview - ${template.name}`}
+                                      srcDoc={template.htmlContent || "<div></div>"}
+                                      className="w-full min-h-[440px] border-0 pointer-events-auto"
+                                      style={{ transform: "scale(0.86)", transformOrigin: "top left", width: "116%", height: "116%" }}
+                                    />
                                   </div>
                                 </div>
+
+                                {/* 4. FLOW LINK BADGE */}
+                                {flowNameDisp && (
+                                  <div className="flex items-center gap-1 text-[9.5px] text-indigo-700 font-bold bg-indigo-50/80 px-2 py-1 rounded-md border border-indigo-200 shrink-0 my-0.5">
+                                    <GitBranch className="h-3 w-3 shrink-0 text-indigo-600" />
+                                    <span className="shrink-0">Flow:</span>
+                                    <Link
+                                      href={flowIdDisp ? `/flows/${flowIdDisp}` : "/dashboard/automations"}
+                                      className="text-indigo-600 hover:underline flex items-center gap-0.5 font-extrabold truncate"
+                                      title={`Ir para o fluxo "${flowNameDisp}"`}
+                                    >
+                                      <span className="truncate">{flowNameDisp}</span>
+                                      <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                    </Link>
+                                  </div>
+                                )}
                               </div>
 
-                              {/* BACK FACE OF CARD (3D METRICS FLIP) */}
-                              <div className="card-back absolute inset-0 bg-slate-900 text-white border border-slate-800 rounded-xl p-3.5 shadow-xl flex flex-col justify-between overflow-hidden">
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                                    <div className="flex items-center gap-1.5">
-                                      <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />
-                                      <h4 className="text-[11px] font-black text-white truncate max-w-[130px]">
-                                        Métricas do E-mail
-                                      </h4>
-                                    </div>
-                                    <button
-                                      onClick={() => toggleCardFlip(template.id)}
-                                      className="text-[10px] font-bold text-indigo-400 hover:text-white flex items-center gap-0.5 cursor-pointer"
-                                    >
-                                      <RotateCcw className="h-3 w-3" /> Voltar
-                                    </button>
-                                  </div>
+                              {/* 5. TIGHT ACTION TOOLBAR AT THE BOTTOM */}
+                              <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1 mt-1 shrink-0">
+                                {/* Grouped Ver & Editar */}
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setFullPreviewTemplate(template);
+                                      setPreviewDevice("desktop");
+                                    }}
+                                    title="Pré-visualização Completa Web/Mobile"
+                                    className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-md transition-all cursor-pointer"
+                                  >
+                                    <Eye className="h-3 w-3 text-indigo-600" />
+                                    <span>Ver</span>
+                                  </button>
 
-                                  <div className="space-y-2 text-[10px]">
-                                    <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
-                                      <span className="text-slate-400">Entregues:</span>
-                                      <span className="font-black text-white">{template.metrics?.sentCount || 0}</span>
-                                    </div>
-
-                                    <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
-                                      <span className="text-cyan-400 font-bold">Aberturas:</span>
-                                      <span className="font-black text-cyan-300">
-                                        {template.metrics?.openCount || 0} ({template.metrics?.openRate || 0}%)
-                                      </span>
-                                    </div>
-
-                                    <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
-                                      <span className="text-emerald-400 font-bold">Cliques:</span>
-                                      <span className="font-black text-emerald-300">
-                                        {template.metrics?.clickCount || 0} ({template.metrics?.clickRate || 0}%)
-                                      </span>
-                                    </div>
-
-                                    <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
-                                      <span className="text-indigo-400 font-bold">Conversões:</span>
-                                      <span className="font-black text-indigo-300">
-                                        {template.metrics?.conversionCount || 0} compras
-                                      </span>
-                                    </div>
-
-                                    <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
-                                      <span className="text-slate-400 font-bold">Receita:</span>
-                                      <span className="font-black text-emerald-400">R$ 0,00</span>
-                                    </div>
-                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setEditingTemplate(template);
+                                      setEditSubject(template.subject || "");
+                                      setEditPreviewText(template.previewText || "");
+                                      setEditHtmlContent(template.htmlContent || "");
+                                      setEditorTab("preview");
+                                      setEditorPreviewDevice("desktop");
+                                    }}
+                                    title="Editar Código HTML"
+                                    className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1 rounded-md transition-all shadow-2xs cursor-pointer"
+                                  >
+                                    <Edit3 className="h-3 w-3" />
+                                    <span>Editar</span>
+                                  </button>
                                 </div>
 
-                                <div className="pt-2 border-t border-slate-800">
+                                {/* Icon Toolbar */}
+                                <div className="flex items-center gap-0.5">
                                   <button
                                     onClick={() => toggleCardFlip(template.id)}
-                                    className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                    title="Virar Card (Métricas 3D)"
+                                    className="p-1 hover:bg-indigo-50 rounded text-indigo-600 transition-colors cursor-pointer"
                                   >
-                                    <RotateCcw className="h-3.5 w-3.5" />
-                                    <span>Voltar para o Card</span>
+                                    <BarChart2 className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDuplicateTemplate(template.id)}
+                                    title="Duplicar Template nesta pasta (Sem vínculo ao fluxo)"
+                                    className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeleteTemplate(template.id)}
+                                    title="Excluir Template"
+                                    className="p-1 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
                               </div>
-
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
 
-                  {/* Load More Button */}
-                  {hasMore && (
-                    <div className="pt-2 text-center">
-                      <button
-                        onClick={() =>
-                          setFolderDisplayLimits((prev) => ({
-                            ...prev,
-                            [folder.id]: displayLimit + 12
-                          }))
-                        }
-                        className="inline-flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl border border-slate-200 shadow-xs transition-all cursor-pointer"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Carregar mais e-mails (+{folderTemplates.length - displayLimit})
-                      </button>
+                            {/* BACK FACE OF CARD (3D METRICS FLIP) */}
+                            <div className="card-back absolute inset-0 bg-slate-900 text-white border border-slate-800 rounded-xl p-3.5 shadow-xl flex flex-col justify-between overflow-hidden">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />
+                                    <h4 className="text-[11px] font-black text-white truncate max-w-[130px]">
+                                      Métricas do E-mail
+                                    </h4>
+                                  </div>
+                                  <button
+                                    onClick={() => toggleCardFlip(template.id)}
+                                    className="text-[10px] font-bold text-indigo-400 hover:text-white flex items-center gap-0.5 cursor-pointer"
+                                  >
+                                    <RotateCcw className="h-3 w-3" /> Voltar
+                                  </button>
+                                </div>
+
+                                <div className="space-y-2 text-[10px]">
+                                  <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
+                                    <span className="text-slate-400">Entregues:</span>
+                                    <span className="font-black text-white">{template.metrics?.sentCount || 0}</span>
+                                  </div>
+
+                                  <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
+                                    <span className="text-cyan-400 font-bold">Aberturas:</span>
+                                    <span className="font-black text-cyan-300">
+                                      {template.metrics?.openCount || 0} ({template.metrics?.openRate || 0}%)
+                                    </span>
+                                  </div>
+
+                                  <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
+                                    <span className="text-emerald-400 font-bold">Cliques:</span>
+                                    <span className="font-black text-emerald-300">
+                                      {template.metrics?.clickCount || 0} ({template.metrics?.clickRate || 0}%)
+                                    </span>
+                                  </div>
+
+                                  <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
+                                    <span className="text-indigo-400 font-bold">Conversões:</span>
+                                    <span className="font-black text-indigo-300">
+                                      {template.metrics?.conversionCount || 0} compras
+                                    </span>
+                                  </div>
+
+                                  <div className="bg-slate-800/80 p-2 rounded-md flex items-center justify-between">
+                                    <span className="text-slate-400 font-bold">Receita:</span>
+                                    <span className="font-black text-emerald-400">R$ 0,00</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="pt-2 border-t border-slate-800">
+                                <button
+                                  onClick={() => toggleCardFlip(template.id)}
+                                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  <span>Voltar para o Card</span>
+                                </button>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* ALWAYS-ON NEW EMAIL CREATION CARD AT THE FAR RIGHT END */}
+                    <div
+                      onClick={() => {
+                        setSelectedFolderId(folder.id);
+                        setIsCreatingNewFolder(false);
+                        setShowNewModal(true);
+                      }}
+                      className="card-perspective h-[450px] w-[240px] shrink-0 snap-start"
+                    >
+                      <div className="w-full h-full bg-slate-50/80 hover:bg-indigo-50/50 border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-5 shadow-2xs hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer group select-none">
+                        <div className="p-4 bg-white border border-slate-200 group-hover:border-indigo-300 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white rounded-2xl shadow-xs transition-all duration-300 group-hover:scale-110">
+                          <Plus className="h-7 w-7 transition-transform" />
+                        </div>
+                        <h3 className="font-extrabold text-slate-800 text-xs mt-3.5 group-hover:text-indigo-600 transition-colors">
+                          Criar Novo E-mail
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-medium mt-1 max-w-[170px] leading-relaxed">
+                          Adicionar e-mail diretamente nesta pasta
+                        </p>
+                        <span className="mt-4 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 group-hover:text-indigo-700 bg-indigo-50 group-hover:bg-indigo-100 border border-indigo-200/80 px-3 py-1.5 rounded-lg transition-all">
+                          <Plus className="h-3.5 w-3.5" />
+                          + Novo E-mail
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1228,6 +1394,46 @@ export default function EmailsLibraryPage() {
                 className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Confirmação de Exclusão de Pasta */}
+      {deletingFolder && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-2.5 bg-rose-50 rounded-xl">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Excluir Pasta</h3>
+                <p className="text-xs text-slate-500">Esta ação moverá os e-mails para Rascunhos.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              Tem certeza que deseja excluir a pasta <strong className="text-slate-900">"{deletingFolder.name}"</strong>?
+              <br /><br />
+              Os e-mails existentes nesta pasta não serão apagados; eles serão preservados e movidos para a pasta <strong className="text-indigo-600">Campanhas Pontuais / Rascunhos</strong>.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingFolder(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteFolder}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+              >
+                Sim, Excluir Pasta
               </button>
             </div>
           </div>
