@@ -457,11 +457,11 @@ export default function ContactProfilePage({ params }: PageProps) {
           });
         }
 
-        // B. Tracking Open and Click Events (Strictly per-contact)
+        // B. Tracking Open, Click and DataLayer Action Events (Strictly per-contact)
         if (trackingEventsData && trackingEventsData.length > 0) {
           trackingEventsData.forEach((te: any) => {
             const payload = te.payload || {};
-            let teEmail = (payload.email || payload.contact_email || "").toLowerCase().trim();
+            let teEmail = (payload.email || payload.student_email || payload.contact_email || "").toLowerCase().trim();
             let teContactId = payload.contact_id;
 
             let isMatch = teContactId === contact.id || (teEmail && teEmail === contactEmailLower);
@@ -469,6 +469,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             if (isMatch) {
               const isClick = te.event_type === "email.click";
               const isOpen = te.event_type === "email.open";
+              const isDataLayerAction = te.event_type === "user.action" || te.provider === "datalayer_js" || payload.event === "checkout_click";
 
               if (isOpen || isClick) {
                 const campTitle = campaignMap.get(payload.campaign_id) || "Campanha Realizzare";
@@ -483,6 +484,24 @@ export default function ContactProfilePage({ params }: PageProps) {
                     ? `${flowPrefix}Clicou no link da campanha '${campTitle}'`
                     : `${flowPrefix}Abriu o e-mail da campanha '${campTitle}'`,
                   timestamp: te.created_at
+                });
+              } else if (isDataLayerAction) {
+                const actionPayload = payload.payload || {};
+                const actionType = actionPayload.action_type || payload.event || "checkout_click";
+                const itemTitle = actionPayload.item_title || actionPayload.item || "Certificado IES/MEC";
+                const sku = actionPayload.sku ? ` (SKU: ${actionPayload.sku})` : "";
+
+                let label = "Clique em Botão (DataLayer)";
+                if (actionType === "checkout_click") {
+                  label = "Intenção de Compra / Checkout (DataLayer)";
+                }
+
+                rawEvents.push({
+                  id: te.id || Math.random().toString(),
+                  type: "click",
+                  label,
+                  details: `Clicou no botão para adquirir '${itemTitle}'${sku}`,
+                  timestamp: te.created_at || payload.timestamp
                 });
               }
             }
