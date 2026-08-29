@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/campaigns",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/pagarme-sync",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 1 * * *"
     }
   ]
 }
