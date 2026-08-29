@@ -99,10 +99,10 @@ export async function POST(req: Request) {
         const rawIds = idsPart ? idsPart.split(",").filter(Boolean) : [];
 
         const contactIds = rawIds
-          .filter(id => id.startsWith("contact-"))
-          .map(id => id.replace("contact-", ""));
+          .filter((id: string) => id.startsWith("contact-"))
+          .map((id: string) => id.replace("contact-", ""));
 
-        const listIds = rawIds.filter(id => !id.startsWith("contact-") && !id.startsWith("seg-"));
+        const listIds = rawIds.filter((id: string) => !id.startsWith("contact-") && !id.startsWith("seg-"));
 
         // Fetch emails from specific contact IDs
         if (contactIds.length > 0) {

@@ -1,3 +1,5 @@
+"use client";
+
 // Helper to make any HTML email responsive inside the mobile preview frame
 function prepareMobilePreviewHtml(rawHtml: string): string {
   if (!rawHtml) return "";
@@ -51,7 +53,6 @@ function prepareMobilePreviewHtml(rawHtml: string): string {
   return html;
 }
 
-"use client";
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
