@@ -994,14 +994,25 @@ export default function ContactProfilePage({ params }: PageProps) {
       const supabase = createClient();
       
       // Get the list ID first
+      let listId;
       const { data: listData, error: listFindError } = await supabase
         .from("lists")
         .select("id")
         .eq("name", listName)
-        .single();
-      if (listFindError) throw listFindError;
+        .maybeSingle();
 
-      const listId = (listData as any).id;
+      if (!listData) {
+        // Create it
+        const { data: newList, error: insertError } = await supabase
+          .from("lists")
+          .insert({ name: listName, org_id: "00000000-0000-0000-0000-000000000001" })
+          .select("id")
+          .single();
+        if (insertError) throw insertError;
+        listId = newList.id;
+      } else {
+        listId = listData.id;
+      }
 
       if (type === "add") {
         const { error: subError } = await supabase
@@ -1328,7 +1339,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {(draft.lists && draft.lists.length > 0 && draft.lists.some((l: any) => l.status === "subscribed")) || draft.status === "active" ? (
+                  {(draft.status === "active" && draft.lists && draft.lists.some((l: any) => l.status === "subscribed")) ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       Ativo
@@ -1336,7 +1347,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
                       <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                      Inativo
+                      {draft.status === "active" ? "Sem Lista" : "Inativo"}
                     </span>
                   )}
                   

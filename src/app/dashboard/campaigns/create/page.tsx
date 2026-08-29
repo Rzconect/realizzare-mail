@@ -1311,6 +1311,13 @@ function CreateCampaignForm() {
             setSenderEmail(found.from_email || found.fromEmail || defaultEmail);
             setHtmlContent(found.html_content || found.htmlContent || "");
             
+            if (found.target_list && found.target_list.includes("||IDS||")) {
+              const idsPart = found.target_list.split("||IDS||")[1];
+              if (idsPart) {
+                setSelectedIncludeLists(idsPart.split(",").filter(Boolean));
+              }
+            }
+            
             const replyTo = found.reply_to || found.replyTo || defaultReply;
             setReplyToIsCustom(true);
             setCustomReplyTo(replyTo);
@@ -1556,6 +1563,8 @@ function CreateCampaignForm() {
         .map((id) => listsList.find((l) => l.id === id)?.name)
         .filter(Boolean)
         .join(", ");
+      
+      const targetListStr = (listNames || "Nenhuma lista selecionada") + "||IDS||" + selectedIncludeLists.join(",");
 
       const campaignData = {
         org_id: "00000000-0000-0000-0000-000000000001",
@@ -1567,7 +1576,7 @@ function CreateCampaignForm() {
         reply_to: replyToIsCustom ? customReplyTo : replyToEmail,
         status: "draft",
         html_content: htmlContent,
-        target_list: listNames || "Nenhuma lista selecionada",
+        target_list: targetListStr,
         sent_count: 0
       };
 

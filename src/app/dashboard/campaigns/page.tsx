@@ -129,7 +129,7 @@ export default function CampaignsPage() {
             fromEmail: c.from_email || "",
             replyTo: c.reply_to || "",
             status: statusMap[c.status] || "Rascunho",
-            targetList: c.target_list || "Todos os Contatos",
+            targetList: (c.target_list || "Todos os Contatos").split("||IDS||")[0],
             dateStr,
             sentAtDate,
             sentCount: Math.max(0, (c.sent_count || 0) - (c.bounce_count || 0)),
