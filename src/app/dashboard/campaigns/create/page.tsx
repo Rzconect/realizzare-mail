@@ -73,9 +73,19 @@ function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockT
 
   const actualSubject = renderMockTags(subjectLine) || "Assunto do e-mail...";
   const actualPreheader = renderMockTags(preheader) || "Pré-visualização do conteúdo de cabeçalho do e-mail...";
+  
+  const displaySender = senderName || "Realizzare Cursos";
+
+  const displaySubject = device === "mobile" 
+    ? (actualSubject.length > 35 ? actualSubject.substring(0, 35) + "..." : actualSubject)
+    : (actualSubject.length > 60 ? actualSubject.substring(0, 60) + "..." : actualSubject);
+
+  const displayPreheader = device === "mobile" 
+    ? (actualPreheader.length > 40 ? actualPreheader.substring(0, 40) + "..." : actualPreheader)
+    : (actualPreheader.length > 80 ? actualPreheader.substring(0, 80) + "..." : actualPreheader);
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-hidden w-full max-w-md mx-auto transition-all">
+    <div className={`bg-slate-50 border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-hidden w-full mx-auto transition-all ${device === "desktop" ? "max-w-2xl" : "max-w-md"}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shrink-0">
         <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Prévia da Caixa de Entrada</span>
@@ -100,9 +110,9 @@ function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockT
       <div className={`flex justify-center transition-all bg-slate-50 overflow-hidden ${device === "mobile" ? "p-6" : ""}`}>
         
         {/* Device Wrapper */}
-        <div style={{ zoom: device === "mobile" ? 0.75 : 1 }} className={`transition-all bg-white relative flex flex-col mx-auto ${
+        <div style={{ zoom: device === "mobile" ? 0.70 : 1 }} className={`transition-all bg-white relative flex flex-col mx-auto ${
           device === "mobile" 
-            ? "w-[300px] h-[550px] border-[12px] border-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-slate-200" 
+            ? "w-[375px] h-[667px] border-[12px] border-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-slate-200" 
             : "w-full border-0"
         }`}>
           
@@ -110,8 +120,8 @@ function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockT
           {device === "mobile" && (
             <>
               {/* Top Notch/Speaker */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-white rounded-b-xl z-20 flex justify-center items-center shadow-[0_1px_2px_rgba(0,0,0,0.03)] border-b border-x border-slate-100">
-                <div className="w-10 h-1 bg-slate-200 rounded-full"></div>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-5 bg-white rounded-b-xl z-20 flex justify-center items-center shadow-[0_1px_2px_rgba(0,0,0,0.03)] border-b border-x border-slate-100">
+                <div className="w-12 h-1 bg-slate-200 rounded-full"></div>
               </div>
               
               {/* Bottom Home Button */}
@@ -144,27 +154,27 @@ function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockT
               {/* Active Email */}
               <div className="relative border-l-4 border-indigo-600 bg-white p-4 cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100 flex gap-3">
                 <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shrink-0">
-                  {(senderName || "R")[0].toUpperCase()}
+                  {displaySender[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-0.5">
-                    <span className="font-bold text-slate-800 text-sm truncate pr-2">
-                      {senderName || "Realizzare Cursos"}
+                    <span className="font-bold text-slate-800 text-sm pr-2 whitespace-normal break-words line-clamp-1">
+                      {displaySender}
                     </span>
                     <span className="text-[10px] text-slate-400 shrink-0 font-medium">Agora mesmo</span>
                   </div>
-                  <h4 className="font-semibold text-slate-800 text-xs truncate mb-0.5">
-                    {device === "mobile" && actualSubject.length > 35 ? actualSubject.substring(0, 35) + "..." : actualSubject}
+                  <h4 className="font-semibold text-slate-800 text-xs mb-0.5 whitespace-normal break-words line-clamp-2">
+                    {displaySubject}
                   </h4>
-                  <p className="text-[11px] text-slate-500 truncate">
-                    {device === "mobile" && actualPreheader.length > 40 ? actualPreheader.substring(0, 40) + "..." : actualPreheader}
+                  <p className="text-[11px] text-slate-500 whitespace-normal break-words line-clamp-2">
+                    {displayPreheader}
                   </p>
                 </div>
               </div>
 
               {/* Mock Emails */}
               {mockEmails.map((email, idx) => (
-                <div key={idx} className="relative p-4 flex gap-3 border-b border-slate-100 opacity-50 blur-[0.5px]">
+                <div key={idx} className="relative p-4 flex gap-3 border-b border-slate-100 opacity-40 blur-[1.5px]">
                   <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0">
                     {email.sender[0]}
                   </div>
