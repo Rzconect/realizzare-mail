@@ -204,7 +204,7 @@ function SegmentCourseDropdown({ value, onChange }: { value: string; onChange: (
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-2 space-y-2 animate-fadeIn max-h-60 overflow-y-auto w-max max-w-[360px]">
+        <div className="absolute left-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50 p-2 space-y-2 animate-fadeIn max-h-60 overflow-y-auto w-max max-w-[360px]">
           <div className="relative">
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
             <input
@@ -370,7 +370,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[300px]">
+        <div className="absolute left-0 mt-1.5 w-72 bg-white border border-slate-200 rounded-md shadow-xl z-50 overflow-hidden flex flex-col max-h-[300px]">
           <div className="p-2 border-b border-slate-150 flex items-center gap-1.5 bg-slate-50">
             <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
             <input
@@ -544,7 +544,7 @@ function ValueAutocompleteInput({ value, onChange, field, contacts, customFields
       />
 
       {isOpen && filteredSuggestions.length > 0 && (
-        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-[160px] overflow-y-auto divide-y divide-slate-100">
+        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-xl z-50 overflow-hidden max-h-[160px] overflow-y-auto divide-y divide-slate-100">
           {filteredSuggestions.map((suggestion) => (
             <button
               key={suggestion}
@@ -613,7 +613,7 @@ function EngagementRuleExpanded({
         <select
           value={parsedVal.targetType}
           onChange={(e) => updateEngagementState({ targetType: e.target.value })}
-          className="bg-white border border-slate-200 text-slate-700 rounded-xl py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+          className="bg-white border border-slate-200 text-slate-700 rounded-md py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
         >
           <option value="Campanha">Campanha</option>
           <option value="Fluxo de automação">Fluxo de automação</option>
@@ -621,7 +621,7 @@ function EngagementRuleExpanded({
         </select>
 
         <div className="relative flex-1 min-w-[200px]">
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl py-1.5 px-3 text-xs text-slate-700 shadow-2xs">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-md py-1.5 px-3 text-xs text-slate-700 shadow-2xs">
             <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
             <select
               value={parsedVal.campaignScope}
@@ -638,7 +638,7 @@ function EngagementRuleExpanded({
               value={parsedVal.specificCampaign}
               onChange={(e) => updateEngagementState({ specificCampaign: e.target.value })}
               placeholder="Digite o nome da campanha..."
-              className="mt-1.5 w-full bg-white border border-slate-200 rounded-xl py-1.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
+              className="mt-1.5 w-full bg-white border border-slate-200 rounded-md py-1.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
             />
           )}
         </div>
@@ -649,7 +649,7 @@ function EngagementRuleExpanded({
         <select
           value={parsedVal.timeframeMode}
           onChange={(e) => updateEngagementState({ timeframeMode: e.target.value })}
-          className="bg-white border border-slate-200 text-slate-700 rounded-xl py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+          className="bg-white border border-slate-200 text-slate-700 rounded-md py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
         >
           <option value="last_days">No(s) último(s)</option>
           <option value="between">Entre datas</option>
@@ -662,7 +662,7 @@ function EngagementRuleExpanded({
               type="number"
               value={parsedVal.daysCount}
               onChange={(e) => updateEngagementState({ daysCount: e.target.value })}
-              className="w-16 bg-white border border-slate-200 rounded-xl py-1.5 px-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 text-center"
+              className="w-16 bg-white border border-slate-200 rounded-md py-1.5 px-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 text-center"
             />
             <span className="text-xs font-semibold text-slate-600">dias</span>
           </div>
@@ -674,14 +674,14 @@ function EngagementRuleExpanded({
               type="date"
               value={parsedVal.startDate}
               onChange={(e) => updateEngagementState({ startDate: e.target.value })}
-              className="bg-white border border-slate-200 rounded-xl py-1.5 px-2 text-xs font-semibold text-slate-800 focus:outline-none"
+              className="bg-white border border-slate-200 rounded-md py-1.5 px-2 text-xs font-semibold text-slate-800 focus:outline-none"
             />
             <span className="text-[10px] text-slate-400 font-bold uppercase">e</span>
             <input
               type="date"
               value={parsedVal.endDate}
               onChange={(e) => updateEngagementState({ endDate: e.target.value })}
-              className="bg-white border border-slate-200 rounded-xl py-1.5 px-2 text-xs font-semibold text-slate-800 focus:outline-none"
+              className="bg-white border border-slate-200 rounded-md py-1.5 px-2 text-xs font-semibold text-slate-800 focus:outline-none"
             />
           </div>
         )}
@@ -692,7 +692,7 @@ function EngagementRuleExpanded({
         <select
           value={parsedVal.frequency}
           onChange={(e) => updateEngagementState({ frequency: e.target.value })}
-          className="bg-white border border-slate-200 text-slate-700 rounded-xl py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+          className="bg-white border border-slate-200 text-slate-700 rounded-md py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
         >
           <option value="Pelo menos uma vez">Pelo menos uma vez</option>
           <option value="Pelo menos 2 vezes">Pelo menos 2 vezes</option>
@@ -1837,7 +1837,7 @@ function CreateCampaignForm() {
         {wizardStep === 1 && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fadeIn">
             {/* Left Column: Form Fields */}
-            <div className="lg:col-span-7 bg-white border border-slate-202 rounded-3xl p-6 shadow-sm space-y-5">
+            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-md p-6 shadow-sm space-y-6">
               
               {/* Nome Interno */}
               <div className="space-y-1.5">
@@ -1848,7 +1848,7 @@ function CreateCampaignForm() {
                   placeholder="Ex: Campanha Teste 01"
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
+                  className="w-full bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
                 />
                 <span className="text-[10px] text-slate-500 block">Uso interno de relatórios apenas. O lead não verá este texto.</span>
               </div>
@@ -1868,12 +1868,12 @@ function CreateCampaignForm() {
                     placeholder="Ex: {{primeiro_nome}}, confira seu desconto exclusivo!"
                     value={subjectLine}
                     onChange={(e) => setSubjectLine(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="flex-1 bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none focus:border-indigo-500 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSubjectTagDropdown(!showSubjectTagDropdown)}
-                    className="px-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-202 rounded-xl text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
+                    className="px-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-202 rounded-md text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
                     title="Inserir tag dinâmica"
                   >
                     {"{ }"}
@@ -1881,7 +1881,7 @@ function CreateCampaignForm() {
                 </div>
 
                 {showSubjectTagDropdown && (
-                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-xl shadow-xl p-2 space-y-1 animate-fadeIn">
+                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-md shadow-xl p-2 space-y-1 animate-fadeIn">
                     <span className="text-[9px] font-black uppercase text-slate-400 px-2 block py-1">Atributos do Lead</span>
                     {[
                       { tag: "primeiro_nome", label: "Primeiro Nome" },
@@ -1916,12 +1916,12 @@ function CreateCampaignForm() {
                     placeholder="Texto de visualização rápida na caixa de entrada..."
                     value={preheader}
                     onChange={(e) => setPreheader(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="flex-1 bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none focus:border-indigo-500 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPreheaderTagDropdown(!showPreheaderTagDropdown)}
-                    className="px-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-202 rounded-xl text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
+                    className="px-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-202 rounded-md text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
                     title="Inserir tag dinâmica"
                   >
                     {"{ }"}
@@ -1929,7 +1929,7 @@ function CreateCampaignForm() {
                 </div>
 
                 {showPreheaderTagDropdown && (
-                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-xl shadow-xl p-2 space-y-1 animate-fadeIn">
+                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-md shadow-xl p-2 space-y-1 animate-fadeIn">
                     <span className="text-[9px] font-black uppercase text-slate-400 px-2 block py-1">Atributos do Lead</span>
                     {[
                       { tag: "primeiro_nome", label: "Primeiro Nome" },
@@ -1982,7 +1982,7 @@ function CreateCampaignForm() {
                     required
                     value={senderName}
                     onChange={(e) => setSenderName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1992,7 +1992,7 @@ function CreateCampaignForm() {
                     required
                     value={senderEmail}
                     onChange={(e) => setSenderEmail(e.target.value)}
-                    className={`w-full bg-slate-50 border rounded-xl py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none ${
+                    className={`w-full bg-slate-50 border rounded-md py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none ${
                       isDomainVerified ? "border-slate-202" : "border-amber-300 bg-amber-50/10 focus:border-amber-500"
                     }`}
                   />
@@ -2001,7 +2001,7 @@ function CreateCampaignForm() {
 
               {/* Domain Warning */}
               {!isDomainVerified && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3.5 flex gap-2 text-xs animate-fadeIn">
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-md p-3.5 flex gap-2 text-xs animate-fadeIn">
                   <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
                   <div>
                     <span>Este domínio não está verificado nas suas configurações. E-mails enviados por domínios não autenticados têm maior risco de cair em spam. </span>
@@ -2033,7 +2033,7 @@ function CreateCampaignForm() {
                       placeholder="Ex: suporte@meudominio.com"
                       value={customReplyTo}
                       onChange={(e) => setCustomReplyTo(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none"
+                      className="w-full bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3.5 text-sm text-slate-805 focus:outline-none"
                     />
                   </div>
                 )}
@@ -2041,31 +2041,16 @@ function CreateCampaignForm() {
 
             </div>
 
-            {/* Right Column: Simulated Inbox Inbox Preview */}
-            <div className="lg:col-span-5 bg-white border border-slate-202 rounded-3xl p-6 shadow-sm space-y-4">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Prévia da Caixa de Entrada</span>
-              
-              <div className="bg-slate-50 border border-slate-202 rounded-2xl p-4 space-y-2 text-xs max-w-md mx-auto">
-                <div className="flex justify-between items-start">
-                  <span className="font-black text-slate-900 truncate pr-2">
-                    {senderName || "Seu Remetente"}
-                  </span>
-                  <span className="text-[10px] text-slate-400 shrink-0 font-medium">Agora mesmo</span>
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-extrabold text-slate-850 line-clamp-1">
-                    {renderMockTags(subjectLine) || "Assunto do e-mail..."}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
-                    {renderMockTags(preheader) || "Pré-visualização do conteúdo de cabeçalho do e-mail..."}
-                  </p>
-                </div>
-                <div className="flex gap-1 items-center text-[10px] text-indigo-650 bg-indigo-50 w-fit px-2 py-0.5 rounded font-semibold mt-1">
-                  <Mail className="h-3 w-3" />
-                  <span>Caixa de entrada</span>
-                </div>
-              </div>
+            {/* Right Column: Simulated Inbox Preview */}
+            <div className="lg:col-span-5 flex justify-center items-start">
+              <SimulatedInboxPreview 
+                subjectLine={subjectLine} 
+                preheader={preheader} 
+                senderName={senderName} 
+                renderMockTags={renderMockTags} 
+              />
             </div>
+
           </div>
         )}
 
@@ -2087,19 +2072,19 @@ function CreateCampaignForm() {
                     type="text"
                     value={subjectLine}
                     onChange={(e) => setSubjectLine(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3.5 text-xs text-slate-800 focus:outline-none"
+                    className="flex-1 bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3.5 text-xs text-slate-800 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSubjectTagDropdownS2(!showSubjectTagDropdownS2)}
-                    className="px-3 bg-slate-105 hover:bg-slate-200 border border-slate-202 rounded-xl text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
+                    className="px-3 bg-slate-105 hover:bg-slate-200 border border-slate-202 rounded-md text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
                   >
                     {"{ }"}
                   </button>
                 </div>
 
                 {showSubjectTagDropdownS2 && (
-                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-xl shadow-xl p-2 space-y-1 animate-fadeIn">
+                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-md shadow-xl p-2 space-y-1 animate-fadeIn">
                     <span className="text-[9px] font-black uppercase text-slate-400 px-2 block py-1">Atributos do Lead</span>
                     {[
                       { tag: "primeiro_nome", label: "Primeiro Nome" },
@@ -2127,19 +2112,19 @@ function CreateCampaignForm() {
                     type="text"
                     value={preheader}
                     onChange={(e) => setPreheader(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3.5 text-xs text-slate-800 focus:outline-none"
+                    className="flex-1 bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3.5 text-xs text-slate-800 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPreheaderTagDropdownS2(!showPreheaderTagDropdownS2)}
-                    className="px-3 bg-slate-105 hover:bg-slate-200 border border-slate-202 rounded-xl text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
+                    className="px-3 bg-slate-105 hover:bg-slate-200 border border-slate-202 rounded-md text-xs font-bold text-slate-655 flex items-center justify-center cursor-pointer"
                   >
                     {"{ }"}
                   </button>
                 </div>
 
                 {showPreheaderTagDropdownS2 && (
-                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-xl shadow-xl p-2 space-y-1 animate-fadeIn">
+                  <div className="absolute right-0 mt-1 z-30 w-56 bg-white border border-slate-202 rounded-md shadow-xl p-2 space-y-1 animate-fadeIn">
                     <span className="text-[9px] font-black uppercase text-slate-400 px-2 block py-1">Atributos do Lead</span>
                     {[
                       { tag: "primeiro_nome", label: "Primeiro Nome" },
@@ -2197,7 +2182,7 @@ function CreateCampaignForm() {
 
               {/* Unsubscribe alert */}
               {!hasUnsubscribeLink && (
-                <div className="bg-red-50 border border-red-150 text-red-900 rounded-xl p-4 space-y-2 text-xs animate-fadeIn">
+                <div className="bg-red-50 border border-red-150 text-red-900 rounded-md p-4 space-y-2 text-xs animate-fadeIn">
                   <div className="flex gap-2 items-start">
                     <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                     <p>
@@ -2221,7 +2206,7 @@ function CreateCampaignForm() {
               {/* Device selector */}
               <div className="w-full flex items-center justify-between border-b border-slate-200 pb-3 mb-4 select-none shrink-0">
                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Preview de Renderização</span>
-                <div className="flex items-center bg-white border border-slate-202 rounded-xl p-1 gap-1">
+                <div className="flex items-center bg-white border border-slate-202 rounded-md p-1 gap-1">
                   <button
                     type="button"
                     onClick={() => setPreviewDevice("desktop")}
@@ -2345,7 +2330,7 @@ function CreateCampaignForm() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {/* Botão Leads Engajados */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col gap-2 shadow-2xs">
+                    <div className="bg-white border border-slate-200 rounded-md p-2.5 flex flex-col gap-2 shadow-2xs">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-extrabold text-slate-800">🔥 Leads Engajados</span>
                         <div className="flex gap-1">
@@ -2378,7 +2363,7 @@ function CreateCampaignForm() {
                     </div>
 
                     {/* Botão Excluir Leads Desengajados */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col gap-2 shadow-2xs">
+                    <div className="bg-white border border-slate-200 rounded-md p-2.5 flex flex-col gap-2 shadow-2xs">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-extrabold text-slate-800">🚫 Excluir Desengajados</span>
                         <button
@@ -2428,7 +2413,7 @@ function CreateCampaignForm() {
                       return (
                         <span
                           key={list.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold rounded-xl animate-fadeIn"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold rounded-md animate-fadeIn"
                         >
                           <span>{list.name} ({list.count.toLocaleString("pt-BR")})</span>
                           <button
@@ -2459,7 +2444,7 @@ function CreateCampaignForm() {
                   {showIncludeDropdown && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowIncludeDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-72 overflow-y-auto bg-white border border-slate-202 rounded-xl shadow-xl p-1.5 space-y-2 animate-fadeIn animate-scaleIn">
+                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-72 overflow-y-auto bg-white border border-slate-202 rounded-md shadow-xl p-1.5 space-y-2 animate-fadeIn animate-scaleIn">
                         {/* Section 1: Listas & Segmentações */}
                         <div>
                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider px-2 py-1 block">Listas & Segmentações</span>
@@ -2585,7 +2570,7 @@ function CreateCampaignForm() {
                       return (
                         <span
                           key={list.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl animate-fadeIn"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-md animate-fadeIn"
                         >
                           <span>{list.name} ({list.count.toLocaleString("pt-BR")})</span>
                           <button
@@ -2616,7 +2601,7 @@ function CreateCampaignForm() {
                   {showExcludeDropdown && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowExcludeDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-60 overflow-y-auto bg-white border border-slate-202 rounded-xl shadow-xl p-1.5 space-y-1 animate-fadeIn animate-scaleIn">
+                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-60 overflow-y-auto bg-white border border-slate-202 rounded-md shadow-xl p-1.5 space-y-1 animate-fadeIn animate-scaleIn">
                         {filteredExcludeOptions.length === 0 ? (
                           <div className="text-xs text-slate-400 p-3 text-center">Nenhuma lista encontrada para exclusão.</div>
                         ) : (
@@ -2650,7 +2635,7 @@ function CreateCampaignForm() {
                 </div>
 
                 {/* Active contacts notice banner */}
-                <div className="p-3 bg-indigo-50/70 border border-indigo-150 rounded-xl text-xs text-indigo-900 flex items-start gap-2.5">
+                <div className="p-3 bg-indigo-50/70 border border-indigo-150 rounded-md text-xs text-indigo-900 flex items-start gap-2.5">
                   <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
                   <span>Os e-mails serão disparados <strong>exclusivamente para contatos com status ATIVO</strong> inscritos nas listas ou segmentações selecionadas abaixo.</span>
                 </div>
@@ -2667,7 +2652,7 @@ function CreateCampaignForm() {
                   <button
                     type="button"
                     onClick={() => setShowPreviewSegmentContactsModal(true)}
-                    className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border border-indigo-200"
+                    className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 cursor-pointer border border-indigo-200"
                   >
                     <Search className="h-3.5 w-3.5" />
                     <span>Visualizar Contatos desta Segmentação</span>
@@ -2717,7 +2702,7 @@ function CreateCampaignForm() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase">Opção de Envio</label>
-                      <select className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3 text-xs text-slate-805">
+                      <select className="w-full bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3 text-xs text-slate-805">
                         <option>Horário de envio fixo</option>
                       </select>
                     </div>
@@ -2728,7 +2713,7 @@ function CreateCampaignForm() {
                         type="date"
                         value={scheduledDate}
                         onChange={(e) => setScheduledDate(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3 text-xs text-slate-800"
+                        className="w-full bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3 text-xs text-slate-800"
                       />
                     </div>
 
@@ -2738,7 +2723,7 @@ function CreateCampaignForm() {
                         type="time"
                         value={scheduledTime}
                         onChange={(e) => setScheduledTime(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3 text-xs text-slate-800"
+                        className="w-full bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3 text-xs text-slate-800"
                       />
                     </div>
                   </div>
@@ -2749,7 +2734,7 @@ function CreateCampaignForm() {
                       <select
                         value={timezoneMode}
                         onChange={(e) => setTimezoneMode(e.target.value as any)}
-                        className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2.5 px-3 text-xs text-slate-805 cursor-pointer"
+                        className="w-full bg-slate-50 border border-slate-202 rounded-md py-2.5 px-3 text-xs text-slate-805 cursor-pointer"
                       >
                         <option value="account">Fuso horário da conta (America/Sao_Paulo)</option>
                         <option value="recipient_local">Fuso horário local do destinatário</option>
@@ -2836,14 +2821,14 @@ function CreateCampaignForm() {
             <button
               type="button"
               onClick={handleSaveDraft}
-              className="px-4 py-2.5 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+              className="px-4 py-2.5 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs"
             >
               Salvar Rascunho
             </button>
             {wizardStep === 1 ? (
               <Link
                 href="/dashboard/campaigns"
-                className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-xl text-xs font-bold transition-all"
+                className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all"
               >
                 Voltar para Campanhas
               </Link>
@@ -2851,7 +2836,7 @@ function CreateCampaignForm() {
               <button
                 type="button"
                 onClick={() => setWizardStep((s) => s - 1)}
-                className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all cursor-pointer"
               >
                 Voltar
               </button>
@@ -2864,7 +2849,7 @@ function CreateCampaignForm() {
               type="button"
               disabled={wizardStep === 1 ? !isStep1Valid : !isStep2Valid}
               onClick={() => setWizardStep((s) => s + 1)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl text-xs font-bold shadow-md disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md text-xs font-bold shadow-md disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
             >
               Continuar
             </button>
@@ -2872,7 +2857,7 @@ function CreateCampaignForm() {
             <button
               type="button"
               onClick={() => setShowConfirmSendModal(true)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
             >
               {sendType === "immediate" ? "Enviar Agora" : "Agendar Campanha"}
             </button>
@@ -2910,13 +2895,13 @@ function CreateCampaignForm() {
                   placeholder="Ex: Alunos de React ativos em SP"
                   value={newSegmentName}
                   onChange={(e) => setNewSegmentName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-202 rounded-xl py-2 px-3.5 text-xs text-slate-800 focus:outline-none"
+                  className="w-full bg-slate-50 border border-slate-202 rounded-md py-2 px-3.5 text-xs text-slate-800 focus:outline-none"
                 />
               </div>
 
               {/* Logical Global Union operator */}
               {segmentGroups.length > 1 && (
-                <div className="bg-indigo-50/50 border border-indigo-100/50 rounded-xl p-3 flex items-center justify-between gap-4">
+                <div className="bg-indigo-50/50 border border-indigo-100/50 rounded-md p-3 flex items-center justify-between gap-4">
                   <span className="text-xs font-bold text-indigo-850">Lógica de União entre Grupos:</span>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -3018,7 +3003,7 @@ function CreateCampaignForm() {
                                 </span>
                               </div>
                             )}
-                            <div className="bg-white p-3 rounded-xl border border-slate-202">
+                            <div className="bg-white p-3 rounded-md border border-slate-202">
                               {rule.field === "email_opened" || rule.field === "email_received" || rule.field === "email_clicked" ? (
                                 <EngagementRuleExpanded
                                   rule={rule}
@@ -3202,7 +3187,7 @@ function CreateCampaignForm() {
                   <button
                     type="button"
                     onClick={handleAddSegmentGroup}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/50 text-xs font-bold text-indigo-700 rounded-xl transition-all cursor-pointer shadow-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/50 text-xs font-bold text-indigo-700 rounded-md transition-all cursor-pointer shadow-sm"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Adicionar Novo Grupo</span>
@@ -3214,7 +3199,7 @@ function CreateCampaignForm() {
               </div>
 
               {/* Preview simulation box */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="bg-slate-50 rounded-md p-4 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h4 className="text-xs font-bold text-slate-700">Prévia de Leads</h4>
                   <p className="text-[10px] text-slate-500 mt-0.5">Clique para simular a contagem com indexação GIN na base.</p>
@@ -3254,7 +3239,7 @@ function CreateCampaignForm() {
               <button
                 type="button"
                 onClick={() => setShowSegmentModal(false)}
-                className="px-4 py-2 border border-slate-200 text-slate-500 hover:text-slate-805 rounded-xl text-xs font-bold cursor-pointer"
+                className="px-4 py-2 border border-slate-200 text-slate-500 hover:text-slate-805 rounded-md text-xs font-bold cursor-pointer"
               >
                 Cancelar
               </button>
@@ -3262,7 +3247,7 @@ function CreateCampaignForm() {
                 type="button"
                 onClick={handleSaveSegment}
                 disabled={!newSegmentName.trim()}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed shadow-md cursor-pointer"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed shadow-md cursor-pointer"
               >
                 Salvar e Selecionar
               </button>
@@ -3276,7 +3261,7 @@ function CreateCampaignForm() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
           <div className="relative w-full max-w-md bg-white border border-slate-202 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col space-y-4">
             <div className="flex items-center gap-3 text-indigo-650">
-              <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
+              <div className="p-2.5 bg-indigo-50 rounded-md text-indigo-600">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-900">Confirmar Envio / Agendamento?</h3>
@@ -3344,7 +3329,7 @@ function CreateCampaignForm() {
                   placeholder="Pesquisar por nome ou e-mail do contato..."
                   value={contactSearchQuery}
                   onChange={(e) => setContactSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -3383,7 +3368,7 @@ function CreateCampaignForm() {
                             setSelectedIncludeLists((prev) => [...prev, contactListId]);
                           }
                         }}
-                        className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        className={`p-3 rounded-md border flex items-center justify-between cursor-pointer transition-all ${
                           isSelected ? "bg-indigo-50/80 border-indigo-300 text-indigo-900" : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
                         }`}
                       >
@@ -3415,7 +3400,7 @@ function CreateCampaignForm() {
               <button
                 type="button"
                 onClick={() => setShowSelectContactsModal(false)}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold transition-all shadow-md cursor-pointer"
               >
                 Concluir Seleção
               </button>
@@ -3450,7 +3435,7 @@ function CreateCampaignForm() {
                   placeholder="Pesquisar por nome ou e-mail..."
                   value={contactSearchQuery}
                   onChange={(e) => setContactSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md py-2 pl-9 pr-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -3478,7 +3463,7 @@ function CreateCampaignForm() {
                   .map((c: any) => (
                     <div
                       key={c.id}
-                      className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-150 flex items-center justify-between transition-colors"
+                      className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-md border border-slate-150 flex items-center justify-between transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
@@ -3511,7 +3496,7 @@ function CreateCampaignForm() {
               <button
                 type="button"
                 onClick={() => setShowPreviewSegmentContactsModal(false)}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold transition-all shadow-md cursor-pointer"
               >
                 Fechar
               </button>
