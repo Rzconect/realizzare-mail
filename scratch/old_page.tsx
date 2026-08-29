@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { use, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -10,9 +10,7 @@ import {
   Phone,
   Calendar,
   MapPin,
-  Tag,
-  List,
-  MoreVertical,
+  Tag as TagIcon,
   BookOpen,
   DollarSign,
   Clock,
@@ -64,13 +62,13 @@ export const mockProfileData: Record<string, {
     gender: "Feminino",
     status: "active",
     created_at: "2026-07-01",
-    location: { country: "Brasil", state: "São Paulo", city: "São Paulo" },
+    location: { country: "Brasil", state: "S├úo Paulo", city: "S├úo Paulo" },
     tags: ["Novo", "Matriculado", "Inbound"],
     custom_fields: [
-      { name: "Área de Interesse", type: "text", value: "Tecnologia da Informação" },
-      { name: "Nível Acadêmico", type: "text", value: "Ensino Superior Cursando" },
+      { name: "├ürea de Interesse", type: "text", value: "Tecnologia da Informa├º├úo" },
+      { name: "N├¡vel Acad├¬mico", type: "text", value: "Ensino Superior Cursando" },
       { name: "Origem Lead", type: "text", value: "Instagram Ads" },
-      { name: "Último Login", type: "text", value: "08/07/2026 11:20" },
+      { name: "├Ültimo Login", type: "text", value: "08/07/2026 11:20" },
       { name: "Curso Pretendido", type: "text", value: "React Native com Expo" }
     ],
     lists: [
@@ -78,23 +76,23 @@ export const mockProfileData: Record<string, {
       { name: "Novidades Tecnologia", status: "subscribed", updated_at: "2026-07-02" }
     ],
     enrollments: [
-      { course_name: "Introdução à Programação Web", price: "R$ 197,00", status: "active", progress: 42.50, enrolled_at: "2026-07-01", certificate_issued: false, completed_at: null },
+      { course_name: "Introdu├º├úo ├á Programa├º├úo Web", price: "R$ 197,00", status: "active", progress: 42.50, enrolled_at: "2026-07-01", certificate_issued: false, completed_at: null },
       { course_name: "Marketing Digital de Performance", price: "R$ 197,00", status: "completed", progress: 100.00, enrolled_at: "2026-05-15", certificate_issued: true, completed_at: "2026-06-18" }
     ],
     purchases: [
-      { product_type: "course", product_name: "Introdução à Programação Web", amount: 197.00, paid_at: "2026-07-01T14:32:00Z", status: "paid", sku: "DIR-WEB-197" },
+      { product_type: "course", product_name: "Introdu├º├úo ├á Programa├º├úo Web", amount: 197.00, paid_at: "2026-07-01T14:32:00Z", status: "paid", sku: "DIR-WEB-197" },
       { product_type: "course", product_name: "Marketing Digital de Performance", amount: 197.00, paid_at: "2026-05-15T10:11:00Z", status: "paid", sku: "MKT-PER-197" }
     ],
     flows: [
-      { name: "Boas-vindas Programação Web", status: "active", progress: 60, entered_at: "2026-07-01" },
-      { name: "Pós-venda Performance", status: "completed", progress: 100, entered_at: "2026-06-01" }
+      { name: "Boas-vindas Programa├º├úo Web", status: "active", progress: 60, entered_at: "2026-07-01" },
+      { name: "P├│s-venda Performance", status: "completed", progress: 100, entered_at: "2026-06-01" }
     ],
     timeline: [
-      { id: "e1", type: "click", label: "E-mail Clicado", details: "Clicou no link 'Ir para o curso' na campanha 'Seu Acesso Liberação'", timestamp: "2026-07-03T18:15:00Z" },
-      { id: "e2", type: "open", label: "E-mail Aberto", details: "Abriu o e-mail de Boas-vindas 'Seu Acesso Liberação'", timestamp: "2026-07-01T15:02:00Z" },
-      { id: "e3", type: "purchase", label: "Compra Aprovada", details: "Comprou curso 'Introdução à Programação Web' - R$ 197,00", timestamp: "2026-07-01T14:32:00Z" },
-      { id: "e4", type: "enrollment", label: "Matrícula Realizada", details: "Matriculado no curso 'Introdução à Programação Web'", timestamp: "2026-07-01T14:32:00Z" },
-      { id: "e5", type: "send", label: "E-mail Enviado", details: "Enviado e-mail de transação 'Seu Acesso Liberação'", timestamp: "2026-07-01T14:30:00Z" },
+      { id: "e1", type: "click", label: "E-mail Clicado", details: "Clicou no link 'Ir para o curso' na campanha 'Seu Acesso Libera├º├úo'", timestamp: "2026-07-03T18:15:00Z" },
+      { id: "e2", type: "open", label: "E-mail Aberto", details: "Abriu o e-mail de Boas-vindas 'Seu Acesso Libera├º├úo'", timestamp: "2026-07-01T15:02:00Z" },
+      { id: "e3", type: "purchase", label: "Compra Aprovada", details: "Comprou curso 'Introdu├º├úo ├á Programa├º├úo Web' - R$ 197,00", timestamp: "2026-07-01T14:32:00Z" },
+      { id: "e4", type: "enrollment", label: "Matr├¡cula Realizada", details: "Matriculado no curso 'Introdu├º├úo ├á Programa├º├úo Web'", timestamp: "2026-07-01T14:32:00Z" },
+      { id: "e5", type: "send", label: "E-mail Enviado", details: "Enviado e-mail de transa├º├úo 'Seu Acesso Libera├º├úo'", timestamp: "2026-07-01T14:30:00Z" },
     ]
   },
   "c2": {
@@ -106,44 +104,44 @@ export const mockProfileData: Record<string, {
     gender: "Masculino",
     status: "active",
     created_at: "2026-06-28",
-    location: { country: "Brasil", state: "Rio de Janeiro", city: "Niterói" },
+    location: { country: "Brasil", state: "Rio de Janeiro", city: "Niter├│i" },
     tags: ["Interessado", "Futebol", "Outbound"],
     custom_fields: [
-      { name: "Área de Interesse", type: "text", value: "Negócios & Finanças" },
-      { name: "Origem Lead", type: "text", value: "Indicação" },
-      { name: "Inscrição Newsletter", type: "text", value: "Sim" },
+      { name: "├ürea de Interesse", type: "text", value: "Neg├│cios & Finan├ºas" },
+      { name: "Origem Lead", type: "text", value: "Indica├º├úo" },
+      { name: "Inscri├º├úo Newsletter", type: "text", value: "Sim" },
       { name: "Cargo", type: "text", value: "Gerente Financeiro" },
-      { name: "Empresa", type: "text", value: "Confiança ME" }
+      { name: "Empresa", type: "text", value: "Confian├ºa ME" }
     ],
     lists: [
       { name: "Novidades Geral", status: "subscribed", updated_at: "2026-06-28" }
     ],
     enrollments: [
-      { course_name: "Gestão Financeira para Negócios", price: "R$ 297,00", status: "active", progress: 20.00, enrolled_at: "2026-06-29", certificate_issued: false, completed_at: null }
+      { course_name: "Gest├úo Financeira para Neg├│cios", price: "R$ 297,00", status: "active", progress: 20.00, enrolled_at: "2026-06-29", certificate_issued: false, completed_at: null }
     ],
     purchases: [
-      { product_type: "course", product_name: "Gestão Financeira para Negócios", amount: 297.00, paid_at: "2026-06-29T10:15:00Z", status: "paid", sku: "FIN-NEG-297" }
+      { product_type: "course", product_name: "Gest├úo Financeira para Neg├│cios", amount: 297.00, paid_at: "2026-06-29T10:15:00Z", status: "paid", sku: "FIN-NEG-297" }
     ],
     flows: [
-      { name: "Boas-vindas Gestão Financeira", status: "active", progress: 20, entered_at: "2026-06-29" }
+      { name: "Boas-vindas Gest├úo Financeira", status: "active", progress: 20, entered_at: "2026-06-29" }
     ],
     timeline: [
-      { id: "e1", type: "open", label: "E-mail Aberto", details: "Abriu e-mail 'Dicas Rápidas de Gestão Financeira'", timestamp: "2026-07-05T09:12:00Z" },
-      { id: "e2", type: "send", label: "E-mail Enviado", details: "Enviado e-mail newsletter 'Dicas Rápidas de Gestão Financeira'", timestamp: "2026-07-05T08:00:00Z" },
-      { id: "e3", type: "enrollment", label: "Matrícula Realizada", details: "Matriculado no curso 'Gestão Financeira para Negócios'", timestamp: "2026-06-29T10:15:00Z" },
-      { id: "e4", type: "purchase", label: "Compra Aprovada", details: "Comprou curso 'Gestão Financeira para Negócios' - R$ 297,00", timestamp: "2026-06-29T10:15:00Z" },
+      { id: "e1", type: "open", label: "E-mail Aberto", details: "Abriu e-mail 'Dicas R├ípidas de Gest├úo Financeira'", timestamp: "2026-07-05T09:12:00Z" },
+      { id: "e2", type: "send", label: "E-mail Enviado", details: "Enviado e-mail newsletter 'Dicas R├ípidas de Gest├úo Financeira'", timestamp: "2026-07-05T08:00:00Z" },
+      { id: "e3", type: "enrollment", label: "Matr├¡cula Realizada", details: "Matriculado no curso 'Gest├úo Financeira para Neg├│cios'", timestamp: "2026-06-29T10:15:00Z" },
+      { id: "e4", type: "purchase", label: "Compra Aprovada", details: "Comprou curso 'Gest├úo Financeira para Neg├│cios' - R$ 297,00", timestamp: "2026-06-29T10:15:00Z" },
     ]
   }
 };
 
 function formatTransactionDate(paidAt: string, productType?: string): string {
-  if (!paidAt) return "Data não informada";
+  if (!paidAt) return "Data n├úo informada";
 
   let method = "";
-  if (paidAt.toLowerCase().includes("pix")) method = " • PIX";
-  else if (paidAt.toLowerCase().includes("cartão") || paidAt.toLowerCase().includes("card")) method = " • Cartão de Crédito";
-  else if (productType === "course") method = " • Cartão de Crédito";
-  else method = " • PIX";
+  if (paidAt.toLowerCase().includes("pix")) method = " ÔÇó PIX";
+  else if (paidAt.toLowerCase().includes("cart├úo") || paidAt.toLowerCase().includes("card")) method = " ÔÇó Cart├úo de Cr├®dito";
+  else if (productType === "course") method = " ÔÇó Cart├úo de Cr├®dito";
+  else method = " ÔÇó PIX";
 
   // Match ISO string e.g. 2026-08-17T17:48:14+00:00 or 2026-08-17T17:48:14.000Z
   const isoMatch = paidAt.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:\d{2}|Z)?/);
@@ -151,7 +149,7 @@ function formatTransactionDate(paidAt: string, productType?: string): string {
   if (isoMatch) {
     dateObj = new Date(isoMatch[0]);
   } else {
-    const cleanStr = paidAt.split(" • ")[0].split(" - ")[0].trim();
+    const cleanStr = paidAt.split(" ÔÇó ")[0].split(" - ")[0].trim();
     const d = new Date(cleanStr);
     if (!isNaN(d.getTime())) {
       dateObj = d;
@@ -170,11 +168,11 @@ function formatTransactionDate(paidAt: string, productType?: string): string {
       minute: "2-digit",
       timeZone: "America/Sao_Paulo"
     });
-    return `${formattedDate} às ${formattedTime}${method}`;
+    return `${formattedDate} ├ás ${formattedTime}${method}`;
   }
 
-  if (paidAt.includes("às") || paidAt.includes("as") || paidAt.includes("/")) {
-    return paidAt.includes("•") ? paidAt : `${paidAt}${method}`;
+  if (paidAt.includes("├ás") || paidAt.includes("as") || paidAt.includes("/")) {
+    return paidAt.includes("ÔÇó") ? paidAt : `${paidAt}${method}`;
   }
 
   return `${paidAt}${method}`;
@@ -196,7 +194,7 @@ function formatTimelineTimestamp(ts: string): string {
         minute: "2-digit",
         timeZone: "America/Sao_Paulo"
       });
-      return `${datePart} às ${timePart}`;
+      return `${datePart} ├ás ${timePart}`;
     }
   } catch (e) {}
 
@@ -211,27 +209,27 @@ function formatPayloadKeyValues(payload: any): Array<{ key: string; value: strin
 
   const labelMap: Record<string, string> = {
     event: "Evento",
-    action_type: "Tipo de Ação",
+    action_type: "Tipo de A├º├úo",
     item_title: "Item / Produto",
     item: "Item / Produto",
     sku: "SKU",
     course_id: "ID do Curso",
     course_name: "Nome do Curso",
     progress_percent: "Progresso (%)",
-    completed_lessons: "Aulas Concluídas",
+    completed_lessons: "Aulas Conclu├¡das",
     total_lessons: "Total de Aulas",
     milestone: "Marco",
     is_paid_course: "Curso Pago",
     email: "E-mail do Aluno",
     first_name: "Nome do Aluno",
-    url: "Link da Página",
-    page_url: "Link da Página",
+    url: "Link da P├ígina",
+    page_url: "Link da P├ígina",
     timestamp: "Data / Hora",
     source: "Origem",
     provider: "Provedor",
     status: "Status",
     amount: "Valor",
-    code: "Código do Certificado"
+    code: "C├│digo do Certificado"
   };
 
   const result: Array<{ key: string; value: string }> = [];
@@ -243,7 +241,7 @@ function formatPayloadKeyValues(payload: any): Array<{ key: string; value: strin
     let displayVal = String(val);
 
     if (typeof val === "boolean") {
-      displayVal = val ? "Sim" : "Não";
+      displayVal = val ? "Sim" : "N├úo";
     } else if (typeof val === "object") {
       try { displayVal = JSON.stringify(val); } catch (e) {}
     }
@@ -265,7 +263,6 @@ interface PageProps {
 export default function ContactProfilePage({ params }: PageProps) {
   const router = useRouter();
   const [showAllFields, setShowAllFields] = useState(false);
-  const [activeTab, setActiveTab] = useState("info");
   const [openDrawerInfo, setOpenDrawerInfo] = useState(false);
   const [openDrawerTags, setOpenDrawerTags] = useState(false);
   const [openDrawerCustom, setOpenDrawerCustom] = useState(false);
@@ -430,7 +427,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           );
           let value = "";
           if (matchedVal) {
-            value = matchedVal.value_text || matchedVal.value_number?.toString() || matchedVal.value_date || (matchedVal.value_boolean ? "Sim" : "Não") || "";
+            value = matchedVal.value_text || matchedVal.value_number?.toString() || matchedVal.value_date || (matchedVal.value_boolean ? "Sim" : "N├úo") || "";
           }
           return {
             name: gf.name,
@@ -505,7 +502,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               if (isTargeted) {
                 const flowName = c.flow_name || c.flowName || "";
                 const detailsStr = flowName
-                  ? `Fluxo: ${flowName} • Campanha: '${c.name}'`
+                  ? `Fluxo: ${flowName} ÔÇó Campanha: '${c.name}'`
                   : `Enviado e-mail da campanha '${c.name}'`;
 
                 rawEvents.push({
@@ -537,7 +534,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               if (isOpen || isClick) {
                 const campTitle = campaignMap.get(payload.campaign_id) || "Campanha Realizzare";
                 const flowName = payload.flow_name || payload.flowName || "";
-                const flowPrefix = flowName ? `Fluxo: ${flowName} • ` : "";
+                const flowPrefix = flowName ? `Fluxo: ${flowName} ÔÇó ` : "";
 
                 rawEvents.push({
                   id: te.id || Math.random().toString(),
@@ -555,9 +552,9 @@ export default function ContactProfilePage({ params }: PageProps) {
                 const itemTitle = actionPayload.item_title || actionPayload.item || "Emitir Certificado";
                 const sku = actionPayload.sku ? `(SKU: ${actionPayload.sku})` : "";
 
-                let label = `Botão acionado: ${itemTitle}`;
+                let label = `Bot├úo acionado: ${itemTitle}`;
                 if (actionType === "checkout_click" && (!actionPayload.item_title && !actionPayload.item)) {
-                  label = "Botão acionado: Emitir Certificado";
+                  label = "Bot├úo acionado: Emitir Certificado";
                 }
 
                 rawEvents.push({
@@ -582,7 +579,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             let note = "";
 
             if (ce.event_type === "started") {
-              label = "Matrícula em Curso (WordPress)";
+              label = "Matr├¡cula em Curso (WordPress)";
               details = `Matriculado no curso '${cName}'`;
               type = "enrollment";
             } else if (ce.event_type === "progress_updated") {
@@ -593,7 +590,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               label = "Certificado Emitido (WordPress)";
               details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${cName}'`;
               type = "enrollment";
-              note = "(1 crédito de certificado consumido)";
+              note = "(1 cr├®dito de certificado consumido)";
             }
 
             rawEvents.push({
@@ -611,14 +608,14 @@ export default function ContactProfilePage({ params }: PageProps) {
         // C. Purchase Events (Pagar.me Transactions)
         if (purchases && purchases.length > 0) {
           purchases.forEach((p: any) => {
-            const prodName = p.product_name || "Certificado de Conclusão - Realizzare Cursos";
+            const prodName = p.product_name || "Certificado de Conclus├úo - Realizzare Cursos";
             const amtStr = (p.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const isPaid = p.status === "paid" || p.status === "approved";
 
             rawEvents.push({
               id: `purchase-${p.id}`,
               type: "purchase",
-              label: isPaid ? "Compra Aprovada (Pagar.me)" : "Transação Registrada",
+              label: isPaid ? "Compra Aprovada (Pagar.me)" : "Transa├º├úo Registrada",
               details: `Adquiriu '${prodName}' - R$ ${amtStr}`,
               payload: p,
               timestamp: p.paid_at || p.created_at
@@ -635,7 +632,7 @@ export default function ContactProfilePage({ params }: PageProps) {
         if (reportingEventsData && reportingEventsData.length > 0) {
           reportingEventsData.forEach((re: any) => {
             const meta = re.metadata || {};
-            const title = meta.item_title || "Certificado de Conclusão - Realizzare Cursos";
+            const title = meta.item_title || "Certificado de Conclus├úo - Realizzare Cursos";
             const amtStr = (meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             rawEvents.push({
@@ -757,9 +754,9 @@ export default function ContactProfilePage({ params }: PageProps) {
                       customTxList.push({
                         id: s.id || `sim-${Math.random()}`,
                         product_type: s.category || "certificado",
-                        product_name: s.itemTitle || s.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
+                        product_name: s.itemTitle || s.eventLabel || "Certificado de Conclus├úo - Realizzare Cursos",
                         amount: s.amount || 45.70,
-                        paid_at: s.date ? `${s.date}${s.time ? ` às ${s.time}` : ""}` : "12/08/2026 às 14:14",
+                        paid_at: s.date ? `${s.date}${s.time ? ` ├ás ${s.time}` : ""}` : "12/08/2026 ├ás 14:14",
                         status: "paid",
                         provider: s.provider || "pagarme"
                       });
@@ -774,9 +771,9 @@ export default function ContactProfilePage({ params }: PageProps) {
                 customTxList.push({
                   id: matchingStudentInfo.id || `sim-default`,
                   product_type: matchingStudentInfo.category || "certificado",
-                  product_name: matchingStudentInfo.itemTitle || matchingStudentInfo.eventLabel || "Certificado de Conclusão - Realizzare Cursos",
+                  product_name: matchingStudentInfo.itemTitle || matchingStudentInfo.eventLabel || "Certificado de Conclus├úo - Realizzare Cursos",
                   amount: matchingStudentInfo.amount || 45.70,
-                  paid_at: matchingStudentInfo.date ? `${matchingStudentInfo.date}${matchingStudentInfo.time ? ` às ${matchingStudentInfo.time}` : ""}` : "12/08/2026 às 14:14",
+                  paid_at: matchingStudentInfo.date ? `${matchingStudentInfo.date}${matchingStudentInfo.time ? ` ├ás ${matchingStudentInfo.time}` : ""}` : "12/08/2026 ├ás 14:14",
                   status: "paid",
                   provider: matchingStudentInfo.provider || "pagarme"
                 });
@@ -821,7 +818,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           product_type: tx.product_type || "certificate",
           product_name: tx.product_name,
           amount: Number(tx.amount || 45.70),
-          paid_at: tx.paid_at || "15/08/2026 às 14:30",
+          paid_at: tx.paid_at || "15/08/2026 ├ás 14:30",
           status: tx.status || "paid",
           sku: tx.sku || "PAGARME-V5"
         }));
@@ -838,9 +835,9 @@ export default function ContactProfilePage({ params }: PageProps) {
         if (customPurchases.length === 0) {
           customPurchases.push({
             product_type: "certificado",
-            product_name: "Certificado de Conclusão - Realizzare Cursos",
+            product_name: "Certificado de Conclus├úo - Realizzare Cursos",
             amount: 45.70,
-            paid_at: "15/08/2026 às 19:17 • PIX",
+            paid_at: "15/08/2026 ├ás 19:17 ÔÇó PIX",
             status: "paid",
             sku: "PAGARME-V5"
           });
@@ -848,14 +845,14 @@ export default function ContactProfilePage({ params }: PageProps) {
             id: `evt-pagarme-def-1`,
             type: "purchase",
             label: "Compra Aprovada (Pagar.me)",
-            details: "Comprou 'Certificado de Conclusão - Realizzare Cursos' - R$ 45,70",
+            details: "Comprou 'Certificado de Conclus├úo - Realizzare Cursos' - R$ 45,70",
             timestamp: "15/08/2026"
           });
         }
         if (customPurchases.length === 0 && (tags.includes("Pagar.me") || foundContact?.id?.startsWith("c_pagarme_"))) {
           customPurchases.push({
             product_type: "certificado",
-            product_name: foundContact?.course || "Certificado de Conclusão - Realizzare Cursos",
+            product_name: foundContact?.course || "Certificado de Conclus├úo - Realizzare Cursos",
             amount: Number(foundContact?.total_spent || 49.90),
             paid_at: created_at || "01/08/2026",
             status: "paid",
@@ -866,7 +863,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             id: `evt-pagarme-def`,
             type: "purchase",
             label: "Compra Aprovada via Pagar.me",
-            details: `Comprou '${foundContact?.course || "Certificado de Conclusão - Realizzare Cursos"}' - R$ ${Number(foundContact?.total_spent || 49.90).toFixed(2).replace(".", ",")}`,
+            details: `Comprou '${foundContact?.course || "Certificado de Conclus├úo - Realizzare Cursos"}' - R$ ${Number(foundContact?.total_spent || 49.90).toFixed(2).replace(".", ",")}`,
             timestamp: created_at || "01/08/2026"
           });
         }
@@ -882,12 +879,12 @@ export default function ContactProfilePage({ params }: PageProps) {
           created_at,
           location: {
             country: "Brasil",
-            state: "São Paulo",
-            city: "São Paulo"
+            state: "S├úo Paulo",
+            city: "S├úo Paulo"
           },
           tags,
           custom_fields: [
-            { name: "Área de Interesse", type: "text", value: "Cursos Livres Realizzare" },
+            { name: "├ürea de Interesse", type: "text", value: "Cursos Livres Realizzare" },
             { name: "Origem Lead", type: "text", value: "Pagar.me V5 Checkout" }
           ],
           lists: [
@@ -895,7 +892,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           ],
           enrollments: [
             {
-              course_name: foundContact?.course || "Certificado de Conclusão - Realizzare Cursos",
+              course_name: foundContact?.course || "Certificado de Conclus├úo - Realizzare Cursos",
               price: `R$ ${Number(foundContact?.total_spent || 49.90).toFixed(2).replace(".", ",")}`,
               status: "active",
               progress: 100,
@@ -1045,11 +1042,11 @@ export default function ContactProfilePage({ params }: PageProps) {
       setSelectedListToJoin("");
       setShowListConfirmModal(false);
       setListConfirmAction(null);
-      alert(type === "add" ? `Contato adicionado à lista "${listName}" com sucesso!` : `Inscrição na lista "${listName}" cancelada com sucesso!`);
+      alert(type === "add" ? `Contato adicionado ├á lista "${listName}" com sucesso!` : `Inscri├º├úo na lista "${listName}" cancelada com sucesso!`);
 
     } catch (err: any) {
       console.error(err);
-      alert("Erro ao atualizar inscrição na lista.");
+      alert("Erro ao atualizar inscri├º├úo na lista.");
     }
   };
 
@@ -1140,10 +1137,10 @@ export default function ContactProfilePage({ params }: PageProps) {
 
       setProfile(JSON.parse(JSON.stringify(draft)));
       setEditingFields({});
-      alert("Alterações salvas com sucesso!");
+      alert("Altera├º├Áes salvas com sucesso!");
     } catch (err: any) {
       console.error(err);
-      alert("Erro ao salvar alterações no banco de dados.");
+      alert("Erro ao salvar altera├º├Áes no banco de dados.");
     }
   };
 
@@ -1225,12 +1222,6 @@ export default function ContactProfilePage({ params }: PageProps) {
     );
   }
 
-  const emailsSentCount = draft.emails_sent || 0;
-  const emailsOpenedCount = draft.emails_opened || 0;
-  const emailsClickedCount = draft.emails_clicked || 0;
-  const emailsOpenedRate = emailsSentCount > 0 ? Math.round((emailsOpenedCount / emailsSentCount) * 100) : 0;
-  const emailsClickedRate = emailsSentCount > 0 ? Math.round((emailsClickedCount / emailsSentCount) * 100) : 0;
-
   return (
     <div className="lg:h-[calc(100vh-100px)] flex flex-col space-y-4 overflow-hidden min-h-0">
       {/* Navigation & Header */}
@@ -1246,7 +1237,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             Contatos
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-indigo-700 font-bold">{draft.first_name} {draft.last_name}</span>
+          <span className="text-slate-800 font-bold">{draft.first_name} {draft.last_name}</span>
         </div>
 
         {/* Save button visible only when there are unsaved inline changes */}
@@ -1255,376 +1246,563 @@ export default function ContactProfilePage({ params }: PageProps) {
             onClick={handleSaveAll}
             className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-650 hover:from-emerald-650 hover:to-emerald-700 text-white rounded-xl text-sm font-extrabold transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer animate-fadeIn"
           >
-            Salvar Alterações
+            Salvar Altera├º├Áes
           </button>
         )}
       </div>
 
-      {/* 2-Column Profile Layout Grid (8 / 4 cols) - Fixed Height on Desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-0.5 pb-1">
+      {/* 3-Column Profile Layout Grid (3 / 6 / 3 cols) - Fixed Height on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-0.5 pb-1">
         
-        {/* Column 1: Main Content (8 Cols) - Independently Scrollable */}
-        <section className="lg:col-span-8 space-y-6 lg:h-full lg:overflow-y-auto scrollbar-none pb-10 pr-2">
-          
-          {/* Header Card (Avatar + Info) */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div className="flex items-center gap-5">
-              <div className="h-24 w-24 rounded-full border border-slate-200 bg-indigo-50 flex items-center justify-center shadow-xs shrink-0">
-                <User className="h-10 w-10 text-indigo-400" />
-              </div>
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center gap-2 group">
-                  <h2 className="text-2xl font-bold text-slate-850">
-                    {editingFields.name ? (
-                      <div className="flex gap-1.5 justify-center items-center animate-fadeIn">
-                        <input
-                          type="text"
-                          value={draft.first_name}
-                          onChange={(e) => setDraft({ ...draft, first_name: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-base text-slate-800 w-32 focus:outline-none focus:border-indigo-500"
-                        />
-                        <input
-                          type="text"
-                          value={draft.last_name}
-                          onChange={(e) => setDraft({ ...draft, last_name: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-base text-slate-800 w-32 focus:outline-none focus:border-indigo-500"
-                        />
-                        <button onClick={() => toggleEdit("name")} className="text-sm text-emerald-600 font-bold ml-1 hover:text-emerald-700 cursor-pointer">✓</button>
-                      </div>
-                    ) : (
-                      <>{draft.first_name} {draft.last_name}</>
-                    )}
-                  </h2>
-                  {!editingFields.name && (
-                    <button onClick={() => toggleEdit("name")} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-1 cursor-pointer">
+        {/* Column 1: Unified Left Sidebar Card (3 Cols) - Independently Scrollable */}
+        <section className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm lg:h-full lg:overflow-y-auto scrollbar-none">
+          {/* Section 1: Avatar & Info B├ísica */}
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="relative h-20 w-20 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center shadow-xs">
+              <User className="h-10 w-10 text-slate-500" />
+            </div>
+
+            <div className="w-full space-y-2">
+              {editingFields.name ? (
+                <div className="flex gap-1.5 justify-center items-center mt-1 animate-fadeIn">
+                  <input
+                    type="text"
+                    value={draft.first_name}
+                    onChange={(e) => setDraft({ ...draft, first_name: e.target.value })}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-800 w-24 text-center focus:outline-none focus:border-indigo-500"
+                  />
+                  <input
+                    type="text"
+                    value={draft.last_name}
+                    onChange={(e) => setDraft({ ...draft, last_name: e.target.value })}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-800 w-24 text-center focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    onClick={() => toggleEdit("name")}
+                    className="text-sm text-emerald-600 font-bold ml-1 hover:text-emerald-700 cursor-pointer"
+                  >
+                    Ô£ô
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-1.5 group">
+                    <h2 className="text-lg font-bold text-slate-850 leading-6">{draft.first_name} {draft.last_name}</h2>
+                    <button
+                      onClick={() => toggleEdit("name")}
+                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer p-0.5"
+                      title="Editar Nome"
+                    >
                       <Pencil className="h-4 w-4" />
                     </button>
+                  </div>
+                  
+                  {/* Status do usu├írio: Ativo ou Inativo */}
+                  <div className="pt-0.5">
+                    {(draft.lists && draft.lists.length > 0 && draft.lists.some((l: any) => l.status === "subscribed")) || draft.status === "active" ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        Ativo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="h-2 w-2 rounded-full bg-slate-400" />
+                        Inativo
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {editingFields.email ? (
+                <div className="flex gap-1.5 justify-center items-center mt-1 animate-fadeIn">
+                  <input
+                    type="email"
+                    value={draft.email}
+                    onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-800 w-48 text-center focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    onClick={() => toggleEdit("email")}
+                    className="text-sm text-emerald-600 font-bold ml-1 hover:text-emerald-700 cursor-pointer"
+                  >
+                    Ô£ô
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-1.5 group mt-1">
+                  <span className="text-xs text-slate-500 truncate block max-w-[200px]">{draft.email}</span>
+                  <button
+                    onClick={() => toggleEdit("email")}
+                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer p-0.5"
+                    title="Editar E-mail"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Informa├º├Áes Pessoais (Gaveta Fechada por Padr├úo) */}
+          <div className="pt-4 border-t border-slate-200 text-sm">
+            <button
+              type="button"
+              onClick={() => setOpenDrawerInfo(!openDrawerInfo)}
+              className="w-full flex items-center justify-between py-1 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-indigo-600 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-indigo-600" />
+                <span>Informa├º├Áes Pessoais</span>
+              </div>
+              {openDrawerInfo ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+            </button>
+
+            {openDrawerInfo && (
+              <div className="space-y-4 pt-3 mt-1 border-t border-slate-100 text-xs animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-slate-400 shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Celular / Telefone</span>
+                    {editingFields.phone ? (
+                      <div className="flex items-center gap-1.5 mt-1 animate-fadeIn">
+                        <input
+                          type="text"
+                          value={draft.phone}
+                          onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 w-full"
+                        />
+                        <button
+                          onClick={() => toggleEdit("phone")}
+                          className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
+                        >
+                          Ô£ô
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1.5 group mt-0.5">
+                        <span className="text-slate-800 font-semibold">{draft.phone}</span>
+                        <button
+                          onClick={() => toggleEdit("phone")}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer"
+                          title="Editar Telefone"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Nascimento</span>
+                    {editingFields.birth_date ? (
+                      <div className="flex items-center gap-1.5 mt-1 animate-fadeIn">
+                        <input
+                          type="date"
+                          value={draft.birth_date}
+                          onChange={(e) => setDraft({ ...draft, birth_date: e.target.value })}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 w-full"
+                        />
+                        <button
+                          onClick={() => toggleEdit("birth_date")}
+                          className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
+                        >
+                          Ô£ô
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1.5 group mt-0.5">
+                        <span className="text-slate-800 font-semibold">
+                          {draft.birth_date ? new Date(draft.birth_date).toLocaleDateString("pt-BR") : "N├úo informado"}
+                        </span>
+                        <button
+                          onClick={() => toggleEdit("birth_date")}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer"
+                          title="Editar Nascimento"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cidade */}
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cidade</span>
+                    {editingFields.city ? (
+                      <div className="flex items-center gap-1.5 mt-1 animate-fadeIn">
+                        <input
+                          type="text"
+                          placeholder="Ex: S├úo Paulo, Rio de Janeiro, etc."
+                          value={draft.location?.city || draft.city || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDraft({
+                              ...draft,
+                              city: val,
+                              location: { ...(draft.location || {}), city: val }
+                            });
+                          }}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 w-full font-medium"
+                        />
+                        <button
+                          onClick={() => toggleEdit("city")}
+                          className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
+                        >
+                          Ô£ô
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1.5 group mt-0.5">
+                        <span className="text-slate-800 font-semibold truncate">
+                          {draft.location?.city || draft.city || "N├úo informado"}
+                        </span>
+                        <button
+                          onClick={() => toggleEdit("city")}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer"
+                          title="Editar Cidade"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Estado (UF) */}
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-indigo-500 shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Estado (UF)</span>
+                    {editingFields.state ? (
+                      <div className="flex items-center gap-1.5 mt-1 animate-fadeIn">
+                        <input
+                          type="text"
+                          placeholder="Ex: SP, RJ, MG, etc."
+                          value={draft.location?.state || draft.state || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDraft({
+                              ...draft,
+                              state: val,
+                              location: { ...(draft.location || {}), state: val }
+                            });
+                          }}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 w-full font-medium uppercase"
+                        />
+                        <button
+                          onClick={() => toggleEdit("state")}
+                          className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
+                        >
+                          Ô£ô
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1.5 group mt-0.5">
+                        <span className="text-slate-800 font-semibold truncate">
+                          {draft.location?.state || draft.state || "N├úo informado"}
+                        </span>
+                        <button
+                          onClick={() => toggleEdit("state")}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer"
+                          title="Editar Estado (UF)"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Marcadores e Tags (Gaveta Fechada por Padr├úo) */}
+          <div className="pt-4 border-t border-slate-200 space-y-3">
+            <button
+              type="button"
+              onClick={() => setOpenDrawerTags(!openDrawerTags)}
+              className="w-full flex items-center justify-between py-1 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-indigo-600 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <TagIcon className="h-4 w-4 text-indigo-600" />
+                <span>Marcadores e Tags ({draft.tags ? draft.tags.length : 0})</span>
+              </div>
+              {openDrawerTags ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+            </button>
+
+            {openDrawerTags && (
+              <div className="space-y-3 pt-2 border-t border-slate-100 animate-fadeIn">
+                <div className="flex flex-wrap gap-1.5">
+                  {draft.tags.length === 0 ? (
+                    <span className="text-xs text-slate-400 italic">Sem marcadores aplicados.</span>
+                  ) : (
+                    draft.tags.map((tag: string, idx: number) => (
+                      <span
+                        key={tag}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-lg text-xs font-semibold"
+                      >
+                        <TagIcon className="h-3 w-3" />
+                        <span>{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => setDraft({ ...draft, tags: draft.tags.filter((t: string) => t !== tag) })}
+                          className="text-slate-400 hover:text-red-600 font-bold text-xs ml-1 cursor-pointer"
+                        >
+                          ├ù
+                        </button>
+                      </span>
+                    ))
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {(draft.lists && draft.lists.length > 0 && draft.lists.some((l: any) => l.status === "subscribed")) || draft.status === "active" ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      Ativo
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                      Inativo
-                    </span>
-                  )}
-                  
-                  {editingFields.email ? (
-                    <div className="flex gap-1.5 items-center animate-fadeIn">
-                      <input
-                        type="email"
-                        value={draft.email}
-                        onChange={(e) => setDraft({ ...draft, email: e.target.value })}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 w-48 focus:outline-none focus:border-indigo-500"
-                      />
-                      <button onClick={() => toggleEdit("email")} className="text-sm text-emerald-600 font-bold ml-1 hover:text-emerald-700 cursor-pointer">✓</button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 group/email">
-                      <span className="text-slate-500 text-sm font-medium">{draft.email}</span>
-                      <button onClick={() => toggleEdit("email")} className="opacity-0 group-hover/email:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
 
-                  {draft.lists && draft.lists.filter((l: any) => l.status === "subscribed").length > 0 ? (
-                    draft.lists
-                      .filter((l: any) => l.status === "subscribed")
-                      .map((list: any) => (
-                        <span
-                          key={list.name}
-                          className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-md text-[11px] font-bold uppercase tracking-wider"
-                        >
-                          <Mail className="h-3 w-3 text-indigo-500" />
-                          <span>{list.name}</span>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const val = tagInput.trim();
+                        if (val && !draft.tags.includes(val)) {
+                          setDraft({ ...draft, tags: [...draft.tags, val] });
+                          setTagInput("");
+                        }
+                      }
+                    }}
+                    placeholder="Adicionar tag..."
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 w-full focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = tagInput.trim();
+                      if (val && !draft.tags.includes(val)) {
+                        setDraft({ ...draft, tags: [...draft.tags, val] });
+                        setTagInput("");
+                      }
+                    }}
+                    className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-slate-800 cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 4: Campos Personalizados (Gaveta Fechada por Padr├úo) */}
+          <div className="pt-4 border-t border-slate-200 space-y-3">
+            <button
+              type="button"
+              onClick={() => setOpenDrawerCustom(!openDrawerCustom)}
+              className="w-full flex items-center justify-between py-1 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-indigo-600 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <ListFilter className="h-4 w-4 text-indigo-600" />
+                <span>Campos Personalizados ({draft.custom_fields ? draft.custom_fields.length : 0})</span>
+              </div>
+              {openDrawerCustom ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+            </button>
+
+            {openDrawerCustom && (
+              <div className="space-y-3 pt-2 border-t border-slate-100 animate-fadeIn">
+                {draft.custom_fields.map((field: any) => {
+                  const isEditing = editingFields[`cf_${field.name}`];
+                  return (
+                    <div key={field.name} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-col gap-1 group">
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{field.name}</span>
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <input
+                            type="text"
+                            value={field.value}
+                            onChange={(e) => {
+                              const updated = draft.custom_fields.map((cf: any) =>
+                                cf.name === field.name ? { ...cf, value: e.target.value } : cf
+                              );
+                              setDraft({ ...draft, custom_fields: updated });
+                            }}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-xs text-slate-800 w-full focus:outline-none focus:border-indigo-500"
+                          />
                           <button
-                            type="button"
-                            onClick={() => handleToggleListSubscription(list.name)}
-                            className="text-slate-400 hover:text-red-600 font-black ml-1 cursor-pointer"
-                            title="Remover da lista"
+                            onClick={() => toggleEdit(`cf_${field.name}`)}
+                            className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
                           >
-                            ×
+                            Ô£ô
                           </button>
-                        </span>
-                      ))
-                  ) : null}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-1.5 mt-0.5">
+                          <span className="text-xs font-bold text-slate-800 truncate">{field.value || "ÔÇö"}</span>
+                          <button
+                            onClick={() => toggleEdit(`cf_${field.name}`)}
+                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer"
+                            title={`Editar ${field.name}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-                  {allOtherAvailableLists.length > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <select
-                        value={selectedListToJoin}
-                        onChange={(e) => setSelectedListToJoin(e.target.value)}
-                        className="bg-slate-50 border border-slate-200 text-slate-500 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider focus:outline-none focus:border-indigo-500 cursor-pointer h-[26px]"
-                      >
-                        <option value="">+ Inscrever...</option>
-                        {allOtherAvailableLists.map((lname: string) => (
-                          <option key={lname} value={lname}>{lname}</option>
-                        ))}
-                      </select>
+          {/* Section 5: Listas de E-mail (Exibidas como p├¡lulas semelhantes a Marcadores e Tags) */}
+          <div className="pt-4 border-t border-slate-200 space-y-3">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+              <Mail className="h-4 w-4 text-indigo-600" />
+              <span>Listas de E-mail</span>
+            </h3>
+
+            <div className="flex flex-wrap gap-1.5">
+              {draft.lists && draft.lists.filter((l: any) => l.status === "subscribed").length > 0 ? (
+                draft.lists
+                  .filter((l: any) => l.status === "subscribed")
+                  .map((list: any) => (
+                    <span
+                      key={list.name}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-lg text-xs font-semibold"
+                    >
+                      <Mail className="h-3 w-3 text-indigo-500" />
+                      <span>{list.name}</span>
                       <button
                         type="button"
-                        disabled={!selectedListToJoin}
-                        onClick={handleAddToListConfirm}
-                        className="h-[26px] px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold transition-all shadow-xs disabled:bg-slate-100 disabled:text-slate-400 cursor-pointer flex items-center justify-center"
+                        onClick={() => handleToggleListSubscription(list.name)}
+                        className="text-slate-400 hover:text-red-600 font-bold text-xs ml-1 cursor-pointer"
+                        title="Remover da lista"
                       >
-                        <Plus className="h-3.5 w-3.5" />
+                        ├ù
                       </button>
-                    </div>
-                  )}
+                    </span>
+                  ))
+              ) : (
+                <span className="text-xs text-slate-400 italic block">Fora de qualquer lista de transmiss├úo.</span>
+              )}
+            </div>
+
+            {allOtherAvailableLists.length > 0 && (
+              <div className="flex gap-1.5 pt-1">
+                <select
+                  value={selectedListToJoin}
+                  onChange={(e) => setSelectedListToJoin(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-indigo-500 flex-1 font-medium cursor-pointer"
+                >
+                  <option value="">+ Inscrever em lista...</option>
+                  {allOtherAvailableLists.map((lname: string) => (
+                    <option key={lname} value={lname}>{lname}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!selectedListToJoin}
+                  onClick={handleAddToListConfirm}
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:bg-slate-100 disabled:text-slate-400 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Column 2: KPIs, Matr├¡culas, Fluxos, Transa├º├Áes (6 Cols) - Independently Scrollable */}
+        <section className="lg:col-span-6 space-y-6 lg:h-full lg:overflow-y-auto px-1.5 py-1 scrollbar-none pb-6">
+          {/* Middle Top KPI Metrics Cards (Light and Minimal layout) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Combined Email Engagement Card (Occupies 2 columns) */}
+            <div className="col-span-2 bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">Engajamento de E-mails</span>
+                <Mail className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+              </div>
+
+              <div className="space-y-1.5 pt-0.5">
+                {/* Line 1: Emails enviados */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Emails enviados:</span>
+                  <span className="font-black text-slate-850 text-xs">{draft.emails_sent || 0}</span>
+                </div>
+
+                {/* Line 2: Emails abertos */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Emails abertos:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-slate-850 text-xs">{draft.emails_opened || 0}</span>
+                    <span className="text-[9px] font-extrabold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-150">
+                      {draft.emails_sent > 0 ? `${Math.round(((draft.emails_opened || 0) / draft.emails_sent) * 100)}%` : "0%"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Line 3: Emails clicados */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Emails clicados:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-slate-850 text-xs">{draft.emails_clicked || 0}</span>
+                    <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150">
+                      {(draft.emails_opened || 0) > 0 ? `${Math.round(((draft.emails_clicked || 0) / draft.emails_opened) * 100)}%` : "0%"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-2 md:pt-0">
-               <button 
-                 onClick={() => { toggleEdit("name"); toggleEdit("email"); }}
-                 className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors cursor-pointer"
-                 title="Editar Perfil"
-               >
-                 <Pencil className="h-4 w-4" />
-               </button>
-               <button 
-                 onClick={() => alert("Mais opções em breve!")}
-                 className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors cursor-pointer"
-                 title="Opções"
-               >
-                 <MoreVertical className="h-4 w-4" />
-               </button>
+            {/* KPI 3: Courses Started */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm hover:border-slate-300 transition-all">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Cursos Iniciados</span>
+              <div className="flex items-baseline gap-1.5 mt-1.5">
+                <span className="text-xl font-black text-slate-850">{draft.enrollments ? draft.enrollments.length : 0}</span>
+                <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">
+                  {draft.enrollments && draft.enrollments.length > 0 ? "Ativo" : "0%"}
+                </span>
+              </div>
+            </div>
+
+            {/* KPI 4: Certificate Credits Available */}
+            <div className="bg-white border border-amber-200/80 bg-amber-50/20 rounded-3xl p-4 shadow-sm hover:border-amber-300 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-amber-900 uppercase tracking-widest block">Cr├®ditos de Certificado</span>
+                <Coins className="h-4 w-4 text-amber-500 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-1.5">
+                <span className="text-xl font-black text-slate-850">
+                  {(() => {
+                    const purchased = draft.purchases ? draft.purchases.filter((p: any) => p.status === "paid" && (p.product_type === "certificate" || (p.product_name || "").toLowerCase().includes("certificado"))).length : 0;
+                    const issued = draft.enrollments ? draft.enrollments.filter((e: any) => e.certificate_issued).length : 0;
+                    return Math.max(0, purchased - issued);
+                  })()}
+                </span>
+                <span className="text-[9px] text-amber-800 font-bold bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
+                  {(() => {
+                    const purchased = draft.purchases ? draft.purchases.filter((p: any) => p.status === "paid" && (p.product_type === "certificate" || (p.product_name || "").toLowerCase().includes("certificado"))).length : 0;
+                    const issued = draft.enrollments ? draft.enrollments.filter((e: any) => e.certificate_issued).length : 0;
+                    const available = Math.max(0, purchased - issued);
+                    return `${available} ${available === 1 ? "cr├®dito dispon├¡vel" : "cr├®ditos dispon├¡veis"}`;
+                  })()}
+                </span>
+              </div>
             </div>
           </div>
 
-                    {/* Tabs Section */}
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden min-h-[140px]">
-            <div className="flex items-center border-b border-slate-200 overflow-x-auto scrollbar-none">
-              <button 
-                onClick={() => setActiveTab("info")}
-                className={`px-6 py-4 border-b-2 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${activeTab === "info" ? "border-indigo-600 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-              >
-                <User className="h-4 w-4" />
-                Informações Pessoais
-              </button>
-              <button 
-                onClick={() => setActiveTab("custom")}
-                className={`px-6 py-4 border-b-2 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${activeTab === "custom" ? "border-indigo-600 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-              >
-                <List className="h-4 w-4" />
-                Campos Personalizados ({draft.custom_fields ? draft.custom_fields.length : 0})
-              </button>
-              <button 
-                onClick={() => setActiveTab("tags")}
-                className={`px-6 py-4 border-b-2 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${activeTab === "tags" ? "border-indigo-600 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-              >
-                <Tag className="h-4 w-4" />
-                Marcadores e Tags ({draft.tags ? draft.tags.length : 0})
-              </button>
-            </div>
-            
-            <div className="p-6">
-              {activeTab === "info" && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-fadeIn">
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nome</div>
-                    <div className="text-sm font-semibold text-slate-800">{draft.first_name} {draft.last_name}</div>
-                  </div>
-                  <div className="group">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Cidade</div>
-                    {editingFields.city ? (
-                      <div className="flex items-center gap-1.5 animate-fadeIn">
-                        <input type="text" value={draft.city || ""} onChange={(e) => setDraft({...draft, city: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-800 w-full focus:outline-none focus:border-indigo-500" />
-                        <button onClick={() => toggleEdit("city")} className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer">✓</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-slate-800">{draft.city || "Belo Horizonte"}</span>
-                        <button onClick={() => toggleEdit("city")} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer"><Pencil className="h-3 w-3" /></button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="group">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Telefone</div>
-                    {editingFields.phone ? (
-                      <div className="flex items-center gap-1.5 animate-fadeIn">
-                        <input type="text" value={draft.phone || ""} onChange={(e) => setDraft({...draft, phone: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-800 w-full focus:outline-none focus:border-indigo-500" />
-                        <button onClick={() => toggleEdit("phone")} className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer">✓</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-slate-800">{draft.phone || "(11) 99999-9999"}</span>
-                        <button onClick={() => toggleEdit("phone")} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer"><Pencil className="h-3 w-3" /></button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="group">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Estado</div>
-                    {editingFields.state ? (
-                      <div className="flex items-center gap-1.5 animate-fadeIn">
-                        <input type="text" value={draft.state || ""} onChange={(e) => setDraft({...draft, state: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-800 w-full focus:outline-none focus:border-indigo-500" />
-                        <button onClick={() => toggleEdit("state")} className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer">✓</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-slate-800">{draft.state || "Minas Gerais"}</span>
-                        <button onClick={() => toggleEdit("state")} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer"><Pencil className="h-3 w-3" /></button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "custom" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fadeIn">
-                  {draft.custom_fields && draft.custom_fields.length > 0 ? (
-                    draft.custom_fields.map((field: any) => {
-                      const isEditing = editingFields[`cf_${field.name}`];
-                      return (
-                        <div key={field.name} className="bg-slate-50/70 p-3 rounded-2xl border border-slate-200/60 flex flex-col gap-1 group">
-                          <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{field.name}</span>
-                          {isEditing ? (
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <input
-                                type="text"
-                                value={field.value}
-                                onChange={(e) => {
-                                  const updated = draft.custom_fields.map((cf: any) =>
-                                    cf.name === field.name ? { ...cf, value: e.target.value } : cf
-                                  );
-                                  setDraft({ ...draft, custom_fields: updated });
-                                }}
-                                className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-xs text-slate-800 w-full focus:outline-none focus:border-indigo-500"
-                              />
-                              <button
-                                onClick={() => toggleEdit(`cf_${field.name}`)}
-                                className="text-xs text-emerald-600 font-bold hover:text-emerald-700 cursor-pointer"
-                              >
-                                ✓
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between gap-1.5 mt-0.5">
-                              <span className="text-xs font-semibold text-slate-800 truncate">{field.value || "—"}</span>
-                              <button
-                                onClick={() => toggleEdit(`cf_${field.name}`)}
-                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer shrink-0"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="col-span-full text-xs text-slate-400 italic py-2">Sem campos personalizados.</div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === "tags" && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="flex flex-wrap gap-2">
-                    {draft.tags && draft.tags.length > 0 ? (
-                      draft.tags.map((tag: string) => (
-                        <span
-                          key={tag}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-xl text-[11px] font-bold"
-                        >
-                          <Tag className="h-3 w-3" />
-                          <span>{tag}</span>
-                          <button
-                            type="button"
-                            onClick={() => setDraft({ ...draft, tags: draft.tags.filter((t: string) => t !== tag) })}
-                            className="text-slate-400 hover:text-red-600 font-black ml-1 cursor-pointer"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">Nenhum marcador aplicado.</span>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-2 max-w-sm">
-                    <input
-                      type="text"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const val = tagInput.trim();
-                          if (val && !draft.tags.includes(val)) {
-                            setDraft({ ...draft, tags: [...draft.tags, val] });
-                            setTagInput("");
-                          }
-                        }
-                      }}
-                      placeholder="Adicionar tag e pressionar Enter..."
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 w-full focus:outline-none focus:border-indigo-500 placeholder-slate-400"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* Emails */}
-             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-               <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-[11px] font-black text-indigo-400 uppercase tracking-wider">Engajamento de E-mails</h3>
-                 <Mail className="h-4.5 w-4.5 text-indigo-500" />
-               </div>
-               <div className="space-y-4">
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-slate-500 font-medium">Emails enviados:</span>
-                   <span className="font-bold text-slate-800 text-base">{emailsSentCount}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-slate-500 font-medium">Emails abertos:</span>
-                   <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-800 text-base">{emailsOpenedCount}</span>
-                     <span className="text-[10px] bg-indigo-50 border border-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded font-bold">{emailsOpenedRate}%</span>
-                   </div>
-                 </div>
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-slate-500 font-medium">Emails clicados:</span>
-                   <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-800 text-base">{emailsClickedCount}</span>
-                     <span className="text-[10px] bg-emerald-50 border border-emerald-100 text-emerald-500 px-1.5 py-0.5 rounded font-bold">{emailsClickedRate}%</span>
-                   </div>
-                 </div>
-               </div>
-             </div>
-
-             {/* Credits */}
-             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-               <div className="flex justify-between items-center mb-4">
-                 <h3 className="text-[11px] font-black text-amber-500 uppercase tracking-wider">Créditos de Certificado</h3>
-                 <div className="h-5 w-5 rounded-full border border-amber-500 text-amber-500 flex items-center justify-center font-bold text-[10px]">$</div>
-               </div>
-               <div className="mt-2">
-                 <div className="text-[40px] font-black text-slate-800 mb-2 leading-none">0</div>
-                 <div className="inline-block bg-amber-50 text-amber-500 border border-amber-200/50 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">0 créditos disponíveis</div>
-               </div>
-             </div>
-          </div>
-
-          {/* Card 2: Matrículas & Progresso */}
+          {/* Card 2: Matr├¡culas & Progresso */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
                 <BookOpen className="h-4.5 w-4.5 text-indigo-650" />
-                <span>Matrículas & Progresso</span>
+                <span>Matr├¡culas & Progresso</span>
               </h3>
-              <span className="text-xs text-indigo-650 hover:text-indigo-800 cursor-pointer font-bold transition-colors">Ver Histórico</span>
+              <span className="text-xs text-indigo-650 hover:text-indigo-800 cursor-pointer font-bold transition-colors">Ver Hist├│rico</span>
             </div>
 
             <div className="overflow-x-auto">
@@ -1643,13 +1821,13 @@ export default function ContactProfilePage({ params }: PageProps) {
                       .sort((a, b) => new Date(a.enrolled_at || 0).getTime() - new Date(b.enrolled_at || 0).getTime())
                       .map((item, idx) => {
                         const cleanCourseName = (item.course_name || "Curso Realizzare")
-                          .replace(/^Certificado de Conclusão - /i, "")
+                          .replace(/^Certificado de Conclus├úo - /i, "")
                           .replace(/^Curso de /i, "");
 
-                        const certStatus = item.certificate_issued ? "Emitido" : "Não Emitido";
+                        const certStatus = item.certificate_issued ? "Emitido" : "N├úo Emitido";
                         const certSub = item.certificate_issued 
-                          ? `Emissão: ${item.enrolled_at ? new Date(item.enrolled_at).toLocaleDateString("pt-BR") : "Hoje"}`
-                          : "Aguardando solicitação";
+                          ? `Emiss├úo: ${item.enrolled_at ? new Date(item.enrolled_at).toLocaleDateString("pt-BR") : "Hoje"}`
+                          : "Aguardando solicita├º├úo";
 
                         return (
                           <tr key={idx} className="hover:bg-slate-50/40 transition-colors group">
@@ -1672,7 +1850,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                                     labelText = "Finalizado (100%)";
                                   } else if (item.progress >= 100) {
                                     badgeCls = "bg-sky-50 text-sky-700 border border-sky-200";
-                                    labelText = "Concluído (100%)";
+                                    labelText = "Conclu├¡do (100%)";
                                   } else if (item.progress > 0) {
                                     badgeCls = "bg-indigo-50 text-indigo-700 border border-indigo-200";
                                     labelText = `Em Andamento (${item.progress}%)`;
@@ -1691,7 +1869,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                                 <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
                                   item.certificate_issued ? "text-emerald-700" : "text-slate-500 italic"
                                 }`}>
-                                  {item.certificate_issued ? "✓ " : ""} {certStatus}
+                                  {item.certificate_issued ? "Ô£ô " : ""} {certStatus}
                                 </span>
                                 <span className="text-[10px] text-slate-450 mt-0.5">
                                   {certSub}
@@ -1704,7 +1882,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                   ) : (
                     <tr>
                       <td colSpan={4} className="py-6 text-center text-slate-400 italic font-medium">
-                        Nenhum curso matriculado até o momento.
+                        Nenhum curso matriculado at├® o momento.
                       </td>
                     </tr>
                   )}
@@ -1715,7 +1893,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
               <GitBranch className="h-4.5 w-4.5 text-indigo-650" />
-              <span>Fluxos de Automação</span>
+              <span>Fluxos de Automa├º├úo</span>
             </h3>
 
             <div className="overflow-x-auto">
@@ -1764,7 +1942,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                   ) : (
                     <tr>
                       <td colSpan={3} className="py-4 text-center text-xs text-slate-400 italic">
-                        Nenhum fluxo de automação ativo.
+                        Nenhum fluxo de automa├º├úo ativo.
                       </td>
                     </tr>
                   )}
@@ -1773,11 +1951,11 @@ export default function ContactProfilePage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Card 4: Transações & Faturamento Table */}
+          {/* Card 4: Transa├º├Áes & Faturamento Table */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
               <DollarSign className="h-4.5 w-4.5 text-indigo-650" />
-              <span>Transações & Faturamento</span>
+              <span>Transa├º├Áes & Faturamento</span>
             </h3>
 
             <div className="overflow-x-auto">
@@ -1785,7 +1963,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                 <thead>
                   <tr className="text-slate-400 uppercase font-black text-[10px] border-b border-slate-200 pb-2.5">
                     <th className="pb-2.5 py-2 px-1">Produto / Curso</th>
-                    <th className="pb-2.5 py-2 px-3">Data da Transação</th>
+                    <th className="pb-2.5 py-2 px-3">Data da Transa├º├úo</th>
                     <th className="pb-2.5 py-2 px-3">Valor</th>
                     <th className="pb-2.5 py-2 px-1 text-right">Status</th>
                   </tr>
@@ -1817,14 +1995,11 @@ export default function ContactProfilePage({ params }: PageProps) {
               </table>
             </div>
           </div>
-
-          
-
         </section>
 
-        {/* Column 3: Timeline (4 Cols) - Independently Scrollable */}
-        <section className="lg:col-span-4 lg:h-full lg:overflow-y-auto scrollbar-none p-1">
-          <div className="bg-white border border-slate-200 rounded-3xl px-4 py-6 shadow-sm flex flex-col justify-between min-h-full my-0.5">
+        {/* Column 3: Timeline (3 Cols) - Independently Scrollable */}
+        <section className="lg:col-span-3 lg:h-full lg:overflow-y-auto scrollbar-none p-1">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between min-h-full my-0.5">
             <div className="space-y-6">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
                 <Clock className="h-4.5 w-4.5 text-indigo-650" />
@@ -1859,7 +2034,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                             {event.label}
                           </span>
                           <span className="text-[10px] text-slate-400 font-bold shrink-0 pt-0.5 transition-transform">
-                            {expandedEventIds[event.id] ? "▲" : "▼"}
+                            {expandedEventIds[event.id] ? "Ôû▓" : "Ôû╝"}
                           </span>
                         </button>
                         <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
@@ -1882,8 +2057,8 @@ export default function ContactProfilePage({ params }: PageProps) {
                       {expandedEventIds[event.id] && (
                         <div className="mt-2.5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-xs shadow-xs animate-fadeIn space-y-2">
                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200/70 pb-1.5 flex justify-between items-center">
-                            <span>Informações do Evento</span>
-                            <span className="text-emerald-600 font-bold">● Processado</span>
+                            <span>Informa├º├Áes do Evento</span>
+                            <span className="text-emerald-600 font-bold">ÔùÅ Processado</span>
                           </div>
                           <div className="space-y-2 pt-0.5">
                             {formatPayloadKeyValues(event.payload).length > 0 ? (
@@ -1909,11 +2084,11 @@ export default function ContactProfilePage({ params }: PageProps) {
                     onClick={() => setVisibleTimelineCount(prev => Math.min(prev + 10, draft.timeline.length))}
                     className="w-full pt-2.5 pb-1 text-center text-[11px] font-bold text-indigo-650 hover:text-indigo-800 hover:underline cursor-pointer transition-colors"
                   >
-                    Clique ou role para carregar mais ({Math.min(visibleTimelineCount, draft.timeline.length)} de {draft.timeline.length}) ↓
+                    Clique ou role para carregar mais ({Math.min(visibleTimelineCount, draft.timeline.length)} de {draft.timeline.length}) Ôåô
                   </button>
                 ) : (
                   <div className="pt-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Fim do histórico ({draft.timeline.length} eventos)
+                    Fim do hist├│rico ({draft.timeline.length} eventos)
                   </div>
                 )}
               </div>
@@ -1930,12 +2105,12 @@ export default function ContactProfilePage({ params }: PageProps) {
             <div className="flex items-center gap-3 text-indigo-600">
               <AlertCircle className="h-6 w-6 text-indigo-650 shrink-0" />
               <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">
-                Confirmar Alteração
+                Confirmar Altera├º├úo
               </h4>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Deseja realmente {listConfirmAction.type === "add" ? "adicionar o contato à" : "remover o contato da"} lista{" "}
+              Deseja realmente {listConfirmAction.type === "add" ? "adicionar o contato ├á" : "remover o contato da"} lista{" "}
               <strong>"{listConfirmAction.listName}"</strong>?
             </p>
 
