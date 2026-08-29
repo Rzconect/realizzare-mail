@@ -93,13 +93,59 @@ export async function POST(req: Request) {
     if (!recipients || recipients.length === 0) {
       const targetListStr = (campaign.target_list || "").trim();
 
-      // 1. Extract explicit email addresses from target_list string (e.g. "👤 Leonardo (leo@outlook.com), 👤 Teste (outro@outlook.com)")
-      const emailMatches = targetListStr.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
-      if (emailMatches && emailMatches.length > 0) {
-        recipients = Array.from(new Set(emailMatches.map((e: string) => e.trim().toLowerCase())));
-      } else {
-        // 2. Match list names against Supabase lists table
-        const listNames = targetListStr.split(",").map((s: string) => s.trim().toLowerCase());
+      // 1. Check for ||IDS|| payload in target_list
+      if (targetListStr.includes("||IDS||")) {
+        const idsPart = targetListStr.split("||IDS||")[1];
+        const rawIds = idsPart ? idsPart.split(",").filter(Boolean) : [];
+
+        const contactIds = rawIds
+          .filter(id => id.startsWith("contact-"))
+          .map(id => id.replace("contact-", ""));
+
+        const listIds = rawIds.filter(id => !id.startsWith("contact-") && !id.startsWith("seg-"));
+
+        // Fetch emails from specific contact IDs
+        if (contactIds.length > 0) {
+          const { data: directContacts } = await supabase
+            .from("contacts")
+            .select("email, status")
+            .in("id", contactIds);
+
+          (directContacts || []).forEach((c: any) => {
+            if (c.email && c.status !== "unsubscribed") {
+              recipients.push(c.email.trim().toLowerCase());
+            }
+          });
+        }
+
+        // Fetch emails from lists
+        if (listIds.length > 0) {
+          const { data: listSubs } = await supabase
+            .from("list_subscriptions")
+            .select("contacts(email, status)")
+            .in("list_id", listIds)
+            .eq("status", "subscribed");
+
+          (listSubs || []).forEach((s: any) => {
+            if (s.contacts?.status === "active" && s.contacts?.email) {
+              recipients.push(s.contacts.email.trim().toLowerCase());
+            }
+          });
+        }
+      }
+
+      // 2. Extract explicit email addresses from target_list string (e.g. "👤 Leonardo (leo@outlook.com)")
+      if (recipients.length === 0) {
+        const emailMatches = targetListStr.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
+        if (emailMatches && emailMatches.length > 0) {
+          recipients = Array.from(new Set(emailMatches.map((e: string) => e.trim().toLowerCase())));
+        }
+      }
+
+      // 3. Fallback: match list names against Supabase lists table
+      if (recipients.length === 0) {
+        const cleanListName = targetListStr.split("||IDS||")[0];
+        const listNames = cleanListName.split(",").map((s: string) => s.trim().toLowerCase());
         const { data: dbLists } = await supabase.from("lists").select("id, name");
         const matchedListIds = dbLists
           ?.filter((l: any) => listNames.some((n: string) => n === l.name.toLowerCase()))
@@ -118,42 +164,23 @@ export async function POST(req: Request) {
               .filter(Boolean);
           }
         }
+      }
 
-        // 3. Fallback to all contacts ONLY if target_list explicitly specifies "Geral" or "Todos", requiring list subscription
-        if ((!recipients || recipients.length === 0) && (targetListStr.toLowerCase().includes("geral") || targetListStr.toLowerCase().includes("todos"))) {
-          const { data: subscribedSubs } = await supabase
-            .from("list_subscriptions")
-            .select("contacts(email, status)")
-            .eq("status", "subscribed");
+      // 4. Fallback to all active contacts ONLY if explicitly specifies "Geral" or "Todos"
+      if (recipients.length === 0 && (targetListStr.toLowerCase().includes("geral") || targetListStr.toLowerCase().includes("todos"))) {
+        const { data: allActive } = await supabase
+          .from("contacts")
+          .select("email")
+          .eq("status", "active");
 
-          if (subscribedSubs && subscribedSubs.length > 0) {
-            const emailSet = new Set<string>();
-            subscribedSubs.forEach((s: any) => {
-              if (s.contacts?.status === "active" && s.contacts?.email) {
-                emailSet.add(s.contacts.email);
-              }
-            });
-            recipients = Array.from(emailSet);
-          }
+        if (allActive && allActive.length > 0) {
+          recipients = allActive.map((c: any) => c.email).filter(Boolean);
         }
       }
     }
 
-    // Filter recipients to strictly ensure they are in contacts AND subscribed to at least 1 list
-    if (recipients && recipients.length > 0) {
-      const { data: verifiedSubs } = await supabase
-        .from("list_subscriptions")
-        .select("contacts(email, status)")
-        .eq("status", "subscribed");
-
-      const subscribedSet = new Set(
-        (verifiedSubs || [])
-          .map((s: any) => s.contacts?.status === "active" ? s.contacts?.email?.toLowerCase() : null)
-          .filter(Boolean)
-      );
-
-      recipients = recipients.filter(e => subscribedSet.has(e.toLowerCase()));
-    }
+    // Deduplicate recipients
+    recipients = Array.from(new Set(recipients.map((e: string) => e.trim().toLowerCase())));
 
     let successCount = 0;
     const sendErrors: any[] = [];

@@ -1,3 +1,56 @@
+// Helper to make any HTML email responsive inside the mobile preview frame
+function prepareMobilePreviewHtml(rawHtml: string): string {
+  if (!rawHtml) return "";
+  let html = rawHtml;
+  
+  // Inject viewport meta if not present
+  if (!html.includes('<meta name="viewport"')) {
+    const metaTag = '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+    if (html.includes('<head>')) {
+      html = html.replace('<head>', '<head>' + metaTag);
+    } else {
+      html = metaTag + html;
+    }
+  }
+
+  // Inject responsive reset styling
+  const responsiveStyles = `
+    <style id="mobile-preview-reset">
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        overflow-x: hidden !important;
+        -webkit-text-size-adjust: 100% !important;
+      }
+      table, .body, .wrapper, .container {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+      }
+      img {
+        max-width: 100% !important;
+        height: auto !important;
+      }
+      .mobile-hide {
+        display: none !important;
+      }
+      .mobile-show {
+        display: block !important;
+      }
+    </style>
+  `;
+
+  if (html.includes('</head>')) {
+    html = html.replace('</head>', responsiveStyles + '</head>');
+  } else {
+    html = responsiveStyles + html;
+  }
+
+  return html;
+}
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -357,12 +410,20 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
           }) : "Disparado por Automação";
 
-          // Calculate Sandbox deliverability metrics
-          const totalSent = dbCamp.sent_count || recipientRows.length; // e.g. 139
-          const deliveredCount = recipientRows.filter(r => 
+          // Auto-trigger cron if overdue
+          if (dbCamp.status === "scheduled" && dbCamp.scheduled_at && new Date(dbCamp.scheduled_at) <= new Date()) {
+            fetch("/api/cron/campaigns").catch(console.error);
+          }
+
+          // Calculate deliverability metrics
+          const isScheduled = dbCamp.status === "scheduled";
+          const isDraft = dbCamp.status === "draft";
+          
+          const totalSent = (isScheduled || isDraft) ? 0 : (dbCamp.sent_count || recipientRows.length);
+          const deliveredCount = (isScheduled || isDraft) ? 0 : recipientRows.filter(r => 
             r.opened || r.clicked || verifiedSandboxEmails.has(r.email.toLowerCase())
-          ).length; // e.g. 2
-          const bouncedCount = Math.max(0, totalSent - deliveredCount); // e.g. 137 rejected by sandbox
+          ).length;
+          const bouncedCount = (isScheduled || isDraft) ? 0 : Math.max(0, totalSent - deliveredCount);
 
           const totalOpens = campOpens.size;
           const totalClicks = campClicks.size;
@@ -584,6 +645,16 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   // Hourly engagement data (Stacked BarChart matching Home page style)
   const hourlyData = useMemo(() => {
+    if (data.status === "Agendado" || data.status === "Rascunho") {
+      return [
+        { time: "00:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+        { time: "05:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+        { time: "10:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+        { time: "15:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+        { time: "20:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 }
+      ];
+    }
+
     const bounceVal = data.deliveryStats.bounced || 0;
     const deliveredVal = data.deliveryStats.delivered || 0;
     const openVal = data.openCount || 0;
@@ -1183,28 +1254,32 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   />
                 </div>
               ) : (
-                /* Smartphone Device Silhouette with FIXED height */
-                <div className="w-[310px] h-[520px] bg-slate-900 border-8 border-slate-800 rounded-[40px] shadow-xl p-3 flex flex-col overflow-hidden relative animate-fadeIn select-none shrink-0">
-                  {/* Phone top camera speaker bar */}
-                  <div className="h-3.5 w-24 bg-slate-800 rounded-full mx-auto mb-2 mt-0.5 shrink-0 flex items-center justify-center">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-900" />
+                /* Realistic Smartphone Hardware Mockup */
+                <div style={{ zoom: 0.85 }} className="w-[375px] h-[667px] border-[12px] border-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-slate-200 bg-white relative flex flex-col mx-auto shrink-0 animate-fadeIn select-none">
+                  {/* Top Notch/Speaker */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-5 bg-white rounded-b-xl z-20 flex justify-center items-center shadow-[0_1px_2px_rgba(0,0,0,0.03)] border-b border-x border-slate-100">
+                    <div className="w-12 h-1 bg-slate-200 rounded-full"></div>
                   </div>
-                  {/* Phone Screen Viewport */}
-                  <div className="bg-white rounded-[26px] overflow-hidden flex-1 flex flex-col min-h-0 border border-slate-200">
-                    {/* Simulated mobile mail header */}
-                    <div className="p-2 bg-slate-50 border-b border-slate-200 text-[8px] text-slate-500 space-y-0.5 shrink-0 leading-tight">
-                      <div className="flex justify-between font-bold text-slate-800">
-                        <span>{data.fromName}</span>
-                        <span>10:32</span>
-                      </div>
-                      <div className="font-extrabold text-slate-900 truncate mt-0.5">{data.subject}</div>
-                      <div className="text-slate-500 truncate">{data.previewText}</div>
+                  
+                  {/* Bottom Home Button */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-10 h-10 border-2 border-slate-100 rounded-full bg-white z-20 flex items-center justify-center">
+                    <div className="w-4 h-4 rounded-full border border-slate-200"></div>
+                  </div>
+
+                  {/* Screen Content Viewport */}
+                  <div className="flex flex-col flex-1 overflow-hidden relative bg-slate-50 border border-slate-200 rounded-[1.8rem] mb-14">
+                    {/* Mobile Status Bar (Fake) */}
+                    <div className="h-6 w-full bg-slate-50 shrink-0 flex justify-end items-center px-4 gap-1.5 text-slate-400">
+                      <div className="w-3 h-2.5 rounded-sm border border-current"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-current"></div>
+                      <span className="text-[9px] font-bold ml-1">10:32</span>
                     </div>
-                    {/* HTML content iframe */}
+
+                    {/* HTML content iframe - with responsive mobile styles injected */}
                     <div className="flex-1 relative bg-white min-h-0">
                       <iframe
                         title="Visualização da Campanha Mobile"
-                        srcDoc={data.htmlContent || defaultMockHtml}
+                        srcDoc={prepareMobilePreviewHtml(data.htmlContent || defaultMockHtml)}
                         className="w-full h-full border-none absolute inset-0"
                         sandbox="allow-same-origin allow-scripts"
                       />
