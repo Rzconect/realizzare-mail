@@ -1844,87 +1844,86 @@ function CreateCampaignForm() {
     <div className="flex flex-col min-h-[calc(105vh-150px)] font-sans text-slate-800 -mx-4 md:-mx-8 -my-6 md:-my-8 bg-slate-50 overflow-hidden relative">
       
       {/* 1. Header / Steps Indicator */}
-      <div className="border-b border-slate-200 bg-white p-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 shrink-0 shadow-sm">
-        <div className="flex-1 mt-1">
-          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Nova Campanha</span>
-          <h2 className="text-xl font-black text-slate-900">{campaignName || "Nova Campanha Sem Título"}</h2>
+      <div className="border-b border-slate-200 bg-white py-4 px-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 shadow-sm">
+        {/* Title */}
+        <div className="min-w-0 xl:w-[30%]">
+          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block truncate">Nova Campanha</span>
+          <h2 className="text-xl font-black text-slate-900 truncate">{campaignName || "Nova Campanha Sem Título"}</h2>
         </div>
 
-        <div className="flex flex-col items-end gap-5">
-          {/* Progress Stepper */}
-          <div className="flex items-center gap-4 text-xs font-bold select-none">
-            {[
-              { step: 1, label: "Conteúdo e Remetente" },
-              { step: 2, label: "Design do E-mail" },
-              { step: 3, label: "Público e Agendamento" }
-            ].map((s) => (
-              <button
-                key={s.step}
-                disabled={s.step > wizardStep}
-                onClick={() => setWizardStep(s.step)}
-                className={`flex items-center gap-2 transition-all pb-1 border-b-2 ${
-                  wizardStep === s.step
-                    ? "border-indigo-655 text-indigo-650 font-black scale-105"
-                    : s.step < wizardStep
-                    ? "border-indigo-400 text-indigo-500 cursor-pointer"
-                    : "border-transparent text-slate-400 cursor-not-allowed"
-                }`}
-              >
-                <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
-                  wizardStep === s.step ? "bg-indigo-600 text-white" : s.step < wizardStep ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-400"
-                }`}>
-                  {s.step}
-                </span>
-                <span className="hidden md:inline">{s.label}</span>
-              </button>
-            ))}
-          </div>
+        {/* Progress Stepper (Center) */}
+        <div className="flex items-center justify-center gap-4 text-xs font-bold select-none xl:flex-1">
+          {[
+            { step: 1, label: "Conteúdo e Remetente" },
+            { step: 2, label: "Design do E-mail" },
+            { step: 3, label: "Público e Agendamento" }
+          ].map((s) => (
+            <button
+              key={s.step}
+              disabled={s.step > wizardStep}
+              onClick={() => setWizardStep(s.step)}
+              className={`flex items-center gap-2 transition-all pb-1 border-b-2 ${
+                wizardStep === s.step
+                  ? "border-indigo-655 text-indigo-650 font-black scale-105"
+                  : s.step < wizardStep
+                  ? "border-indigo-400 text-indigo-500 cursor-pointer"
+                  : "border-transparent text-slate-400 cursor-not-allowed"
+              }`}
+            >
+              <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
+                wizardStep === s.step ? "bg-indigo-600 text-white" : s.step < wizardStep ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-400"
+              }`}>
+                {s.step}
+              </span>
+              <span className="hidden md:inline">{s.label}</span>
+            </button>
+          ))}
+        </div>
 
-          {/* Header Footer Actions */}
-          <div className="flex items-center gap-2.5 mt-auto">
+        {/* Actions (Right) */}
+        <div className="flex items-center xl:justify-end gap-2 xl:w-[30%]">
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            className="px-3 py-1.5 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs"
+          >
+            Salvar Rascunho
+          </button>
+          {wizardStep === 1 ? (
+            <Link
+              href="/dashboard/campaigns"
+              className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all"
+            >
+              Voltar
+            </Link>
+          ) : (
             <button
               type="button"
-              onClick={handleSaveDraft}
-              className="px-4 py-2 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs"
+              onClick={() => setWizardStep((s) => s - 1)}
+              className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all cursor-pointer"
             >
-              Salvar Rascunho
+              Voltar
             </button>
-            {wizardStep === 1 ? (
-              <Link
-                href="/dashboard/campaigns"
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all"
-              >
-                Voltar
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setWizardStep((s) => s - 1)}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all cursor-pointer"
-              >
-                Voltar
-              </button>
-            )}
-            
-            {wizardStep < 3 ? (
-              <button
-                type="button"
-                disabled={wizardStep === 1 ? !isStep1Valid : !isStep2Valid}
-                onClick={() => setWizardStep((s) => s + 1)}
-                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md text-xs font-bold shadow-md disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
-              >
-                Continuar
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowConfirmSendModal(true)}
-                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
-              >
-                {sendType === "immediate" ? "Enviar Agora" : "Agendar Campanha"}
-              </button>
-            )}
-          </div>
+          )}
+          
+          {wizardStep < 3 ? (
+            <button
+              type="button"
+              disabled={wizardStep === 1 ? !isStep1Valid : !isStep2Valid}
+              onClick={() => setWizardStep((s) => s + 1)}
+              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md text-xs font-bold shadow-md disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+            >
+              Continuar
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowConfirmSendModal(true)}
+              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+            >
+              {sendType === "immediate" ? "Enviar Agora" : "Agendar"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -2366,22 +2365,37 @@ function CreateCampaignForm() {
                 </div>
               ) : (
                 /* Smartphone Device Silhouette with FIXED height to resolve collapsed screen height bug */
-                <div className="w-[330px] h-[580px] bg-slate-900 border-8 border-slate-800 rounded-[45px] shadow-2xl p-3 flex flex-col overflow-hidden relative animate-fadeIn select-none shrink-0">
-                  {/* Phone top camera speaker bar */}
-                  <div className="h-4 w-28 bg-slate-800 rounded-full mx-auto mb-2.5 mt-0.5 shrink-0 flex items-center justify-center">
-                    <span className="w-2 h-2 rounded-full bg-slate-900" />
+                <div style={{ zoom: 0.85 }} className="w-[375px] h-[667px] border-[12px] border-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-slate-200 bg-white relative flex flex-col mx-auto shrink-0 animate-fadeIn select-none">
+                  
+                  {/* Top Notch/Speaker */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-5 bg-white rounded-b-xl z-20 flex justify-center items-center shadow-[0_1px_2px_rgba(0,0,0,0.03)] border-b border-x border-slate-100">
+                    <div className="w-12 h-1 bg-slate-200 rounded-full"></div>
                   </div>
-                  {/* Phone Screen Viewport - Fills full height of the smartphone outer wrapper */}
-                  <div className="bg-white rounded-[30px] overflow-hidden flex-1 flex flex-col min-h-0">
+                  
+                  {/* Bottom Home Button */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-10 h-10 border-2 border-slate-100 rounded-full bg-white z-20 flex items-center justify-center">
+                    <div className="w-4 h-4 rounded-full border border-slate-200"></div>
+                  </div>
+
+                  {/* Screen Content Wrapper */}
+                  <div className="flex flex-col flex-1 overflow-hidden relative bg-slate-50 border border-slate-200 rounded-[1.8rem] mb-14">
+                    
+                    {/* Mobile Status Bar (Fake) */}
+                    <div className="h-6 w-full bg-slate-50 shrink-0 flex justify-end items-center px-4 gap-1.5 text-slate-400">
+                      <div className="w-3 h-2.5 rounded-sm border border-current"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-current"></div>
+                      <span className="text-[9px] font-bold ml-1">10:32</span>
+                    </div>
+
                     {/* Simulated mobile mail header */}
-                    <div className="p-3 bg-slate-50 border-b border-slate-200 text-[9px] text-slate-500 space-y-0.5 shrink-0">
+                    <div className="px-3 py-2 bg-white border-b border-slate-200 text-[10px] text-slate-500 space-y-0.5 shrink-0">
                       <div className="flex justify-between font-bold text-slate-800">
-                        <span>{senderName}</span>
-                        <span>10:32</span>
+                        <span className="truncate pr-2">{senderName || "Remetente"}</span>
                       </div>
                       <div className="font-extrabold text-slate-900 truncate mt-0.5">{renderMockTags(subjectLine) || "Sem assunto"}</div>
                       <div className="text-slate-500 truncate">{renderMockTags(preheader) || "Sem preheader"}</div>
                     </div>
+
                     {/* HTML content iframe - takes exactly the remaining phone height */}
                     <div className="flex-1 relative bg-white min-h-0">
                       {htmlContent ? (
@@ -2397,6 +2411,7 @@ function CreateCampaignForm() {
                         </div>
                       )}
                     </div>
+
                   </div>
                 </div>
               )}
