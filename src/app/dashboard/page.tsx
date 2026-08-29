@@ -1237,131 +1237,121 @@ export default function DashboardPage() {
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500" />
             </div>
 
-            {/* Subgrid (Cols 2-3): Top row (2 cards), Bottom row (3 email KPI cards) */}
-            <div className="md:col-span-2 flex flex-col justify-between space-y-3.5">
-              
-              {/* Row 1: Faturamento Total & Faturamento do E-mail */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* Faturamento Total */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 relative overflow-hidden shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Faturamento Total</span>
-                      <span className="p-1 bg-emerald-50 rounded-lg text-emerald-700">
-                        <DollarSign className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="mt-1.5 flex items-baseline gap-2">
-                      <h3 className="text-xl font-black text-slate-850">
-                        {isLoadingMetrics ? <div className="h-6 w-24 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.total_paid)}
-                      </h3>
-                      <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs flex items-center gap-0.5">
-                        <TrendingUp className="h-3 w-3" />
-                        {data.changes.revenue}
-                      </span>
-                    </div>
+            {/* Card 2: Revenue Metrics (Total, Email, Participação) */}
+            <div className="md:col-span-1 bg-white border border-slate-200 rounded-2xl p-4 relative overflow-hidden shadow-sm flex flex-col justify-between space-y-2.5">
+              {/* Item 1: Faturamento Total */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Faturamento Total</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-lg font-black text-slate-850">
+                      {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.total_paid)}
+                    </h4>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      <TrendingUp className="h-3 w-3" />
+                      {data.changes.revenue}
+                    </span>
                   </div>
-                  <div className="text-[10px] text-slate-400 font-medium pt-2 border-t border-slate-100 mt-2 truncate">
-                    Receita total transacionada no período
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600" />
                 </div>
-
-                {/* Faturamento do E-mail */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 relative overflow-hidden shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Faturamento do E-mail</span>
-                      <span className="p-1 bg-indigo-50 rounded-lg text-indigo-600">
-                        <Mail className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="mt-1.5 flex items-baseline gap-2">
-                      <h3 className="text-xl font-black text-slate-850">
-                        {isLoadingMetrics ? <div className="h-6 w-24 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.email_revenue || 0)}
-                      </h3>
-                      <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded shadow-2xs">
-                        {data.email_paid_count || 0} pagas
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-medium pt-2 border-t border-slate-100 mt-2 truncate">
-                    Janela: <strong className="text-slate-600 font-bold">{attributionDaysWindow}</strong> (Last-touch)
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
-                </div>
+                <span className="p-1.5 bg-emerald-50 rounded-lg text-emerald-700 shrink-0">
+                  <DollarSign className="h-4 w-4" />
+                </span>
               </div>
 
-              {/* Row 2: 3 Email KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                
-                {/* Card 1: Total de E-mails Entregues com Sucesso */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 relative overflow-hidden shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">E-mails Entregues</span>
-                      <span className="p-1 bg-indigo-50 rounded-lg text-indigo-600">
-                        <Send className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="mt-1.5">
-                      <h3 className="text-lg font-black text-slate-850">
-                        {isLoadingDailyStats ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatNumber(emailTotalSent)}
-                      </h3>
-                    </div>
+              {/* Item 2: Faturamento do E-mail */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Faturamento do E-mail</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-lg font-black text-slate-850">
+                      {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.email_revenue || 0)}
+                    </h4>
+                    <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      {(data.email_paid_count || 0)} pagas
+                    </span>
                   </div>
-                  <div className="text-[10px] text-slate-400 font-medium pt-1.5 border-t border-slate-100 mt-1.5 truncate">
-                    Entregues com sucesso no período
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-600" />
                 </div>
-
-                {/* Card 2: Taxa Média de Abertura */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 relative overflow-hidden shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Taxa de Abertura</span>
-                      <span className="p-1 bg-cyan-50 rounded-lg text-cyan-600">
-                        <Eye className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="mt-1.5 flex items-baseline gap-1">
-                      <h3 className="text-lg font-black text-slate-850">
-                        {isLoadingDailyStats ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : `${emailOpenRate.toFixed(1).replace('.', ',')}%`}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="text-[10px] text-cyan-700 font-bold pt-1.5 border-t border-slate-100 mt-1.5 truncate">
-                    {formatNumber(emailTotalOpened)} aberturas únicas
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-500" />
-                </div>
-
-                {/* Card 3: Taxa Média de Clique */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-3.5 relative overflow-hidden shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Taxa de Clique</span>
-                      <span className="p-1 bg-emerald-50 rounded-lg text-emerald-600">
-                        <MousePointerClick className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="mt-1.5 flex items-baseline gap-1">
-                      <h3 className="text-lg font-black text-slate-850">
-                        {isLoadingDailyStats ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : `${emailClickRate.toFixed(1).replace('.', ',')}%`}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="text-[10px] text-emerald-700 font-bold pt-1.5 border-t border-slate-100 mt-1.5 truncate">
-                    {formatNumber(emailTotalClicked)} cliques
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-600" />
-                </div>
-
+                <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600 shrink-0">
+                  <Mail className="h-4 w-4" />
+                </span>
               </div>
 
+              {/* Item 3: Participação do E-mail */}
+              <div className="flex items-center justify-between pt-0.5">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Participação do E-mail</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-lg font-black text-slate-850">
+                      {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : (data.total_paid > 0 ? ((data.email_revenue || 0) / data.total_paid * 100).toFixed(1).replace('.', ',') + '%' : '0,0%')}
+                    </h4>
+                    <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      Janela: {attributionDaysWindow} dias
+                    </span>
+                  </div>
+                </div>
+                <span className="p-1.5 bg-purple-50 rounded-lg text-purple-600 shrink-0">
+                  <Target className="h-4 w-4" />
+                </span>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
             </div>
 
+            {/* Card 3: Email Metrics (Entregues, Abertura, Clique) */}
+            <div className="md:col-span-1 bg-white border border-slate-200 rounded-2xl p-4 relative overflow-hidden shadow-sm flex flex-col justify-between space-y-2.5">
+              {/* Item 1: E-mails Entregues */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">E-mails Entregues</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-lg font-black text-slate-850">
+                      {isLoadingDailyStats ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatNumber(emailTotalSent)}
+                    </h4>
+                  </div>
+                </div>
+                <span className="p-1.5 bg-blue-50 rounded-lg text-blue-600 shrink-0">
+                  <Send className="h-4 w-4" />
+                </span>
+              </div>
+
+              {/* Item 2: Taxa de Abertura */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Taxa de Abertura</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-lg font-black text-slate-850">
+                      {isLoadingDailyStats ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : `${emailOpenRate.toFixed(1).replace('.', ',')}%`}
+                    </h4>
+                    <span className="text-[10px] text-cyan-700 font-bold bg-cyan-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      {formatNumber(emailTotalOpened)} únicas
+                    </span>
+                  </div>
+                </div>
+                <span className="p-1.5 bg-cyan-50 rounded-lg text-cyan-600 shrink-0">
+                  <Eye className="h-4 w-4" />
+                </span>
+              </div>
+
+              {/* Item 3: Taxa de Clique */}
+              <div className="flex items-center justify-between pt-0.5">
+                <div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Taxa de Clique</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <h4 className="text-lg font-black text-slate-850">
+                      {isLoadingDailyStats ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : `${emailClickRate.toFixed(1).replace('.', ',')}%`}
+                    </h4>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+                      {formatNumber(emailTotalClicked)} cliques
+                    </span>
+                  </div>
+                </div>
+                <span className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600 shrink-0">
+                  <MousePointerClick className="h-4 w-4" />
+                </span>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-emerald-500" />
+            </div>
           </div>
 
           {/* Row 2: Engagement Graph (Stacked BarChart) */}
