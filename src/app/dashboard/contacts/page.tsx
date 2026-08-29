@@ -1741,6 +1741,7 @@ export default function ContactsPage() {
   // Collapsible toggle panel states
   const [isListsPanelOpen, setIsListsPanelOpen] = useState(true);
   const [isSegmentsPanelOpen, setIsSegmentsPanelOpen] = useState(true);
+  const [isTagsPanelOpen, setIsTagsPanelOpen] = useState(false);
   const [isDoubleOptInPanelOpen, setIsDoubleOptInPanelOpen] = useState(false);
 
   // New list creation/edition inside settings
@@ -3507,6 +3508,43 @@ export default function ContactsPage() {
                     )}
                   </div>
 
+                                    {/* 2.5 MARCADORES E TAGS Panel */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-150/60 pb-3">
+                      <div 
+                        onClick={() => setIsTagsPanelOpen(!isTagsPanelOpen)}
+                        className="flex items-center gap-2.5 cursor-pointer select-none group flex-1"
+                      >
+                        <ChevronDown className={`h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-transform ${isTagsPanelOpen ? "rotate-0" : "-rotate-90"}`} />
+                        <h3 className="text-xs font-extrabold text-slate-850 uppercase tracking-wider font-sans group-hover:text-indigo-600 transition-colors">Marcadores e Tags</h3>
+                        <span className="text-[10px] bg-slate-200/80 text-slate-600 px-2 py-0.5 rounded font-bold">
+                          {allExistingTags.length} Tags
+                        </span>
+                      </div>
+                    </div>
+
+                    {isTagsPanelOpen && (
+                      <div className="space-y-3 animate-fadeIn">
+                        <div className="flex flex-wrap gap-2">
+                          {allExistingTags.length > 0 ? (
+                            allExistingTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-xl text-[11px] font-bold"
+                              >
+                                <TagIcon className="h-3 w-3" />
+                                <span>{tag}</span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400 italic block py-2">Nenhuma tag cadastrada.</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">As tags são criadas automaticamente ao serem adicionadas ao perfil de um contato.</p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* REGRAS DE INTEGRAÇÃO & AUTOMAÇÃO Panel */}
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left shadow-xs">
                     <div className="flex items-center justify-between border-b border-slate-150/60 pb-3">
@@ -4384,7 +4422,7 @@ export default function ContactsPage() {
       {/* Contacts Table Card */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[1050px]">
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase font-bold tracking-wider text-slate-500 select-none">
                 <th className="py-4 px-5 w-12 text-center">
@@ -4433,10 +4471,10 @@ export default function ContactsPage() {
                     {sortField === "created_at" && (sortDirection === "asc" ? "▲" : "▼")}
                   </div>
                 </th>
-                <th className="py-4 px-4 text-right">Ações</th>
+                <th className="py-4 px-4 pr-8 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 text-sm">
+            <tbody className="divide-y divide-slate-100 text-slate-700 text-[13px]">
               {paginatedContacts.length > 0 ? (
                 paginatedContacts.map((contact) => (
                   <tr key={contact.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -4508,7 +4546,7 @@ export default function ContactsPage() {
                             : contact.created_at)
                         : "—"}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 pr-8 text-right">
                       <Link
                         href={`/dashboard/contacts/${contact.id}`}
                         className="inline-flex items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors shadow-sm cursor-pointer"
@@ -4529,7 +4567,7 @@ export default function ContactsPage() {
                     <td className="py-3.5 px-4"><div className="h-4 w-40 bg-slate-200/70 rounded-md" /></td>
                     <td className="py-3.5 px-4 text-center"><div className="h-5 w-24 bg-indigo-100/70 rounded-full mx-auto" /></td>
                     <td className="py-3.5 px-4 text-right"><div className="h-4 w-20 bg-slate-200/70 rounded-md ml-auto" /></td>
-                    <td className="py-3.5 px-4 text-right"><div className="h-7 w-7 bg-slate-200/80 rounded-lg ml-auto" /></td>
+                    <td className="py-3.5 px-4 pr-8 text-right"><div className="h-7 w-7 bg-slate-200/80 rounded-lg ml-auto" /></td>
                   </tr>
                 ))
               ) : (

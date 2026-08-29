@@ -926,6 +926,32 @@ export default function ContactProfilePage({ params }: PageProps) {
   // Advanced Tag Manager states
   const availableTags = ["Novo", "Matriculado", "Inbound", "VIP", "Engajado", "Lead Quente", "Ex-Aluno", "Abandono", "Cliente", "Suporte"];
   const [tagInput, setTagInput] = useState("");
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
+
+  const allExistingTags = useMemo(() => {
+    let globalTags = new Set<string>();
+    
+    if (typeof window !== "undefined") {
+      const storedContactsRaw = localStorage.getItem("realizzare_contacts") || localStorage.getItem("realizzare_mock_contacts");
+      if (storedContactsRaw) {
+        try {
+          const list = JSON.parse(storedContactsRaw);
+          list.forEach((c: any) => {
+            if (Array.isArray(c.tags)) c.tags.forEach((t: string) => globalTags.add(t));
+          });
+        } catch (e) {}
+      }
+    }
+    
+    Object.values(mockProfileData).forEach(c => {
+      if (Array.isArray(c.tags)) c.tags.forEach((t: string) => globalTags.add(t));
+    });
+
+    return Array.from(globalTags).sort();
+  }, []);
+
+  const filteredTags = allExistingTags.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !(draft?.tags || []).includes(t));
+
 
   // List Management states
   const [systemLists, setSystemLists] = useState<string[]>([]);
@@ -1281,13 +1307,13 @@ export default function ContactProfilePage({ params }: PageProps) {
                           type="text"
                           value={draft.first_name}
                           onChange={(e) => setDraft({ ...draft, first_name: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-base text-slate-800 w-32 focus:outline-none focus:border-indigo-500"
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-800 w-full min-w-[120px] max-w-[200px] focus:outline-none focus:border-indigo-500"
                         />
                         <input
                           type="text"
                           value={draft.last_name}
                           onChange={(e) => setDraft({ ...draft, last_name: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-base text-slate-800 w-32 focus:outline-none focus:border-indigo-500"
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-800 w-full min-w-[140px] max-w-[250px] focus:outline-none focus:border-indigo-500"
                         />
                         <button onClick={() => toggleEdit("name")} className="text-sm text-emerald-600 font-bold ml-1 hover:text-emerald-700 cursor-pointer">✓</button>
                       </div>
@@ -1551,23 +1577,67 @@ export default function ContactProfilePage({ params }: PageProps) {
                   </div>
                   
                   <div className="flex gap-2 max-w-sm">
-                    <input
-                      type="text"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const val = tagInput.trim();
-                          if (val && !draft.tags.includes(val)) {
-                            setDraft({ ...draft, tags: [...draft.tags, val] });
-                            setTagInput("");
+                    <div className="relative w-full max-w-sm">
+                      <input
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => {
+                          setTagInput(e.target.value);
+                          setTagDropdownOpen(true);
+                        }}
+                        onFocus={() => setTagDropdownOpen(true)}
+                        onBlur={() => setTimeout(() => setTagDropdownOpen(false), 200)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const val = tagInput.trim();
+                            if (val && !(draft.tags || []).includes(val)) {
+                              setDraft({ ...draft, tags: [...(draft.tags || []), val] });
+                              setTagInput("");
+                              setTagDropdownOpen(false);
+                            }
                           }
-                        }
-                      }}
-                      placeholder="Adicionar tag e pressionar Enter..."
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 w-full focus:outline-none focus:border-indigo-500 placeholder-slate-400"
-                    />
+                        }}
+                        placeholder="Pesquisar ou criar nova tag..."
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 w-full focus:outline-none focus:border-indigo-500 placeholder-slate-400"
+                      />
+                      {tagDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
+                          {filteredTags.length > 0 ? (
+                            filteredTags.map(tag => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => {
+                                  setDraft({ ...draft, tags: [...(draft.tags || []), tag] });
+                                  setTagInput("");
+                                  setTagDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer font-semibold"
+                              >
+                                {tag}
+                              </button>
+                            ))
+                          ) : (
+                            tagInput.trim() ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDraft({ ...draft, tags: [...(draft.tags || []), tagInput.trim()] });
+                                  setTagInput("");
+                                  setTagDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 cursor-pointer font-bold flex items-center gap-1"
+                              >
+                                <Plus className="h-3 w-3" /> Criar "{tagInput.trim()}"
+                              </button>
+                            ) : (
+                              <div className="px-3 py-2 text-xs text-slate-400 italic">Nenhuma tag encontrada...</div>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
