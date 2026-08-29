@@ -1001,6 +1001,8 @@ function CreateCampaignForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(editId);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Wizard state
   const [wizardStep, setWizardStep] = useState(1); // 1, 2, 3
@@ -1091,7 +1093,7 @@ function CreateCampaignForm() {
 
           const { data: dbSubs } = await supabase
             .from("list_subscriptions")
-            .select("contact_id")
+            .select("contact_id, list_id")
             .eq("status", "subscribed");
 
           const subscribedContactIds = new Set((dbSubs || []).map((s: any) => s.contact_id));
@@ -1106,6 +1108,7 @@ function CreateCampaignForm() {
               phone: c.phone || "",
               status: c.status || "active",
               is_subscribed: subscribedContactIds.has(c.id),
+              list_ids: (dbSubs || []).filter((s: any) => s.contact_id === c.id).map((s: any) => s.list_id),
               created_at: c.created_at,
               tags: c.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || []
             }));
@@ -1543,9 +1546,17 @@ function CreateCampaignForm() {
     }
   };
 
-  const handleSaveDraft = async () => {
+  const saveDraftToDatabase = async (silent = false) => {
+    if (isSavingDraft) return;
     try {
+      setIsSavingDraft(true);
       const campaignNameVal = campaignName.trim() || "Rascunho de Campanha";
+      
+      const listNames = selectedIncludeLists
+        .map((id) => listsList.find((l) => l.id === id)?.name)
+        .filter(Boolean)
+        .join(", ");
+
       const campaignData = {
         org_id: "00000000-0000-0000-0000-000000000001",
         name: campaignNameVal,
@@ -1556,26 +1567,38 @@ function CreateCampaignForm() {
         reply_to: replyToIsCustom ? customReplyTo : replyToEmail,
         status: "draft",
         html_content: htmlContent,
+        target_list: listNames || "Nenhuma lista selecionada",
         sent_count: 0
       };
 
       const res = await fetch("/api/campaigns/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ editId, campaignData })
+        body: JSON.stringify({ editId: currentDraftId, campaignData })
       });
       const resData = await res.json();
       if (!res.ok) throw new Error(resData.error || "Erro ao salvar rascunho");
 
-      // Auto-sync into "Campanhas Pontuais / Rascunhos" folder in E-mails library
+      if (resData.id && !currentDraftId) {
+        setCurrentDraftId(resData.id);
+        window.history.replaceState(null, "", `/dashboard/campaigns/create?edit=${resData.id}`);
+      }
+
       syncCampaignToEmailLibrary(campaignNameVal, subjectLine, preheader, htmlContent, "Rascunho");
 
-      alert("Rascunho salvo com sucesso e sincronizado na pasta 'Campanhas Pontuais / Rascunhos'!");
-      router.push("/dashboard/campaigns");
+      if (!silent) {
+        alert("Rascunho salvo com sucesso!");
+      }
     } catch (e: any) {
       console.error(e);
-      alert(`Erro ao salvar rascunho: ${e.message || e}`);
+      if (!silent) alert(`Erro ao salvar rascunho: ${e.message || e}`);
+    } finally {
+      setIsSavingDraft(false);
     }
+  };
+
+  const handleSaveDraft = async () => {
+    await saveDraftToDatabase(false);
   };
 
   const handleConfirmWizard = async () => {
@@ -1860,14 +1883,15 @@ function CreateCampaignForm() {
           ].map((s) => (
             <button
               key={s.step}
-              disabled={s.step > wizardStep}
-              onClick={() => setWizardStep(s.step)}
+              onClick={() => {
+                if (wizardStep !== s.step) {
+                  saveDraftToDatabase(true).then(() => setWizardStep(s.step));
+                }
+              }}
               className={`flex items-center gap-2 transition-all pb-1 border-b-2 ${
                 wizardStep === s.step
                   ? "border-indigo-655 text-indigo-650 font-black scale-105"
-                  : s.step < wizardStep
-                  ? "border-indigo-400 text-indigo-500 cursor-pointer"
-                  : "border-transparent text-slate-400 cursor-not-allowed"
+                  : "border-indigo-400 text-indigo-500 cursor-pointer hover:border-indigo-655 hover:text-indigo-650"
               }`}
             >
               <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
@@ -1885,9 +1909,10 @@ function CreateCampaignForm() {
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="px-3 py-1.5 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs"
+            disabled={isSavingDraft}
+            className="px-3 py-1.5 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-70 disabled:cursor-wait"
           >
-            Salvar Rascunho
+            {isSavingDraft ? "Salvando..." : "Salvar Rascunho"}
           </button>
           {wizardStep === 1 ? (
             <Link
@@ -3495,6 +3520,20 @@ function CreateCampaignForm() {
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2">
               {contacts.filter((c: any) => {
                 if (c.status !== "active" || c.is_subscribed === false) return false;
+                
+                if (selectedIncludeLists.length === 0) return false;
+
+                let isIncluded = false;
+                if (selectedIncludeLists.includes(`contact-${c.id}`)) {
+                  isIncluded = true;
+                } else if (c.list_ids && c.list_ids.some((lid: string) => selectedIncludeLists.includes(lid))) {
+                  isIncluded = true;
+                } else if (selectedIncludeLists.some((id) => id.startsWith("seg-"))) {
+                  isIncluded = true;
+                }
+
+                if (!isIncluded) return false;
+
                 if (!contactSearchQuery) return true;
                 const q = contactSearchQuery.toLowerCase();
                 const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
