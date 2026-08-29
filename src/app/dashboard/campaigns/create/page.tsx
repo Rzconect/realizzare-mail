@@ -110,7 +110,7 @@ function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockT
       <div className={`flex justify-center transition-all bg-slate-50 overflow-hidden ${device === "mobile" ? "p-6" : ""}`}>
         
         {/* Device Wrapper */}
-        <div style={{ zoom: device === "mobile" ? 0.70 : 1 }} className={`transition-all bg-white relative flex flex-col mx-auto ${
+        <div style={{ zoom: device === "mobile" ? 0.85 : 1 }} className={`transition-all bg-white relative flex flex-col mx-auto ${
           device === "mobile" 
             ? "w-[375px] h-[667px] border-[12px] border-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-slate-200" 
             : "w-full border-0"
@@ -1844,39 +1844,87 @@ function CreateCampaignForm() {
     <div className="flex flex-col min-h-[calc(105vh-150px)] font-sans text-slate-800 -mx-4 md:-mx-8 -my-6 md:-my-8 bg-slate-50 overflow-hidden relative">
       
       {/* 1. Header / Steps Indicator */}
-      <div className="border-b border-slate-200 bg-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 shadow-sm">
-        <div>
+      <div className="border-b border-slate-200 bg-white p-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 shrink-0 shadow-sm">
+        <div className="flex-1 mt-1">
           <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Nova Campanha</span>
           <h2 className="text-xl font-black text-slate-900">{campaignName || "Nova Campanha Sem Título"}</h2>
         </div>
 
-        {/* Progress Stepper */}
-        <div className="flex items-center gap-4 text-xs font-bold select-none">
-          {[
-            { step: 1, label: "Conteúdo e Remetente" },
-            { step: 2, label: "Design do E-mail" },
-            { step: 3, label: "Público e Agendamento" }
-          ].map((s) => (
+        <div className="flex flex-col items-end gap-5">
+          {/* Progress Stepper */}
+          <div className="flex items-center gap-4 text-xs font-bold select-none">
+            {[
+              { step: 1, label: "Conteúdo e Remetente" },
+              { step: 2, label: "Design do E-mail" },
+              { step: 3, label: "Público e Agendamento" }
+            ].map((s) => (
+              <button
+                key={s.step}
+                disabled={s.step > wizardStep}
+                onClick={() => setWizardStep(s.step)}
+                className={`flex items-center gap-2 transition-all pb-1 border-b-2 ${
+                  wizardStep === s.step
+                    ? "border-indigo-655 text-indigo-650 font-black scale-105"
+                    : s.step < wizardStep
+                    ? "border-indigo-400 text-indigo-500 cursor-pointer"
+                    : "border-transparent text-slate-400 cursor-not-allowed"
+                }`}
+              >
+                <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
+                  wizardStep === s.step ? "bg-indigo-600 text-white" : s.step < wizardStep ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-400"
+                }`}>
+                  {s.step}
+                </span>
+                <span className="hidden md:inline">{s.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Header Footer Actions */}
+          <div className="flex items-center gap-2.5 mt-auto">
             <button
-              key={s.step}
-              disabled={s.step > wizardStep}
-              onClick={() => setWizardStep(s.step)}
-              className={`flex items-center gap-2 transition-all pb-1 border-b-2 ${
-                wizardStep === s.step
-                  ? "border-indigo-655 text-indigo-650 font-black scale-105"
-                  : s.step < wizardStep
-                  ? "border-indigo-400 text-indigo-500 cursor-pointer"
-                  : "border-transparent text-slate-400 cursor-not-allowed"
-              }`}
+              type="button"
+              onClick={handleSaveDraft}
+              className="px-4 py-2 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs"
             >
-              <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
-                wizardStep === s.step ? "bg-indigo-600 text-white" : s.step < wizardStep ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-400"
-              }`}>
-                {s.step}
-              </span>
-              <span className="hidden md:inline">{s.label}</span>
+              Salvar Rascunho
             </button>
-          ))}
+            {wizardStep === 1 ? (
+              <Link
+                href="/dashboard/campaigns"
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all"
+              >
+                Voltar
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setWizardStep((s) => s - 1)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all cursor-pointer"
+              >
+                Voltar
+              </button>
+            )}
+            
+            {wizardStep < 3 ? (
+              <button
+                type="button"
+                disabled={wizardStep === 1 ? !isStep1Valid : !isStep2Valid}
+                onClick={() => setWizardStep((s) => s + 1)}
+                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md text-xs font-bold shadow-md disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              >
+                Continuar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowConfirmSendModal(true)}
+                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              >
+                {sendType === "immediate" ? "Enviar Agora" : "Agendar Campanha"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2863,58 +2911,6 @@ function CreateCampaignForm() {
           </div>
         )}
 
-      </div>
-
-      {/* 3. Sticky Bottom Footer Actions Bar */}
-      <div className="border-t border-slate-200 bg-white p-6 shrink-0 shadow-lg select-none">
-        <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
-          {/* Actions group */}
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              className="px-4 py-2.5 border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs"
-            >
-              Salvar Rascunho
-            </button>
-            {wizardStep === 1 ? (
-              <Link
-                href="/dashboard/campaigns"
-                className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all"
-              >
-                Voltar para Campanhas
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setWizardStep((s) => s - 1)}
-                className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all cursor-pointer"
-              >
-                Voltar
-              </button>
-            )}
-          </div>
-
-          {/* Continue button */}
-          {wizardStep < 3 ? (
-            <button
-              type="button"
-              disabled={wizardStep === 1 ? !isStep1Valid : !isStep2Valid}
-              onClick={() => setWizardStep((s) => s + 1)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md text-xs font-bold shadow-md disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
-            >
-              Continuar
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowConfirmSendModal(true)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
-            >
-              {sendType === "immediate" ? "Enviar Agora" : "Agendar Campanha"}
-            </button>
-          )}
-        </div>
       </div>
 
       {/* MODAL overlay: CRIAÇÃO DE SEGMENTAÇÃO (Identico ao modal de contatos) */}

@@ -184,7 +184,7 @@ export default function DashboardLayout({
     setShowUsagePopover(false);
 
     // Auto-collapse sidebar on contacts page
-    if (pathname === "/dashboard/contacts" || pathname.startsWith("/dashboard/contacts/")) {
+    if (pathname === "/dashboard/contacts" || pathname.startsWith("/dashboard/contacts/") || pathname.startsWith("/dashboard/campaigns/create")) {
       setIsSidebarOpen(false);
     }
   }, [pathname]);
