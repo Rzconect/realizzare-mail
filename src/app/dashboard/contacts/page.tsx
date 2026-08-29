@@ -4422,9 +4422,9 @@ export default function ContactsPage() {
       {/* Contacts Table Card */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1050px]">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase font-bold tracking-wider text-slate-500 select-none whitespace-nowrap">
+              <tr className="border-b border-slate-200 text-xs uppercase font-bold tracking-wider text-slate-500 select-none">
                 <th className="py-4 px-5 w-12 text-center">
                   <input
                     type="checkbox"
@@ -4471,10 +4471,10 @@ export default function ContactsPage() {
                     {sortField === "created_at" && (sortDirection === "asc" ? "▲" : "▼")}
                   </div>
                 </th>
-                <th className="py-4 px-4 pr-8 text-right">Ações</th>
+                <th className="py-4 px-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 text-[13px]">
+            <tbody className="divide-y divide-slate-100 text-slate-700 text-sm">
               {paginatedContacts.length > 0 ? (
                 paginatedContacts.map((contact) => (
                   <tr key={contact.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -4516,13 +4516,13 @@ export default function ContactsPage() {
                         <span className="text-slate-800 font-medium">{contact.email}</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{contact.phone || "—"}</td>
+                    <td className="py-3.5 px-4 text-slate-500">{contact.phone || "—"}</td>
                     <td className="py-3.5 px-4 text-xs font-medium text-slate-800 truncate max-w-[200px]">
                       {contact.course && contact.course !== "Nenhum" && contact.course !== "Sem Matrícula"
                         ? contact.course
                         : <span className="text-slate-400 font-normal italic">—</span>}
                     </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-center">
                       {contact.courseStatus && contact.courseStatus !== "Nenhum" ? (
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           contact.courseStatus.includes("Concluído") || contact.courseStatus.includes("Finalizado")
@@ -4546,7 +4546,7 @@ export default function ContactsPage() {
                             : contact.created_at)
                         : "—"}
                     </td>
-                    <td className="py-3.5 px-4 pr-8 text-right">
+                    <td className="py-3.5 px-4 text-right">
                       <Link
                         href={`/dashboard/contacts/${contact.id}`}
                         className="inline-flex items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors shadow-sm cursor-pointer"
@@ -4567,7 +4567,7 @@ export default function ContactsPage() {
                     <td className="py-3.5 px-4"><div className="h-4 w-40 bg-slate-200/70 rounded-md" /></td>
                     <td className="py-3.5 px-4 text-center"><div className="h-5 w-24 bg-indigo-100/70 rounded-full mx-auto" /></td>
                     <td className="py-3.5 px-4 text-right"><div className="h-4 w-20 bg-slate-200/70 rounded-md ml-auto" /></td>
-                    <td className="py-3.5 px-4 pr-8 text-right"><div className="h-7 w-7 bg-slate-200/80 rounded-lg ml-auto" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-7 w-7 bg-slate-200/80 rounded-lg ml-auto" /></td>
                   </tr>
                 ))
               ) : (

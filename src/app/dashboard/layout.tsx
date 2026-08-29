@@ -182,6 +182,11 @@ export default function DashboardLayout({
     setShowSettingsDropdown(false);
     setShowNotifications(false);
     setShowUsagePopover(false);
+
+    // Auto-collapse sidebar on contacts page
+    if (pathname === "/dashboard/contacts" || pathname.startsWith("/dashboard/contacts/")) {
+      setIsSidebarOpen(false);
+    }
   }, [pathname]);
 
   // Close dropdowns on click outside
