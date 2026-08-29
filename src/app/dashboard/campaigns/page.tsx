@@ -90,6 +90,11 @@ export default function CampaignsPage() {
           .order("created_at", { ascending: false });
         
         if (error) throw error;
+
+        // Auto-trigger cron check if any scheduled campaign is overdue
+        if ((dbCampaigns || []).some((c: any) => c.status === "scheduled" && c.scheduled_at && new Date(c.scheduled_at) <= new Date())) {
+          fetch("/api/cron/campaigns").catch(console.error);
+        }
         
         const mapped: Campaign[] = (dbCampaigns || []).map((c: any) => {
           const statusMap: Record<string, any> = {
