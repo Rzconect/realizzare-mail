@@ -1117,62 +1117,51 @@ export default function ContactProfilePage({ params }: PageProps) {
       if (updateError) throw updateError;
 
       // 2. Synchronize Tags
-      // Get all global tags to resolve IDs by name
-      const { data: globalTags } = await supabase
-        .from("tags")
-        .select("id, name");
+      const { data: globalTags } = await supabase.from("tags").select("id, name");
       
-      // Resolve IDs for draft.tags
-      const tagIds = draft.tags.map((tName: string) => {
+      const tagIds: string[] = [];
+      for (const tName of (draft.tags || [])) {
         const found = (globalTags as any[])?.find(gt => gt.name.toLowerCase() === tName.toLowerCase());
-        return found?.id;
-      }).filter(Boolean);
+        if (found) {
+          tagIds.push(found.id);
+        } else {
+          // Auto-create new tag
+          const { data: newTag, error: tagErr } = await supabase
+            .from("tags")
+            .insert({ name: tName, org_id: "00000000-0000-0000-0000-000000000001" })
+            .select("id")
+            .single();
+          if (tagErr) throw tagErr;
+          if (newTag) tagIds.push(newTag.id);
+        }
+      }
 
       // Delete existing tag relations
-      await supabase
-        .from("contact_tags")
-        .delete()
-        .eq("contact_id", id);
+      const { error: delErr } = await supabase.from("contact_tags").delete().eq("contact_id", id);
+      if (delErr) throw delErr;
       
       // Insert new tag relations
       if (tagIds.length > 0) {
-        const relations = tagIds.map((tId: any) => ({
-          contact_id: id,
-          tag_id: tId
-        }));
-        // @ts-ignore
-        await supabase.from("contact_tags").insert(relations as any);
+        const relations = tagIds.map((tId: any) => ({ contact_id: id, tag_id: tId }));
+        const { error: insErr } = await supabase.from("contact_tags").insert(relations as any);
+        if (insErr) throw insErr;
       }
 
       // 3. Synchronize Custom Fields Values
-      // Get custom fields definitions to resolve IDs by name
-      const { data: customFieldsDef } = await supabase
-        .from("custom_fields")
-        .select("id, name, type");
+      const { data: customFieldsDef } = await supabase.from("custom_fields").select("id, name, type");
 
-      for (const field of draft.custom_fields) {
+      for (const field of (draft.custom_fields || [])) {
         const def = (customFieldsDef as any[])?.find(cf => cf.name === field.name);
         if (!def) continue;
 
-        const valueObj: any = {
-          contact_id: id,
-          field_id: def.id
-        };
+        const valueObj: any = { contact_id: id, field_id: def.id };
+        if (def.type === "text") valueObj.value_text = field.value;
+        else if (def.type === "number") valueObj.value_number = parseFloat(field.value) || null;
+        else if (def.type === "date") valueObj.value_date = field.value || null;
+        else if (def.type === "boolean") valueObj.value_boolean = field.value === "Sim" || field.value === "true" || field.value === true;
 
-        if (def.type === "text") {
-          valueObj.value_text = field.value;
-        } else if (def.type === "number") {
-          valueObj.value_number = parseFloat(field.value) || null;
-        } else if (def.type === "date") {
-          valueObj.value_date = field.value || null;
-        } else if (def.type === "boolean") {
-          valueObj.value_boolean = field.value === "Sim" || field.value === "true";
-        }
-
-        await supabase
-          .from("contact_custom_values")
-          // @ts-ignore
-          .upsert(valueObj as any, { onConflict: "contact_id,field_id" });
+        const { error: customErr } = await supabase.from("contact_custom_values").upsert(valueObj as any, { onConflict: "contact_id,field_id" });
+        if (customErr) throw customErr;
       }
 
       setProfile(JSON.parse(JSON.stringify(draft)));
@@ -1180,7 +1169,7 @@ export default function ContactProfilePage({ params }: PageProps) {
       alert("Alterações salvas com sucesso!");
     } catch (err: any) {
       console.error(err);
-      alert("Erro ao salvar alterações no banco de dados.");
+      alert(`Erro ao salvar alterações: ${err.message || err.details || err.hint || JSON.stringify(err)}`);
     }
   };
 
