@@ -100,7 +100,7 @@ function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockT
       <div className={`flex justify-center transition-all bg-slate-50 overflow-hidden ${device === "mobile" ? "p-6" : ""}`}>
         
         {/* Device Wrapper */}
-        <div className={`transition-all bg-white relative flex flex-col mx-auto ${
+        <div style={{ zoom: device === "mobile" ? 0.75 : 1 }} className={`transition-all bg-white relative flex flex-col mx-auto ${
           device === "mobile" 
             ? "w-[300px] h-[550px] border-[12px] border-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-slate-200" 
             : "w-full border-0"
