@@ -1232,7 +1232,6 @@ function CreateCampaignForm() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
 
-  // Final confirmation modal
   const [showConfirmSendModal, setShowConfirmSendModal] = useState(false);
 
   // Pre-populate fields if editing a draft & fetch real lists from Supabase
@@ -1247,8 +1246,6 @@ function CreateCampaignForm() {
           try { localLists = JSON.parse(stored); } catch(e){}
         }
 
-        const allowed = ["leads", "alunos", "professores", "clientes"];
-        
         let allLists: any[] = [];
         if (realLists && realLists.length > 0) {
           allLists = realLists.map((l: any) => ({ id: l.id, name: l.name }));
@@ -1260,10 +1257,7 @@ function CreateCampaignForm() {
           }
         });
 
-        // Filter out non-allowed lists
-        const filtered = allLists.filter(l => allowed.includes(l.name.toLowerCase()));
-
-        const formatted = await Promise.all(filtered.map(async (l: any) => {
+        const formatted = await Promise.all(allLists.map(async (l: any) => {
           const contactsStr = localStorage.getItem("realizzare_contacts");
           let count = 0;
           if (contactsStr) {
@@ -1674,7 +1668,16 @@ function CreateCampaignForm() {
       }
 
       const initialStatus = sendType === "immediate" ? "Enviando" : "scheduled";
-      const scheduledAt = sendType === "immediate" ? new Date().toISOString() : `${scheduledDate}T${scheduledTime}:00Z`;
+      
+      let scheduledAt: string | null = null;
+      if (sendType === "immediate") {
+        scheduledAt = new Date().toISOString();
+      } else {
+        const localDate = new Date(`${scheduledDate}T${scheduledTime}:00`);
+        scheduledAt = localDate.toISOString();
+      }
+
+      const targetListStr = (listNames || "Nenhuma lista selecionada") + "||IDS||" + selectedIncludeLists.join(",");
 
       const campaignData = {
         org_id: "00000000-0000-0000-0000-000000000001",
@@ -1685,7 +1688,7 @@ function CreateCampaignForm() {
         from_email: senderEmail,
         reply_to: replyToIsCustom ? customReplyTo : replyToEmail,
         status: initialStatus,
-        target_list: listNames || "Lista Geral de Alunos",
+        target_list: targetListStr,
         send_type: sendType,
         scheduled_at: sendType === "scheduled" ? scheduledAt : null,
         sent_at: sendType === "immediate" ? scheduledAt : null,
@@ -1825,33 +1828,80 @@ function CreateCampaignForm() {
     }, 800);
   };
 
-  const handleSaveSegment = () => {
+  const handleSaveSegment = async () => {
     if (!newSegmentName.trim()) return;
-    const newId = `segment-${Date.now()}`;
-    const newCount = previewCount !== null ? previewCount : countMatchingContacts(contacts, segmentGroups, globalOperator, customFields);
-    
-    // Add new segment dynamically to selection lists
-    setListsList((prev) => [
-      ...prev,
-      { id: newId, name: newSegmentName, count: newCount }
-    ]);
-    
-    // Auto-select in inclusion lists
-    setSelectedIncludeLists((prev) => [...prev, newId]);
-    
-    // Reset states and close
-    setShowSegmentModal(false);
-    setNewSegmentName("");
-    setSegmentGroups([
-      {
-        id: "group-1",
-        logicalOperator: "and",
-        rules: [{ field: "email", operator: "eq", value: "" }]
+
+    const matchedContacts = contacts.filter((c: any) => {
+      if (c.status !== "active") return false;
+      
+      const groupResults: boolean[] = segmentGroups.map((group) => {
+        if (!group.rules || group.rules.length === 0) return true;
+        const ruleResults: boolean[] = group.rules.map((rule: any) => evaluateRule(c, rule, customFields));
+        if (group.logicalOperator === "or") return ruleResults.some((r: boolean) => r === true);
+        return ruleResults.every((r: boolean) => r === true);
+      });
+      
+      if (globalOperator === "or") return groupResults.some((r: boolean) => r === true);
+      return groupResults.every((r: boolean) => r === true);
+    });
+
+    setIsSavingDraft(true); // Reusing this loading state to prevent double clicks
+    try {
+      const supabase = createClient();
+      
+      // 1. Create a real list in the database for this segment
+      const { data: newList, error: listErr } = await supabase.from("lists").insert({
+        org_id: "00000000-0000-0000-0000-000000000001",
+        name: newSegmentName,
+        description: "Segmentação dinâmica (salva estaticamente)",
+        type: "segment"
+      }).select("id").single();
+
+      if (listErr) throw listErr;
+
+      // 2. Insert matched contacts into list_subscriptions
+      if (matchedContacts.length > 0) {
+        const subsPayload = matchedContacts.map((mc: any) => ({
+          list_id: newList.id,
+          contact_id: mc.id,
+          status: "subscribed"
+        }));
+        
+        const { error: subsErr } = await supabase.from("list_subscriptions").insert(subsPayload);
+        if (subsErr) console.warn("Failed to attach contacts to segment list:", subsErr);
       }
-    ]);
-    setGlobalOperator("and");
-    setPreviewCount(null);
-    alert(`Segmento "${newSegmentName}" criado com sucesso e selecionado para envio!`);
+
+      const newId = newList.id;
+      const newCount = matchedContacts.length;
+      
+      // Add new segment dynamically to selection lists
+      setListsList((prev) => [
+        ...prev,
+        { id: newId, name: newSegmentName, count: newCount }
+      ]);
+      
+      // Auto-select in inclusion lists
+      setSelectedIncludeLists((prev) => [...prev, newId]);
+      
+      // Reset states and close
+      setShowSegmentModal(false);
+      setNewSegmentName("");
+      setSegmentGroups([
+        {
+          id: "group-1",
+          logicalOperator: "and",
+          rules: [{ field: "email", operator: "eq", value: "" }]
+        }
+      ]);
+      setGlobalOperator("and");
+      setPreviewCount(null);
+      alert(`Segmento "${newSegmentName}" criado e salvo com sucesso!`);
+    } catch (err) {
+      console.error("Error saving segment:", err);
+      alert("Erro ao salvar a segmentação no banco de dados.");
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   // Filter options for inclusion

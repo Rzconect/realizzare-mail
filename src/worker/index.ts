@@ -1,0 +1,155 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+import cron from 'node-cron';
+import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
+
+// ==========================================
+// CONFIGURAÇÕES INICIAIS
+// ==========================================
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// O Service Role Key é obrigatório no Worker para ignorar as regras de segurança (RLS) do Supabase e ler tudo
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Configuração do Transportador de Email (AWS SES)
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'email-smtp.sa-east-1.amazonaws.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true', // true para 465, false para outras portas
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+console.log('====================================================');
+console.log('👷 WORKER DO REALIZZARE MAIL INICIADO COM SUCESSO! 👷');
+console.log('====================================================');
+
+if (!process.env.SMTP_USER) {
+  console.log('⚠️ AVISO: Credenciais SMTP não encontradas no .env.local!');
+  console.log('⚠️ O Worker rodará em MODO DE TESTE (Dry Run). Nenhum email real será enviado para a AWS.');
+} else {
+  console.log('✅ Credenciais SMTP encontradas. Os emails serão enviados para a AWS.');
+}
+
+console.log('⏰ Aguardando campanhas agendadas... (checando a cada 1 minuto)');
+console.log('');
+
+// ==========================================
+// TAREFA CRON (Roda a cada 1 minuto)
+// ==========================================
+cron.schedule('* * * * *', async () => {
+  const agora = new Date().toISOString();
+  console.log(`[${agora}] Buscando campanhas pendentes...`);
+
+  try {
+    // 1. Buscar campanhas agendadas com horário atrasado ou igual a agora
+    const { data: campaigns, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('status', 'scheduled')
+      .lte('scheduled_at', agora);
+
+    if (error) {
+      console.error('❌ Erro ao consultar banco:', error);
+      return;
+    }
+
+    if (!campaigns || campaigns.length === 0) {
+      return; // Silencioso se não tiver nada
+    }
+
+    for (const campaign of campaigns) {
+      console.log(`\n🚀 Iniciando disparo da campanha: "${campaign.name}" (ID: ${campaign.id})`);
+      
+      // 2. Atualizar status para 'sending' para evitar que o cron do próximo minuto pegue ela de novo
+      await supabase
+        .from('campaigns')
+        .update({ status: 'sending', updated_at: new Date().toISOString() })
+        .eq('id', campaign.id);
+        
+      // 3. Resolução dos Destinatários
+      let emails: string[] = [];
+      const targetListStr = campaign.target_list || '';
+
+      if (targetListStr.includes('||IDS||')) {
+        const [, idsString] = targetListStr.split('||IDS||');
+        const ids = idsString.split(',').map((id: string) => id.trim()).filter((id: string) => id);
+        
+        // Busca todos os contatos
+        const { data: contactsData } = await supabase.from('contacts').select('email, id');
+          
+        if (contactsData) {
+           // Busca todas as inscrições em listas
+           const { data: subs } = await supabase.from('list_subscriptions').select('contact_id, list_id');
+           const contactIdsInLists = (subs || [])
+              .filter(sub => ids.includes(sub.list_id))
+              .map(sub => sub.contact_id);
+              
+           const matchedContacts = contactsData.filter(c => ids.includes(c.id) || contactIdsInLists.includes(c.id));
+           emails = matchedContacts.map(c => c.email);
+        }
+      } else {
+        // Fallback: se não usar a nova estrutura, tenta extrair os emails puros
+        emails = targetListStr.split(',')
+          .map((e: string) => e.trim())
+          .filter((e: string) => e.includes('@'));
+      }
+      
+      // Remover duplicatas
+      emails = [...new Set(emails)];
+      console.log(`👥 Total de destinatários únicos: ${emails.length}`);
+      
+      let successCount = 0;
+      let errorCount = 0;
+
+      // 4. Loop de Envio
+      for (const email of emails) {
+        try {
+           if (!process.env.SMTP_USER) {
+              // MODO DE TESTE (Dry Run) - Se não houver credencial configurada
+              console.log(`   [TESTE] E-mail gerado para: ${email} (Não enviado à AWS)`);
+              await new Promise(r => setTimeout(r, 100)); // simula atraso
+              successCount++;
+           } else {
+              // MODO REAL - Envia via AWS SES
+              const mailOptions = {
+                from: process.env.SMTP_FROM || 'seu-email@dominio.com',
+                to: email,
+                subject: campaign.subject || campaign.name,
+                html: campaign.content,
+              };
+              
+              await transporter.sendMail(mailOptions);
+              console.log(`   ✅ Enviado para: ${email}`);
+              successCount++;
+           }
+        } catch (err) {
+           console.error(`   ❌ Falha ao enviar para ${email}:`, err);
+           errorCount++;
+        }
+        
+        // PAUSA ESTRATÉGICA: Aguarda 75ms entre cada envio (Cerca de 13 envios/segundo)
+        // Isso evita exceder a Quota da AWS de Envios por Segundo (TPS).
+        await new Promise(r => setTimeout(r, 75));
+      }
+      
+      // 5. Finalização
+      await supabase
+        .from('campaigns')
+        .update({ 
+           status: 'sent', 
+           updated_at: new Date().toISOString()
+        })
+        .eq('id', campaign.id);
+        
+      console.log(`🏁 FIM: Campanha concluída! Sucessos: ${successCount} | Erros: ${errorCount}`);
+    }
+
+  } catch (err) {
+    console.error('❌ Erro fatal no worker:', err);
+  }
+});

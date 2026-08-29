@@ -312,27 +312,56 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           let recipientsPool: any[] = [];
           const targetStr = (dbCamp.target_list || "").trim();
 
-          const emailMatches = targetStr.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
-          if (emailMatches && emailMatches.length > 0) {
-            emailMatches.forEach((em: string) => {
-              const cleanEm = em.trim().toLowerCase();
-              const contactObj = (contactsList || []).find((c: any) => (c.email || "").toLowerCase() === cleanEm);
-              recipientsPool.push({
-                email: cleanEm,
-                name: contactObj ? `${contactObj.first_name || ""} ${contactObj.last_name || ""}`.trim() : cleanEm.split("@")[0],
-                contactId: contactObj?.id || null
-              });
-            });
-          } else {
-            (contactsList || []).forEach((c: any) => {
-              if (c.status === "active") {
-                recipientsPool.push({
-                  email: c.email.toLowerCase(),
-                  name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
-                  contactId: c.id
+          if (dbCamp.status === "sent" && dbCamp.sent_count === 0) {
+            // Se foi disparado com 0 envios, não mostra contatos falsos
+            recipientsPool = [];
+          } else if (targetStr.includes("||IDS||")) {
+            const [, idsPart] = targetStr.split("||IDS||");
+            const rawIds = idsPart ? idsPart.split(",").filter(Boolean) : [];
+            
+            const contactIds = rawIds.filter((id: string) => id.startsWith("contact-")).map((id: string) => id.replace("contact-", ""));
+            const listIds = rawIds.filter((id: string) => !id.startsWith("contact-") && !id.startsWith("seg-"));
+            
+            if (contactIds.length > 0) {
+                (contactsList || []).forEach((c: any) => {
+                  if (contactIds.includes(c.id)) {
+                      recipientsPool.push({ email: c.email.toLowerCase(), name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), contactId: c.id });
+                  }
                 });
-              }
-            });
+            }
+            
+            if (listIds.length > 0) {
+                const { data: subs } = await supabase.from("list_subscriptions").select("contact_id").in("list_id", listIds).eq("status", "subscribed");
+                const subscribedContactIds = (subs || []).map((s: any) => s.contact_id);
+                (contactsList || []).forEach((c: any) => {
+                  if (subscribedContactIds.includes(c.id) && c.status === "active") {
+                      recipientsPool.push({ email: c.email.toLowerCase(), name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), contactId: c.id });
+                  }
+                });
+            }
+          } else {
+            const emailMatches = targetStr.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
+            if (emailMatches && emailMatches.length > 0) {
+              emailMatches.forEach((em: string) => {
+                const cleanEm = em.trim().toLowerCase();
+                const contactObj = (contactsList || []).find((c: any) => (c.email || "").toLowerCase() === cleanEm);
+                recipientsPool.push({
+                  email: cleanEm,
+                  name: contactObj ? `${contactObj.first_name || ""} ${contactObj.last_name || ""}`.trim() : cleanEm.split("@")[0],
+                  contactId: contactObj?.id || null
+                });
+              });
+            } else if (targetStr.toLowerCase().includes("geral") || targetStr.toLowerCase().includes("todos")) {
+              (contactsList || []).forEach((c: any) => {
+                if (c.status === "active") {
+                  recipientsPool.push({
+                    email: c.email.toLowerCase(),
+                    name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+                    contactId: c.id
+                  });
+                }
+              });
+            }
           }
 
           // Deduplicate recipients
