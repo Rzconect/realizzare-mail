@@ -4424,7 +4424,7 @@ export default function ContactsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1050px]">
             <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase font-bold tracking-wider text-slate-500 select-none">
+              <tr className="border-b border-slate-200 text-xs uppercase font-bold tracking-wider text-slate-500 select-none whitespace-nowrap">
                 <th className="py-4 px-5 w-12 text-center">
                   <input
                     type="checkbox"
@@ -4516,13 +4516,13 @@ export default function ContactsPage() {
                         <span className="text-slate-800 font-medium">{contact.email}</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">{contact.phone || "—"}</td>
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{contact.phone || "—"}</td>
                     <td className="py-3.5 px-4 text-xs font-medium text-slate-800 truncate max-w-[200px]">
                       {contact.course && contact.course !== "Nenhum" && contact.course !== "Sem Matrícula"
                         ? contact.course
                         : <span className="text-slate-400 font-normal italic">—</span>}
                     </td>
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       {contact.courseStatus && contact.courseStatus !== "Nenhum" ? (
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           contact.courseStatus.includes("Concluído") || contact.courseStatus.includes("Finalizado")
