@@ -1426,7 +1426,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           </div>
 
                     {/* Tabs Section */}
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden min-h-[140px]">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm min-h-[140px]">
             <div className="flex items-center border-b border-slate-200 overflow-x-auto scrollbar-none">
               <button 
                 onClick={() => setActiveTab("info")}
