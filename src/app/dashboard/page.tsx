@@ -1052,7 +1052,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10" style={{ zoom: 0.9 }}>
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
