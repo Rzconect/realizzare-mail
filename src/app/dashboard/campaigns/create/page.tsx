@@ -61,6 +61,92 @@ interface SearchableFieldDropdownProps {
   customFields: Array<{ name: string; tag: string; type: string }>;
 }
 
+
+function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockTags }: { subjectLine: string, preheader: string, senderName: string, renderMockTags: (text: string) => string }) {
+  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+
+  const mockEmails = [
+    { sender: "Microsoft Azure", time: "10:45", subject: "Your monthly billing statement", pre: "Your invoice for the period of October is now a..." },
+    { sender: "LinkedIn", time: "Ontem", subject: "Você tem novas visualizações", pre: "Veja quem visitou seu perfil profissional nas úl..." },
+    { sender: "Slack Notifications", time: "Ontem", subject: "Resumo de mensagens", pre: "Você tem 12 mensagens não lidas em 3 canais..." }
+  ];
+
+  const actualSubject = renderMockTags(subjectLine) || "Assunto do e-mail...";
+  const actualPreheader = renderMockTags(preheader) || "Pré-visualização do conteúdo de cabeçalho do e-mail...";
+
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-hidden w-full max-w-md mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
+        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Prévia da Caixa de Entrada</span>
+        <div className="flex bg-slate-100 rounded-md p-0.5">
+          <button 
+            type="button"
+            onClick={() => setDevice("desktop")}
+            className={`p-1.5 rounded-sm flex items-center justify-center transition-colors ${device === "desktop" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            <Monitor className="h-3.5 w-3.5" />
+          </button>
+          <button 
+            type="button"
+            onClick={() => setDevice("mobile")}
+            className={`p-1.5 rounded-sm flex items-center justify-center transition-colors ${device === "mobile" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            <Smartphone className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Inbox Toolbar */}
+      <div className="px-4 py-2 bg-white flex justify-between items-center text-[10px] font-medium text-slate-400 border-b border-slate-100">
+        <span className="uppercase tracking-wider">Caixa de Entrada</span>
+        <span>Filtro: Todos</span>
+      </div>
+
+      {/* Email List Wrapper (Simulates device width) */}
+      <div className={`bg-white flex-1 overflow-hidden transition-all duration-300 mx-auto ${device === "mobile" ? "w-[320px] border-x border-slate-100" : "w-full"}`}>
+        {/* Active Email */}
+        <div className="relative border-l-4 border-indigo-600 bg-white p-4 cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100 flex gap-3">
+          <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shrink-0">
+            {(senderName || "R")[0].toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-baseline mb-0.5">
+              <span className="font-bold text-slate-800 text-sm truncate pr-2">
+                {senderName || "Realizzare Cursos"}
+              </span>
+              <span className="text-[10px] text-slate-400 shrink-0 font-medium">Agora mesmo</span>
+            </div>
+            <h4 className="font-semibold text-slate-800 text-xs truncate mb-0.5">
+              {device === "mobile" && actualSubject.length > 35 ? actualSubject.substring(0, 35) + "..." : actualSubject}
+            </h4>
+            <p className="text-[11px] text-slate-500 truncate">
+              {device === "mobile" && actualPreheader.length > 40 ? actualPreheader.substring(0, 40) + "..." : actualPreheader}
+            </p>
+          </div>
+        </div>
+
+        {/* Mock Emails */}
+        {mockEmails.map((email, idx) => (
+          <div key={idx} className="relative p-4 flex gap-3 border-b border-slate-100 opacity-50 blur-[0.5px]">
+            <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0">
+              {email.sender[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline mb-0.5">
+                <span className="font-bold text-slate-700 text-sm truncate pr-2">{email.sender}</span>
+                <span className="text-[10px] text-slate-400 shrink-0">{email.time}</span>
+              </div>
+              <h4 className="font-semibold text-slate-700 text-xs truncate mb-0.5">{email.subject}</h4>
+              <p className="text-[11px] text-slate-500 truncate">{email.pre}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SegmentCourseDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -1769,7 +1855,12 @@ function CreateCampaignForm() {
 
               {/* Assunto */}
               <div className="space-y-1.5 relative">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assunto do E-mail <span className="text-red-500">*</span></label>
+                <div className="flex justify-between items-center">
+  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Assunto do E-mail <span className="text-red-500">*</span></label>
+  <span className="text-[10px] font-semibold text-slate-400">
+    <span className={subjectLine.length > 60 ? "text-orange-500" : ""}>{subjectLine.length}</span> / 60 (Desktop) / 35 (Mobile)
+  </span>
+</div>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1812,7 +1903,12 @@ function CreateCampaignForm() {
 
               {/* Preheader */}
               <div className="space-y-1.5 relative">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Pré-cabeçalho <span className="text-red-500">*</span></label>
+                <div className="flex justify-between items-center">
+  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Pré-cabeçalho <span className="text-red-500">*</span></label>
+  <span className="text-[10px] font-semibold text-slate-400">
+    <span className={preheader.length > 80 ? "text-orange-500" : ""}>{preheader.length}</span> / 80 (Desktop) / 40 (Mobile)
+  </span>
+</div>
                 <div className="flex gap-2">
                   <input
                     type="text"
