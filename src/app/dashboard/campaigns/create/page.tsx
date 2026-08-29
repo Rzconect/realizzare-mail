@@ -2342,11 +2342,7 @@ function CreateCampaignForm() {
                       https://mail.realizzare.com.br/preview
                     </div>
                   </div>
-                  {/* Inner email header */}
-                  <div className="p-4 bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 space-y-1 select-none shrink-0">
-                    <div>Assunto: <strong className="text-slate-800">{renderMockTags(subjectLine) || "Não definido"}</strong></div>
-                    <div>Preheader: <span className="text-slate-600 font-medium">{renderMockTags(preheader) || "Não definido"}</span></div>
-                  </div>
+                  
                   {/* HTML Iframe - Fills browser screen */}
                   <div className="flex-1 relative bg-white min-h-0">
                     {htmlContent ? (
@@ -2387,14 +2383,7 @@ function CreateCampaignForm() {
                       <span className="text-[9px] font-bold ml-1">10:32</span>
                     </div>
 
-                    {/* Simulated mobile mail header */}
-                    <div className="px-3 py-2 bg-white border-b border-slate-200 text-[10px] text-slate-500 space-y-0.5 shrink-0">
-                      <div className="flex justify-between font-bold text-slate-800">
-                        <span className="truncate pr-2">{senderName || "Remetente"}</span>
-                      </div>
-                      <div className="font-extrabold text-slate-900 truncate mt-0.5">{renderMockTags(subjectLine) || "Sem assunto"}</div>
-                      <div className="text-slate-500 truncate">{renderMockTags(preheader) || "Sem preheader"}</div>
-                    </div>
+                    
 
                     {/* HTML content iframe - takes exactly the remaining phone height */}
                     <div className="flex-1 relative bg-white min-h-0">
