@@ -25,7 +25,7 @@ async function handleRequest(request: Request, params: { path: string[] }) {
   const outHeaders = new Headers();
 
   // Copy safe headers from original request
-  const copyHeaders = ['content-type', 'x-client-info', 'x-supabase-api-version', 'prefer', 'range'];
+  const copyHeaders = ['accept', 'content-type', 'x-client-info', 'x-supabase-api-version', 'prefer', 'range'];
   for (const h of copyHeaders) {
     const val = request.headers.get(h);
     if (val) outHeaders.set(h, val);
@@ -81,3 +81,4 @@ async function handleRequest(request: Request, params: { path: string[] }) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
