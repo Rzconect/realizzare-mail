@@ -1652,7 +1652,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   {/* Render Detailed Metrics if node is delay and toggle is active */}
                   {node.type === "delay" && showDetailedMetrics && (() => {
                     const delayMetrics = getMetricsForNãode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
-                    const waitingCount = Math.round(delayMetrics.sent * 0.12) || 1;
+                    const waitingCount = 0;
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2.5">
                         <div 
@@ -3335,7 +3335,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       {/* Leads por Etapa / Fila de Atraso */}
                       {(() => {
                         const delayMetrics = getMetricsForNãode(selectedNãodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
-                        const waitingCount = Math.round(delayMetrics.sent * 0.12) || 1;
+                        const waitingCount = 0;
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Leads nesta Etapa</h4>
