@@ -143,51 +143,7 @@ const getMetricsForNode = (nodeId: string, nodeMetricsData: Record<string, any>,
     return nodeMetricsData[nodeId] || defaultMetrics;
   };
 
-  const getMockLeadsForQueue = (nodeId: string, statusName: string, count: number) => {
-  const firstNames = ["Ana", "Bruno", "Carlos", "Diana", "Eduardo", "Fernanda", "Gabriel", "Helena", "Igor", "Julia", "Lucas", "Mariana", "Nelson", "Oláivia", "Pedro", "Renata", "Samuel", "Tatiana", "Valter", "Yasmin"];
-  const lastNames = ["Silva", "Santos", "Oláiveira", "Souza", "Rodrigues", "Ferreira", "Almeida", "Pereira", "Carvalho", "Gomes", "Martins", "Rocha", "Ribeiro", "Cardoso", "Costa", "Teixeira", "Mendes", "Nascimento", "Moreira", "Lima"];
-  const domains = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "uol.com.br", "realizzare.com.br"];
-
-  let seed = 0;
-  const combined = nodeId + statusName;
-  for (let i = 0; i < combined.length; i++) {
-    seed += combined.charCodeAt(i);
-  }
-
-  const leads = [];
-  const limit = Math.min(count, 100);
-  for (let i = 0; i < limit; i++) {
-    const fnIdx = (seed + i * 3) % firstNames.length;
-    const lnIdx = (seed + i * 7) % lastNames.length;
-    const domIdx = (seed + i * 13) % domains.length;
-
-    const name = `${firstNames[fnIdx]} ${lastNames[lnIdx]}`;
-    const email = `${firstNames[fnIdx].toLowerCase()}.${lastNames[lnIdx].toLowerCase()}_${i + 1}@${domains[domIdx]}`;
-    
-    const date = new Date("2026-07-19T10:00:00");
-    date.setHours(date.getHours() - ((seed % 24) + i * 4));
-    
-    const formattedDate = date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
-    
-    const diffHours = Math.round((new Date("2026-07-19T13:00:00").getTime() - date.getTime()) / (1000 * 60 * 60));
-    let timeElapsed = "";
-    if (diffHours < 24) {
-      timeElapsed = `Há ${diffHours} hora${diffHours > 1 ? "s" : ""}`;
-    } else {
-      const days = Math.round(diffHours / 24);
-      timeElapsed = `Há ${days} dia${days > 1 ? "s" : ""}`;
-    }
-
-    leads.push({
-      id: `lead-${seed}-${i}`,
-      name,
-      email,
-      enteredAt: formattedDate,
-      timeElapsed
-    });
-  }
-  return leads;
-};
+  
 
 export default function FlowCanvas({ editId }: { editId: string | null }) {
   const router = useRouter();
@@ -378,6 +334,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [queueModalStatusName, setQueueModalStatusName] = useState<string>("");
   const [queueModalCount, setQueueModalCount] = useState<number>(0);
   const [queueSearchQuery, setQueueSearchQuery] = useState<string>("");
+  const [queueLeads, setQueueLeads] = useState<any[]>([]);
 
   // Email Gallery Modal state
   const [showEmailGalleryModal, setShowEmailGalleryModal] = useState(false);
@@ -3793,7 +3750,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
       {/* Leads Queue Listing Modal */}
       {showQueueModal && queueModalNode && (() => {
-        const allLeads = getMockLeadsForQueue(queueModalNode.id, queueModalStatusName, queueModalCount);
+        const allLeads = queueLeads;
         const filteredLeads = allLeads.filter(lead => 
           lead.name.toLowerCase().includes(queueSearchQuery.toLowerCase()) ||
           lead.email.toLowerCase().includes(queueSearchQuery.toLowerCase())
@@ -3852,7 +3809,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-4 py-3.5 flex items-center gap-3">
                               <div className="h-8 w-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-xs font-black text-indigo-700 uppercase">
-                                {lead.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                                {lead.initials || lead.name.substring(0, 2).toUpperCase()}
                               </div>
                               <div className="flex flex-col">
                                 <span className="font-bold text-slate-800">{lead.name}</span>
