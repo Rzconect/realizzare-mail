@@ -195,8 +195,8 @@ export default function DashboardPage() {
   };
 
   // Load KPI Metrics & Live Webhook Events with Strict Date Range Filtering
-  const loadMetrics = async () => {
-    setIsLoadingMetrics(true);
+  const loadMetrics = async (silent = false) => {
+    if (!silent) setIsLoadingMetrics(true);
     const supabase = createClient();
     
     try {
@@ -663,6 +663,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadMetrics();
+
+    // Auto-refresh silencioso a cada 15 segundos
+    const intervalId = setInterval(() => {
+      loadMetrics(true);
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, [period, customStartDate, customEndDate]);
 
   useEffect(() => {
