@@ -50,10 +50,20 @@ export async function POST(req: NextRequest) {
 
       if (supabase) {
         if (eventType === "Open") {
-          if (campaignId) {
-            const { data: camp } = await supabase.from("campaigns").select("open_count").eq("id", campaignId).maybeSingle();
-            if (camp) {
-              await supabase.from("campaigns").update({ open_count: (camp.open_count || 0) + 1 }).eq("id", campaignId);
+          const emailAddress = mail.destination ? mail.destination[0] : "";
+          if (campaignId && emailAddress) {
+            const { data: existing } = await supabase.from("inbound_webhook_events")
+              .select("id")
+              .eq("event_type", "email.opened")
+              .eq("payload->>campaign_id", campaignId)
+              .eq("payload->>email", emailAddress)
+              .limit(1);
+
+            if (!existing || existing.length === 0) {
+              const { data: camp } = await supabase.from("campaigns").select("open_count").eq("id", campaignId).maybeSingle();
+              if (camp) {
+                await supabase.from("campaigns").update({ open_count: (camp.open_count || 0) + 1 }).eq("id", campaignId);
+              }
             }
           }
           await supabase.from("inbound_webhook_events").insert({
@@ -70,10 +80,20 @@ export async function POST(req: NextRequest) {
             status: "processed"
           });
         } else if (eventType === "Click") {
-          if (campaignId) {
-            const { data: camp } = await supabase.from("campaigns").select("click_count").eq("id", campaignId).maybeSingle();
-            if (camp) {
-              await supabase.from("campaigns").update({ click_count: (camp.click_count || 0) + 1 }).eq("id", campaignId);
+          const emailAddress = mail.destination ? mail.destination[0] : "";
+          if (campaignId && emailAddress) {
+            const { data: existing } = await supabase.from("inbound_webhook_events")
+              .select("id")
+              .eq("event_type", "email.clicked")
+              .eq("payload->>campaign_id", campaignId)
+              .eq("payload->>email", emailAddress)
+              .limit(1);
+
+            if (!existing || existing.length === 0) {
+              const { data: camp } = await supabase.from("campaigns").select("click_count").eq("id", campaignId).maybeSingle();
+              if (camp) {
+                await supabase.from("campaigns").update({ click_count: (camp.click_count || 0) + 1 }).eq("id", campaignId);
+              }
             }
           }
           await supabase.from("inbound_webhook_events").insert({

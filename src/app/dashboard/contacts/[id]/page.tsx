@@ -530,8 +530,8 @@ export default function ContactProfilePage({ params }: PageProps) {
             let isMatch = teContactId === contact.id || (teEmail && teEmail === contactEmailLower);
 
             if (isMatch) {
-              const isClick = te.event_type === "email.click";
-              const isOpen = te.event_type === "email.open";
+              const isClick = te.event_type === "email.click" || te.event_type === "email.clicked";
+              const isOpen = te.event_type === "email.open" || te.event_type === "email.opened";
               const isDataLayerAction = te.event_type === "user.action" || te.source === "datalayer_js" || te.provider === "datalayer_js" || payload.event === "checkout_click";
 
               if (isOpen || isClick) {
@@ -680,8 +680,8 @@ export default function ContactProfilePage({ params }: PageProps) {
           }));
 
         const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
-        const emailsOpenedCount = rawEvents.filter((e) => e.type === "open").length;
-        const emailsClickedCount = rawEvents.filter((e) => e.type === "email_click").length;
+        const emailsOpenedCount = new Set(rawEvents.filter((e) => e.type === "open").map(e => e.payload?.campaign_id)).size;
+        const emailsClickedCount = new Set(rawEvents.filter((e) => e.type === "email_click").map(e => e.payload?.campaign_id)).size;
 
         const profileObj = {
           first_name: contact.first_name || "",
@@ -2038,3 +2038,5 @@ export default function ContactProfilePage({ params }: PageProps) {
     </div>
   );
 }
+
+
