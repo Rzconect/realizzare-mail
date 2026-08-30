@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
+import TriggerConfigModal from "@/components/TriggerConfigModal";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -260,6 +261,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // UI Panels states
+  const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [activePanel, setActivePanel] = useState<"menu" | "trigger_select" | "trigger_config" | "node_config" | "exit_rules" | null>("menu");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedNodeForConfig, setSelectedNodeForConfig] = useState<FlowNode | null>(null);
@@ -1334,7 +1336,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 }}
               >
                 <div
-                  onClick={() => isTrigger ? setActivePanel(flow.triggerMetric ? "trigger_config" : "trigger_select") : handleOpenNodeConfig(node)}
+                  onClick={() => isTrigger ? setShowTriggerModal(true) : handleOpenNodeConfig(node)}
                   className={`bg-white border hover:border-indigo-500 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md relative ${
                     isTrigger ? "border-indigo-200 bg-indigo-50/20 w-56 cursor-pointer" : 
                     "cursor-grab active:cursor-grabbing " + (node.type === "email" && showDetailedMetrics ? "w-72 border-blue-200 bg-blue-50/5 ring-2 ring-blue-500/10" : "w-56 border-slate-200")
@@ -4018,6 +4020,20 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         </div>
       )}
 
+
+      {/* Trigger Modal */}
+      <TriggerConfigModal 
+        isOpen={showTriggerModal} 
+        onClose={() => setShowTriggerModal(false)}
+        onSave={(config) => {
+          setFlow(prev => ({
+            ...prev,
+            triggerMetric: "Personalizado (Regra Configuradada)",
+            triggerType: "Automa��o Avan�ada"
+          }));
+          setShowTriggerModal(false);
+        }}
+      />
     </div>
   );
 }
