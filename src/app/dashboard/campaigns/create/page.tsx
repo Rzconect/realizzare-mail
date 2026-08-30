@@ -1259,7 +1259,7 @@ function CreateCampaignForm() {
 
         const formatted = await Promise.all(allLists.map(async (l: any) => {
           const contactsStr = localStorage.getItem("realizzare_contacts");
-          let count = l.subscriber_count || 0;
+            let count = l.subscriber_count || 0;
           if (contactsStr) {
             try {
               const contactsList = JSON.parse(contactsStr);
@@ -1464,7 +1464,7 @@ function CreateCampaignForm() {
 
   // Step 3 dynamic calculation
   const audienceEstimateCount = useMemo(() => {
-    let count = l.subscriber_count || 0;
+    let count = 0;
     selectedIncludeLists.forEach((listId) => {
       const match = listsList.find((l) => l.id === listId);
       if (match) count += match.count;
