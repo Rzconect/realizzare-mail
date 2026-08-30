@@ -50,11 +50,11 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-slate-50/50">
+      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
           <div>
             <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">?</div>
+              <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">✨</div>
               Configuração de Gatilho de Entrada
             </h3>
             <p className="text-[11px] text-slate-500 font-medium mt-1">Configure regras complexas ouvindo eventos externos ou dados do usuário.</p>
@@ -121,8 +121,8 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 )}
                 {customTriggerSource === "user" && (
                   <>
-                    <option>Nãovo Lead Cadastrado</option>
-                    <option>Campo: Nãome / Sobrenome Alterado</option>
+                    <option>Novo Lead Cadastrado</option>
+                    <option>Campo: Nome / Sobrenome Alterado</option>
                     <option>Campo: Email Alterado</option>
                     <option>Campo: Telefone / WhatsApp</option>
                     <option>Campo: Gênero</option>
@@ -141,7 +141,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Regra Adicional (Opcional)</label>
                 <select value={selectedRule} onChange={(e) => setSelectedRule(e.target.value)} className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none">
                   <option>Nenhuma regra extra</option>
-                  <option>Nãome do Curso específico</option>
+                  <option>Nome do Curso específico</option>
                   {isPagarmeEvent && <option>SKU do Produto específico</option>}
                   <option>Igual a</option>
                   <option>Não é igual a</option>
@@ -154,7 +154,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor Condicional</label>
                 
-                {selectedRule === "Nãome do Curso específico" ? (
+                {selectedRule === "Nome do Curso específico" ? (
                   <div className="relative mt-1.5">
                     <button 
                       type="button"
@@ -204,14 +204,14 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
+        <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50 rounded-b-3xl">
           <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50">
             Cancelar
           </button>
           <button
             type="button"
             onClick={() => {
-              const ruleText = selectedRule === "Nãome do Curso específico" 
+              const ruleText = selectedRule === "Nome do Curso específico" 
                 ? `[Cursos: ${selectedCourses.join(", ")}]` 
                 : (selectedRule !== "Nenhuma regra extra" ? `[${selectedRule} ${condValue}]` : "");
                 
@@ -219,7 +219,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 source: customTriggerSource,
                 event: selectedEvent,
                 rule: selectedRule,
-                value: selectedRule === "Nãome do Curso específico" ? selectedCourses : condValue,
+                value: selectedRule === "Nome do Curso específico" ? selectedCourses : condValue,
                 summary: `${selectedEvent} ${ruleText}`
               });
               onClose();

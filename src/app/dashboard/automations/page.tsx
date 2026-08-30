@@ -1081,10 +1081,10 @@ export default function AutomaçãonsPage() {
 
       {/* MODAL: CREATE FLOW */}
       {showCreateFlowModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
             <div className="flex items-center gap-3 text-slate-800">
-              <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-650">
+              <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
                 <GitBranch className="h-5 w-5" />
               </div>
               <div>
@@ -1095,7 +1095,7 @@ export default function AutomaçãonsPage() {
             
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Nome do Fluxo</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nome do Fluxo</label>
                 <input
                   type="text"
                   value={newFlowName}
@@ -1106,8 +1106,8 @@ export default function AutomaçãonsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
-                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-xs flex items-center gap-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
+                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-sm flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
                     O gatilho será configurado dentro do fluxo
                   </div>
@@ -1115,11 +1115,11 @@ export default function AutomaçãonsPage() {
 
               {newFlowTrigger === "Iniciou Curso" && (
                 <div className="space-y-1.5 relative animate-fadeIn">
-                  <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Selecione o Curso</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Selecione o Curso</label>
                   <button
                     type="button"
                     onClick={() => setShowCourseDropdown(!showCourseDropdown)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-left focus:border-indigo-500 outline-none transition-all cursor-pointer bg-white flex items-center justify-between shadow-2xs"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-left focus:border-indigo-500 outline-none transition-all cursor-pointer bg-white flex items-center justify-between shadow-sm"
                   >
                     <span>{selectedCourse}</span>
                     <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
@@ -1151,7 +1151,7 @@ export default function AutomaçãonsPage() {
                                   setSearchTerm("");
                                 }}
                                 className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-indigo-50/50 hover:text-indigo-700 block ${
-                                  selectedCourse === c ? "text-indigo-600 bg-indigo-50/40 font-black" : "text-slate-650"
+                                  selectedCourse === c ? "text-indigo-600 bg-indigo-50/40 font-black" : "text-slate-600"
                                 }`}
                               >
                                 {c}
@@ -1170,13 +1170,13 @@ export default function AutomaçãonsPage() {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Tipo de Envio</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Tipo de Envio</label>
                 <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-1 text-[10px] font-bold">
                   <button
                     type="button"
                     onClick={() => setNewFlowType("Automação")}
                     className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                      newFlowType === "Automação" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                      newFlowType === "Automação" ? "bg-white text-indigo-700 shadow-sm font-black" : "text-slate-500"
                     }`}
                   >
                     Automação
@@ -1185,7 +1185,7 @@ export default function AutomaçãonsPage() {
                     type="button"
                     onClick={() => setNewFlowType("Transacional")}
                     className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                      newFlowType === "Transacional" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                      newFlowType === "Transacional" ? "bg-white text-indigo-700 shadow-sm font-black" : "text-slate-500"
                     }`}
                   >
                     Transacional
@@ -1194,7 +1194,7 @@ export default function AutomaçãonsPage() {
                     type="button"
                     onClick={() => setNewFlowType("Sistema")}
                     className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                      newFlowType === "Sistema" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                      newFlowType === "Sistema" ? "bg-white text-indigo-700 shadow-sm font-black" : "text-slate-500"
                     }`}
                   >
                     Sistema
@@ -1203,7 +1203,7 @@ export default function AutomaçãonsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Descrição / Objetivo</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Descrição / Objetivo</label>
                 <textarea
                   value={newFlowDescription}
                   onChange={(e) => setNewFlowDescription(e.target.value)}
@@ -1218,7 +1218,7 @@ export default function AutomaçãonsPage() {
               <button
                 type="button"
                 onClick={() => setShowCreateFlowModal(false)}
-                className="px-4 py-2 border border-slate-202 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-650 cursor-pointer transition-colors"
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 cursor-pointer transition-colors"
               >
                 Cancelar
               </button>
