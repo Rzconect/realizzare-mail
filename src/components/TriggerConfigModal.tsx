@@ -18,10 +18,10 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
         <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-slate-50/50">
           <div>
             <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">?</div>
-              Configura��o de Gatilho de Entrada
+              <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">✨</div>
+              Configuração de Gatilho de Entrada
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium mt-1">Configure regras complexas ouvindo eventos externos ou dados do usu�rio.</p>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">Configure regras complexas ouvindo eventos externos ou dados do usuário.</p>
           </div>
           <button
             type="button"
@@ -58,7 +58,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
               <select className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
                 {customTriggerSource === "pagarme" && (
                   <>
-                    <option>Transa��o Aprovada (order_paid)</option>
+                    <option>Transação Aprovada (order_paid)</option>
                     <option>Boleto Gerado (order_created)</option>
                     <option>Assinatura Cancelada (subscription_canceled)</option>
                     <option>Carrinho Abandonado (checkout_abandoned)</option>
@@ -66,23 +66,38 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 )}
                 {customTriggerSource === "datalayer" && (
                   <>
-                    <option>Visualizou P�gina (page_view)</option>
+                    <option>Curso Iniciado (course.progress - Inicio)</option>
+                    <option>Curso em Andamento 50% (course.progress - Meio)</option>
+                    <option>Curso Concluído 100% (course.progress - Fim)</option>
+                    <option>Clique em Emissão/Checkout (checkout_click)</option>
+                    <option>Visualizou Página (page_view)</option>
                     <option>Adicionou ao Carrinho (add_to_cart)</option>
-                    <option>Iniciou Checkout (begin_checkout)</option>
-                    <option>Clicou em Elemento (click)</option>
                   </>
                 )}
                 {customTriggerSource === "api" && (
                   <>
-                    <option>Evento Customizado POST</option>
-                    <option>Integra��o Zapier / Make</option>
+                    <option>Matrícula Realizada</option>
+                    <option>Teste Aprovado</option>
+                    <option>Reprovação na Prova (course.exam_failed)</option>
+                    <option>Certificado Emitido (certificate_issued)</option>
+                    <option>Contato Criado / Atualizado</option>
+                    <option>Descadastro de Email (contact.unsubscribed)</option>
+                    <option>Reativação de Contato (contact.reactivated)</option>
+                    <option>Evento Customizado POST genérico</option>
                   </>
                 )}
                 {customTriggerSource === "user" && (
                   <>
+                    <option>Novo Lead Cadastrado</option>
+                    <option>Campo: Nome / Sobrenome Alterado</option>
+                    <option>Campo: Email Alterado</option>
+                    <option>Campo: Telefone / WhatsApp</option>
+                    <option>Campo: Gênero</option>
+                    <option>Campo: Data de Nascimento</option>
+                    <option>Campo: CPF</option>
+                    <option>Campo: CEP / Endereço Completo</option>
+                    <option>Tag Adicionada ou Removida</option>
                     <option>Campo Personalizado Alterado</option>
-                    <option>Tag Adicionada</option>
-                    <option>Fez Anivers�rio</option>
                   </>
                 )}
               </select>
@@ -93,9 +108,16 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Regra Adicional (Opcional)</label>
                 <select className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none">
                   <option>Nenhuma regra extra</option>
-                  <option>Valor maior que</option>
-                  <option>Nome do Produto cont�m</option>
-                  <option>Status igual a</option>
+                  <option>Igual a</option>
+                  <option>Não é igual a</option>
+                  <option>Contém</option>
+                  <option>Não contém</option>
+                  <option>Começa com</option>
+                  <option>Termina com</option>
+                  <option>Maior que (Valor/Data)</option>
+                  <option>Menor que (Valor/Data)</option>
+                  <option>Está vazio</option>
+                  <option>Não está vazio</option>
                 </select>
               </div>
               <div>

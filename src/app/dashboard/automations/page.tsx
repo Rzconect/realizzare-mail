@@ -1107,23 +1107,10 @@ export default function AutomationsPage() {
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
-                <select
-                  value={newFlowTrigger}
-                  onChange={(e) => {
-                    const trigger = e.target.value;
-                    setNewFlowTrigger(trigger);
-                    if (trigger === "Iniciou Curso") {
-                      setNewFlowType("Automação");
-                      setNewFlowName(selectedCourse);
-                    } else {
-                      setNewFlowType("Transacional");
-                      setNewFlowName("");
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all cursor-pointer bg-white"
-                >
-                  <option value="Personalizado" className="text-indigo-600 font-bold">? Definir Gatilho de Entrada...</option>
-                </select>
+                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-xs flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
+                    O gatilho ser� configurado dentro do fluxo
+                  </div>
               </div>
 
               {newFlowTrigger === "Iniciou Curso" && (
@@ -1275,23 +1262,10 @@ export default function AutomationsPage() {
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
-                <select
-                  value={cloneFlowTrigger}
-                  onChange={(e) => {
-                    const trigger = e.target.value;
-                    setCloneFlowTrigger(trigger);
-                    if (trigger === "Iniciou Curso") {
-                      setCloneFlowType("Automação");
-                      setCloneFlowName(cloneSelectedCourse);
-                    } else {
-                      setCloneFlowType("Transacional");
-                      setCloneFlowName("");
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all cursor-pointer bg-white"
-                >
-                  <option value="Personalizado" className="text-indigo-600 font-bold">? Definir Gatilho de Entrada...</option>
-                </select>
+                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-xs flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
+                    O gatilho ser� configurado dentro do fluxo
+                  </div>
               </div>
 
               {cloneFlowTrigger === "Iniciou Curso" && (
