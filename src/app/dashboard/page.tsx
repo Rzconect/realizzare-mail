@@ -234,7 +234,7 @@ export default function DashboardPage() {
       const endMs = end.getTime();
 
       // Fetch contacts first to map emails to IDs and calculate leads/students
-      const { data: contactsList } = await supabase.from("contacts").select("id, email, created_at, contact_tags(tags(name))");
+      const { data: contactsList } = await supabase.from("contacts").select("id, first_name, last_name, email, created_at, contact_tags(tags(name))");
       const emailMap = new Map();
       if (contactsList) {
         contactsList.forEach((c: any) => {
@@ -1775,6 +1775,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
 
 
