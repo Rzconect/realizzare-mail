@@ -281,11 +281,24 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [manualSearchQuery, setManualSearchQuery] = useState("");
   const [isAddingLead, setIsAddingLead] = useState(false);
   
-  const handleLoadContacts = async () => {
-    const supabase = createClient();
-    const { data } = await supabase.from("contacts").select("id, email, first_name").limit(50);
-    if (data) setManualContacts(data);
-  };
+  const handleLoadContacts = async (query = "") => {
+      const supabase = createClient();
+      let req = supabase.from("contacts").select("id, email, first_name").order("created_at", { ascending: false }).limit(50);
+      if (query) {
+        req = req.or("email.ilike.%" + query + "%,first_name.ilike.%" + query + "%");
+      }
+      const { data } = await req;
+      if (data) setManualContacts(data);
+    };
+    
+    useEffect(() => {
+      if (showManualAddModal) {
+        const timeoutId = setTimeout(() => {
+          handleLoadContacts(manualSearchQuery);
+        }, 400);
+        return () => clearTimeout(timeoutId);
+      }
+    }, [manualSearchQuery, showManualAddModal]);
   
   useEffect(() => {
     if (editId) {
@@ -299,7 +312,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   }, [editId]);
 
   useEffect(() => {
-    if (showManualAddModal) handleLoadContacts();
+    // replaced
   }, [showManualAddModal]);
   
   const handleAddLeadToFlow = async (contactId: string) => {
@@ -3005,14 +3018,29 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                   placeholder="Insira o assunto..."
                                   className="w-full pl-3.5 pr-10 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => setEditNodeSubject(prev => prev + " %FIRSTNAME%")}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-indigo-650 cursor-pointer px-1"
-                                  title="Inserir tag de Nãome"
-                                >
-                                  {"{ }"}
-                                </button>
+                                                             <div className="absolute right-0 top-0 bottom-0 flex items-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowTagsDropdown(!showTagsDropdown)}
+                                    className="h-full px-3 text-slate-400 hover:text-indigo-600 bg-slate-50 border-l border-slate-200 rounded-r-xl transition-colors font-bold text-xs cursor-pointer"
+                                  >
+                                    {}
+                                  </button>
+                                  {showTagsDropdown && (
+                                    <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                                      <button
+                                        type="button"
+                                        onClick={() => { setEditNodeSubject(prev => prev + " {{primeiro_nome}}"); setShowTagsDropdown(false); }}
+                                        className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-100 cursor-pointer"
+                                      >{`{{primeiro_nome}}`}</button>
+                                      <button
+                                        type="button"
+                                        onClick={() => { setEditNodeSubject(prev => prev + " {{email}}"); setShowTagsDropdown(false); }}
+                                        className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                                      >{`{{email}}`}</button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
