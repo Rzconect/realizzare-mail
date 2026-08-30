@@ -4011,7 +4011,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   setShowActivationConfirmModal(false);
                   executeToggleFlowStatus("Ativo");
                 }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-md shadow-emerald-500/10"
+                className="px-4 py-2 bg-emerald-600 hover:emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-md shadow-emerald-500/10"
               >
                 Sim, Ativar Fluxo
               </button>
@@ -4026,11 +4026,28 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         isOpen={showTriggerModal} 
         onClose={() => setShowTriggerModal(false)}
         onSave={(config) => {
+          const metric = config.summary ? (config.summary.length > 50 ? config.summary.substring(0, 47) + "..." : config.summary) : "Gatilho Personalizado";
+          const description = `Fonte: ${config.source.toUpperCase()}`;
           setFlow(prev => ({
             ...prev,
-            triggerMetric: config.summary ? (config.summary.length > 50 ? config.summary.substring(0, 47) + "..." : config.summary) : "Gatilho Personalizado",
-            triggerType: `Fonte: ${config.source.toUpperCase()}`
+            triggerMetric: metric,
+            triggerType: description
           }));
+          
+          // Update nodes to reflect selection on the visual node itself
+          setNodes(prev => {
+            const updated = [...prev];
+            const triggerNodeIndex = updated.findIndex(n => n.type === "trigger" || n.id === "trigger");
+            if (triggerNodeIndex !== -1) {
+              updated[triggerNodeIndex] = {
+                ...updated[triggerNodeIndex],
+                name: metric,
+                config: { triggerDescription: description }
+              };
+            }
+            return updated;
+          });
+
           setShowTriggerModal(false);
         }}
       />
