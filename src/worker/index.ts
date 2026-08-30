@@ -72,15 +72,14 @@ cron.schedule('* * * * *', async () => {
         .eq('id', campaign.id);
         
       // 3. Resolução dos Destinatários
-      let emails: string[] = [];
+      let contactsToProcess: any[] = [];
       const targetListStr = campaign.target_list || '';
-
       if (targetListStr.includes('||IDS||')) {
         const [, idsString] = targetListStr.split('||IDS||');
         const ids = idsString.split(',').map((id: string) => id.trim()).filter((id: string) => id);
         
         // Busca todos os contatos
-        const { data: contactsData } = await supabase.from('contacts').select('email, id');
+        const { data: contactsData } = await supabase.from('contacts').select('id, email, first_name, last_name');
           
         if (contactsData) {
            // Busca todas as inscrições em listas
@@ -89,25 +88,39 @@ cron.schedule('* * * * *', async () => {
               .filter(sub => ids.includes(sub.list_id))
               .map(sub => sub.contact_id);
               
-           const matchedContacts = contactsData.filter(c => ids.includes(c.id) || contactIdsInLists.includes(c.id));
-           emails = matchedContacts.map(c => c.email);
+           contactsToProcess = contactsData.filter(c => ids.includes(c.id) || contactIdsInLists.includes(c.id));
         }
       } else {
         // Fallback: se não usar a nova estrutura, tenta extrair os emails puros
-        emails = targetListStr.split(',')
+        const rawEmails = targetListStr.split(',')
           .map((e: string) => e.trim())
           .filter((e: string) => e.includes('@'));
+        contactsToProcess = rawEmails.map((email: string) => ({ email, first_name: '', last_name: '' }));
       }
       
       // Remover duplicatas
-      emails = [...new Set(emails)];
-      console.log(`👥 Total de destinatários únicos: ${emails.length}`);
+      const uniqueMap = new Map();
+      for (const c of contactsToProcess) {
+         if (!uniqueMap.has(c.email)) uniqueMap.set(c.email, c);
+      }
+      const uniqueContacts = Array.from(uniqueMap.values());
+      
+      console.log(`👥 Total de destinatários únicos: ${uniqueContacts.length}`);
       
       let successCount = 0;
       let errorCount = 0;
 
       // 4. Loop de Envio
-      for (const email of emails) {
+      for (const contact of uniqueContacts) {
+        const email = contact.email;
+        let htmlContent = campaign.html_content || campaign.content || '';
+        let subjectContent = campaign.subject || campaign.name || '';
+        
+        // Substituição das Tags Dinâmicas
+        const firstName = contact.first_name || 'Cliente';
+        htmlContent = htmlContent.replace(/{{primeiro_nome}}/g, firstName);
+        subjectContent = subjectContent.replace(/{{primeiro_nome}}/g, firstName);
+
         try {
            if (!process.env.SMTP_USER) {
               // MODO DE TESTE (Dry Run) - Se não houver credencial configurada
@@ -119,8 +132,8 @@ cron.schedule('* * * * *', async () => {
               const mailOptions = {
                 from: process.env.SMTP_FROM || 'seu-email@dominio.com',
                 to: email,
-                subject: campaign.subject || campaign.name,
-                html: campaign.content,
+                subject: subjectContent,
+                html: htmlContent,
               };
               
               await transporter.sendMail(mailOptions);
