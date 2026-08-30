@@ -155,7 +155,15 @@ export default function AutomationsPage() {
         if (error) throw error;
 
         if (data) {
-          const mapped = data.map((f: any) => ({
+          
+            let activeContactsMap: Record<string, number> = {};
+            try {
+              const res = await fetch("/api/flows/summary");
+              const summaryData = await res.json();
+              if (summaryData.activeContacts) activeContactsMap = summaryData.activeContacts;
+            } catch (e) {}
+            
+            const mapped = data.map((f: any) => ({
             id: f.id,
             name: f.name,
             triggerDescription: f.description || f.trigger_type || "Gatilho Padrão",

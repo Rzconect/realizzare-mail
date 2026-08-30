@@ -134,7 +134,7 @@ const getDaysBetween = (start: Date, end: Date) => {
   return diffDays;
 };
 
-const getMetricsForNode = (nodeId: string, preset: string, customStart?: string, customEnd?: string) => {
+const getMetricsForNode = (nodeId: string, nodeMetricsData: Record<string, any>, preset: string, customStart?: string, customEnd?: string) => {
     const defaultMetrics = {
       sent: 0, opened: 0, clicked: 0, conversions: 0,
       openRate: 0, clickRate: 0, conversionRate: 0, revenue: 0,
@@ -1626,7 +1626,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                   {/* Render Detailed Metrics if node is delay and toggle is active */}
                   {node.type === "delay" && showDetailedMetrics && (() => {
-                    const delayMetrics = getMetricsForNode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                    const delayMetrics = getMetricsForNode(node.id, typeof nodeMetricsData !== "undefined" ? nodeMetricsData : {}, flowPeriod, flowCustomStart, flowCustomEnd);
                     const waitingCount = 0;
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2.5">
@@ -1647,7 +1647,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                   {/* Render Detailed Metrics if node is email and toggle is active */}
                   {node.type === "email" && showDetailedMetrics && (() => {
-                    const nodeMetrics = getMetricsForNode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                    const nodeMetrics = getMetricsForNode(node.id, typeof nodeMetricsData !== "undefined" ? nodeMetricsData : {}, flowPeriod, flowCustomStart, flowCustomEnd);
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-3.5">
                         {/* Metric Rates (List Layout matching the reference image) */}
@@ -2882,7 +2882,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Desempenho (Performance metrics card) */}
                       {(() => {
-                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, typeof nodeMetricsData !== "undefined" ? nodeMetricsData : {}, flowPeriod, flowCustomStart, flowCustomEnd);
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs">
                             <div className="flex items-center justify-between">
@@ -3207,7 +3207,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Leads por Status / Filas de Espera */}
                       {(() => {
-                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, typeof nodeMetricsData !== "undefined" ? nodeMetricsData : {}, flowPeriod, flowCustomStart, flowCustomEnd);
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Leads nesta Etapa</h4>
@@ -3309,7 +3309,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Leads por Etapa / Fila de Atraso */}
                       {(() => {
-                        const delayMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const delayMetrics = getMetricsForNode(selectedNodeForConfig.id, typeof nodeMetricsData !== "undefined" ? nodeMetricsData : {}, flowPeriod, flowCustomStart, flowCustomEnd);
                         const waitingCount = 0;
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
