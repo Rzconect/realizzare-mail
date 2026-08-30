@@ -1832,10 +1832,6 @@ function CreateCampaignForm() {
     if (!newSegmentName.trim()) return;
 
     const matchedContacts = getMatchingContacts(contacts, segmentGroups, globalOperator, customFields);
-      
-      if (globalOperator === "or") return groupResults.some((r: boolean) => r === true);
-      return groupResults.every((r: boolean) => r === true);
-    });
 
     setIsSavingDraft(true); // Reusing this loading state to prevent double clicks
     try {
