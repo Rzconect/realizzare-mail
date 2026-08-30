@@ -132,6 +132,8 @@ export default function DashboardPage() {
   }, []);
 
   const filteredEventsList = recentEventsList.filter((evt) => {
+    if (eventsTypeFilter === "email" && evt.type === "purchase") return false;
+    if (eventsTypeFilter === "purchase" && evt.type !== "purchase") return false;
     if (!eventsSearchTerm.trim()) return true;
     const term = eventsSearchTerm.toLowerCase().trim();
     return (
@@ -410,10 +412,6 @@ export default function DashboardPage() {
               const matchEmail = c.target_list.match(/\(([^)]+@[\w.-]+)\)/) || c.target_list.match(/([\w.-]+@[\w.-]+)/);
               if (matchEmail && matchEmail[1]) cEmail = matchEmail[1].trim();
 
-              const cleanTargetName = c.target_list.replace(/👤/g, "").replace(/\([^)]*\)/g, "").trim();
-              if (cleanTargetName && !cleanTargetName.includes("@")) {
-                cName = cleanTargetName;
-              }
             }
 
             let contactId = null;
@@ -932,12 +930,14 @@ export default function DashboardPage() {
 
         if (trackingEvents && trackingEvents.length > 0) {
           trackingEvents.forEach((t: any) => {
+            const dateObj = new Date(t.created_at || Date.now());
+            const eventTime = dateObj.getTime();
+            if (eventTime < startMs || eventTime > endMs) return;
             const payload = t.payload || {};
             const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
             if (!email) return;
 
             const campId = payload.campaign_id || payload.campaignId || "default";
-            const dateObj = new Date(t.created_at || Date.now());
             const slotName = period === "today"
               ? `${String(dateObj.getHours()).padStart(2, "0")}:00`
               : `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
@@ -1447,25 +1447,30 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {/* Search Input for Events */}
-            <div className="relative mb-3">
-              <input
-                type="text"
-                placeholder="Buscar nos últimos eventos..."
-                value={eventsSearchTerm}
-                onChange={(e) => setEventsSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              />
-              <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              {eventsSearchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setEventsSearchTerm("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm font-bold"
-                >
-                  ×
-                </button>
-              )}
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="flex bg-slate-100 p-1 rounded-lg self-start">
+                <button onClick={() => setEventsTypeFilter("all")} className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors ${eventsTypeFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Todos</button>
+                <button onClick={() => setEventsTypeFilter("purchase")} className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors ${eventsTypeFilter === "purchase" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Vendas</button>
+                <button onClick={() => setEventsTypeFilter("email")} className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors ${eventsTypeFilter === "email" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>E-mails</button>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar nos últimos eventos..."
+                  value={eventsSearchTerm}
+                  onChange={(e) => setEventsSearchTerm(e.target.value)}
+                  className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                />
+                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                {eventsSearchTerm && (
+                  <button
+                    onClick={() => setEventsSearchTerm("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin max-h-[520px]">
@@ -1775,6 +1780,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
 
 
 
