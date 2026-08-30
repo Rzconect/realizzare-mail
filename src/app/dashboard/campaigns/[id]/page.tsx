@@ -714,8 +714,26 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     return String(val);
   };
 
-  const handleDuplicate = () => {
-    alert("Campanha duplicada com sucesso para os rascunhos!");
+  const handleDuplicate = async () => {
+    if (!data) return;
+    try {
+      const { id: _ignored, created_at, updated_at, sent_at, scheduled_at, ...campaignData } = data;
+      const { data: newCampaign, error } = await supabase
+        .from("campaigns")
+        .insert({
+          ...campaignData,
+          name: `C�pia de ${campaignData.name}`,
+          status: "draft",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      alert("Campanha duplicada com sucesso!");
+      router.push(`/dashboard/campaigns/create?edit=${newCampaign.id}`);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao duplicar campanha");
+    }
   };
 
   const handleExport = () => {
