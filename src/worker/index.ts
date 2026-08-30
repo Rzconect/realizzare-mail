@@ -130,10 +130,14 @@ cron.schedule('* * * * *', async () => {
            } else {
               // MODO REAL - Envia via AWS SES
               const mailOptions = {
-                from: process.env.SMTP_FROM || 'seu-email@dominio.com',
+                from: process.env.SMTP_FROM || 'contato@realizzarecursos.com.br',
                 to: email,
                 subject: subjectContent,
                 html: htmlContent,
+                headers: {
+                  'X-Campaign-ID': campaign.id,
+                  'X-Contact-ID': contact.id || email
+                }
               };
               
               await transporter.sendMail(mailOptions);
@@ -155,6 +159,7 @@ cron.schedule('* * * * *', async () => {
         .from('campaigns')
         .update({ 
            status: 'sent', 
+           sent_count: successCount,
            updated_at: new Date().toISOString()
         })
         .eq('id', campaign.id);
