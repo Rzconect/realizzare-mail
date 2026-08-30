@@ -245,7 +245,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
   // 2. Nãodes list state (recursive layout tree representation)
   // Initiated with the default single disparador setup
-  const [nodes, setNãodes] = useState<FlowNãode[]>([
+  const [nodes, setNodes] = useState<FlowNãode[]>([
     {
       id: "trigger",
       type: "trigger",
@@ -275,7 +275,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
   // States for dragging and moving nodes
   const [showMoveLeadsModal, setShowMoveLeadsModal] = useState(false);
-  const [moveLeadsNãode, setMoveLeadsNãode] = useState<FlowNãode | null>(null);
+  const [moveLeadsNode, setMoveLeadsNãode] = useState<FlowNãode | null>(null);
   const [moveTarget, setMoveTarget] = useState<{ sourceId: string; targetParentId: string; targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined } | null>(null);
   const [moveLeadsAction, setMoveLeadsAction] = useState<"move" | "exit" | "advance">("move");
 
@@ -480,10 +480,10 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                };
                
                const tree = resolveSequence(null, null);
-               setNãodes(tree);
+               setNodes(tree);
             } else {
                if (found.trigger_type && found.trigger_type !== "Disparador não configurado") {
-                 setNãodes([
+                 setNodes([
                    {
                      id: "trigger",
                      type: "trigger",
@@ -721,9 +721,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     };
 
     if (branch) {
-      setNãodes(insertIntoTree(nodes));
+      setNodes(insertIntoTree(nodes));
     } else {
-      setNãodes(insertInFlatChain(nodes));
+      setNodes(insertInFlatChain(nodes));
     }
     setShowInsertionPopover(false);
       setInsertionTarget(null);
@@ -784,9 +784,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     };
 
     if (branch) {
-      setNãodes(insertIntoTree(nodes));
+      setNodes(insertIntoTree(nodes));
     } else {
-      setNãodes(insertInFlatChain(nodes));
+      setNodes(insertInFlatChain(nodes));
     }
     setSelectingGotoTarget(null);
   };
@@ -830,7 +830,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    setNãodes(extractAndInsert(nodes));
+    setNodes(extractAndInsert(nodes));
     setPendingSplitInsert(null);
   };
 
@@ -1004,7 +1004,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    setNãodes(updateInTree(nodes));
+    setNodes(updateInTree(nodes));
     setActivePanel("menu");
     setSelectedNãodeForConfig(null);
   };
@@ -1026,7 +1026,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    setNãodes(deleteFromTree(nodes));
+    setNodes(deleteFromTree(nodes));
   };
 
   const handleDuplicateNãode = (node: FlowNãode) => {
@@ -1057,7 +1057,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    setNãodes(duplicateInTree(nodes));
+    setNodes(duplicateInTree(nodes));
   };
 
   // Triggers selection logic
@@ -1075,16 +1075,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       name: metric,
       config: { triggerDescription: description }
     };
-    setNãodes(updated);
+    setNodes(updated);
     
     setActivePanel("trigger_config");
   };
 
   // Save full Flow constructor data
   const handleSaveFlow = async () => {
-    const triggerNãode = nodes.find(n => n.type === "trigger" || n.id === "trigger");
-    const currentTriggerDesc = flow.triggerType || triggerNãode?.config?.triggerDescription || (triggerNãode?.name !== "Disparador" ? triggerNãode?.name : undefined) || "Disparador não configurado";
-    const currentTriggerMetric = flow.triggerMetric || (triggerNãode?.name !== "Disparador" ? triggerNãode?.name : undefined) || "Iniciou Curso";
+    const triggerNode = nodes.find(n => n.type === "trigger" || n.id === "trigger");
+    const currentTriggerDesc = flow.triggerType || triggerNode?.config?.triggerDescription || (triggerNode?.name !== "Disparador" ? triggerNode?.name : undefined) || "Disparador não configurado";
+    const currentTriggerMetric = flow.triggerMetric || (triggerNode?.name !== "Disparador" ? triggerNode?.name : undefined) || "Iniciou Curso";
 
     const supabase = createClient();
     try {
@@ -1191,7 +1191,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   };
 
   const handleSetNãodeStatus = (nodeId: string, nextStatus: "Ativo" | "Rascunho") => {
-    setNãodes(prevNãodes => {
+    setNodes(prevNãodes => {
       const updateStatusInTree = (tree: FlowNãode[]): FlowNãode[] => {
         return tree.map(node => {
           if (node.id === nodeId) {
@@ -1233,7 +1233,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     targetParentId: string, 
     targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined
   ) => {
-    setNãodes(prevNãodes => {
+    setNodes(prevNãodes => {
       let extracted: FlowNãode | null = null;
 
       // Helper 1: Extract the node from tree (move it alone by resetting its children)
@@ -3932,7 +3932,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       )}
 
       {/* MODAL: CONFIRM MOVE LEADS */}
-      {showMoveLeadsModal && moveLeadsNãode && (
+      {showMoveLeadsModal && moveLeadsNode && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
             <div className="flex items-center gap-3 text-amber-600">
@@ -3946,7 +3946,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             </div>
             
             <p className="text-xs text-slate-600 leading-relaxed text-left">
-              Existe(m) lead(s) aguardando na etapa <strong>{moveLeadsNãode.name || "Aguardar Atraso"}</strong>. 
+              Existe(m) lead(s) aguardando na etapa <strong>{moveLeadsNode.name || "Aguardar Atraso"}</strong>. 
               Como vocêê deseja tratar estes leads ao movimentar esta etapa?
             </p>
 
@@ -4131,7 +4131,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           const nodeName = config.event || "Gatilho Personalizado";
           
           let ruleText = "";
-          if (config.rule === "Nãome do Curso específico") {
+          if (config.rule === "Nome do Curso específico") {
             if (Array.isArray(config.value) && config.value.length > 0) {
               ruleText = config.value.length > 1 ? `${config.value[0]} e mais ${config.value.length - 1}` : config.value[0];
             } else {
@@ -4152,12 +4152,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             triggerType: description
           }));
           
-          setNãodes(prev => {
+          setNodes(prev => {
             const updated = [...prev];
-            const triggerNãodeIndex = updated.findIndex(n => n.type === "trigger" || n.id === "trigger");
-            if (triggerNãodeIndex !== -1) {
-              updated[triggerNãodeIndex] = {
-                ...updated[triggerNãodeIndex],
+            const triggerNodeIndex = updated.findIndex(n => n.type === "trigger" || n.id === "trigger");
+            if (triggerNodeIndex !== -1) {
+              updated[triggerNodeIndex] = {
+                ...updated[triggerNodeIndex],
                 name: nodeName,
                 config: { triggerDescription: description }
               };
