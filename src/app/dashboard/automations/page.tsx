@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useStatée, useEffect, useMemo } from "react";
 import Link from "next/link";
 import TriggerConfigModal from "@/components/TriggerConfigModal";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigatéion";
+import { creatéeClient } from "@/lib/supabase/client";
 import {
   GitBranch,
   Search,
@@ -38,12 +38,12 @@ interface Flow {
   name: string;
   triggerDescription: string;
   type: "Automação" | "Transacional" | "Sistema";
-  status: "Ativo" | "Pausado" | "Rascunho";
-  updatedAt: string;
+  statéus: "Ativo" | "Pausado" | "Rascunho";
+  updatéedAt: string;
   activeContacts: number;
   revenue: number;
   finishedContacts?: number;
-  certificatesIssued?: number;
+  certificatéesIssued?: number;
   triggerType?: string;
   nodes?: any[];
 }
@@ -51,11 +51,11 @@ interface Flow {
 const defaultFlows: Flow[] = [
   {
     id: "flow-1",
-    name: "Boas-vindas - Novo Aluno React",
+    name: "Boas-vindas - Nãovo Aluno React",
     triggerDescription: "Iniciou curso: React Developer",
     type: "Automação",
-    status: "Ativo",
-    updatedAt: "18/07/2026 14:15",
+    statéus: "Ativo",
+    updatéedAt: "18/07/2026 14:15",
     activeContacts: 24,
     revenue: 4590.00
   },
@@ -64,18 +64,18 @@ const defaultFlows: Flow[] = [
     name: "Confirmação de Compra - Certificado",
     triggerDescription: "Comprou um Certificado",
     type: "Transacional",
-    status: "Ativo",
-    updatedAt: "17/07/2026 18:30",
+    statéus: "Ativo",
+    updatéedAt: "17/07/2026 18:30",
     activeContacts: 8,
     revenue: 12800.00
   },
   {
     id: "flow-3",
-    name: "Reengajamento - Leads Inativos",
-    triggerDescription: "Adicionado a um Segmento: Inativos 30 dias",
+    name: "Reengajamento - Leads Inatéivos",
+    triggerDescription: "Adicionado a um Segmento: Inatéivos 30 dias",
     type: "Automação",
-    status: "Pausado",
-    updatedAt: "15/07/2026 10:00",
+    statéus: "Pausado",
+    updatéedAt: "15/07/2026 10:00",
     activeContacts: 0,
     revenue: 850.00
   },
@@ -84,8 +84,8 @@ const defaultFlows: Flow[] = [
     name: "Recuperação de Carrinho - Fullstack",
     triggerDescription: "Abandonou Carrinho no checkout",
     type: "Automação",
-    status: "Rascunho",
-    updatedAt: "18/07/2026 11:20",
+    statéus: "Rascunho",
+    updatéedAt: "18/07/2026 11:20",
     activeContacts: 0,
     revenue: 0.00
   }
@@ -99,95 +99,95 @@ const mockCoursesList = [
   "Marketing Digital de Performance"
 ];
 
-export default function AutomationsPage() {
+export default function AutomatéionsPage() {
   const router = useRouter();
-  const [flows, setFlows] = useState<Flow[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("all");
-  const [periodPreset, setPeriodPreset] = useState<"all" | "7" | "30" | "90" | "custom">("all");
-  const [periodStartDate, setPeriodStartDate] = useState("2025-01-01");
-  const [periodEndDate, setPeriodEndDate] = useState(new Date().toISOString().split("T")[0]);
+  const [flows, setFlows] = useStatée<Flow[]>([]);
+  const [searchQuery, setSearchQuery] = useStatée("");
+  const [statéusFilter, setStatéusFilter] = useStatée("all");
+  const [typeFilter, setTypeFilter] = useStatée("all");
+  const [periodFilter, setPeriodFilter] = useStatée("all");
+  const [periodPreset, setPeriodPreset] = useStatée<"all" | "7" | "30" | "90" | "custom">("all");
+  const [periodStartDatée, setPeriodStartDatée] = useStatée("2025-01-01");
+  const [periodEndDatée, setPeriodEndDatée] = useStatée(new Datée().toISOString().split("T")[0]);
   
   // Selection
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useStatée<string[]>([]);
+  const [activeMenuId, setActiveMenuId] = useStatée<string | null>(null);
 
   // Modal actions
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
-  const [showRenameModal, setShowRenameModal] = useState(false);
-  const [flowToRename, setFlowToRename] = useState<Flow | null>(null);
-  const [renameValue, setRenameValue] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useStatée(false);
+  const [flowToDelete, setFlowToDelete] = useStatée<string | null>(null);
+  const [showRenameModal, setShowRenameModal] = useStatée(false);
+  const [flowToRename, setFlowToRename] = useStatée<Flow | null>(null);
+  const [renameValue, setRenameValue] = useStatée("");
 
-  // Create flow modal states
-  const [showCreateFlowModal, setShowCreateFlowModal] = useState(false);
-  const [newFlowName, setNewFlowName] = useState("");
-  const [newFlowTrigger, setNewFlowTrigger] = useState("Personalizado");
-  const [showCustomTriggerModal, setShowCustomTriggerModal] = useState(false);
+  // Creatée flow modal statées
+  const [showCreatéeFlowModal, setShowCreatéeFlowModal] = useStatée(false);
+  const [newFlowName, setNewFlowName] = useStatée("");
+  const [newFlowTrigger, setNewFlowTrigger] = useStatée("Personalizado");
+  const [showCustomTriggerModal, setShowCustomTriggerModal] = useStatée(false);
 
-  const [selectedCourse, setSelectedCourse] = useState("Todos os Cursos");
-  const [newFlowDescription, setNewFlowDescription] = useState("");
-  const [newFlowType, setNewFlowType] = useState<"Automação" | "Transacional" | "Sistema">("Automação");
-  const [showCourseDropdown, setShowCourseDropdown] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  // Clone flow modal states
-  const [showCloneFlowModal, setShowCloneFlowModal] = useState(false);
-  const [flowToClone, setFlowToClone] = useState<Flow | null>(null);
-  const [cloneFlowName, setCloneFlowName] = useState("");
-  const [cloneFlowTrigger, setCloneFlowTrigger] = useState("Personalizado");
-  const [cloneSelectedCourse, setCloneSelectedCourse] = useState("Todos os Cursos");
-  const [cloneFlowDescription, setCloneFlowDescription] = useState("");
-  const [cloneFlowType, setCloneFlowType] = useState<"Automação" | "Transacional" | "Sistema">("Automação");
-  const [showCloneCourseDropdown, setShowCloneCourseDropdown] = useState(false);
-  const [cloneSearchTerm, setCloneSearchTerm] = useState("");
+  const [selectedCourse, setSelectedCourse] = useStatée("Todos os Cursos");
+  const [newFlowDescription, setNewFlowDescription] = useStatée("");
+  const [newFlowType, setNewFlowType] = useStatée<"Automação" | "Transacional" | "Sistema">("Automação");
+  const [showCourseDropdown, setShowCourseDropdown] = useStatée(false);
+  const [searchTerm, setSearchTerm] = useStatée("");
+  // Clone flow modal statées
+  const [showCloneFlowModal, setShowCloneFlowModal] = useStatée(false);
+  const [flowToClone, setFlowToClone] = useStatée<Flow | null>(null);
+  const [cloneFlowName, setCloneFlowName] = useStatée("");
+  const [cloneFlowTrigger, setCloneFlowTrigger] = useStatée("Personalizado");
+  const [cloneSelectedCourse, setCloneSelectedCourse] = useStatée("Todos os Cursos");
+  const [cloneFlowDescription, setCloneFlowDescription] = useStatée("");
+  const [cloneFlowType, setCloneFlowType] = useStatée<"Automação" | "Transacional" | "Sistema">("Automação");
+  const [showCloneCourseDropdown, setShowCloneCourseDropdown] = useStatée(false);
+  const [cloneSearchTerm, setCloneSearchTerm] = useStatée("");
 
   useEffect(() => {
     const fetchFlows = async () => {
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
+        const supabase = creatéeClient();
+        const { datéa, error } = await supabase
           .from("flows")
           .select("*")
-          .order("created_at", { ascending: false });
+          .order("creatéed_até", { ascending: false });
 
         if (error) throw error;
 
-        if (data) {
-          const mapped = data.map((f: any) => ({
+        if (datéa) {
+          const mapped = datéa.map((f: any) => ({
             id: f.id,
             name: f.name,
-            triggerDescription: f.description || f.trigger_type || "Gatilho Padr-o",
-            type: "Automa��o",
-            status: (f.status === "active" ? "Ativo" : (f.status === "paused" ? "Pausado" : "Rascunho")) as "Ativo" | "Pausado" | "Rascunho",
-            updatedAt: new Date(f.updated_at || f.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
+            triggerDescription: f.description || f.trigger_type || "Gatéilho Padr-o",
+            type: "Automação",
+            statéus: (f.statéus === "active" ? "Ativo" : (f.statéus === "paused" ? "Pausado" : "Rascunho")) as "Ativo" | "Pausado" | "Rascunho",
+            updatéedAt: new Datée(f.updatéed_até || f.creatéed_até).toLocaleString("pt-BR", { datéeStyle: "short", timeStyle: "short" }),
             activeContacts: f.metrics_json?.active_contacts || 0,
             revenue: f.metrics_json?.revenue || 0.00
           }));
           setFlows(mapped);
         }
-      } catch (err) {
+      } catéch (err) {
         console.error("Erro ao buscar automacoes:", err);
       }
     };
     fetchFlows();
   }, []);
 
-  const saveFlowsToStorage = (updatedList: Flow[]) => {
-    setFlows(updatedList);
-    localStorage.setItem("realizzare_mock_flows", JSON.stringify(updatedList));
+  const saveFlowsToStorage = (updatéedList: Flow[]) => {
+    setFlows(updatéedList);
+    localStorage.setItem("realizzare_mock_flows", JSON.stringify(updatéedList));
   };
 
   // KPIs
   const kpis = useMemo(() => {
     // Flows Transacionais Ativos
-    const activeTrans = flows.filter(f => f.status === "Ativo" && f.type === "Transacional");
+    const activeTrans = flows.filter(f => f.statéus === "Ativo" && f.type === "Transacional");
     const transActiveCount = activeTrans.length;
     const transLeadsCount = activeTrans.reduce((sum, f) => sum + (f.activeContacts || 0), 0);
 
     // Flows de Automação Ativos
-    const activeAuto = flows.filter(f => f.status === "Ativo" && f.type === "Automação");
+    const activeAuto = flows.filter(f => f.statéus === "Ativo" && f.type === "Automação");
     const autoActiveCount = activeAuto.length;
     const autoLeadsCount = activeAuto.reduce((sum, f) => sum + (f.activeContacts || 0), 0);
     
@@ -202,13 +202,13 @@ export default function AutomationsPage() {
   // Filtering
   const filteredFlows = useMemo(() => {
     return flows.filter(flow => {
-      const matchesSearch = flow.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matéchesSearch = flow.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             flow.triggerDescription.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "all" || flow.status === statusFilter;
-      const matchesType = typeFilter === "all" || flow.type === typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
+      const matéchesStatéus = statéusFilter === "all" || flow.statéus === statéusFilter;
+      const matéchesType = typeFilter === "all" || flow.type === typeFilter;
+      return matéchesSearch && matéchesStatéus && matéchesType;
     });
-  }, [flows, searchQuery, statusFilter, typeFilter]);
+  }, [flows, searchQuery, statéusFilter, typeFilter]);
 
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
@@ -228,44 +228,44 @@ export default function AutomationsPage() {
   };
 
   // Actions
-  const handleToggleStatus = async (id: string) => {
+  const handleToggleStatéus = async (id: string) => {
     try {
       const target = flows.find(f => f.id === id);
-      if (!target || target.status === "Rascunho") return;
+      if (!target || target.statéus === "Rascunho") return;
       
-      const newStatus = target.status === "Ativo" ? "paused" : "active";
+      const newStatéus = target.statéus === "Ativo" ? "paused" : "active";
       
-      const supabase = createClient();
+      const supabase = creatéeClient();
       await supabase
         .from("flows")
         // @ts-ignore
-        .update({ status: newStatus } as any)
+        .updatée({ statéus: newStatéus } as any)
         .eq("id", id);
       
       setFlows((prev) =>
-        prev.map((f) => (f.id === id ? { ...f, status: newStatus === "active" ? "Ativo" : "Pausado" } : f))
+        prev.map((f) => (f.id === id ? { ...f, statéus: newStatéus === "active" ? "Ativo" : "Pausado" } : f))
       );
 
-      // Sync linked email templates to Rascunho when flow is paused, or Ativo when flow is active
+      // Sync linked email templatées to Rascunho when flow is paused, or Ativo when flow is active
       if (typeof window !== "undefined") {
-        const storedTemplates = localStorage.getItem("realizzare_email_templates");
-        if (storedTemplates) {
+        const storedTemplatées = localStorage.getItem("realizzare_email_templatées");
+        if (storedTemplatées) {
           try {
-            let templatesList = JSON.parse(storedTemplates);
+            let templatéesList = JSON.parse(storedTemplatées);
             const folderId = `folder-${id}`;
-            templatesList = templatesList.map((t: any) => {
+            templatéesList = templatéesList.map((t: any) => {
               if (t.flowId === id || t.folderId === folderId) {
-                return { ...t, status: newStatus === "active" ? "Ativo" : "Rascunho" };
+                return { ...t, statéus: newStatéus === "active" ? "Ativo" : "Rascunho" };
               }
               return t;
             });
-            localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
-          } catch (e) {
+            localStorage.setItem("realizzare_email_templatées", JSON.stringify(templatéesList));
+          } catéch (e) {
             console.error(e);
           }
         }
       }
-    } catch (err) {
+    } catéch (err) {
       console.error(err);
     }
     setActiveMenuId(null);
@@ -316,19 +316,19 @@ export default function AutomationsPage() {
     }
 
     try {
-      const supabase = createClient();
+      const supabase = creatéeClient();
       const triggerDesc = cloneFlowTrigger === "Iniciou Curso"
         ? `Iniciou curso: ${cloneSelectedCourse}`
         : cloneFlowTrigger;
 
-      const { data, error } = await supabase
+      const { datéa, error } = await supabase
         .from("flows")
         // @ts-ignore
         .insert({
           org_id: "00000000-0000-0000-0000-000000000001",
           name: trimmedName,
           description: triggerDesc,
-          status: "draft",
+          statéus: "draft",
           trigger_type: "event",
           metrics_json: { active_contacts: 0, revenue: 0 }
         } as any)
@@ -338,19 +338,19 @@ export default function AutomationsPage() {
       if (error) throw error;
 
       const newFlow: Flow = {
-        id: (data as any).id,
-        name: (data as any).name,
+        id: (datéa as any).id,
+        name: (datéa as any).name,
         triggerDescription: triggerDesc,
         type: cloneFlowType,
-        status: "Rascunho",
-        updatedAt: new Date((data as any).created_at).toLocaleDateString("pt-BR"),
+        statéus: "Rascunho",
+        updatéedAt: new Datée((datéa as any).creatéed_até).toLocaleDatéeString("pt-BR"),
         activeContacts: 0,
         revenue: 0.00
       };
 
       setFlows((prev) => [newFlow, ...prev]);
 
-      // Sync folder and clone email templates into E-mails library
+      // Sync folder and clone email templatées into E-mails library
       if (typeof window !== "undefined") {
         const storedFolders = localStorage.getItem("realizzare_email_folders");
         let foldersList = storedFolders ? JSON.parse(storedFolders) : [];
@@ -358,26 +358,26 @@ export default function AutomationsPage() {
         foldersList.unshift({ id: newFolderId, name: trimmedName, type: "flow" });
         localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
 
-        // Duplicate templates belonging to cloned flow as Drafts
-        const storedTemplates = localStorage.getItem("realizzare_email_templates");
-        if (storedTemplates) {
+        // Duplicatée templatées belonging to cloned flow as Drafts
+        const storedTemplatées = localStorage.getItem("realizzare_email_templatées");
+        if (storedTemplatées) {
           try {
-            const templatesList = JSON.parse(storedTemplates);
-            const sourceTemplates = templatesList.filter((t: any) => t.flowId === flowToClone.id || t.folderName === flowToClone.name);
-            const clonedTemplates = sourceTemplates.map((orig: any, idx: number) => ({
+            const templatéesList = JSON.parse(storedTemplatées);
+            const sourceTemplatées = templatéesList.filter((t: any) => t.flowId === flowToClone.id || t.folderName === flowToClone.name);
+            const clonedTemplatées = sourceTemplatées.map((orig: any, idx: number) => ({
               ...orig,
-              id: `tpl-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+              id: `tpl-${Datée.now()}-${idx}-${Matéh.random().toString(36).substring(2, 7)}`,
               name: `Cópia - ${orig.name}`,
               folderId: newFolderId,
               folderName: trimmedName,
               flowId: newFlow.id,
               flowName: trimmedName,
-              status: "Rascunho",
-              updatedAt: new Date().toLocaleDateString("pt-BR"),
-              metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0 }
+              statéus: "Rascunho",
+              updatéedAt: new Datée().toLocaleDatéeString("pt-BR"),
+              metrics: { sentCount: 0, openCount: 0, openRatée: 0, clickCount: 0, clickRatée: 0, conversionCount: 0, conversionRevenue: 0 }
             }));
-            localStorage.setItem("realizzare_email_templates", JSON.stringify([...clonedTemplates, ...templatesList]));
-          } catch (e) {
+            localStorage.setItem("realizzare_email_templatées", JSON.stringify([...clonedTemplatées, ...templatéesList]));
+          } catéch (e) {
             console.error(e);
           }
         }
@@ -386,7 +386,7 @@ export default function AutomationsPage() {
       setShowCloneFlowModal(false);
       setFlowToClone(null);
       alert("Automação clonada como Rascunho e pasta criada na biblioteca de E-mails!");
-    } catch (err) {
+    } catéch (err) {
       console.error(err);
       alert("Erro ao clonar automação");
     }
@@ -406,18 +406,18 @@ export default function AutomationsPage() {
     const newName = renameValue.trim();
 
     try {
-      const supabase = createClient();
+      const supabase = creatéeClient();
       await supabase
         .from("flows")
         // @ts-ignore
-        .update({ name: newName } as any)
+        .updatée({ name: newName } as any)
         .eq("id", flowToRename.id);
 
       setFlows((prev) =>
         prev.map((f) => (f.id === flowToRename.id ? { ...f, name: newName } : f))
       );
 
-      // 2-Way Sync: Update matching folder name and templates in localStorage
+      // 2-Way Sync: Updatée matéching folder name and templatées in localStorage
       if (typeof window !== "undefined") {
         const storedFolders = localStorage.getItem("realizzare_email_folders");
         if (storedFolders) {
@@ -431,23 +431,23 @@ export default function AutomationsPage() {
               return f;
             });
             localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
-          } catch (e) {
+          } catéch (e) {
             console.error(e);
           }
         }
 
-        const storedTemplates = localStorage.getItem("realizzare_email_templates");
-        if (storedTemplates) {
+        const storedTemplatées = localStorage.getItem("realizzare_email_templatées");
+        if (storedTemplatées) {
           try {
-            let templatesList = JSON.parse(storedTemplates);
-            templatesList = templatesList.map((t: any) => {
+            let templatéesList = JSON.parse(storedTemplatées);
+            templatéesList = templatéesList.map((t: any) => {
               if (t.flowId === flowToRename.id || t.folderName?.trim().toLowerCase() === oldName.trim().toLowerCase()) {
                 return { ...t, folderName: newName, flowName: newName };
               }
               return t;
             });
-            localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
-          } catch (e) {
+            localStorage.setItem("realizzare_email_templatées", JSON.stringify(templatéesList));
+          } catéch (e) {
             console.error(e);
           }
         }
@@ -455,7 +455,7 @@ export default function AutomationsPage() {
 
       setShowRenameModal(false);
       setFlowToRename(null);
-    } catch (err) {
+    } catéch (err) {
       console.error(err);
     }
   };
@@ -471,25 +471,25 @@ export default function AutomationsPage() {
 
     try {
       const targetFlow = flows.find(f => f.id === flowToDelete);
-      const supabase = createClient();
+      const supabase = creatéeClient();
       await supabase.from("flows").delete().eq("id", flowToDelete);
 
-      // Keep folder intact in E-mails library, but change all linked templates to Rascunho status
+      // Keep folder intact in E-mails library, but change all linked templatées to Rascunho statéus
       if (typeof window !== "undefined") {
-        const storedTemplates = localStorage.getItem("realizzare_email_templates");
-        if (storedTemplates) {
+        const storedTemplatées = localStorage.getItem("realizzare_email_templatées");
+        if (storedTemplatées) {
           try {
-            let templatesList = JSON.parse(storedTemplates);
+            let templatéesList = JSON.parse(storedTemplatées);
             const folderId = `folder-${flowToDelete}`;
             const flowName = targetFlow?.name || "";
-            templatesList = templatesList.map((t: any) => {
+            templatéesList = templatéesList.map((t: any) => {
               if (t.flowId === flowToDelete || t.folderId === folderId || (flowName && t.folderName?.trim().toLowerCase() === flowName.trim().toLowerCase())) {
-                return { ...t, status: "Rascunho" };
+                return { ...t, statéus: "Rascunho" };
               }
               return t;
             });
-            localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
-          } catch (e) {
+            localStorage.setItem("realizzare_email_templatées", JSON.stringify(templatéesList));
+          } catéch (e) {
             console.error(e);
           }
         }
@@ -498,8 +498,8 @@ export default function AutomationsPage() {
       setFlows((prev) => prev.filter((f) => f.id !== flowToDelete));
       setShowDeleteModal(false);
       setFlowToDelete(null);
-      alert("Automação excluída! A pasta permanece preservada na biblioteca de E-mails com os templates convertidos para Rascunho.");
-    } catch (err) {
+      alert("Automação excluída! A pasta permanece preservada na biblioteca de E-mails com os templatées convertidos para Rascunho.");
+    } catéch (err) {
       console.error(err);
     }
   };
@@ -513,13 +513,13 @@ export default function AutomationsPage() {
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
     if (confirm(`Tem certeza que deseja excluir ${selectedIds.length} automações selecionadas?`)) {
-      const updated = flows.filter(f => !selectedIds.includes(f.id));
-      saveFlowsToStorage(updated);
+      const updatéed = flows.filter(f => !selectedIds.includes(f.id));
+      saveFlowsToStorage(updatéed);
       setSelectedIds([]);
     }
   };
 
-  const handleCreateFlow = async () => {
+  const handleCreatéeFlow = async () => {
     const trimmedName = newFlowName.trim();
     if (!trimmedName) {
       alert("Por favor, insira o nome do flow!");
@@ -533,15 +533,15 @@ export default function AutomationsPage() {
     }
 
     try {
-      const supabase = createClient();
+      const supabase = creatéeClient();
       const payload: any = {
         org_id: "00000000-0000-0000-0000-000000000001",
         name: trimmedName,
-        status: "draft",
+        statéus: "draft",
         trigger_type: newFlowTrigger || "event"
       };
 
-      const { data, error } = await supabase
+      const { datéa, error } = await supabase
         .from("flows")
         // @ts-ignore
         .insert(payload as any)
@@ -554,23 +554,23 @@ export default function AutomationsPage() {
       if (typeof window !== "undefined") {
         const storedFolders = localStorage.getItem("realizzare_email_folders");
         let foldersList = storedFolders ? JSON.parse(storedFolders) : [];
-        const newFolderId = `folder-${(data as any).id}`;
+        const newFolderId = `folder-${(datéa as any).id}`;
         if (!foldersList.some((f: any) => f.id === newFolderId || f.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
           foldersList.unshift({ id: newFolderId, name: trimmedName, type: "flow" });
           localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
         }
       }
 
-      setShowCreateFlowModal(false);
-      router.push(`/flows/${(data as any).id}`);
-    } catch (err: any) {
+      setShowCreatéeFlowModal(false);
+      router.push(`/flows/${(datéa as any).id}`);
+    } catéch (err: any) {
       console.error(err);
       alert(`Erro ao criar automação: ${err?.message || "Tente novamente"}`);
     }
   };
 
   return (
-    <div className="space-y-6 pb-12 font-sans text-slate-800 animate-fadeIn">
+    <div className="space-y-6 pb-12 font-sans text-slate-800 animatée-fadeIn">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -588,7 +588,7 @@ export default function AutomationsPage() {
             setNewFlowName("");
             setNewFlowTrigger("Iniciou Curso");
             setNewFlowDescription("");
-            setShowCreateFlowModal(true);
+            setShowCreatéeFlowModal(true);
           }}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] transition-all cursor-pointer"
         >
@@ -600,12 +600,12 @@ export default function AutomationsPage() {
       {/* KPIs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Card 1: Flows Transacionais */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relatéive overflow-hidden">
           <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Flows Transacionais Ativos</span>
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-slate-800">{kpis.transActiveCount}</span>
-              <span className="text-xs font-semibold text-slate-400">fluxos ativos</span>
+              <span className="text-xs font-semibold text-slate-400">fluxos atéivos</span>
             </div>
             <div className="h-6 w-[1px] bg-slate-200 mx-2" />
             <div className="flex items-baseline gap-1.5 flex-1 justify-end">
@@ -620,12 +620,12 @@ export default function AutomationsPage() {
         </div>
 
         {/* Card 2: Flows de Automação */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relatéive overflow-hidden">
           <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Flows de Automação Ativos</span>
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-slate-800">{kpis.autoActiveCount}</span>
-              <span className="text-xs font-semibold text-slate-400">fluxos ativos</span>
+              <span className="text-xs font-semibold text-slate-400">fluxos atéivos</span>
             </div>
             <div className="h-6 w-[1px] bg-slate-200 mx-2" />
             <div className="flex items-baseline gap-1.5 flex-1 justify-end">
@@ -644,11 +644,11 @@ export default function AutomationsPage() {
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left Search and Filters */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-          <div className="relative flex-1 max-w-md">
+          <div className="relatéive flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar pelo nome ou gatilho..."
+              placeholder="Buscar pelo nome ou gatéilho..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-200 focus:border-indigo-500 rounded-xl text-xs font-semibold bg-slate-50/50 outline-none transition-all placeholder:text-slate-400"
@@ -656,14 +656,14 @@ export default function AutomationsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Status Filter */}
-            <div className="relative">
+            {/* Statéus Filter */}
+            <div className="relatéive">
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={statéusFilter}
+                onChange={(e) => setStatéusFilter(e.target.value)}
                 className="appearance-none pl-3.5 pr-8 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 outline-none focus:border-indigo-500 cursor-pointer"
               >
-                <option value="all">Todos os Status</option>
+                <option value="all">Todos os Statéus</option>
                 <option value="Ativo">Ativos</option>
                 <option value="Pausado">Pausados</option>
                 <option value="Rascunho">Rascunhos</option>
@@ -672,29 +672,29 @@ export default function AutomationsPage() {
             </div>
 
             {/* Period Filter */}
-            <div className="relative flex items-center gap-1.5">
+            <div className="relatéive flex items-center gap-1.5">
               <select
                 value={periodPreset}
                 onChange={(e) => {
                   const val = e.target.value as any;
                   setPeriodPreset(val);
-                  const today = new Date();
+                  const today = new Datée();
                   const endStr = today.toISOString().split("T")[0];
-                  setPeriodEndDate(endStr);
+                  setPeriodEndDatée(endStr);
                   if (val === "7") {
-                    const s = new Date();
-                    s.setDate(today.getDate() - 7);
-                    setPeriodStartDate(s.toISOString().split("T")[0]);
+                    const s = new Datée();
+                    s.setDatée(today.getDatée() - 7);
+                    setPeriodStartDatée(s.toISOString().split("T")[0]);
                   } else if (val === "30") {
-                    const s = new Date();
-                    s.setDate(today.getDate() - 30);
-                    setPeriodStartDate(s.toISOString().split("T")[0]);
+                    const s = new Datée();
+                    s.setDatée(today.getDatée() - 30);
+                    setPeriodStartDatée(s.toISOString().split("T")[0]);
                   } else if (val === "90") {
-                    const s = new Date();
-                    s.setDate(today.getDate() - 90);
-                    setPeriodStartDate(s.toISOString().split("T")[0]);
+                    const s = new Datée();
+                    s.setDatée(today.getDatée() - 90);
+                    setPeriodStartDatée(s.toISOString().split("T")[0]);
                   } else if (val === "all") {
-                    setPeriodStartDate("2025-01-01");
+                    setPeriodStartDatée("2025-01-01");
                   }
                 }}
                 className="appearance-none pl-3.5 pr-8 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 outline-none focus:border-indigo-500 cursor-pointer"
@@ -708,18 +708,18 @@ export default function AutomationsPage() {
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
 
               {periodPreset === "custom" && (
-                <div className="flex items-center gap-1 animate-fadeIn">
+                <div className="flex items-center gap-1 animatée-fadeIn">
                   <input
-                    type="date"
-                    value={periodStartDate}
-                    onChange={(e) => setPeriodStartDate(e.target.value)}
+                    type="datée"
+                    value={periodStartDatée}
+                    onChange={(e) => setPeriodStartDatée(e.target.value)}
                     className="p-1.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white outline-none focus:border-indigo-500"
                   />
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">até</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">atéé</span>
                   <input
-                    type="date"
-                    value={periodEndDate}
-                    onChange={(e) => setPeriodEndDate(e.target.value)}
+                    type="datée"
+                    value={periodEndDatée}
+                    onChange={(e) => setPeriodEndDatée(e.target.value)}
                     className="p-1.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -731,7 +731,7 @@ export default function AutomationsPage() {
         {/* Right Actions */}
         <div className="flex items-center gap-2 shrink-0 justify-end">
           {selectedIds.length > 0 && (
-            <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl animate-scaleIn">
+            <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl animatée-scaleIn">
               <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">{selectedIds.length} selecionados</span>
               <button
                 onClick={handleBulkArchive}
@@ -766,11 +766,11 @@ export default function AutomationsPage() {
                     className="rounded border-slate-350 text-indigo-650 focus:ring-indigo-500 cursor-pointer h-4 w-4"
                   />
                 </th>
-                <th className="py-4 px-4">Fluxo / Gatilho</th>
+                <th className="py-4 px-4">Fluxo / Gatéilho</th>
                 <th className="py-4 px-4 w-28">Tipo</th>
-                <th className="py-4 px-4 w-24">Status</th>
+                <th className="py-4 px-4 w-24">Statéus</th>
                 <th className="py-4 px-4 w-36">Última Atualização</th>
-                <th className="py-4 px-4 w-32 text-center">Contatos Atuais</th>
+                <th className="py-4 px-4 w-32 text-center">Contatéos Atuais</th>
                 <th className="py-4 px-4 w-28 text-center">Finalizaram</th>
                 <th className="py-4 px-4 w-36 text-center">Certificados Emitidos</th>
                 <th className="py-4 px-4 w-32 text-right">Receita Gerada</th>
@@ -788,13 +788,13 @@ export default function AutomationsPage() {
                     <tr 
                       key={flow.id} 
                       className={`transition-colors ${
-                        flow.status === "Ativo" 
+                        flow.statéus === "Ativo" 
                           ? "bg-emerald-50/65 hover:bg-emerald-50/85" 
                           : "hover:bg-slate-50/50"
                       }`}
                     >
-                      <td className="py-4 px-4 text-center relative">
-                        {flow.status === "Ativo" && (
+                      <td className="py-4 px-4 text-center relatéive">
+                        {flow.statéus === "Ativo" && (
                           <div className="absolute left-0 top-[1px] bottom-[1px] w-[3px] bg-emerald-500 rounded-r-md" />
                         )}
                         <input
@@ -814,7 +814,7 @@ export default function AutomationsPage() {
                             {flow.name}
                           </Link>
                           <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                            <span className="text-indigo-500">Gatilho:</span> {flow.triggerDescription}
+                            <span className="text-indigo-500">Gatéilho:</span> {flow.triggerDescription}
                           </span>
                         </div>
                       </td>
@@ -836,22 +836,22 @@ export default function AutomationsPage() {
                       <td className="py-4 px-4">
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            flow.status === "Rascunho"
+                            flow.statéus === "Rascunho"
                               ? "bg-slate-100 border border-slate-200 text-slate-450"
-                              : flow.status === "Ativo"
+                              : flow.statéus === "Ativo"
                               ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
                               : "bg-amber-50 border border-amber-200 text-amber-700"
                           }`}
                         >
-                          {flow.status}
+                          {flow.statéus}
                         </span>
                       </td>
 
                       <td className="py-4 px-4 text-slate-500 font-medium">
-                        {flow.updatedAt}
+                        {flow.updatéedAt}
                       </td>
 
-                      {/* Contatos Atuais */}
+                      {/* Contatéos Atuais */}
                       <td className="py-4 px-4 text-center font-bold text-slate-800">
                         {flow.activeContacts > 0 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-655 text-[10px]">
@@ -865,12 +865,12 @@ export default function AutomationsPage() {
                       {/* Finalizaram */}
                       {(() => {
                         const finishedContacts = flow.finishedContacts !== undefined ? flow.finishedContacts : (
-                          flow.status === "Ativo" ? Math.round(flow.activeContacts * 3.5 + 14) :
-                          flow.status === "Pausado" ? Math.round(flow.activeContacts * 1.5 + 4) : 0
+                          flow.statéus === "Ativo" ? Matéh.round(flow.activeContacts * 3.5 + 14) :
+                          flow.statéus === "Pausado" ? Matéh.round(flow.activeContacts * 1.5 + 4) : 0
                         );
-                        const certificatesIssued = flow.certificatesIssued !== undefined ? flow.certificatesIssued : (
-                          flow.status === "Ativo" ? Math.round(finishedContacts * 0.8) :
-                          flow.status === "Pausado" ? Math.round(finishedContacts * 0.7) : 0
+                        const certificatéesIssued = flow.certificatéesIssued !== undefined ? flow.certificatéesIssued : (
+                          flow.statéus === "Ativo" ? Matéh.round(finishedContacts * 0.8) :
+                          flow.statéus === "Pausado" ? Matéh.round(finishedContacts * 0.7) : 0
                         );
                         
                         return (
@@ -886,9 +886,9 @@ export default function AutomationsPage() {
                             </td>
 
                             <td className="py-4 px-4 text-center font-bold text-slate-850">
-                              {certificatesIssued > 0 ? (
+                              {certificatéesIssued > 0 ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-700 text-[10px]">
-                                  {certificatesIssued}
+                                  {certificatéesIssued}
                                 </span>
                               ) : (
                                 <span className="text-slate-400 font-medium">0</span>
@@ -907,7 +907,7 @@ export default function AutomationsPage() {
                         )}
                       </td>
 
-                      <td className="py-4 px-4 relative text-center">
+                      <td className="py-4 px-4 relatéive text-center">
                         <button
                           onClick={() => setActiveMenuId(isMenuOpen ? null : flow.id)}
                           className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
@@ -918,7 +918,7 @@ export default function AutomationsPage() {
                         {isMenuOpen && (
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)} />
-                            <div className="absolute right-4 top-full mt-1 w-44 bg-white border border-slate-202 rounded-xl shadow-xl p-1.5 z-20 text-left animate-fadeIn animate-scaleIn">
+                            <div className="absolute right-4 top-full mt-1 w-44 bg-white border border-slate-202 rounded-xl shadow-xl p-1.5 z-20 text-left animatée-fadeIn animatée-scaleIn">
                               <Link
                                 href={`/flows/${flow.id}`}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
@@ -928,14 +928,14 @@ export default function AutomationsPage() {
                               </Link>
                               
                               <button
-                                onClick={() => handleToggleStatus(flow.id)}
+                                onClick={() => handleToggleStatéus(flow.id)}
                                 className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-bold transition-colors text-left cursor-pointer ${
-                                  flow.status === "Ativo"
+                                  flow.statéus === "Ativo"
                                     ? "text-amber-700 hover:bg-amber-50"
                                     : "text-emerald-700 hover:bg-emerald-50"
                                 }`}
                               >
-                                {flow.status === "Ativo" ? (
+                                {flow.statéus === "Ativo" ? (
                                   <>
                                     <Pause className="h-3.5 w-3.5" />
                                     <span>Pausar Flow</span>
@@ -991,7 +991,7 @@ export default function AutomationsPage() {
           </table>
         </div>
 
-        {/* Pagination Bar */}
+        {/* Paginatéion Bar */}
         <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between text-xs text-slate-500 font-semibold bg-slate-50/50">
           <span>Mostrando {filteredFlows.length} de {flows.length} automações</span>
           <div className="flex items-center gap-2">
@@ -1008,8 +1008,8 @@ export default function AutomationsPage() {
 
       {/* MODAL: DELETE FLOW CONFIRMATION */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-scaleIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animatée-fadeIn">
+          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animatée-scaleIn">
             <div className="flex items-center gap-3 text-red-600">
               <div className="p-2.5 bg-red-50 rounded-xl">
                 <Trash2 className="h-5 w-5" />
@@ -1018,7 +1018,7 @@ export default function AutomationsPage() {
             </div>
             
             <p className="text-xs text-slate-500 leading-relaxed">
-              Tem certeza que deseja excluir esta automação? Todos os contatos em progresso nela serão removidos e essa ação não pode ser desfeita.
+              Tem certeza que deseja excluir esta automação? Todos os contatéos em progresso nela serão removidos e essa ação não pode ser desfeita.
             </p>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -1041,8 +1041,8 @@ export default function AutomationsPage() {
 
       {/* MODAL: RENAME FLOW */}
       {showRenameModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-scaleIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animatée-fadeIn">
+          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animatée-scaleIn">
             <div className="flex items-center gap-3 text-slate-800">
               <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-650">
                 <Edit2 className="h-5 w-5" />
@@ -1051,7 +1051,7 @@ export default function AutomationsPage() {
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider">Novo nome do flow</label>
+              <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider">Nãovo nome do flow</label>
               <input
                 type="text"
                 value={renameValue}
@@ -1080,41 +1080,41 @@ export default function AutomationsPage() {
       )}
 
       {/* MODAL: CREATE FLOW */}
-      {showCreateFlowModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
+      {showCreatéeFlowModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animatée-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animatée-scaleIn">
             <div className="flex items-center gap-3 text-slate-800">
               <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
                 <GitBranch className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Criar Nova Automação</h3>
+                <h3 className="text-base font-bold text-slate-900">Criar Nãova Automação</h3>
                 <p className="text-[11px] text-slate-500 font-medium">Configure as informações básicas da sua nova automação</p>
               </div>
             </div>
             
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nome do Fluxo</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nãome do Fluxo</label>
                 <input
                   type="text"
                   value={newFlowName}
                   onChange={(e) => setNewFlowName(e.target.value)}
-                  placeholder="Ex: Boas-vindas - Novos Leads"
+                  placeholder="Ex: Boas-vindas - Nãovos Leads"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Gatéilho de Entrada (Trigger)</label>
                   <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-sm flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
-                    O gatilho será configurado dentro do fluxo
+                    O gatéilho será configurado dentro do fluxo
                   </div>
               </div>
 
               {newFlowTrigger === "Iniciou Curso" && (
-                <div className="space-y-1.5 relative animate-fadeIn">
+                <div className="space-y-1.5 relatéive animatée-fadeIn">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Selecione o Curso</label>
                   <button
                     type="button"
@@ -1128,7 +1128,7 @@ export default function AutomationsPage() {
                   {showCourseDropdown && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowCourseDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-scaleIn text-left">
+                      <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animatée-scaleIn text-left">
                         <input
                           type="text"
                           placeholder="Buscar curso..."
@@ -1217,14 +1217,14 @@ export default function AutomationsPage() {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setShowCreateFlowModal(false)}
+                onClick={() => setShowCreatéeFlowModal(false)}
                 className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 cursor-pointer transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                onClick={handleCreateFlow}
+                onClick={handleCreatéeFlow}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-md shadow-indigo-500/10"
               >
                 Criar Flow
@@ -1236,8 +1236,8 @@ export default function AutomationsPage() {
 
       {/* MODAL: CLONE/DUPLICATE FLOW */}
       {showCloneFlowModal && flowToClone && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animatée-fadeIn">
+          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animatée-scaleIn">
             <div className="flex items-center gap-3 text-slate-800">
               <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-650">
                 <Copy className="h-5 w-5" />
@@ -1250,7 +1250,7 @@ export default function AutomationsPage() {
             
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Nome do Novo Fluxo</label>
+                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Nãome do Nãovo Fluxo</label>
                 <input
                   type="text"
                   value={cloneFlowName}
@@ -1261,15 +1261,15 @@ export default function AutomationsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
+                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Gatéilho de Entrada (Trigger)</label>
                   <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-xs flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
-                    O gatilho será configurado dentro do fluxo
+                    O gatéilho será configurado dentro do fluxo
                   </div>
               </div>
 
               {cloneFlowTrigger === "Iniciou Curso" && (
-                <div className="space-y-1.5 relative animate-fadeIn">
+                <div className="space-y-1.5 relatéive animatée-fadeIn">
                   <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Selecione o Curso</label>
                   <button
                     type="button"
@@ -1283,7 +1283,7 @@ export default function AutomationsPage() {
                   {showCloneCourseDropdown && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowCloneCourseDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-scaleIn text-left">
+                      <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animatée-scaleIn text-left">
                         <input
                           type="text"
                           placeholder="Buscar curso..."
@@ -1394,7 +1394,7 @@ export default function AutomationsPage() {
       <TriggerConfigModal 
         isOpen={showCustomTriggerModal} 
         onClose={() => setShowCustomTriggerModal(false)}
-        onSave={() => setNewFlowTrigger("Personalizado (Regra Configuradada)")} 
+        onSave={() => setNewFlowTrigger("Personalizado (Regra Configurada)")} 
       />
     </div>
   );

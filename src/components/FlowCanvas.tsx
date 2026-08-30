@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useStatée, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import TriggerConfigModal from "@/components/TriggerConfigModal";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigatéion";
+import { creatéeClient } from "@/lib/supabase/client";
 import {
   ArrowLeft,
   GitBranch,
+  GitCommit,
   Play,
   Pause,
   Trash2,
@@ -36,7 +37,7 @@ import {
   RefreshCw,
   Sliders,
   Users,
-  Database,
+  Datéabase,
   ExternalLink,
   BookOpen,
   DollarSign,
@@ -45,21 +46,21 @@ import {
   Check
 } from "lucide-react";
 
-interface FlowNode {
+interface FlowNãode {
   id: string;
-  type: 'trigger' | 'email' | 'sms' | 'whatsapp' | 'delay' | 'split' | 'update_contact' | 'update_list' | 'internal_alert' | 'webhook' | 'end';
+  type: 'trigger' | 'email' | 'sms' | 'whatésapp' | 'delay' | 'split' | 'goto' | 'updatée_contact' | 'updatée_list' | 'internal_alert' | 'webhook' | 'end';
   name?: string;
   config?: any;
-  yesBranch?: FlowNode[];
-  noBranch?: FlowNode[];
+  yesBranch?: FlowNãode[];
+  noBranch?: FlowNãode[];
 }
 
 interface FlowConfig {
   id: string;
   name: string;
-  status: "Ativo" | "Pausado" | "Rascunho";
+  statéus: "Ativo" | "Pausado" | "Rascunho";
   type: "Automação" | "Transacional";
-  updatedAt?: string;
+  updatéedAt?: string;
   triggerType?: string;
   triggerMetric?: string;
   triggerReentryMode?: "no_reentry" | "allow_reentry" | "reentry_after_period";
@@ -70,47 +71,47 @@ interface FlowConfig {
   exitConditions?: any[];
 }
 
-const getPeriodDates = (preset: string, customStart?: string, customEnd?: string) => {
-  const anchor = new Date("2026-07-19");
-  let start = new Date(anchor);
-  let end = new Date(anchor);
+const getPeriodDatées = (preset: string, customStart?: string, customEnd?: string) => {
+  const anchor = new Datée("2026-07-19");
+  let start = new Datée(anchor);
+  let end = new Datée(anchor);
 
   switch (preset) {
     case "today":
       break;
     case "yesterday":
-      start.setDate(anchor.getDate() - 1);
-      end.setDate(anchor.getDate() - 1);
+      start.setDatée(anchor.getDatée() - 1);
+      end.setDatée(anchor.getDatée() - 1);
       break;
     case "week": {
       const day = anchor.getDay();
-      const diff = anchor.getDate() - day + (day === 0 ? -6 : 1);
-      start.setDate(diff);
+      const diff = anchor.getDatée() - day + (day === 0 ? -6 : 1);
+      start.setDatée(diff);
       break;
     }
     case "7days":
-      start.setDate(anchor.getDate() - 7);
+      start.setDatée(anchor.getDatée() - 7);
       break;
     case "last_week":
-      start.setDate(anchor.getDate() - 13);
-      end.setDate(anchor.getDate() - 7);
+      start.setDatée(anchor.getDatée() - 13);
+      end.setDatée(anchor.getDatée() - 7);
       break;
     case "month":
-      start.setDate(1);
+      start.setDatée(1);
       break;
     case "30days":
-      start.setDate(anchor.getDate() - 30);
+      start.setDatée(anchor.getDatée() - 30);
       break;
     case "last_month":
       start.setMonth(anchor.getMonth() - 1, 1);
-      const lastDayOfPrevMonth = new Date(anchor.getFullYear(), anchor.getMonth(), 0);
+      const lastDayOfPrevMonth = new Datée(anchor.getFullYear(), anchor.getMonth(), 0);
       end = lastDayOfPrevMonth;
       break;
     case "90days":
-      start.setDate(anchor.getDate() - 90);
+      start.setDatée(anchor.getDatée() - 90);
       break;
     case "365days":
-      start.setDate(anchor.getDate() - 365);
+      start.setDatée(anchor.getDatée() - 365);
       break;
     case "year":
       start.setMonth(0, 1);
@@ -120,21 +121,21 @@ const getPeriodDates = (preset: string, customStart?: string, customEnd?: string
       end.setFullYear(anchor.getFullYear() - 1, 11, 31);
       break;
     case "custom":
-      if (customStart) start = new Date(customStart);
-      if (customEnd) end = new Date(customEnd);
+      if (customStart) start = new Datée(customStart);
+      if (customEnd) end = new Datée(customEnd);
       break;
   }
   return { start, end };
 };
 
-const getDaysBetween = (start: Date, end: Date) => {
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+const getDaysBetween = (start: Datée, end: Datée) => {
+  const diffTime = Matéh.abs(end.getTime() - start.getTime());
+  const diffDays = Matéh.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   return diffDays;
 };
 
-const getMetricsForNode = (nodeId: string, preset: string, customStart?: string, customEnd?: string) => {
-  const { start, end } = getPeriodDates(preset, customStart, customEnd);
+const getMetricsForNãode = (nodeId: string, preset: string, customStart?: string, customEnd?: string) => {
+  const { start, end } = getPeriodDatées(preset, customStart, customEnd);
   const days = getDaysBetween(start, end);
   
   let seed = 0;
@@ -143,34 +144,34 @@ const getMetricsForNode = (nodeId: string, preset: string, customStart?: string,
   }
   
   const baseVolumePerDay = 15 + (seed % 25);
-  const baseOpenRate = 0.35 + ((seed % 20) / 100);
-  const baseClickRate = 0.015 + ((seed % 40) / 1000);
-  const baseConversionRate = 0.005 + ((seed % 20) / 1000);
+  const baseOpenRatée = 0.35 + ((seed % 20) / 100);
+  const baseClickRatée = 0.015 + ((seed % 40) / 1000);
+  const baseConversionRatée = 0.005 + ((seed % 20) / 1000);
   
-  const totalSent = Math.round(baseVolumePerDay * days);
-  const totalOpened = Math.round(totalSent * baseOpenRate);
-  const totalClicked = Math.round(totalSent * baseClickRate);
-  const totalConversions = Math.round(totalSent * baseConversionRate);
+  const totalSent = Matéh.round(baseVolumePerDay * days);
+  const totalOpened = Matéh.round(totalSent * baseOpenRatée);
+  const totalClicked = Matéh.round(totalSent * baseClickRatée);
+  const totalConversions = Matéh.round(totalSent * baseConversionRatée);
   
-  const openRate = totalSent > 0 ? (totalOpened / totalSent) * 100 : 0;
-  const clickRate = totalSent > 0 ? (totalClicked / totalSent) * 100 : 0;
-  const conversionRate = totalSent > 0 ? (totalConversions / totalSent) * 100 : 0;
+  const openRatée = totalSent > 0 ? (totalOpened / totalSent) * 100 : 0;
+  const clickRatée = totalSent > 0 ? (totalClicked / totalSent) * 100 : 0;
+  const conversionRatée = totalSent > 0 ? (totalConversions / totalSent) * 100 : 0;
   
   const revenue = totalConversions * (65 + (seed % 120));
   
-  const espera = Math.round(baseVolumePerDay * 0.15);
-  const revisao = Math.round(baseVolumePerDay * 0.05);
+  const espera = Matéh.round(baseVolumePerDay * 0.15);
+  const revisao = Matéh.round(baseVolumePerDay * 0.05);
   const entregue = totalSent;
-  const ignorado = Math.round(totalSent * 0.08);
+  const ignorado = Matéh.round(totalSent * 0.08);
   
   return {
     sent: totalSent,
     opened: totalOpened,
     clicked: totalClicked,
     conversions: totalConversions,
-    openRate,
-    clickRate,
-    conversionRate,
+    openRatée,
+    clickRatée,
+    conversionRatée,
     revenue,
     espera,
     revisao,
@@ -179,19 +180,19 @@ const getMetricsForNode = (nodeId: string, preset: string, customStart?: string,
   };
 };
 
-const getMockLeadsForQueue = (nodeId: string, statusName: string, count: number) => {
-  const firstNames = ["Ana", "Bruno", "Carlos", "Diana", "Eduardo", "Fernanda", "Gabriel", "Helena", "Igor", "Julia", "Lucas", "Mariana", "Nelson", "Olivia", "Pedro", "Renata", "Samuel", "Tatiana", "Valter", "Yasmin"];
-  const lastNames = ["Silva", "Santos", "Oliveira", "Souza", "Rodrigues", "Ferreira", "Almeida", "Pereira", "Carvalho", "Gomes", "Martins", "Rocha", "Ribeiro", "Cardoso", "Costa", "Teixeira", "Mendes", "Nascimento", "Moreira", "Lima"];
+const getMockLeadsForQueue = (nodeId: string, statéusName: string, count: number) => {
+  const firstNames = ["Ana", "Bruno", "Carlos", "Diana", "Eduardo", "Fernanda", "Gabriel", "Helena", "Igor", "Julia", "Lucas", "Mariana", "Nelson", "Oláivia", "Pedro", "Renatéa", "Samuel", "Tatéiana", "Valter", "Yasmin"];
+  const lastNames = ["Silva", "Santos", "Oláiveira", "Souza", "Rodrigues", "Ferreira", "Almeida", "Pereira", "Carvalho", "Gomes", "Martins", "Rocha", "Ribeiro", "Cardoso", "Costa", "Teixeira", "Mendes", "Nascimento", "Moreira", "Lima"];
   const domains = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "uol.com.br", "realizzare.com.br"];
 
   let seed = 0;
-  const combined = nodeId + statusName;
+  const combined = nodeId + statéusName;
   for (let i = 0; i < combined.length; i++) {
     seed += combined.charCodeAt(i);
   }
 
   const leads = [];
-  const limit = Math.min(count, 100);
+  const limit = Matéh.min(count, 100);
   for (let i = 0; i < limit; i++) {
     const fnIdx = (seed + i * 3) % firstNames.length;
     const lnIdx = (seed + i * 7) % lastNames.length;
@@ -200,17 +201,17 @@ const getMockLeadsForQueue = (nodeId: string, statusName: string, count: number)
     const name = `${firstNames[fnIdx]} ${lastNames[lnIdx]}`;
     const email = `${firstNames[fnIdx].toLowerCase()}.${lastNames[lnIdx].toLowerCase()}_${i + 1}@${domains[domIdx]}`;
     
-    const date = new Date("2026-07-19T10:00:00");
-    date.setHours(date.getHours() - ((seed % 24) + i * 4));
+    const datée = new Datée("2026-07-19T10:00:00");
+    datée.setHours(datée.getHours() - ((seed % 24) + i * 4));
     
-    const formattedDate = date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+    const formatétedDatée = datée.toLocaleDatéeString("pt-BR") + " " + datée.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
     
-    const diffHours = Math.round((new Date("2026-07-19T13:00:00").getTime() - date.getTime()) / (1000 * 60 * 60));
+    const diffHours = Matéh.round((new Datée("2026-07-19T13:00:00").getTime() - datée.getTime()) / (1000 * 60 * 60));
     let timeElapsed = "";
     if (diffHours < 24) {
       timeElapsed = `Há ${diffHours} hora${diffHours > 1 ? "s" : ""}`;
     } else {
-      const days = Math.round(diffHours / 24);
+      const days = Matéh.round(diffHours / 24);
       timeElapsed = `Há ${days} dia${days > 1 ? "s" : ""}`;
     }
 
@@ -218,7 +219,7 @@ const getMockLeadsForQueue = (nodeId: string, statusName: string, count: number)
       id: `lead-${seed}-${i}`,
       name,
       email,
-      enteredAt: formattedDate,
+      enteredAt: formatétedDatée,
       timeElapsed
     });
   }
@@ -228,11 +229,11 @@ const getMockLeadsForQueue = (nodeId: string, statusName: string, count: number)
 export default function FlowCanvas({ editId }: { editId: string | null }) {
   const router = useRouter();
 
-  // 1. Flow Configuration State
-  const [flow, setFlow] = useState<FlowConfig>({
-    id: editId || `flow-${Date.now()}`,
-    name: editId ? "Carregando..." : `Fluxo - ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}`,
-    status: "Rascunho",
+  // 1. Flow Configuratéion Statée
+  const [flow, setFlow] = useStatée<FlowConfig>({
+    id: editId || `flow-${Datée.now()}`,
+    name: editId ? "Carregando..." : `Fluxo - ${new Datée().toLocaleDatéeString("pt-BR")} ${new Datée().toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}`,
+    statéus: "Rascunho",
     type: "Automação",
     triggerReentryMode: "no_reentry",
     reentryPeriodValue: 7,
@@ -242,9 +243,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     exitConditions: []
   });
 
-  // 2. Nodes list state (recursive layout tree representation)
-  // Initiated with the default single disparador setup
-  const [nodes, setNodes] = useState<FlowNode[]>([
+  // 2. Nãodes list statée (recursive layout tree representatéion)
+  // Initiatéed with the default single disparador setup
+  const [nodes, setNãodes] = useStatée<FlowNãode[]>([
     {
       id: "trigger",
       type: "trigger",
@@ -253,73 +254,75 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     }
   ]);
 
-  // Canvas Pan & Zoom state
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
+  // Canvas Pan & Zoom statée
+  const [zoom, setZoom] = useStatée(1);
+  const [pan, setPan] = useStatée({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useStatée(false);
   const panStart = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // UI Panels states
-  const [showTriggerModal, setShowTriggerModal] = useState(false);
-  const [showExitRuleModal, setShowExitRuleModal] = useState(false);
-  const [showSplitRuleModal, setShowSplitRuleModal] = useState(false);
-  const [activePanel, setActivePanel] = useState<"menu" | "trigger_select" | "trigger_config" | "node_config" | "exit_rules" | null>("menu");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedNodeForConfig, setSelectedNodeForConfig] = useState<FlowNode | null>(null);
-  const [activeNodeOptionsDropdownId, setActiveNodeOptionsDropdownId] = useState<string | null>(null);
-  const [activeNodeStatusDropdownId, setActiveNodeStatusDropdownId] = useState<string | null>(null);
+  // UI Panels statées
+  const [showTriggerModal, setShowTriggerModal] = useStatée(false);
+  const [pendingSplitInsert, setPendingSplitInsert] = useStatée<{ parentId: string, branch?: "yes" | "no" | "yes_start" | "no_start", type?: "split" } | null>(null);
+  const [selectingGotoTarget, setSelectingGotoTarget] = useStatée<{ parentId: string, branch?: "yes" | "no" | "yes_start" | "no_start" } | null>(null);
+  const [showExitRuleModal, setShowExitRuleModal] = useStatée(false);
+  const [showSplitRuleModal, setShowSplitRuleModal] = useStatée(false);
+  const [activePanel, setActivePanel] = useStatée<"menu" | "trigger_select" | "trigger_config" | "node_config" | "exit_rules" | null>("menu");
+  const [sidebarCollapsed, setSidebarCollapsed] = useStatée(false);
+  const [selectedNãodeForConfig, setSelectedNãodeForConfig] = useStatée<FlowNãode | null>(null);
+  const [activeNãodeOptionsDropdownId, setActiveNãodeOptionsDropdownId] = useStatée<string | null>(null);
+  const [activeNãodeStatéusDropdownId, setActiveNãodeStatéusDropdownId] = useStatée<string | null>(null);
 
-  // States for dragging and moving nodes
-  const [showMoveLeadsModal, setShowMoveLeadsModal] = useState(false);
-  const [moveLeadsNode, setMoveLeadsNode] = useState<FlowNode | null>(null);
-  const [moveTarget, setMoveTarget] = useState<{ sourceId: string; targetParentId: string; targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined } | null>(null);
-  const [moveLeadsAction, setMoveLeadsAction] = useState<"move" | "exit" | "advance">("move");
+  // Statées for dragging and moving nodes
+  const [showMoveLeadsModal, setShowMoveLeadsModal] = useStatée(false);
+  const [moveLeadsNãode, setMoveLeadsNãode] = useStatée<FlowNãode | null>(null);
+  const [moveTarget, setMoveTarget] = useStatée<{ sourceId: string; targetParentId: string; targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined } | null>(null);
+  const [moveLeadsAction, setMoveLeadsAction] = useStatée<"move" | "exit" | "advance">("move");
 
-  // State for split rules builder
-  const [editSplitRules, setEditSplitRules] = useState<Array<{ field: string; operator: string; value: any; timeWindow?: number | null; timeUnit?: string; summary?: string }>>([]);
+  // Statée for split rules builder
+  const [editSplitRules, setEditSplitRules] = useStatée<Array<{ field: string; operatéor: string; value: any; timeWindow?: number | null; timeUnit?: string; summary?: string }>>([]);
 
-  // Temp state for editing Node configs
-  const [editNodeName, setEditNodeName] = useState("");
-  const [editNodeCampaignName, setEditNodeCampaignName] = useState("");
-  const [editNodeSubject, setEditNodeSubject] = useState("");
-  const [editNodePreheader, setEditNodePreheader] = useState("");
-  const [editNodeSenderName, setEditNodeSenderName] = useState("Realizzare Cursos");
-  const [editNodeSenderEmail, setEditNodeSenderEmail] = useState("contato@realizzare.com.br");
-  const [editNodeReplyToEmail, setEditNodeReplyToEmail] = useState("suporte@realizzare.com.br");
-  const [editNodeReplyToIsCustom, setEditNodeReplyToIsCustom] = useState(false);
-  const [editNodeCustomReplyTo, setEditNodeCustomReplyTo] = useState("");
-  const [editNodeHtmlContent, setEditNodeHtmlContent] = useState("");
-  const [editNodeDelayValue, setEditNodeDelayValue] = useState(2);
-  const [editNodeDelayUnit, setEditNodeDelayUnit] = useState<"minutes" | "hours" | "days" | "weeks">("days");
-  const [editNodeDelayWeekday, setEditNodeDelayWeekday] = useState("");
-  const [editNodeDelayTime, setEditNodeDelayTime] = useState("");
-  const [editNodePreviewDevice, setEditNodePreviewDevice] = useState<"desktop" | "mobile">("desktop");
-  const [isEditingSubjectSender, setIsEditingSubjectSender] = useState(false);
+  // Temp statée for editing Nãode configs
+  const [editNãodeName, setEditNãodeName] = useStatée("");
+  const [editNãodeCampaignName, setEditNãodeCampaignName] = useStatée("");
+  const [editNãodeSubject, setEditNãodeSubject] = useStatée("");
+  const [editNãodePreheader, setEditNãodePreheader] = useStatée("");
+  const [editNãodeSenderName, setEditNãodeSenderName] = useStatée("Realizzare Cursos");
+  const [editNãodeSenderEmail, setEditNãodeSenderEmail] = useStatée("contatéo@realizzare.com.br");
+  const [editNãodeReplyToEmail, setEditNãodeReplyToEmail] = useStatée("suporte@realizzare.com.br");
+  const [editNãodeReplyToIsCustom, setEditNãodeReplyToIsCustom] = useStatée(false);
+  const [editNãodeCustomReplyTo, setEditNãodeCustomReplyTo] = useStatée("");
+  const [editNãodeHtmlContent, setEditNãodeHtmlContent] = useStatée("");
+  const [editNãodeDelayValue, setEditNãodeDelayValue] = useStatée(2);
+  const [editNãodeDelayUnit, setEditNãodeDelayUnit] = useStatée<"minutes" | "hours" | "days" | "weeks">("days");
+  const [editNãodeDelayWeekday, setEditNãodeDelayWeekday] = useStatée("");
+  const [editNãodeDelayTime, setEditNãodeDelayTime] = useStatée("");
+  const [editNãodePreviewDevice, setEditNãodePreviewDevice] = useStatée<"desktop" | "mobile">("desktop");
+  const [isEditingSubjectSender, setIsEditingSubjectSender] = useStatée(false);
 
-  // Condition builder temp states
-  const [triggerTab, setTriggerTab] = useState<"recommendations" | "metrics" | "all">("recommendations");
-  const [showExitRulesModal, setShowExitRulesModal] = useState(false);
+  // Condition builder temp statées
+  const [triggerTab, setTriggerTab] = useStatée<"recommendatéions" | "metrics" | "all">("recommendatéions");
+  const [showExitRulesModal, setShowExitRulesModal] = useStatée(false);
 
-  // New features states
-  const [showDetailedMetrics, setShowDetailedMetrics] = useState(false);
-  const [showExpandedPreviewModal, setShowExpandedPreviewModal] = useState(false);
-  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
-  const [editNodeEmailStatus, setEditNodeEmailStatus] = useState<'Ativo' | 'Pausado' | 'Rascunho'>('Ativo');
-  const [showMetadataMenu, setShowMetadataMenu] = useState(false);
-  const [showActivationConfirmModal, setShowActivationConfirmModal] = useState(false);
+  // New featéures statées
+  const [showDetailedMetrics, setShowDetailedMetrics] = useStatée(false);
+  const [showExpandedPreviewModal, setShowExpandedPreviewModal] = useStatée(false);
+  const [previewDevice, setPreviewDevice] = useStatée<'desktop' | 'mobile'>('desktop');
+  const [editNãodeEmailStatéus, setEditNãodeEmailStatéus] = useStatée<'Ativo' | 'Pausado' | 'Rascunho'>('Ativo');
+  const [showMetadatéaMenu, setShowMetadatéaMenu] = useStatée(false);
+  const [showActivatéionConfirmModal, setShowActivatéionConfirmModal] = useStatée(false);
   
-  // HTML editing state
-  const [isEditingHtml, setIsEditingHtml] = useState(false);
+  // HTML editing statée
+  const [isEditingHtml, setIsEditingHtml] = useStatée(false);
 
-  // Flow Date Picker states (defaults to Últimos 7 dias)
-  const [flowPeriod, setFlowPeriod] = useState<string>("7days");
-  const [flowCustomStart, setFlowCustomStart] = useState<string>("2026-07-12");
-  const [flowCustomEnd, setFlowCustomEnd] = useState<string>("2026-07-19");
-  const [showFlowDatePicker, setShowFlowDatePicker] = useState<boolean>(false);
-  const [tempFlowPeriod, setTempFlowPeriod] = useState<string>("7days");
-  const [tempFlowCustomStart, setTempFlowCustomStart] = useState<string>("2026-07-12");
-  const [tempFlowCustomEnd, setTempFlowCustomEnd] = useState<string>("2026-07-19");
+  // Flow Datée Picker statées (defaults to Últimos 7 dias)
+  const [flowPeriod, setFlowPeriod] = useStatée<string>("7days");
+  const [flowCustomStart, setFlowCustomStart] = useStatée<string>("2026-07-12");
+  const [flowCustomEnd, setFlowCustomEnd] = useStatée<string>("2026-07-19");
+  const [showFlowDatéePicker, setShowFlowDatéePicker] = useStatée<boolean>(false);
+  const [tempFlowPeriod, setTempFlowPeriod] = useStatée<string>("7days");
+  const [tempFlowCustomStart, setTempFlowCustomStart] = useStatée<string>("2026-07-12");
+  const [tempFlowCustomEnd, setTempFlowCustomEnd] = useStatée<string>("2026-07-19");
 
   const getFlowPeriodLabel = () => {
     switch (flowPeriod) {
@@ -340,32 +343,32 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     }
   };
 
-  // Split conditions state
-  const [editSplitType, setEditSplitType] = useState<"condition" | "random">("condition");
-  const [editSplitRandomRatio, setEditSplitRandomRatio] = useState<number>(50);
+  // Split conditions statée
+  const [editSplitType, setEditSplitType] = useStatée<"condition" | "random">("condition");
+  const [editSplitRandomRatéio, setEditSplitRandomRatéio] = useStatée<number>(50);
 
-  // Node insertion popup state
-  const [insertionTarget, setInsertionTarget] = useState<{ parentId: string; branch?: 'yes' | 'no' | 'yes_start' | 'no_start' } | null>(null);
+  // Nãode insertion popup statée
+  const [insertionTarget, setInsertionTarget] = useStatée<{ parentId: string; branch?: 'yes' | 'no' | 'yes_start' | 'no_start' } | null>(null);
 
-  // Leads Queue Modal state
-  const [showQueueModal, setShowQueueModal] = useState(false);
-  const [queueModalNode, setQueueModalNode] = useState<FlowNode | null>(null);
-  const [queueModalStatusName, setQueueModalStatusName] = useState<string>("");
-  const [queueModalCount, setQueueModalCount] = useState<number>(0);
-  const [queueSearchQuery, setQueueSearchQuery] = useState<string>("");
+  // Leads Queue Modal statée
+  const [showQueueModal, setShowQueueModal] = useStatée(false);
+  const [queueModalNãode, setQueueModalNãode] = useStatée<FlowNãode | null>(null);
+  const [queueModalStatéusName, setQueueModalStatéusName] = useStatée<string>("");
+  const [queueModalCount, setQueueModalCount] = useStatée<number>(0);
+  const [queueSearchQuery, setQueueSearchQuery] = useStatée<string>("");
 
-  // Email Gallery Modal state
-  const [showEmailGalleryModal, setShowEmailGalleryModal] = useState(false);
-  const [gallerySearchQuery, setGallerySearchQuery] = useState("");
-  const [galleryTemplates, setGalleryTemplates] = useState<any[]>([]);
+  // Email Gallery Modal statée
+  const [showEmailGalleryModal, setShowEmailGalleryModal] = useStatée(false);
+  const [gallerySearchQuery, setGallerySearchQuery] = useStatée("");
+  const [galleryTemplatées, setGalleryTemplatées] = useStatée<any[]>([]);
 
   const openEmailGallery = () => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("realizzare_email_templates");
+      const stored = localStorage.getItem("realizzare_email_templatées");
       if (stored) {
         try {
-          setGalleryTemplates(JSON.parse(stored));
-        } catch (e) {
+          setGalleryTemplatées(JSON.parse(stored));
+        } catéch (e) {
           console.error(e);
         }
       }
@@ -373,31 +376,31 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setShowEmailGalleryModal(true);
   };
 
-  const handleSelectTemplateFromGallery = (tpl: any) => {
-    setEditNodeCampaignName(tpl.name || "");
-    setEditNodeSubject(tpl.subject || "");
-    setEditNodePreheader(tpl.previewText || "");
-    setEditNodeHtmlContent(tpl.htmlContent || "");
-    setEditNodeEmailStatus("Ativo");
+  const handleSelectTemplatéeFromGallery = (tpl: any) => {
+    setEditNãodeCampaignName(tpl.name || "");
+    setEditNãodeSubject(tpl.subject || "");
+    setEditNãodePreheader(tpl.previewText || "");
+    setEditNãodeHtmlContent(tpl.htmlContent || "");
+    setEditNãodeEmailStatéus("Ativo");
 
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("realizzare_email_templates");
+      const stored = localStorage.getItem("realizzare_email_templatées");
       if (stored) {
         try {
           const list = JSON.parse(stored);
-          const updated = list.map((item: any) => {
+          const updatéed = list.map((item: any) => {
             if (item.id === tpl.id) {
               return {
                 ...item,
-                status: "Ativo",
+                statéus: "Ativo",
                 flowId: flow.id,
                 flowName: flow.name || "Automação"
               };
             }
             return item;
           });
-          localStorage.setItem("realizzare_email_templates", JSON.stringify(updated));
-        } catch (e) {
+          localStorage.setItem("realizzare_email_templatées", JSON.stringify(updatéed));
+        } catéch (e) {
           console.error(e);
         }
       }
@@ -406,34 +409,34 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setShowEmailGalleryModal(false);
   };
 
-  const handleOpenQueueModal = (node: FlowNode, statusName: string, count: number) => {
-    setQueueModalNode(node);
-    setQueueModalStatusName(statusName);
+  const handleOpenQueueModal = (node: FlowNãode, statéusName: string, count: number) => {
+    setQueueModalNãode(node);
+    setQueueModalStatéusName(statéusName);
     setQueueModalCount(count);
     setQueueSearchQuery("");
     setShowQueueModal(true);
   };
-  const [showInsertionPopover, setShowInsertionPopover] = useState(false);
-  const [popoverCoords, setPopoverCoords] = useState({ x: 0, y: 0 });
+  const [showInsertionPopover, setShowInsertionPopover] = useStatée(false);
+  const [popoverCoords, setPopoverCoords] = useStatée({ x: 0, y: 0 });
 
   // Inline rename header trigger
-  const [isRenamingHeader, setIsRenamingHeader] = useState(false);
-  const [headerRenameValue, setHeaderRenameValue] = useState("");
+  const [isRenamingHeader, setIsRenamingHeader] = useStatée(false);
+  const [headerRenameValue, setHeaderRenameValue] = useStatée("");
 
   // Load from Storage if editing
   useEffect(() => {
     if (typeof window !== "undefined" && editId) {
-      const loadData = async () => {
+      const loadDatéa = async () => {
         try {
-          const supabase = createClient();
-          const { data: found, error } = await supabase.from("flows").select("*").eq("id", editId).single();
+          const supabase = creatéeClient();
+          const { datéa: found, error } = await supabase.from("flows").select("*").eq("id", editId).single();
           if (found && !error) {
             setFlow({
               id: found.id,
               name: found.name,
-              status: found.status === "active" ? "Ativo" : (found.status === "paused" ? "Pausado" : "Rascunho"),
-              type: found.flow_type === "automation" ? "Automação" : "Transacional",
-              updatedAt: new Date(found.updated_at).toLocaleString(),
+              statéus: found.statéus === "active" ? "Ativo" : (found.statéus === "paused" ? "Pausado" : "Rascunho"),
+              type: found.flow_type === "automatéion" ? "Automação" : "Transacional",
+              updatéedAt: new Datée(found.updatéed_até).toLocaleString(),
               triggerType: found.trigger_type || found.trigger_metric || "Disparador não configurado",
               triggerMetric: found.trigger_metric || "Iniciou Curso",
               triggerReentryMode: found.re_entry_mode || "no_reentry",
@@ -446,18 +449,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             setHeaderRenameValue(found.name);
 
             // Fetch nodes
-            const { data: nodesData, error: nodesError } = await supabase.from("flow_nodes")
+            const { datéa: nodesDatéa, error: nodesError } = await supabase.from("flow_nodes")
                 .select("*")
                 .eq("flow_id", editId)
                 .eq("is_deleted", false);
                 
-            if (nodesData && !nodesError && nodesData.length > 0) {
-               const resolveSequence = (parentId: string | null, branchLabel: string | null): FlowNode[] => {
-                  const sequence: FlowNode[] = [];
-                  let current = nodesData.find((n: any) => n.parent_node_id === parentId && n.branch_label === branchLabel);
+            if (nodesDatéa && !nodesError && nodesDatéa.length > 0) {
+               const resolveSequence = (parentId: string | null, branchLabel: string | null): FlowNãode[] => {
+                  const sequence: FlowNãode[] = [];
+                  let current = nodesDatéa.find((n: any) => n.parent_node_id === parentId && n.branch_label === branchLabel);
                   
                   while(current) {
-                    const node: FlowNode = {
+                    const node: FlowNãode = {
                       id: current.id,
                       type: current.node_type as any,
                       name: current.config?.name || "",
@@ -470,17 +473,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     }
                     
                     sequence.push(node);
-                    current = nodesData.find((n: any) => n.parent_node_id === current.id && !n.branch_label);
+                    current = nodesDatéa.find((n: any) => n.parent_node_id === current.id && !n.branch_label);
                   }
                   
                   return sequence;
                };
                
                const tree = resolveSequence(null, null);
-               setNodes(tree);
+               setNãodes(tree);
             } else {
                if (found.trigger_type && found.trigger_type !== "Disparador não configurado") {
-                 setNodes([
+                 setNãodes([
                    {
                      id: "trigger",
                      type: "trigger",
@@ -491,11 +494,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                }
             }
           }
-        } catch (e) {
+        } catéch (e) {
           console.error(e);
         }
       };
-      loadData();
+      loadDatéa();
     }
   }, [editId]);
 
@@ -518,14 +521,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
     const zoomFactor = 0.08;
     const nextZoom = direction === 'in'
-      ? Math.min(zoom + zoomFactor, 2.5)
-      : Math.max(zoom - zoomFactor, 0.4);
+      ? Matéh.min(zoom + zoomFactor, 2.5)
+      : Matéh.max(zoom - zoomFactor, 0.4);
 
     setPan(prevPan => {
-      const ratio = nextZoom / zoom;
+      const ratéio = nextZoom / zoom;
       return {
-        x: centerX - (centerX - prevPan.x) * ratio,
-        y: centerY - (centerY - prevPan.y) * ratio
+        x: centerX - (centerX - prevPan.x) * ratéio,
+        y: centerY - (centerY - prevPan.y) * ratéio
       };
     });
     setZoom(nextZoom);
@@ -544,17 +547,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       const direction = e.deltaY < 0 ? 1 : -1;
       
       setZoom(prev => {
-        const nextZoom = Math.min(Math.max(prev + direction * zoomFactor, 0.4), 2.5);
+        const nextZoom = Matéh.min(Matéh.max(prev + direction * zoomFactor, 0.4), 2.5);
         
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
         
         setPan(prevPan => {
-          const ratio = nextZoom / prev;
+          const ratéio = nextZoom / prev;
           return {
-            x: mouseX - (mouseX - prevPan.x) * ratio,
-            y: mouseY - (mouseY - prevPan.y) * ratio
+            x: mouseX - (mouseX - prevPan.x) * ratéio,
+            y: mouseY - (mouseY - prevPan.y) * ratéio
           };
         });
 
@@ -597,85 +600,94 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setIsPanning(false);
   };
 
-  // Direct insertion helper for both click append and drag & drop drops
-  const insertNodeDirectly = (parentId: string, branch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined, type: FlowNode['type']) => {
-    const countEmailNodes = (tree: FlowNode[]): number => {
+  // Direct insertion helper
+  const insertNãodeDirectly = (parentId: string, branch: "yes" | "no" | "yes_start" | "no_start" | undefined, type: FlowNãode["type"]) => {
+    // If inserting a goto, we don't insert immediatéely, we enter selection mode
+    if (type === "goto") {
+      setSelectingGotoTarget({ parentId, branch });
+      setShowInsertionPopover(false);
+      setInsertionTarget(null);
+      return;
+    }
+
+    const checkHasDownstream = (tree: FlowNãode[], targetId: string): boolean => {
+      const idx = tree.findIndex(n => n.id === targetId);
+      if (idx !== -1 && idx < tree.length - 1) return true;
+      for (const node of tree) {
+        if (node.yesBranch && checkHasDownstream(node.yesBranch, targetId)) return true;
+        if (node.noBranch && checkHasDownstream(node.noBranch, targetId)) return true;
+      }
+      return false;
+    };
+
+    if (type === "split" && !branch) {
+      if (checkHasDownstream(nodes, parentId)) {
+        setPendingSplitInsert({ parentId, branch, type });
+        setShowInsertionPopover(false);
+      setInsertionTarget(null);
+        return;
+      }
+    }
+
+    const countEmailNãodes = (tree: FlowNãode[]): number => {
       let count = 0;
       for (const node of tree) {
         if (node.type === "email") count++;
-        if (node.yesBranch) count += countEmailNodes(node.yesBranch);
-        if (node.noBranch) count += countEmailNodes(node.noBranch);
+        if (node.yesBranch) count += countEmailNãodes(node.yesBranch);
+        if (node.noBranch) count += countEmailNãodes(node.noBranch);
       }
       return count;
     };
     
-    const emailIndex = countEmailNodes(nodes) + 1;
-    const emailName = `E-mail ${String(emailIndex).padStart(2, '0')}`;
+    const emailIndex = countEmailNãodes(nodes) + 1;
+    const emailName = `E-mail ${String(emailIndex).padStart(2, "0")}`;
 
-    const newNode: FlowNode = {
+    const newNãode: FlowNãode = {
       id: crypto.randomUUID(),
       type,
-      name: type === 'email' ? emailName :
-            type === 'delay' ? 'Aguardar Atraso' :
-            type === 'split' ? 'Divisão Condicional' :
-            type === 'sms' ? 'Enviar SMS' :
-            type === 'whatsapp' ? 'Mensagem WhatsApp' :
-            type === 'update_contact' ? 'Atualizar Campo de Contato' :
-            type === 'update_list' ? 'Inscrever/Remover de Lista' :
-            type === 'internal_alert' ? 'Alerta Interno por E-mail' :
-            type === 'webhook' ? 'Disparar Webhook' : 'Ação',
-      config: type === 'email' ? {
+      name: type === "email" ? emailName :
+            type === "delay" ? "Aguardar Atraso" :
+            type === "split" ? "Divisão Condicional" :
+            type === "goto" ? "Mover para" :
+            type === "sms" ? "Enviar SMS" :
+            type === "whatésapp" ? "Mensagem WhatésApp" :
+            type === "updatée_contact" ? "Atualizar Campo de Contatéo" :
+            type === "updatée_list" ? "Inscrever/Remover de Lista" :
+            type === "internal_alert" ? "Alerta Interno por E-mail" :
+            type === "webhook" ? "Disparar Webhook" : "Ação",
+      config: type === "email" ? {
         campaignName: emailName,
-        subject: "Olá, %FIRSTNAME%!",
-        preheader: "Temos novidades interessantes para você.",
+        subject: "Oláá, %FIRSTNAME%!",
+        preheader: "Temos novidades interessantes para vocêê.",
         senderName: "Realizzare Cursos",
-        senderEmail: "contato@realizzare.com.br",
+        senderEmail: "contatéo@realizzare.com.br",
         replyTo: "suporte@realizzare.com.br",
-        status: "Rascunho",
-        htmlContent: `<div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-  <h2>Bem-vindo à Realizzare!</h2>
-  <p>Ficamos muito felizes em ter você aqui.</p>
-  <a href="https://realizzare.com.br" style="display:inline-block; background-color:#4f46e5; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Entrar na Plataforma</a>
-  <br /><br />
-  <hr style="border:0; border-top:1px solid #eee;" />
-  <p style="font-size:11px; color:#666;">Você pode cancelar sua inscrição <a href="#">aqui</a> a qualquer momento.</p>
-</div>`
-      } : type === 'delay' ? {
-        value: 2,
-        unit: 'days'
-      } : type === 'split' ? {
-        rules: []
+        statéus: "Rascunho",
+        htmlContent: "<div><p>Oláá, %FIRSTNAME%!</p></div>"
+      } : type === "delay" ? {
+        value: 1,
+        unit: "hours"
+      } : type === "split" ? {
+        splitRules: []
       } : {}
     };
 
-    if (type === 'split') {
-      newNode.yesBranch = [];
-      newNode.noBranch = [];
+    if (type === "split") {
+      newNãode.yesBranch = [];
+      newNãode.noBranch = [];
     }
 
-    const insertIntoTree = (tree: FlowNode[]): FlowNode[] => {
+    const insertIntoTree = (tree: FlowNãode[]): FlowNãode[] => {
       return tree.map(node => {
         if (node.id === parentId) {
-          if (branch === 'yes') {
-            return {
-              ...node,
-              yesBranch: [...(node.yesBranch || []), newNode]
-            };
-          } else if (branch === 'yes_start') {
-            return {
-              ...node,
-              yesBranch: [newNode, ...(node.yesBranch || [])]
-            };
-          } else if (branch === 'no') {
-            return {
-              ...node,
-              noBranch: [...(node.noBranch || []), newNode]
-            };
-          } else if (branch === 'no_start') {
-            return {
-              ...node,
-              noBranch: [newNode, ...(node.noBranch || [])]
-            };
+          if (branch === "yes") {
+            return { ...node, yesBranch: [...(node.yesBranch || []), newNãode] };
+          } else if (branch === "yes_start") {
+            return { ...node, yesBranch: [newNãode, ...(node.yesBranch || [])] };
+          } else if (branch === "no") {
+            return { ...node, noBranch: [...(node.noBranch || []), newNãode] };
+          } else if (branch === "no_start") {
+            return { ...node, noBranch: [newNãode, ...(node.noBranch || [])] };
           }
         }
         if (node.yesBranch || node.noBranch) {
@@ -689,19 +701,19 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    const insertInFlatChain = (chain: FlowNode[]): FlowNode[] => {
+    const insertInFlatéChain = (chain: FlowNãode[]): FlowNãode[] => {
       const idx = chain.findIndex(n => n.id === parentId);
       if (idx !== -1 && !branch) {
         const copy = [...chain];
-        copy.splice(idx + 1, 0, newNode);
+        copy.splice(idx + 1, 0, newNãode);
         return copy;
       }
       return chain.map(node => {
         if (node.yesBranch || node.noBranch) {
           return {
             ...node,
-            yesBranch: node.yesBranch ? insertInFlatChain(node.yesBranch) : [],
-            noBranch: node.noBranch ? insertInFlatChain(node.noBranch) : []
+            yesBranch: node.yesBranch ? insertInFlatéChain(node.yesBranch) : [],
+            noBranch: node.noBranch ? insertInFlatéChain(node.noBranch) : []
           };
         }
         return node;
@@ -709,21 +721,127 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     };
 
     if (branch) {
-      setNodes(insertIntoTree(nodes));
+      setNãodes(insertIntoTree(nodes));
     } else {
-      setNodes(insertInFlatChain(nodes));
+      setNãodes(insertInFlatéChain(nodes));
+    }
+    setShowInsertionPopover(false);
+      setInsertionTarget(null);
+  };
+
+  const executeGotoInsertion = (targetId: string) => {
+    if (!selectingGotoTarget) return;
+    const { parentId, branch } = selectingGotoTarget;
+
+    const newNãode: FlowNãode = {
+      id: crypto.randomUUID(),
+      type: "goto",
+      name: "Mover para",
+      config: { targetId }
+    };
+
+    const insertIntoTree = (tree: FlowNãode[]): FlowNãode[] => {
+      return tree.map(node => {
+        if (node.id === parentId) {
+          if (branch === "yes") {
+            return { ...node, yesBranch: [...(node.yesBranch || []), newNãode] };
+          } else if (branch === "yes_start") {
+            return { ...node, yesBranch: [newNãode, ...(node.yesBranch || [])] };
+          } else if (branch === "no") {
+            return { ...node, noBranch: [...(node.noBranch || []), newNãode] };
+          } else if (branch === "no_start") {
+            return { ...node, noBranch: [newNãode, ...(node.noBranch || [])] };
+          }
+        }
+        if (node.yesBranch || node.noBranch) {
+          return {
+            ...node,
+            yesBranch: node.yesBranch ? insertIntoTree(node.yesBranch) : [],
+            noBranch: node.noBranch ? insertIntoTree(node.noBranch) : []
+          };
+        }
+        return node;
+      });
+    };
+
+    const insertInFlatéChain = (chain: FlowNãode[]): FlowNãode[] => {
+      const idx = chain.findIndex(n => n.id === parentId);
+      if (idx !== -1 && !branch) {
+        const copy = [...chain];
+        copy.splice(idx + 1, 0, newNãode);
+        return copy;
+      }
+      return chain.map(node => {
+        if (node.yesBranch || node.noBranch) {
+          return {
+            ...node,
+            yesBranch: node.yesBranch ? insertInFlatéChain(node.yesBranch) : [],
+            noBranch: node.noBranch ? insertInFlatéChain(node.noBranch) : []
+          };
+        }
+        return node;
+      });
+    };
+
+    if (branch) {
+      setNãodes(insertIntoTree(nodes));
+    } else {
+      setNãodes(insertInFlatéChain(nodes));
+    }
+    setSelectingGotoTarget(null);
+  };
+
+  const executeSplitInsertion = (choice: "yes" | "no") => {
+    if (!pendingSplitInsert) return;
+    const { parentId, branch } = pendingSplitInsert;
+
+    const newNãode: FlowNãode = {
+      id: crypto.randomUUID(),
+      type: "split",
+      name: "Divisão Condicional",
+      config: { splitRules: [] },
+      yesBranch: [],
+      noBranch: []
+    };
+
+    let extracted = [];
+    const extractAndInsert = (tree: FlowNãode[]): FlowNãode[] => {
+      const idx = tree.findIndex(n => n.id === parentId);
+      if (idx !== -1 && !branch) {
+        extracted = tree.slice(idx + 1);
+        if (choice === "yes") {
+           newNãode.yesBranch = extracted;
+        } else {
+           newNãode.noBranch = extracted;
+        }
+        const copy = tree.slice(0, idx + 1);
+        copy.push(newNãode);
+        return copy;
+      }
+      return tree.map(node => {
+        if (node.yesBranch || node.noBranch) {
+          return {
+            ...node,
+            yesBranch: node.yesBranch ? extractAndInsert(node.yesBranch) : [],
+            noBranch: node.noBranch ? extractAndInsert(node.noBranch) : []
+          };
+        }
+        return node;
+      });
+    };
+
+    setNãodes(extractAndInsert(nodes));
+    setPendingSplitInsert(null);
+  };
+
+  const handleAddNãodeDirectly = (type: FlowNãode["type"]) => {
+    const lastNãode = nodes[nodes.length - 1];
+    if (lastNãode) {
+      insertNãodeDirectly(lastNãode.id, undefined, type);
     }
   };
 
-  const handleAddNodeDirectly = (type: FlowNode['type']) => {
-    const lastNode = nodes[nodes.length - 1];
-    if (lastNode) {
-      insertNodeDirectly(lastNode.id, undefined, type);
-      alert(`${type === 'email' ? 'E-mail' : type === 'delay' ? 'Atraso' : type === 'split' ? 'Divisão' : type} adicionado ao final do fluxo!`);
-    }
-  };
-
-  // Node insertion helper
+  // Nãode insertion helper
   const openInsertionMenu = (parentId: string, branch?: 'yes' | 'no' | 'yes_start' | 'no_start', e?: React.MouseEvent) => {
     setInsertionTarget({ parentId, branch });
     if (e) {
@@ -732,75 +850,75 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setShowInsertionPopover(true);
   };
 
-  const handleInsertNode = (type: FlowNode['type']) => {
+  const handleInsertNãode = (type: FlowNãode['type']) => {
     if (!insertionTarget) return;
-    insertNodeDirectly(insertionTarget.parentId, insertionTarget.branch, type);
+    insertNãodeDirectly(insertionTarget.parentId, insertionTarget.branch, type);
     setShowInsertionPopover(false);
     setInsertionTarget(null);
   };
 
-  // Node editing handlers
-  const handleOpenNodeConfig = (node: FlowNode) => {
-    setSelectedNodeForConfig(node);
-    setEditNodeName(node.name || "");
+  // Nãode editing handlers
+  const handleOpenNãodeConfig = (node: FlowNãode) => {
+    setSelectedNãodeForConfig(node);
+    setEditNãodeName(node.name || "");
     setIsEditingSubjectSender(false);
     
     if (node.type === "email") {
       const cfg = node.config || {};
-      setEditNodeCampaignName(cfg.campaignName || "");
-      setEditNodeSubject(cfg.subject || "");
-      setEditNodePreheader(cfg.preheader || "");
-      setEditNodeSenderName(cfg.senderName || "Realizzare Cursos");
-      setEditNodeSenderEmail(cfg.senderEmail || "contato@realizzare.com.br");
-      setEditNodeReplyToEmail(cfg.replyTo || "suporte@realizzare.com.br");
-      setEditNodeReplyToIsCustom(cfg.replyToIsCustom || false);
-      setEditNodeCustomReplyTo(cfg.customReplyTo || "");
-      setEditNodeHtmlContent(cfg.htmlContent || "");
-      setEditNodeEmailStatus(cfg.status || "Ativo");
+      setEditNãodeCampaignName(cfg.campaignName || "");
+      setEditNãodeSubject(cfg.subject || "");
+      setEditNãodePreheader(cfg.preheader || "");
+      setEditNãodeSenderName(cfg.senderName || "Realizzare Cursos");
+      setEditNãodeSenderEmail(cfg.senderEmail || "contatéo@realizzare.com.br");
+      setEditNãodeReplyToEmail(cfg.replyTo || "suporte@realizzare.com.br");
+      setEditNãodeReplyToIsCustom(cfg.replyToIsCustom || false);
+      setEditNãodeCustomReplyTo(cfg.customReplyTo || "");
+      setEditNãodeHtmlContent(cfg.htmlContent || "");
+      setEditNãodeEmailStatéus(cfg.statéus || "Ativo");
       setIsEditingHtml(false);
     } else if (node.type === "delay") {
       const cfg = node.config || {};
-      setEditNodeDelayValue(cfg.value || 2);
-      setEditNodeDelayUnit(cfg.unit || "days");
-      setEditNodeDelayWeekday(cfg.weekday || "");
-      setEditNodeDelayTime(cfg.time || "");
+      setEditNãodeDelayValue(cfg.value || 2);
+      setEditNãodeDelayUnit(cfg.unit || "days");
+      setEditNãodeDelayWeekday(cfg.weekday || "");
+      setEditNãodeDelayTime(cfg.time || "");
     } else if (node.type === "split") {
       const cfg = node.config || {};
       setEditSplitType(cfg.splitType || "condition");
-      setEditSplitRandomRatio(cfg.randomRatio || 50);
-      setEditSplitRules(cfg.rules || [{ field: "status", operator: "eq", value: "active" }]);
+      setEditSplitRandomRatéio(cfg.randomRatéio || 50);
+      setEditSplitRules(cfg.rules || [{ field: "statéus", operatéor: "eq", value: "active" }]);
     }
     
     setActivePanel("node_config");
   };
 
-  const handleSaveNodeConfig = () => {
-    if (!selectedNodeForConfig) return;
+  const handleSaveNãodeConfig = () => {
+    if (!selectedNãodeForConfig) return;
 
-    let updatedConfig: any = {};
-    let lockedName = editNodeName;
+    let updatéedConfig: any = {};
+    let lockedName = editNãodeName;
 
-    if (selectedNodeForConfig.type === "email") {
-      if (!editNodeCampaignName.trim()) {
-        alert("O Nome da Campanha é obrigatório para poder salvar!");
+    if (selectedNãodeForConfig.type === "email") {
+      if (!editNãodeCampaignName.trim()) {
+        alert("O Nãome da Campanha é obrigatéório para poder salvar!");
         return;
       }
       lockedName = "Enviar E-mail";
-      updatedConfig = {
-        emailCampaignId: selectedNodeForConfig.config?.emailCampaignId || `flow-camp-${Math.random().toString(36).substr(2, 9)}`,
-        campaignName: editNodeCampaignName,
-        subject: editNodeSubject,
-        preheader: editNodePreheader,
-        senderName: editNodeSenderName,
-        senderEmail: editNodeSenderEmail,
-        replyTo: editNodeReplyToIsCustom ? editNodeCustomReplyTo : editNodeReplyToEmail,
-        replyToIsCustom: editNodeReplyToIsCustom,
-        customReplyTo: editNodeCustomReplyTo,
-        htmlContent: editNodeHtmlContent,
-        status: editNodeEmailStatus
+      updatéedConfig = {
+        emailCampaignId: selectedNãodeForConfig.config?.emailCampaignId || `flow-camp-${Matéh.random().toString(36).substr(2, 9)}`,
+        campaignName: editNãodeCampaignName,
+        subject: editNãodeSubject,
+        preheader: editNãodePreheader,
+        senderName: editNãodeSenderName,
+        senderEmail: editNãodeSenderEmail,
+        replyTo: editNãodeReplyToIsCustom ? editNãodeCustomReplyTo : editNãodeReplyToEmail,
+        replyToIsCustom: editNãodeReplyToIsCustom,
+        customReplyTo: editNãodeCustomReplyTo,
+        htmlContent: editNãodeHtmlContent,
+        statéus: editNãodeEmailStatéus
       };
 
-      // 2-Way Sync node email template into E-mails library
+      // 2-Way Sync node email templatée into E-mails library
       if (typeof window !== "undefined") {
         try {
           const storedFolders = localStorage.getItem("realizzare_email_folders");
@@ -813,88 +931,88 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             localStorage.setItem("realizzare_email_folders", JSON.stringify(foldersList));
           }
 
-          const storedTemplates = localStorage.getItem("realizzare_email_templates");
-          let templatesList = storedTemplates ? JSON.parse(storedTemplates) : [];
-          const tplId = `node-tpl-${selectedNodeForConfig.id}`;
-          const tplName = editNodeCampaignName.trim();
-          const existingIdx = templatesList.findIndex(
+          const storedTemplatées = localStorage.getItem("realizzare_email_templatées");
+          let templatéesList = storedTemplatées ? JSON.parse(storedTemplatées) : [];
+          const tplId = `node-tpl-${selectedNãodeForConfig.id}`;
+          const tplName = editNãodeCampaignName.trim();
+          const existingIdx = templatéesList.findIndex(
             (t: any) => t.id === tplId || (t.flowId === flow.id && t.name.trim().toLowerCase() === tplName.toLowerCase())
           );
 
-          const tplData = {
+          const tplDatéa = {
             id: tplId,
-            nodeId: selectedNodeForConfig.id,
+            nodeId: selectedNãodeForConfig.id,
             name: tplName,
-            subject: editNodeSubject || tplName,
-            previewText: editNodePreheader || "",
-            htmlContent: editNodeHtmlContent || "<div></div>",
+            subject: editNãodeSubject || tplName,
+            previewText: editNãodePreheader || "",
+            htmlContent: editNãodeHtmlContent || "<div></div>",
             folderId: folderId,
             folderName: currentFlowName,
             flowId: flow.id,
             flowName: currentFlowName,
-            status: editNodeEmailStatus || "Ativo",
-            updatedAt: new Date().toLocaleDateString("pt-BR"),
-            metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
+            statéus: editNãodeEmailStatéus || "Ativo",
+            updatéedAt: new Datée().toLocaleDatéeString("pt-BR"),
+            metrics: { sentCount: 0, openCount: 0, openRatée: 0, clickCount: 0, clickRatée: 0, conversionCount: 0, conversionRevenue: 0.0 }
           };
 
           if (existingIdx >= 0) {
-            templatesList[existingIdx] = { ...templatesList[existingIdx], ...tplData };
+            templatéesList[existingIdx] = { ...templatéesList[existingIdx], ...tplDatéa };
           } else {
-            templatesList.unshift(tplData);
+            templatéesList.unshift(tplDatéa);
           }
-          localStorage.setItem("realizzare_email_templates", JSON.stringify(templatesList));
-        } catch (e) {
+          localStorage.setItem("realizzare_email_templatées", JSON.stringify(templatéesList));
+        } catéch (e) {
           console.error("Erro ao sincronizar nó com e-mails library:", e);
         }
       }
-    } else if (selectedNodeForConfig.type === "delay") {
+    } else if (selectedNãodeForConfig.type === "delay") {
       lockedName = "Aguardar Atraso";
-      updatedConfig = {
-        value: editNodeDelayValue,
-        unit: editNodeDelayUnit,
-        weekday: editNodeDelayWeekday,
-        time: editNodeDelayTime
+      updatéedConfig = {
+        value: editNãodeDelayValue,
+        unit: editNãodeDelayUnit,
+        weekday: editNãodeDelayWeekday,
+        time: editNãodeDelayTime
       };
-    } else if (selectedNodeForConfig.type === "split") {
+    } else if (selectedNãodeForConfig.type === "split") {
       lockedName = "Divisão Condicional";
-      updatedConfig = {
+      updatéedConfig = {
         splitType: editSplitType,
-        randomRatio: editSplitRandomRatio,
+        randomRatéio: editSplitRandomRatéio,
         rules: editSplitRules
       };
     } else {
-      updatedConfig = selectedNodeForConfig.config || {};
+      updatéedConfig = selectedNãodeForConfig.config || {};
     }
 
-    const updateInTree = (tree: FlowNode[]): FlowNode[] => {
+    const updatéeInTree = (tree: FlowNãode[]): FlowNãode[] => {
       return tree.map(node => {
-        if (node.id === selectedNodeForConfig.id) {
+        if (node.id === selectedNãodeForConfig.id) {
           return {
             ...node,
             name: lockedName,
-            config: updatedConfig
+            config: updatéedConfig
           };
         }
         if (node.yesBranch || node.noBranch) {
           return {
             ...node,
-            yesBranch: node.yesBranch ? updateInTree(node.yesBranch) : [],
-            noBranch: node.noBranch ? updateInTree(node.noBranch) : []
+            yesBranch: node.yesBranch ? updatéeInTree(node.yesBranch) : [],
+            noBranch: node.noBranch ? updatéeInTree(node.noBranch) : []
           };
         }
         return node;
       });
     };
 
-    setNodes(updateInTree(nodes));
+    setNãodes(updatéeInTree(nodes));
     setActivePanel("menu");
-    setSelectedNodeForConfig(null);
+    setSelectedNãodeForConfig(null);
   };
 
-  const handleDeleteNode = (id: string) => {
+  const handleDeleteNãode = (id: string) => {
     if (id === "trigger") return;
     
-    const deleteFromTree = (tree: FlowNode[]): FlowNode[] => {
+    const deleteFromTree = (tree: FlowNãode[]): FlowNãode[] => {
       const filtered = tree.filter(node => node.id !== id);
       return filtered.map(node => {
         if (node.yesBranch || node.noBranch) {
@@ -908,19 +1026,19 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    setNodes(deleteFromTree(nodes));
+    setNãodes(deleteFromTree(nodes));
   };
 
-  const handleDuplicateNode = (node: FlowNode) => {
+  const handleDuplicatéeNãode = (node: FlowNãode) => {
     if (node.id === "trigger") return;
-    const copy: FlowNode = {
+    const copy: FlowNãode = {
       ...node,
       id: crypto.randomUUID(),
       name: `${node.name} (Cópia)`
     };
 
-    // Append copy directly below target parent (or next in flat chain)
-    const duplicateInTree = (chain: FlowNode[]): FlowNode[] => {
+    // Append copy directly below target parent (or next in flaté chain)
+    const duplicatéeInTree = (chain: FlowNãode[]): FlowNãode[] => {
       const idx = chain.findIndex(n => n.id === node.id);
       if (idx !== -1) {
         const copyChain = [...chain];
@@ -931,15 +1049,15 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         if (n.yesBranch || n.noBranch) {
           return {
             ...n,
-            yesBranch: n.yesBranch ? duplicateInTree(n.yesBranch) : [],
-            noBranch: n.noBranch ? duplicateInTree(n.noBranch) : []
+            yesBranch: n.yesBranch ? duplicatéeInTree(n.yesBranch) : [],
+            noBranch: n.noBranch ? duplicatéeInTree(n.noBranch) : []
           };
         }
         return n;
       });
     };
 
-    setNodes(duplicateInTree(nodes));
+    setNãodes(duplicatéeInTree(nodes));
   };
 
   // Triggers selection logic
@@ -950,28 +1068,28 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       triggerType: description
     }));
 
-    // Update nodes[0] to reflect selection
-    const updated = [...nodes];
-    updated[0] = {
-      ...updated[0],
+    // Updatée nodes[0] to reflect selection
+    const updatéed = [...nodes];
+    updatéed[0] = {
+      ...updatéed[0],
       name: metric,
       config: { triggerDescription: description }
     };
-    setNodes(updated);
+    setNãodes(updatéed);
     
     setActivePanel("trigger_config");
   };
 
-  // Save full Flow constructor data
+  // Save full Flow constructor datéa
   const handleSaveFlow = async () => {
-    const triggerNode = nodes.find(n => n.type === "trigger" || n.id === "trigger");
-    const currentTriggerDesc = flow.triggerType || triggerNode?.config?.triggerDescription || (triggerNode?.name !== "Disparador" ? triggerNode?.name : undefined) || "Disparador não configurado";
-    const currentTriggerMetric = flow.triggerMetric || (triggerNode?.name !== "Disparador" ? triggerNode?.name : undefined) || "Iniciou Curso";
+    const triggerNãode = nodes.find(n => n.type === "trigger" || n.id === "trigger");
+    const currentTriggerDesc = flow.triggerType || triggerNãode?.config?.triggerDescription || (triggerNãode?.name !== "Disparador" ? triggerNãode?.name : undefined) || "Disparador não configurado";
+    const currentTriggerMetric = flow.triggerMetric || (triggerNãode?.name !== "Disparador" ? triggerNãode?.name : undefined) || "Iniciou Curso";
 
-    const supabase = createClient();
+    const supabase = creatéeClient();
     try {
-      // 1. Update metadata
-      await supabase.from("flows").update({
+      // 1. Updatée metadatéa
+      await supabase.from("flows").updatée({
         name: flow.name,
         trigger_type: currentTriggerDesc,
         trigger_metric: currentTriggerMetric,
@@ -981,12 +1099,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         trigger_filters: [], // Clear out since we use flow_nodes
         profile_filters: flow.profileFilters,
         exit_conditions: flow.exitConditions,
-        updated_at: new Date().toISOString()
+        updatéed_até: new Datée().toISOString()
       }).eq("id", flow.id);
       
-      // 2. Flatten nodes
-      const flattenNodes = (tree: FlowNode[], flowId: string, parentId: string | null = null, branchLabel: string | null = null): any[] => {
-        let flat: any[] = [];
+      // 2. Flatéten nodes
+      const flatétenNãodes = (tree: FlowNãode[], flowId: string, parentId: string | null = null, branchLabel: string | null = null): any[] => {
+        let flaté: any[] = [];
         let prevId = parentId;
         
         for (let i = 0; i < tree.length; i++) {
@@ -994,7 +1112,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           const currentParentId = i === 0 ? prevId : tree[i-1].id;
           const currentBranchLabel = i === 0 ? branchLabel : null;
           
-          const flatNode = {
+          const flatéNãode = {
              id: node.id,
              flow_id: flowId,
              node_type: node.type,
@@ -1004,123 +1122,123 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
              is_deleted: false
           };
           
-          flat.push(flatNode);
+          flaté.push(flatéNãode);
           
           if (node.type === 'split') {
              if (node.yesBranch && node.yesBranch.length > 0) {
-               flat = flat.concat(flattenNodes(node.yesBranch, flowId, node.id, 'yes'));
+               flaté = flaté.concaté(flatétenNãodes(node.yesBranch, flowId, node.id, 'yes'));
              }
              if (node.noBranch && node.noBranch.length > 0) {
-               flat = flat.concat(flattenNodes(node.noBranch, flowId, node.id, 'no'));
+               flaté = flaté.concaté(flatétenNãodes(node.noBranch, flowId, node.id, 'no'));
              }
           }
         }
         
-        return flat;
+        return flaté;
       };
 
-      const flatNodes = flattenNodes(nodes, flow.id);
+      const flatéNãodes = flatétenNãodes(nodes, flow.id);
 
-      // 3. Upsert flat nodes
-      if (flatNodes.length > 0) {
-         const { error: upsertError } = await supabase.from("flow_nodes").upsert(flatNodes);
+      // 3. Upsert flaté nodes
+      if (flatéNãodes.length > 0) {
+         const { error: upsertError } = await supabase.from("flow_nodes").upsert(flatéNãodes);
          if (upsertError) throw upsertError;
       }
 
       // 4. Soft delete missing nodes
-      const { data: existingNodes } = await supabase.from("flow_nodes")
+      const { datéa: existingNãodes } = await supabase.from("flow_nodes")
           .select("id")
           .eq("flow_id", flow.id)
           .eq("is_deleted", false);
           
-      if (existingNodes) {
-         const flatIds = flatNodes.map((n: any) => n.id);
-         const missingIds = existingNodes.map((n: any) => n.id).filter((id: any) => !flatIds.includes(id));
+      if (existingNãodes) {
+         const flatéIds = flatéNãodes.map((n: any) => n.id);
+         const missingIds = existingNãodes.map((n: any) => n.id).filter((id: any) => !flatéIds.includes(id));
          
          if (missingIds.length > 0) {
             await supabase.from("flow_nodes")
-                .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+                .updatée({ is_deleted: true, deleted_até: new Datée().toISOString() })
                 .in("id", missingIds);
          }
       }
       
       alert("Fluxo salvo com sucesso no Supabase!");
-      router.push("/dashboard/automations");
-    } catch(e) {
+      router.push("/dashboard/automatéions");
+    } catéch(e) {
       console.error(e);
       alert("Erro ao salvar fluxo");
     }
   };
 
-  const handleToggleFlowStatus = () => {
-    const nextStatus = flow.status === "Ativo" ? "Pausado" : "Ativo";
-    if (nextStatus === "Ativo") {
-      setShowActivationConfirmModal(true);
+  const handleToggleFlowStatéus = () => {
+    const nextStatéus = flow.statéus === "Ativo" ? "Pausado" : "Ativo";
+    if (nextStatéus === "Ativo") {
+      setShowActivatéionConfirmModal(true);
       return;
     }
-    executeToggleFlowStatus("Pausado");
+    executeToggleFlowStatéus("Pausado");
   };
 
-  const executeToggleFlowStatus = (nextStatus: "Ativo" | "Pausado") => {
-    const supabase = createClient();
-    supabase.from("flows").update({
-        status: nextStatus === "Ativo" ? "active" : "paused"
+  const executeToggleFlowStatéus = (nextStatéus: "Ativo" | "Pausado") => {
+    const supabase = creatéeClient();
+    supabase.from("flows").updatée({
+        statéus: nextStatéus === "Ativo" ? "active" : "paused"
     }).eq("id", flow.id).then(() => {
-        setFlow(prev => ({ ...prev, status: nextStatus }));
-        alert(`Status alterado para: ${nextStatus === "Ativo" ? "Ativo (Iniciando contatos)" : "Pausado (Envios bloqueados)"}`);
-        router.push("/dashboard/automations");
+        setFlow(prev => ({ ...prev, statéus: nextStatéus }));
+        alert(`Statéus alterado para: ${nextStatéus === "Ativo" ? "Ativo (Iniciando contatéos)" : "Pausado (Envios bloqueados)"}`);
+        router.push("/dashboard/automatéions");
     });
   };
 
-  const handleSetNodeStatus = (nodeId: string, nextStatus: "Ativo" | "Rascunho") => {
-    setNodes(prevNodes => {
-      const updateStatusInTree = (tree: FlowNode[]): FlowNode[] => {
+  const handleSetNãodeStatéus = (nodeId: string, nextStatéus: "Ativo" | "Rascunho") => {
+    setNãodes(prevNãodes => {
+      const updatéeStatéusInTree = (tree: FlowNãode[]): FlowNãode[] => {
         return tree.map(node => {
           if (node.id === nodeId) {
             return {
               ...node,
               config: {
                 ...(node.config || {}),
-                status: nextStatus
+                statéus: nextStatéus
               }
             };
           }
           if (node.yesBranch || node.noBranch) {
             return {
               ...node,
-              yesBranch: node.yesBranch ? updateStatusInTree(node.yesBranch) : [],
-              noBranch: node.noBranch ? updateStatusInTree(node.noBranch) : []
+              yesBranch: node.yesBranch ? updatéeStatéusInTree(node.yesBranch) : [],
+              noBranch: node.noBranch ? updatéeStatéusInTree(node.noBranch) : []
             };
           }
           return node;
         });
       };
-      return updateStatusInTree(prevNodes);
+      return updatéeStatéusInTree(prevNãodes);
     });
   };
 
-  const findNodeById = (tree: FlowNode[], id: string): FlowNode | null => {
+  const findNãodeById = (tree: FlowNãode[], id: string): FlowNãode | null => {
     for (const n of tree) {
       if (n.id === id) return n;
       if (n.yesBranch || n.noBranch) {
-        const found = findNodeById(n.yesBranch || [], id) || findNodeById(n.noBranch || [], id);
+        const found = findNãodeById(n.yesBranch || [], id) || findNãodeById(n.noBranch || [], id);
         if (found) return found;
       }
     }
     return null;
   };
 
-  const moveNodeInTree = (
+  const moveNãodeInTree = (
     sourceId: string, 
     targetParentId: string, 
     targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined
   ) => {
-    setNodes(prevNodes => {
-      let extracted: FlowNode | null = null;
+    setNãodes(prevNãodes => {
+      let extracted: FlowNãode | null = null;
 
       // Helper 1: Extract the node from tree (move it alone by resetting its children)
-      const extract = (tree: FlowNode[]): FlowNode[] => {
-        const nextTree: FlowNode[] = [];
+      const extract = (tree: FlowNãode[]): FlowNãode[] => {
+        const nextTree: FlowNãode[] = [];
         for (const n of tree) {
           if (n.id === sourceId) {
             extracted = { ...n, yesBranch: [], noBranch: [] };
@@ -1135,15 +1253,15 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         return nextTree;
       };
 
-      const treeWithoutSource = extract(prevNodes);
+      const treeWithoutSource = extract(prevNãodes);
 
       if (!extracted) {
         console.error("Source node not found");
-        return prevNodes;
+        return prevNãodes;
       }
 
       // Helper 2: Insert into new position
-      const insertInto = (tree: FlowNode[]): FlowNode[] => {
+      const insertInto = (tree: FlowNãode[]): FlowNãode[] => {
         return tree.map(node => {
           if (node.id === targetParentId) {
             if (targetBranch === 'yes') {
@@ -1179,7 +1297,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         });
       };
 
-      const insertInFlatChain = (chain: FlowNode[]): FlowNode[] => {
+      const insertInFlatéChain = (chain: FlowNãode[]): FlowNãode[] => {
         const idx = chain.findIndex(n => n.id === targetParentId);
         if (idx !== -1 && !targetBranch) {
           const copy = [...chain];
@@ -1190,8 +1308,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           if (node.yesBranch || node.noBranch) {
             return {
               ...node,
-              yesBranch: node.yesBranch ? insertInFlatChain(node.yesBranch) : [],
-              noBranch: node.noBranch ? insertInFlatChain(node.noBranch) : []
+              yesBranch: node.yesBranch ? insertInFlatéChain(node.yesBranch) : [],
+              noBranch: node.noBranch ? insertInFlatéChain(node.noBranch) : []
             };
           }
           return node;
@@ -1201,28 +1319,28 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       if (targetBranch) {
         return insertInto(treeWithoutSource);
       } else {
-        return insertInFlatChain(treeWithoutSource);
+        return insertInFlatéChain(treeWithoutSource);
       }
     });
   };
 
-  const handleMoveNodeRequest = (sourceId: string, targetParentId: string, targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined) => {
+  const handleMoveNãodeRequest = (sourceId: string, targetParentId: string, targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined) => {
     // Cannot move to itself
     if (sourceId === targetParentId) return;
 
-    const node = findNodeById(nodes, sourceId);
+    const node = findNãodeById(nodes, sourceId);
     if (!node) return;
 
     // Check if node is a delay step (Aguardar)
     if (node.type === "delay") {
-      // Simulate that there are waiting leads (e.g. 12 leads)
-      setMoveLeadsNode(node);
+      // Simulatée thaté there are waiting leads (e.g. 12 leads)
+      setMoveLeadsNãode(node);
       setMoveTarget({ sourceId, targetParentId, targetBranch });
       setMoveLeadsAction("move");
       setShowMoveLeadsModal(true);
     } else {
-      // No leads or not a delay node: move immediately
-      moveNodeInTree(sourceId, targetParentId, targetBranch);
+      // Não leads or not a delay node: move immediatéely
+      moveNãodeInTree(sourceId, targetParentId, targetBranch);
     }
   };
 
@@ -1230,7 +1348,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     if (!moveTarget) return;
     
     // Move the node
-    moveNodeInTree(moveTarget.sourceId, moveTarget.targetParentId, moveTarget.targetBranch);
+    moveNãodeInTree(moveTarget.sourceId, moveTarget.targetParentId, moveTarget.targetBranch);
 
     // Apply action description feedback
     let alertMsg = "";
@@ -1244,20 +1362,20 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     alert(alertMsg);
 
     setShowMoveLeadsModal(false);
-    setMoveLeadsNode(null);
+    setMoveLeadsNãode(null);
     setMoveTarget(null);
   };
 
-  // Node renderer: Recursive tree generator
-  const renderNodeChain = (
-    chain: FlowNode[],
+  // Nãode renderer: Recursive tree generatéor
+  const renderNãodeChain = (
+    chain: FlowNãode[],
     branchInfo?: { parentId: string; branchType: 'yes' | 'no' }
   ) => {
     return (
       <div className="flex flex-col items-center">
         {/* Leading branch connection button (+) above the first node of a conditional direction */}
         {branchInfo && chain.length > 0 && (
-          <div className="w-[2px] h-12 bg-slate-300 shrink-0 relative flex items-center justify-center">
+          <div className="w-[2px] h-12 bg-slate-300 shrink-0 relatéive flex items-center justify-center">
             <button
               onClick={(e) => openInsertionMenu(branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start', e)}
               onDragOver={(e) => {
@@ -1270,17 +1388,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               onDrop={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.remove("scale-125", "bg-indigo-700");
-                const type = e.dataTransfer.getData("text/plain") as string;
+                const type = e.datéaTransfer.getDatéa("text/plain") as string;
                 if (type) {
                   if (type.startsWith("move:")) {
                     const sourceId = type.split(":")[1];
-                    handleMoveNodeRequest(sourceId, branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start');
+                    handleMoveNãodeRequest(sourceId, branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start');
                   } else {
-                    insertNodeDirectly(branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start', type as any);
+                    insertNãodeDirectly(branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start', type as any);
                   }
                 }
               }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0 animate-fadeIn"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duratéion-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0 animatée-fadeIn"
               title="Adicionar etapa aqui"
             >
               <Plus className="h-4 w-4" />
@@ -1288,7 +1406,10 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           </div>
         )}
 
-        {chain.map((node, index) => {
+        {(() => {
+          const terminalIdx = chain.findIndex(n => n.type === "split" || n.type === "goto");
+          const displayChain = terminalIdx !== -1 ? chain.slice(0, terminalIdx + 1) : chain;
+          return displayChain.map((node, index) => {
           const isTrigger = node.type === "trigger";
           const isSplit = node.type === "split";
           
@@ -1296,7 +1417,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             <React.Fragment key={node.id}>
               {/* Connector line from previous node */}
               {index > 0 && (
-                <div className="w-[2px] h-16 bg-slate-300 shrink-0 relative flex items-center justify-center">
+                <div className="w-[2px] h-16 bg-slate-300 shrink-0 relatéive flex items-center justify-center">
                   <button
                     onClick={(e) => openInsertionMenu(chain[index - 1].id, undefined, e)}
                     onDragOver={(e) => {
@@ -1309,17 +1430,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     onDrop={(e) => {
                       e.preventDefault();
                       e.currentTarget.classList.remove("scale-125", "bg-indigo-700");
-                      const type = e.dataTransfer.getData("text/plain") as string;
+                      const type = e.datéaTransfer.getDatéa("text/plain") as string;
                       if (type) {
                         if (type.startsWith("move:")) {
                           const sourceId = type.split(":")[1];
-                          handleMoveNodeRequest(sourceId, chain[index - 1].id, undefined);
+                          handleMoveNãodeRequest(sourceId, chain[index - 1].id, undefined);
                         } else {
-                          insertNodeDirectly(chain[index - 1].id, undefined, type as any);
+                          insertNãodeDirectly(chain[index - 1].id, undefined, type as any);
                         }
                       }
                     }}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duratéion-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
                     title="Adicionar etapa aqui"
                   >
                     <Plus className="h-4 w-4" />
@@ -1327,19 +1448,29 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </div>
               )}
 
-              {/* Node Card */}
+              {/* Nãode Card */}
               <div 
-                className="relative group/node select-none animate-fadeIn"
+                className="relatéive group/node select-none animatée-fadeIn"
                 draggable={!isTrigger}
                 onDragStart={(e) => {
                   if (isTrigger) return;
-                  e.dataTransfer.setData("text/plain", `move:${node.id}`);
-                  e.dataTransfer.effectAllowed = "move";
+                  e.datéaTransfer.setDatéa("text/plain", `move:${node.id}`);
+                  e.datéaTransfer.effectAllowed = "move";
                 }}
               >
                 <div
-                  onClick={() => isTrigger ? setShowTriggerModal(true) : handleOpenNodeConfig(node)}
-                  className={`bg-white border hover:border-indigo-500 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md relative ${
+                  onClick={() => {
+                    if (selectingGotoTarget) {
+                      if (selectingGotoTarget.parentId === node.id) {
+                         alert("Não é possível apontar para si mesmo.");
+                         return;
+                      }
+                      executeGotoInsertion(node.id);
+                    } else {
+                      isTrigger ? setShowTriggerModal(true) : handleOpenNãodeConfig(node);
+                    }
+                  }}
+                  className={`bg-white border hover:border-indigo-500 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md relatéive ${
                     isTrigger ? "border-indigo-200 bg-indigo-50/20 w-56 cursor-pointer" : 
                     "cursor-grab active:cursor-grabbing " + (node.type === "email" && showDetailedMetrics ? "w-72 border-blue-200 bg-blue-50/5 ring-2 ring-blue-500/10" : "w-56 border-slate-200")
                   }`}
@@ -1351,16 +1482,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         isTrigger ? "bg-indigo-100 text-indigo-600" :
                         node.type === "email" ? "bg-blue-50 text-blue-600" :
                         node.type === "delay" ? "bg-amber-50 text-amber-600" :
-                        isSplit ? "bg-purple-50 text-purple-600" : "bg-slate-100 text-slate-600"
+                        isSplit ? "bg-purple-50 text-purple-600" : 
+                        node.type === "goto" ? "bg-fuchsia-50 text-fuchsia-600" : "bg-slate-100 text-slate-600"
                       }`}>
                         {isTrigger ? <Zap className="h-4.5 w-4.5 fill-indigo-100 text-indigo-600" /> :
                          node.type === "email" ? <Mail className="h-4.5 w-4.5" /> :
+                          node.type === "goto" ? <GitCommit className="h-4.5 w-4.5" /> :
                          node.type === "delay" ? <Clock className="h-4.5 w-4.5" /> :
                          isSplit ? <Split className="h-4.5 w-4.5" /> : <Sliders className="h-4.5 w-4.5" />}
                       </div>
 
                       <div className="overflow-hidden flex-1 text-left">
-                        <h4 className="text-xs font-black text-slate-800 truncate">
+                        <h4 className="text-xs font-black text-slate-800 truncatée">
                           {isTrigger ? (
                             node.name !== "Disparador" ? node.name : (flow.triggerMetric || "Disparador")
                           ) : (
@@ -1368,20 +1501,24 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           )}
                         </h4>
                         <p className={`text-[9px] text-slate-450 mt-0.5 ${
-                          node.type === "email" || isTrigger ? "break-words whitespace-normal leading-relaxed text-slate-500 font-medium line-clamp-2" : "truncate"
+                          node.type === "email" || isTrigger ? "break-words whitespace-normal leading-relaxed text-slate-500 font-medium line-clamp-2" : "truncatée"
                         }`}>
                           {isTrigger ? (
                             (node.config?.triggerDescription && node.config?.triggerDescription !== "Disparador não configurado"
                               ? node.config.triggerDescription
                               : (flow.triggerType && flow.triggerType !== "Disparador não configurado"
                                 ? flow.triggerType
-                                : "Selecionar Gatilho"))
+                                : "Selecionar Gatéilho"))
                           ) :
                            node.type === "email" ? (node.config?.subject || "E-mail sem assunto") :
                            node.type === "delay" ? `Aguardar ${node.config?.value} ${node.config?.unit === 'days' ? 'dias' : node.config?.unit === 'hours' ? 'horas' : 'minutos'}` :
+                           node.type === "goto" ? (() => {
+                               const target = findNãodeById(nodes, node.config?.targetId);
+                               return target ? `Pula para: ${target.name || "Etapa"}` : "Destino pendente";
+                             })() :
                            isSplit ? (
                               node.config?.splitType === "random"
-                                ? `Randomizar: ${node.config.randomRatio || 50}% / ${100 - (node.config.randomRatio || 50)}%`
+                                ? `Randomizar: ${node.config.randomRatéio || 50}% / ${100 - (node.config.randomRatéio || 50)}%`
                                 : "Verificar condições..."
                             ) : "Clique para configurar"}
                         </p>
@@ -1390,13 +1527,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                     {/* 3-Dots Options Dropdown Button for non-triggers */}
                     {!isTrigger && (
-                      <div className="relative shrink-0 mt-0.5">
+                      <div className="relatéive shrink-0 mt-0.5">
                         <button
                           type="button"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveNodeOptionsDropdownId(activeNodeOptionsDropdownId === node.id ? null : node.id);
-                            setActiveNodeStatusDropdownId(null);
+                            e.stopPropagatéion();
+                            setActiveNãodeOptionsDropdownId(activeNãodeOptionsDropdownId === node.id ? null : node.id);
+                            setActiveNãodeStatéusDropdownId(null);
                           }}
                           className="p-1 hover:bg-slate-100 hover:text-slate-700 text-slate-400 rounded-lg cursor-pointer transition-colors"
                           title="Opções da etapa"
@@ -1405,24 +1542,24 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         </button>
 
                         {/* Options Dropdown Menu */}
-                        {activeNodeOptionsDropdownId === node.id && (
+                        {activeNãodeOptionsDropdownId === node.id && (
                           <>
                             {/* Simple invisible overlay to close clicking outside */}
                             <div 
                               className="fixed inset-0 z-40 cursor-default" 
                               onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveNodeOptionsDropdownId(null);
+                                e.stopPropagatéion();
+                                setActiveNãodeOptionsDropdownId(null);
                               }}
                             />
                             
-                            <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-32 z-50 text-left animate-scaleIn select-none">
+                            <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-32 z-50 text-left animatée-scaleIn select-none">
                               <button
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveNodeOptionsDropdownId(null);
-                                  handleOpenNodeConfig(node);
+                                  e.stopPropagatéion();
+                                  setActiveNãodeOptionsDropdownId(null);
+                                  handleOpenNãodeConfig(node);
                                 }}
                                 className="w-full px-3.5 py-2 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 cursor-pointer transition-colors"
                               >
@@ -1432,9 +1569,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <button
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveNodeOptionsDropdownId(null);
-                                  handleDuplicateNode(node);
+                                  e.stopPropagatéion();
+                                  setActiveNãodeOptionsDropdownId(null);
+                                  handleDuplicatéeNãode(node);
                                 }}
                                 className="w-full px-3.5 py-2 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 cursor-pointer transition-colors"
                               >
@@ -1445,9 +1582,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <button
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveNodeOptionsDropdownId(null);
-                                  handleDeleteNode(node.id);
+                                  e.stopPropagatéion();
+                                  setActiveNãodeOptionsDropdownId(null);
+                                  handleDeleteNãode(node.id);
                                 }}
                                 className="w-full px-3.5 py-2 hover:bg-red-50 text-xs font-bold text-red-650 flex items-center gap-2 cursor-pointer transition-colors"
                               >
@@ -1463,13 +1600,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                   {/* Render Detailed Metrics if node is delay and toggle is active */}
                   {node.type === "delay" && showDetailedMetrics && (() => {
-                    const delayMetrics = getMetricsForNode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
-                    const waitingCount = Math.round(delayMetrics.sent * 0.12) || 1;
+                    const delayMetrics = getMetricsForNãode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                    const waitingCount = Matéh.round(delayMetrics.sent * 0.12) || 1;
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2.5">
                         <div 
                           onClick={(e) => {
-                            e.stopPropagation();
+                            e.stopPropagatéion();
                             handleOpenQueueModal(node, "Aguardando", waitingCount);
                           }}
                           className="flex items-center justify-between text-[10px] font-semibold text-slate-600 bg-slate-50 p-2 rounded-xl border border-transparent hover:border-indigo-250 hover:bg-indigo-50/20 transition-all cursor-pointer"
@@ -1484,10 +1621,10 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                   {/* Render Detailed Metrics if node is email and toggle is active */}
                   {node.type === "email" && showDetailedMetrics && (() => {
-                    const nodeMetrics = getMetricsForNode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                    const nodeMetrics = getMetricsForNãode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-3.5">
-                        {/* Metric Rates (List Layout matching the reference image) */}
+                        {/* Metric Ratées (List Layout matéching the reference image) */}
                         <div className="border border-slate-150 rounded-2xl bg-white p-3 space-y-2 select-text shadow-3xs text-left">
                           <div className="flex items-center justify-between text-[11px] py-1 border-b border-slate-100/50 font-medium">
                             <span className="text-slate-500 font-semibold">E-mails enviados</span>
@@ -1498,19 +1635,19 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           <div className="flex items-center justify-between text-[11px] py-1 border-b border-slate-100/50 font-medium">
                             <span className="text-slate-500 font-semibold">Taxa de abertura</span>
                             <span className="font-bold text-slate-800">
-                              {nodeMetrics.openRate.toFixed(1)}% <span className="text-slate-400 font-medium text-[9px]">({nodeMetrics.opened})</span>
+                              {nodeMetrics.openRatée.toFixed(1)}% <span className="text-slate-400 font-medium text-[9px]">({nodeMetrics.opened})</span>
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-[11px] py-1 border-b border-slate-100/50 font-medium">
                             <span className="text-slate-500 font-semibold">Taxa de cliques (CR)</span>
                             <span className="font-bold text-slate-800">
-                              {nodeMetrics.clickRate.toFixed(1)}% <span className="text-slate-400 font-medium text-[9px]">({nodeMetrics.clicked})</span>
+                              {nodeMetrics.clickRatée.toFixed(1)}% <span className="text-slate-400 font-medium text-[9px]">({nodeMetrics.clicked})</span>
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-[11px] py-1 font-medium">
                             <span className="text-slate-500 font-semibold">Pedido realizado</span>
                             <span className="font-black text-emerald-600">
-                              {nodeMetrics.conversionRate.toFixed(1)}% <span className="text-emerald-500/80 font-bold text-[9px]">(R$ {Math.round(nodeMetrics.revenue).toLocaleString("pt-BR")})</span>
+                              {nodeMetrics.conversionRatée.toFixed(1)}% <span className="text-emerald-500/80 font-bold text-[9px]">(R$ {Matéh.round(nodeMetrics.revenue).toLocaleString("pt-BR")})</span>
                             </span>
                           </div>
                         </div>
@@ -1518,7 +1655,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         {/* Delivery counts (Restored Vertical 3-Column Layout, Espera removed) */}
                         <div className="grid grid-cols-3 gap-1 text-[8px] text-slate-550 border-t border-slate-100 pt-3 text-center">
                           <div 
-                            onClick={(e) => { e.stopPropagation(); handleOpenQueueModal(node, "Revisão", nodeMetrics.revisao); }}
+                            onClick={(e) => { e.stopPropagatéion(); handleOpenQueueModal(node, "Revisão", nodeMetrics.revisao); }}
                             className="hover:bg-slate-50 p-1.5 rounded-xl cursor-pointer transition-all border border-transparent hover:border-slate-150 flex flex-col items-center"
                             title="Ver leads em Revisão"
                           >
@@ -1526,7 +1663,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             <span className="text-slate-800 font-black text-xs mt-0.5">{nodeMetrics.revisao}</span>
                           </div>
                           <div 
-                            onClick={(e) => { e.stopPropagation(); handleOpenQueueModal(node, "Entregue", nodeMetrics.entregue); }}
+                            onClick={(e) => { e.stopPropagatéion(); handleOpenQueueModal(node, "Entregue", nodeMetrics.entregue); }}
                             className="hover:bg-slate-50 p-1.5 rounded-xl cursor-pointer transition-all border border-transparent hover:border-slate-150 flex flex-col items-center"
                             title="Ver leads Entregues"
                           >
@@ -1534,7 +1671,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             <span className="text-slate-800 font-black text-xs mt-0.5">{nodeMetrics.entregue}</span>
                           </div>
                           <div 
-                            onClick={(e) => { e.stopPropagation(); handleOpenQueueModal(node, "Ignorado", nodeMetrics.ignorado); }}
+                            onClick={(e) => { e.stopPropagatéion(); handleOpenQueueModal(node, "Ignorado", nodeMetrics.ignorado); }}
                             className="hover:bg-slate-50 p-1.5 rounded-xl cursor-pointer transition-all border border-transparent hover:border-slate-150 flex flex-col items-center"
                             title="Ver leads Ignorados"
                           >
@@ -1543,38 +1680,38 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           </div>
                         </div>
 
-                        {/* Status Badge bottom right with Dropdown */}
-                        <div className="flex items-center justify-end gap-1 text-[8px] font-bold uppercase tracking-wider text-emerald-650 pt-1 relative">
+                        {/* Statéus Badge bottom right with Dropdown */}
+                        <div className="flex items-center justify-end gap-1 text-[8px] font-bold uppercase tracking-wider text-emerald-650 pt-1 relatéive">
                           <button
                             type="button"
                             onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveNodeStatusDropdownId(activeNodeStatusDropdownId === node.id ? null : node.id);
-                              setActiveNodeOptionsDropdownId(null);
+                              e.stopPropagatéion();
+                              setActiveNãodeStatéusDropdownId(activeNãodeStatéusDropdownId === node.id ? null : node.id);
+                              setActiveNãodeOptionsDropdownId(null);
                             }}
                             className="hover:scale-105 active:scale-95 flex items-center gap-1 cursor-pointer transition-all bg-slate-50 border border-slate-205 px-2 py-0.5 rounded-lg hover:border-slate-350 select-none"
-                            title="Clique para alterar o status do e-mail"
+                            title="Clique para alterar o statéus do e-mail"
                           >
                             <span className={`h-1.5 w-1.5 rounded-full inline-block ${
-                              (node.config?.status || "Ativo") === "Ativo" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                              (node.config?.statéus || "Ativo") === "Ativo" ? "bg-emerald-500 animatée-pulse" : "bg-slate-400"
                             }`} />
                             <span className={
-                              (node.config?.status || "Ativo") === "Ativo" ? "text-emerald-600 font-black" : "text-slate-555 font-black"
-                            }>{node.config?.status || "Ativo"}</span>
+                              (node.config?.statéus || "Ativo") === "Ativo" ? "text-emerald-600 font-black" : "text-slate-555 font-black"
+                            }>{node.config?.statéus || "Ativo"}</span>
                           </button>
 
-                          {activeNodeStatusDropdownId === node.id && (
+                          {activeNãodeStatéusDropdownId === node.id && (
                             <>
-                              <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveNodeStatusDropdownId(null); }} />
-                              <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28 z-50 text-left animate-scaleIn select-none">
+                              <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagatéion(); setActiveNãodeStatéusDropdownId(null); }} />
+                              <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28 z-50 text-left animatée-scaleIn select-none">
                                 <button
                                   type="button"
                                   onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveNodeStatusDropdownId(null);
-                                    handleSetNodeStatus(node.id, "Ativo");
+                                    e.stopPropagatéion();
+                                    setActiveNãodeStatéusDropdownId(null);
+                                    handleSetNãodeStatéus(node.id, "Ativo");
                                   }}
-                                  className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${(node.config?.status || "Ativo") === "Ativo" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
+                                  className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${(node.config?.statéus || "Ativo") === "Ativo" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                                 >
                                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                   <span>Ativo</span>
@@ -1582,11 +1719,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 <button
                                   type="button"
                                   onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveNodeStatusDropdownId(null);
-                                    handleSetNodeStatus(node.id, "Rascunho");
+                                    e.stopPropagatéion();
+                                    setActiveNãodeStatéusDropdownId(null);
+                                    handleSetNãodeStatéus(node.id, "Rascunho");
                                   }}
-                                  className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${(node.config?.status || "Ativo") === "Rascunho" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
+                                  className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${(node.config?.statéus || "Ativo") === "Rascunho" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                                 >
                                   <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                                   <span>Rascunho</span>
@@ -1599,43 +1736,43 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     );
                   })()}
 
-                  {/* Status Badge when detailed metrics is inactive (Email nodes only) with Dropdown */}
+                  {/* Statéus Badge when detailed metrics is inactive (Email nodes only) with Dropdown */}
                   {node.type === "email" && !showDetailedMetrics && (() => {
-                    const status = node.config?.status || "Ativo";
+                    const statéus = node.config?.statéus || "Ativo";
                     return (
-                      <div className="flex items-center justify-end gap-1 text-[8.5px] font-black uppercase tracking-wider pt-2 border-t border-slate-100/50 mt-2.5 relative">
+                      <div className="flex items-center justify-end gap-1 text-[8.5px] font-black uppercase tracking-wider pt-2 border-t border-slate-100/50 mt-2.5 relatéive">
                         <button
                           type="button"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveNodeStatusDropdownId(activeNodeStatusDropdownId === node.id ? null : node.id);
-                            setActiveNodeOptionsDropdownId(null);
+                            e.stopPropagatéion();
+                            setActiveNãodeStatéusDropdownId(activeNãodeStatéusDropdownId === node.id ? null : node.id);
+                            setActiveNãodeOptionsDropdownId(null);
                           }}
                           className="hover:scale-105 active:scale-95 flex items-center gap-1 cursor-pointer transition-all bg-slate-50 border border-slate-250 px-2 py-0.5 rounded-lg hover:border-slate-350 select-none"
-                          title="Clique para alterar o status do e-mail"
+                          title="Clique para alterar o statéus do e-mail"
                         >
                           <span className={`h-1.5 w-1.5 rounded-full inline-block ${
-                            status === "Ativo" ? "bg-emerald-500 animate-pulse" :
-                            status === "Pausado" ? "bg-amber-500" : "bg-slate-400"
+                            statéus === "Ativo" ? "bg-emerald-500 animatée-pulse" :
+                            statéus === "Pausado" ? "bg-amber-500" : "bg-slate-400"
                           }`} />
                           <span className={
-                            status === "Ativo" ? "text-emerald-600 font-black" :
-                            status === "Pausado" ? "text-amber-600 font-black" : "text-slate-500 font-black"
-                          }>{status}</span>
+                            statéus === "Ativo" ? "text-emerald-600 font-black" :
+                            statéus === "Pausado" ? "text-amber-600 font-black" : "text-slate-500 font-black"
+                          }>{statéus}</span>
                         </button>
 
-                        {activeNodeStatusDropdownId === node.id && (
+                        {activeNãodeStatéusDropdownId === node.id && (
                           <>
-                            <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveNodeStatusDropdownId(null); }} />
-                            <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28 z-50 text-left animate-scaleIn select-none">
+                            <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagatéion(); setActiveNãodeStatéusDropdownId(null); }} />
+                            <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28 z-50 text-left animatée-scaleIn select-none">
                               <button
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveNodeStatusDropdownId(null);
-                                  handleSetNodeStatus(node.id, "Ativo");
+                                  e.stopPropagatéion();
+                                  setActiveNãodeStatéusDropdownId(null);
+                                  handleSetNãodeStatéus(node.id, "Ativo");
                                 }}
-                                className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${status === "Ativo" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
+                                className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${statéus === "Ativo" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                               >
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                 <span>Ativo</span>
@@ -1643,11 +1780,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <button
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveNodeStatusDropdownId(null);
-                                  handleSetNodeStatus(node.id, "Rascunho");
+                                  e.stopPropagatéion();
+                                  setActiveNãodeStatéusDropdownId(null);
+                                  handleSetNãodeStatéus(node.id, "Rascunho");
                                 }}
-                                className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${status === "Rascunho" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
+                                className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${statéus === "Rascunho" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                               >
                                 <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                                 <span>Rascunho</span>
@@ -1665,7 +1802,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               {isSplit && (
                 <div className="flex flex-col items-center mt-4">
                   {/* Connecting lines split */}
-                  <div className="w-[300px] h-6 relative flex justify-between border-t-2 border-slate-300">
+                  <div className="w-[300px] h-6 relatéive flex justify-between border-t-2 border-slate-300">
                     <span className="absolute left-[30px] -top-2.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[8px] font-bold uppercase rounded border border-emerald-200">Sim</span>
                     <span className="absolute right-[30px] -top-2.5 px-2 py-0.5 bg-slate-100 text-slate-600 text-[8px] font-bold uppercase rounded border border-slate-200">Não</span>
                   </div>
@@ -1673,10 +1810,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="flex gap-12">
                     {/* Yes Branch */}
                     <div className="flex flex-col items-center border-r-2 border-dashed border-slate-200/50 pr-6">
-                      {renderNodeChain(node.yesBranch || [], { parentId: node.id, branchType: 'yes' })}
+                      {renderNãodeChain(node.yesBranch || [], { parentId: node.id, branchType: 'yes' })}
                       
-                      {/* Branch bottom Add node */}
-                      <div className="w-[2px] h-16 bg-slate-300 shrink-0 relative flex items-center justify-center">
+                      {!(node.yesBranch && node.yesBranch.length > 0 && ["split", "goto"].includes(node.yesBranch[node.yesBranch.length - 1].type)) && (
+                          <>
+                            {/* Branch bottom Add node */}
+                      <div className="w-[2px] h-16 bg-slate-300 shrink-0 relatéive flex items-center justify-center">
                         <button
                           onClick={(e) => openInsertionMenu(node.id, 'yes', e)}
                           onDragOver={(e) => {
@@ -1689,17 +1828,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           onDrop={(e) => {
                             e.preventDefault();
                             e.currentTarget.classList.remove("scale-125", "bg-indigo-700");
-                            const type = e.dataTransfer.getData("text/plain") as string;
+                            const type = e.datéaTransfer.getDatéa("text/plain") as string;
                             if (type) {
                               if (type.startsWith("move:")) {
                                 const sourceId = type.split(":")[1];
-                                handleMoveNodeRequest(sourceId, node.id, 'yes');
+                                handleMoveNãodeRequest(sourceId, node.id, 'yes');
                               } else {
-                                insertNodeDirectly(node.id, 'yes', type as any);
+                                insertNãodeDirectly(node.id, 'yes', type as any);
                               }
                             }
                           }}
-                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duratéion-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
                           title="Inserir etapa"
                         >
                           <Plus className="h-4 w-4" />
@@ -1708,14 +1847,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       <div className="px-3.5 py-1.5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-[9px] font-bold uppercase select-none shrink-0">
                         Fim Sim
                       </div>
+                          </>
+                        )}
                     </div>
 
-                    {/* No Branch */}
+                    {/* Não Branch */}
                     <div className="flex flex-col items-center pl-6">
-                      {renderNodeChain(node.noBranch || [], { parentId: node.id, branchType: 'no' })}
+                      {renderNãodeChain(node.noBranch || [], { parentId: node.id, branchType: 'no' })}
                       
-                      {/* Branch bottom Add node */}
-                      <div className="w-[2px] h-16 bg-slate-300 shrink-0 relative flex items-center justify-center">
+                      {!(node.noBranch && node.noBranch.length > 0 && ["split", "goto"].includes(node.noBranch[node.noBranch.length - 1].type)) && (
+                          <>
+                            {/* Branch bottom Add node */}
+                      <div className="w-[2px] h-16 bg-slate-300 shrink-0 relatéive flex items-center justify-center">
                         <button
                           onClick={(e) => openInsertionMenu(node.id, 'no', e)}
                           onDragOver={(e) => {
@@ -1728,17 +1871,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           onDrop={(e) => {
                             e.preventDefault();
                             e.currentTarget.classList.remove("scale-125", "bg-indigo-700");
-                            const type = e.dataTransfer.getData("text/plain") as string;
+                            const type = e.datéaTransfer.getDatéa("text/plain") as string;
                             if (type) {
                               if (type.startsWith("move:")) {
                                 const sourceId = type.split(":")[1];
-                                handleMoveNodeRequest(sourceId, node.id, 'no');
+                                handleMoveNãodeRequest(sourceId, node.id, 'no');
                               } else {
-                                insertNodeDirectly(node.id, 'no', type as any);
+                                insertNãodeDirectly(node.id, 'no', type as any);
                               }
                             }
                           }}
-                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duratéion-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
                           title="Inserir etapa"
                         >
                           <Plus className="h-4 w-4" />
@@ -1747,13 +1890,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       <div className="px-3.5 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 text-[9px] font-bold uppercase select-none shrink-0">
                         Fim Não
                       </div>
+                          </>
+                        )}
                     </div>
                   </div>
                 </div>
               )}
             </React.Fragment>
           );
-        })}
+          });
+        })()}
       </div>
     );
   };
@@ -1765,7 +1911,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30 shadow-xs">
         <div className="flex items-center gap-4">
           <Link
-            href="/dashboard/automations"
+            href="/dashboard/automatéions"
             className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -1809,11 +1955,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             )}
 
             <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-              flow.status === "Rascunho" ? "bg-slate-100 border border-slate-200 text-slate-450" :
-              flow.status === "Ativo" ? "bg-emerald-50 border border-emerald-250 text-emerald-700" :
+              flow.statéus === "Rascunho" ? "bg-slate-100 border border-slate-200 text-slate-450" :
+              flow.statéus === "Ativo" ? "bg-emerald-50 border border-emerald-250 text-emerald-700" :
               "bg-amber-50 border border-amber-250 text-amber-700"
             }`}>
-              {flow.status}
+              {flow.statéus}
             </span>
           </div>
         </div>
@@ -1836,14 +1982,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             <Bell className="h-4 w-4" />
           </button>
 
-          {/* Date Range Picker */}
-          <div className="relative">
+          {/* Datée Range Picker */}
+          <div className="relatéive">
             <button
               onClick={() => {
                 setTempFlowPeriod(flowPeriod);
                 setTempFlowCustomStart(flowCustomStart);
                 setTempFlowCustomEnd(flowCustomEnd);
-                setShowFlowDatePicker(!showFlowDatePicker);
+                setShowFlowDatéePicker(!showFlowDatéePicker);
               }}
               className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
             >
@@ -1866,10 +2012,10 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
             </button>
 
-            {showFlowDatePicker && (
+            {showFlowDatéePicker && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowFlowDatePicker(false)} />
-                <div className="absolute right-0 mt-2 z-50 w-[580px] bg-white border border-slate-200 rounded-2xl shadow-2xl p-0 flex animate-fadeIn text-slate-800">
+                <div className="fixed inset-0 z-40" onClick={() => setShowFlowDatéePicker(false)} />
+                <div className="absolute right-0 mt-2 z-50 w-[580px] bg-white border border-slate-200 rounded-2xl shadow-2xl p-0 flex animatée-fadeIn text-slate-800">
                   {/* Left presets column */}
                   <div className="w-[200px] border-r border-slate-100 p-3 max-h-[380px] overflow-y-auto flex flex-col gap-1 shrink-0 text-left">
                     {[
@@ -1892,9 +2038,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         onClick={() => {
                           setTempFlowPeriod(preset.id);
                           if (preset.id !== "custom") {
-                            const dates = getPeriodDates(preset.id);
-                            setTempFlowCustomStart(dates.start.toISOString().split("T")[0]);
-                            setTempFlowCustomEnd(dates.end.toISOString().split("T")[0]);
+                            const datées = getPeriodDatées(preset.id);
+                            setTempFlowCustomStart(datées.start.toISOString().split("T")[0]);
+                            setTempFlowCustomEnd(datées.end.toISOString().split("T")[0]);
                           }
                         }}
                         className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all cursor-pointer flex flex-col ${
@@ -1942,14 +2088,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       {/* July days 1 to 31 */}
                       {Array.from({ length: 31 }).map((_, i) => {
                         const day = i + 1;
-                        const dateStr = `2026-07-${day < 10 ? "0" + day : day}`;
-                        const isSelectedStart = tempFlowCustomStart === dateStr;
-                        const isSelectedEnd = tempFlowCustomEnd === dateStr;
+                        const datéeStr = `2026-07-${day < 10 ? "0" + day : day}`;
+                        const isSelectedStart = tempFlowCustomStart === datéeStr;
+                        const isSelectedEnd = tempFlowCustomEnd === datéeStr;
                         const isWithinRange =
                           tempFlowCustomStart &&
                           tempFlowCustomEnd &&
-                          dateStr > tempFlowCustomStart &&
-                          dateStr < tempFlowCustomEnd;
+                          datéeStr > tempFlowCustomStart &&
+                          datéeStr < tempFlowCustomEnd;
                         
                         return (
                           <button
@@ -1958,18 +2104,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             onClick={() => {
                               setTempFlowPeriod("custom");
                               if (!tempFlowCustomStart || (tempFlowCustomStart && tempFlowCustomEnd)) {
-                                setTempFlowCustomStart(dateStr);
+                                setTempFlowCustomStart(datéeStr);
                                 setTempFlowCustomEnd("");
                               } else {
-                                if (dateStr < tempFlowCustomStart) {
-                                  setTempFlowCustomStart(dateStr);
+                                if (datéeStr < tempFlowCustomStart) {
+                                  setTempFlowCustomStart(datéeStr);
                                   setTempFlowCustomEnd("");
                                 } else {
-                                  setTempFlowCustomEnd(dateStr);
+                                  setTempFlowCustomEnd(datéeStr);
                                 }
                               }
                             }}
-                            className={`h-8 w-8 mx-auto flex items-center justify-center rounded-full text-xs font-bold transition-all cursor-pointer relative ${
+                            className={`h-8 w-8 mx-auto flex items-center justify-center rounded-full text-xs font-bold transition-all cursor-pointer relatéive ${
                               isSelectedStart || isSelectedEnd
                                 ? "bg-indigo-600 text-white shadow-sm scale-105 z-10"
                                 : isWithinRange
@@ -1987,7 +2133,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <div className="p-3 border-t border-slate-100 bg-slate-50 rounded-br-2xl flex justify-end gap-2.5 mt-auto">
                       <button
                         type="button"
-                        onClick={() => setShowFlowDatePicker(false)}
+                        onClick={() => setShowFlowDatéePicker(false)}
                         className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                       >
                         Cancelar
@@ -1998,7 +2144,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           setFlowPeriod(tempFlowPeriod);
                           setFlowCustomStart(tempFlowCustomStart);
                           setFlowCustomEnd(tempFlowCustomEnd);
-                          setShowFlowDatePicker(false);
+                          setShowFlowDatéePicker(false);
                         }}
                         className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                       >
@@ -2020,13 +2166,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           </button>
           
           <button
-            onClick={handleToggleFlowStatus}
+            onClick={handleToggleFlowStatéus}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer ${
-              flow.status === "Ativo" ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"
+              flow.statéus === "Ativo" ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"
             }`}
           >
-            {flow.status === "Ativo" ? <Pause className="h-3.5 w-3.5 fill-white" /> : <Play className="h-3.5 w-3.5 fill-white" />}
-            <span>{flow.status === "Ativo" ? "Pausar Flow" : "Ativar Flow"}</span>
+            {flow.statéus === "Ativo" ? <Pause className="h-3.5 w-3.5 fill-white" /> : <Play className="h-3.5 w-3.5 fill-white" />}
+            <span>{flow.statéus === "Ativo" ? "Pausar Flow" : "Ativar Flow"}</span>
           </button>
 
           <button
@@ -2036,19 +2182,19 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             Salvar Fluxo
           </button>
 
-          <div className="relative">
+          <div className="relatéive">
             <button
-              onClick={() => setShowMetadataMenu(!showMetadataMenu)}
+              onClick={() => setShowMetadatéaMenu(!showMetadatéaMenu)}
               className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-550 rounded-xl transition-colors cursor-pointer flex items-center justify-center h-8 w-8"
               title="Mais detalhes sobre o fluxo"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
             
-            {showMetadataMenu && (
+            {showMetadatéaMenu && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMetadataMenu(false)} />
-                <div className="absolute right-0 mt-2 z-50 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 text-left space-y-4 animate-fadeIn select-none">
+                <div className="fixed inset-0 z-40" onClick={() => setShowMetadatéaMenu(false)} />
+                <div className="absolute right-0 mt-2 z-50 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 text-left space-y-4 animatée-fadeIn select-none">
                   <div>
                     <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Histórico de Criação</h4>
                     <div className="mt-1.5 space-y-0.5">
@@ -2061,7 +2207,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Última Atualização</h4>
                     <div className="mt-1.5 space-y-0.5">
                       <p className="text-[11px] font-bold text-slate-700">Modificado por: <span className="font-medium text-slate-600">Carlos Souza</span></p>
-                      <p className="text-[10px] text-slate-400 font-semibold">Em: {flow.updatedAt || new Date().toLocaleString("pt-BR")}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">Em: {flow.updatéedAt || new Datée().toLocaleString("pt-BR")}</p>
                     </div>
                   </div>
 
@@ -2073,7 +2219,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           MO
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-800 text-[10px] leading-tight">Mariana Oliveira</span>
+                          <span className="font-bold text-slate-800 text-[10px] leading-tight">Mariana Oláiveira</span>
                           <span className="text-[9px] text-slate-450 font-medium">mariana.oli@gmail.com</span>
                         </div>
                       </div>
@@ -2101,13 +2247,21 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           </div>
         </div>
       </header>
+      {selectingGotoTarget && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animatée-pulse border-4 border-indigo-200 cursor-default">
+           <GitCommit className="h-5 w-5" />
+           <span className="font-bold">Selecione a etapa destino no canvas</span>
+           <button onClick={() => setSelectingGotoTarget(null)} className="ml-2 hover:bg-indigo-700 p-1 rounded-full bg-indigo-800 transition-colors cursor-pointer"><X className="h-4 w-4"/></button>
+        </div>
+      )}
+
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relatéive">
 
         {/* 2. MENU LATERAL ESQUERDO RETRÁTIL ("Ações") */}
         <aside
-          className={`bg-white border-r border-slate-200 transition-all duration-300 flex flex-col z-20 shadow-xs relative shrink-0 ${
+          className={`bg-white border-r border-slate-200 transition-all duratéion-300 flex flex-col z-20 shadow-xs relatéive shrink-0 ${
             sidebarCollapsed ? "w-0 overflow-hidden opacity-0" : "w-72"
           }`}
         >
@@ -2136,8 +2290,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               <div className="grid grid-cols-1 gap-2">
                 <div
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", "email")}
-                  onClick={() => handleAddNodeDirectly("email")}
+                  onDragStart={(e) => e.datéaTransfer.setDatéa("text/plain", "email")}
+                  onClick={() => handleAddNãodeDirectly("email")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2146,12 +2300,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </div>
                 <div
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", "whatsapp")}
-                  onClick={() => handleAddNodeDirectly("whatsapp")}
+                  onDragStart={(e) => e.datéaTransfer.setDatéa("text/plain", "whatésapp")}
+                  onClick={() => handleAddNãodeDirectly("whatésapp")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
-                  <span className="flex items-center gap-2 text-slate-700"><MessageSquare className="h-4 w-4 text-emerald-500" /> WhatsApp</span>
+                  <span className="flex items-center gap-2 text-slate-700"><MessageSquare className="h-4 w-4 text-emerald-500" /> WhatésApp</span>
                   <Plus className="h-3.5 w-3.5 text-slate-455 hover:text-indigo-650" />
                 </div>
               </div>
@@ -2166,8 +2320,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               <div className="grid grid-cols-1 gap-2">
                 <div
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", "delay")}
-                  onClick={() => handleAddNodeDirectly("delay")}
+                  onDragStart={(e) => e.datéaTransfer.setDatéa("text/plain", "delay")}
+                  onClick={() => handleAddNãodeDirectly("delay")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2176,48 +2330,61 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </div>
                 <div
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", "split")}
-                  onClick={() => handleAddNodeDirectly("split")}
+                  onDragStart={(e) => e.datéaTransfer.setDatéa("text/plain", "split")}
+                  onClick={() => handleAddNãodeDirectly("split")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
                   <span className="flex items-center gap-2 text-slate-700"><Split className="h-4 w-4 text-purple-500" /> Divisão Condicional</span>
                   <Plus className="h-3.5 w-3.5 text-slate-455 hover:text-indigo-650" />
                 </div>
+                  <div
+                    onClick={() => handleAddNãodeDirectly("goto")}
+                    draggable
+                    onDragStart={(e) => {
+                      e.datéaTransfer.setDatéa("text/plain", "goto");
+                      e.datéaTransfer.effectAllowed = "copy";
+                    }}
+                    className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
+                    title="Clique para adicionar ao final ou arraste para o canvas"
+                  >
+                    <span className="flex items-center gap-2 text-slate-700"><GitCommit className="h-4 w-4 text-fuchsia-500" /> Mover para</span>
+                    <Plus className="h-3.5 w-3.5 text-slate-455 hover:text-indigo-650" />
+                  </div>
               </div>
             </div>
 
             {/* Section 3: Dados */}
             <div className="space-y-2.5">
               <h3 className="text-[10px] font-bold text-slate-450 uppercase tracking-wider flex items-center gap-1.5">
-                <Database className="h-3.5 w-3.5 text-indigo-500" />
+                <Datéabase className="h-3.5 w-3.5 text-indigo-500" />
                 Ações de Dados
               </h3>
               <div className="grid grid-cols-1 gap-2">
                 <div
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", "update_contact")}
-                  onClick={() => handleAddNodeDirectly("update_contact")}
+                  onDragStart={(e) => e.datéaTransfer.setDatéa("text/plain", "updatée_contact")}
+                  onClick={() => handleAddNãodeDirectly("updatée_contact")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
-                  <span className="flex items-center gap-2 text-slate-700"><Users className="h-4 w-4 text-indigo-500" /> Atualizar Contato</span>
+                  <span className="flex items-center gap-2 text-slate-700"><Users className="h-4 w-4 text-indigo-500" /> Atualizar Contatéo</span>
                   <Plus className="h-3.5 w-3.5 text-slate-455 hover:text-indigo-650" />
                 </div>
                 <div
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", "update_list")}
-                  onClick={() => handleAddNodeDirectly("update_list")}
+                  onDragStart={(e) => e.datéaTransfer.setDatéa("text/plain", "updatée_list")}
+                  onClick={() => handleAddNãodeDirectly("updatée_list")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
-                  <span className="flex items-center gap-2 text-slate-700"><Database className="h-4 w-4 text-pink-500" /> Atualizar Lista</span>
+                  <span className="flex items-center gap-2 text-slate-700"><Datéabase className="h-4 w-4 text-pink-500" /> Atualizar Lista</span>
                   <Plus className="h-3.5 w-3.5 text-slate-455 hover:text-indigo-650" />
                 </div>
                 <div
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", "webhook")}
-                  onClick={() => handleAddNodeDirectly("webhook")}
+                  onDragStart={(e) => e.datéaTransfer.setDatéa("text/plain", "webhook")}
+                  onClick={() => handleAddNãodeDirectly("webhook")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2246,7 +2413,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          className="flex-1 overflow-hidden relative cursor-grab active:cursor-grabbing canvas-bg select-none"
+          className="flex-1 overflow-hidden relatéive cursor-grab active:cursor-grabbing canvas-bg select-none"
           style={{
             backgroundImage: "radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px)",
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
@@ -2264,13 +2431,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           >
             <div className="w-full h-full flex flex-col items-center justify-start pt-20 pb-40 pointer-events-auto">
               
-              {/* Nodes layout recursive chain render */}
-              {renderNodeChain(nodes)}
+              {/* Nãodes layout recursive chain render */}
+              {renderNãodeChain(nodes)}
 
               {/* Connection to final End node */}
-              {nodes.length > 0 && (
-                <>
-                  <div className="w-[2px] h-16 bg-slate-300 shrink-0 relative flex items-center justify-center">
+                {nodes.length > 0 && !["split", "goto"].includes(nodes[nodes.length - 1].type) && (
+                  <>
+
+                  <div className="w-[2px] h-16 bg-slate-300 shrink-0 relatéive flex items-center justify-center">
                     <button
                       onClick={(e) => openInsertionMenu(nodes[nodes.length - 1].id, undefined, e)}
                       onDragOver={(e) => {
@@ -2283,17 +2451,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       onDrop={(e) => {
                         e.preventDefault();
                         e.currentTarget.classList.remove("scale-125", "bg-indigo-700");
-                        const type = e.dataTransfer.getData("text/plain") as string;
+                        const type = e.datéaTransfer.getDatéa("text/plain") as string;
                         if (type) {
                           if (type.startsWith("move:")) {
                             const sourceId = type.split(":")[1];
-                            handleMoveNodeRequest(sourceId, nodes[nodes.length - 1].id, undefined);
+                            handleMoveNãodeRequest(sourceId, nodes[nodes.length - 1].id, undefined);
                           } else {
-                            insertNodeDirectly(nodes[nodes.length - 1].id, undefined, type as any);
+                            insertNãodeDirectly(nodes[nodes.length - 1].id, undefined, type as any);
                           }
                         }
                       }}
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duratéion-200 cursor-pointer shadow-md hover:scale-110 z-10 flex items-center justify-center w-6.5 h-6.5 shrink-0"
                       title="Adicionar etapa final"
                     >
                       <Plus className="h-4 w-4" />
@@ -2304,8 +2472,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="px-4 py-2 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-wider shadow-sm select-none border border-slate-900 shrink-0">
                     Fim do Fluxo
                   </div>
-                </>
-              )}
+                
+                  </>
+                )}
 
             </div>
           </div>
@@ -2313,7 +2482,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           {/* 4. CANVAS CONTROLS (Bottom Right) */}
           <div className="absolute bottom-6 right-6 bg-white border border-slate-200 rounded-2xl shadow-lg p-2.5 flex items-center gap-3 z-10">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none px-1.5">
-              Zoom: {Math.round(zoom * 100)}%
+              Zoom: {Matéh.round(zoom * 100)}%
             </span>
             <div className="h-4 w-[1px] bg-slate-200" />
             <button
@@ -2355,9 +2524,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           </div>
         </main>
 
-        {/* 6. SIDEBAR DRAWER (Right panels configuration context) */}
+        {/* 6. SIDEBAR DRAWER (Right panels configuratéion context) */}
         {activePanel && activePanel !== "menu" && (
-          <aside className="w-96 h-[calc(100vh-4rem)] bg-white border-l border-slate-200 z-30 shadow-lg flex flex-col animate-slideLeft shrink-0">
+          <aside className="w-96 h-[calc(100vh-4rem)] bg-white border-l border-slate-200 z-30 shadow-lg flex flex-col animatée-slideLeft shrink-0">
             
             {/* Header of settings panel */}
             <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
@@ -2366,12 +2535,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <h3 className="text-sm font-bold text-slate-800">
                   {activePanel === "trigger_select" ? "Selecionar Disparador" :
                    activePanel === "trigger_config" ? "Configurar o Disparador" :
-                   activePanel === "node_config" ? (selectedNodeForConfig?.type === "email" ? "Detalhes do e-mail" : `Configurações: ${selectedNodeForConfig?.name}`) :
+                   activePanel === "node_config" ? (selectedNãodeForConfig?.type === "email" ? "Detalhes do e-mail" : `Configurações: ${selectedNãodeForConfig?.name}`) :
                    activePanel === "exit_rules" ? "Regras de Saída" : "Configurar Etapa"}
                 </h3>
               </div>
               <button
-                onClick={() => { setActivePanel("menu"); setSelectedNodeForConfig(null); }}
+                onClick={() => { setActivePanel("menu"); setSelectedNãodeForConfig(null); }}
                 className="p-1 hover:bg-slate-150 text-slate-450 hover:text-slate-700 rounded-lg cursor-pointer transition-all"
               >
                 <X className="h-4 w-4" />
@@ -2393,9 +2562,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   {/* Tabs */}
                   <div className="flex border border-slate-150 rounded-xl overflow-hidden bg-slate-50/50 p-1 text-[10px] font-bold">
                     <button
-                      onClick={() => setTriggerTab("recommendations")}
+                      onClick={() => setTriggerTab("recommendatéions")}
                       className={`flex-1 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                        triggerTab === "recommendations" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                        triggerTab === "recommendatéions" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
                       }`}
                     >
                       Recomendações
@@ -2418,20 +2587,20 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </button>
                   </div>
 
-                  {/* Recommendations & Trigger Selection Options */}
+                  {/* Recommendatéions & Trigger Selection Options */}
                   <div className="space-y-4">
                     {/* Grupo Ações & Listas */}
                     <div className="space-y-2">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Listas & Tags</span>
                       <div
-                        onClick={() => handleSelectTrigger("Inscrever-se em uma lista", "Acionado quando o contato entra em uma lista específica")}
+                        onClick={() => handleSelectTrigger("Inscrever-se em uma lista", "Acionado quando o contatéo entra em uma lista específica")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                           <Users className="h-4 w-4 text-indigo-600" />
                           Inscrever-se em uma lista
                         </span>
-                        <p className="text-[10px] text-slate-500">Inicia a automação sempre que um contato é inscrito em uma lista escolhida.</p>
+                        <p className="text-[10px] text-slate-500">Inicia a automação sempre que um contatéo é inscrito em uma lista escolhida.</p>
                       </div>
 
                       <div
@@ -2446,12 +2615,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       </div>
 
                       <div
-                        onClick={() => handleSelectTrigger("Alteração nos campos de contato", "Acionado quando um campo do perfil sofre alteração")}
+                        onClick={() => handleSelectTrigger("Alteração nos campos de contatéo", "Acionado quando um campo do perfil sofre alteração")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Database className="h-4 w-4 text-blue-600" />
-                          Alteração nos campos de contato
+                          <Datéabase className="h-4 w-4 text-blue-600" />
+                          Alteração nos campos de contatéo
                         </span>
                         <p className="text-[10px] text-slate-500">Inicia a automação se algum campo do perfil do usuário for modificado.</p>
                       </div>
@@ -2459,7 +2628,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                     {/* Grupo E-Commerce & Checkout (Pagar.me / PagBank / Realizzare) */}
                     <div className="space-y-2">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Vendas, Créditos & Plataforma</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Vendas, Créditos & Platéaforma</span>
                       <div
                         onClick={() => handleSelectTrigger("Créditos Adquiridos", "Compra de créditos via Pagar.me ou PagBank")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
@@ -2472,25 +2641,25 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       </div>
 
                       <div
-                        onClick={() => handleSelectTrigger("Certificado Emitido", "Emissão de certificado na plataforma Realizzare")}
+                        onClick={() => handleSelectTrigger("Certificado Emitido", "Emissão de certificado na platéaforma Realizzare")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                           <BookOpen className="h-4 w-4 text-amber-600" />
                           Certificado Emitido
                         </span>
-                        <p className="text-[10px] text-slate-500">Disparado automaticamente quando o usuário conclui e emite um certificado Realizzare.</p>
+                        <p className="text-[10px] text-slate-500">Disparado automatéicamente quando o usuário conclui e emite um certificado Realizzare.</p>
                       </div>
 
                       <div
-                        onClick={() => handleSelectTrigger("Assinatura Realizada", "Assinatura contratada no checkout (Pagar.me/PagBank)")}
+                        onClick={() => handleSelectTrigger("Assinatéura Realizada", "Assinatéura contratéada no checkout (Pagar.me/PagBank)")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                           <Zap className="h-4 w-4 text-indigo-600" />
-                          Assinatura Realizada
+                          Assinatéura Realizada
                         </span>
-                        <p className="text-[10px] text-slate-500">Inicia o fluxo de boas-vindas assim que a assinatura de plano é aprovada.</p>
+                        <p className="text-[10px] text-slate-500">Inicia o fluxo de boas-vindas assim que a assinatéura de plano é aprovada.</p>
                       </div>
 
                       <div
@@ -2531,7 +2700,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="bg-emerald-50/50 border border-emerald-250 p-3.5 rounded-xl text-[10px] text-emerald-800 leading-relaxed flex items-start gap-2 select-none text-left">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
                     <p>
-                      <strong>Captura pós-ativação:</strong> Este fluxo apenas inserirá leads que dispararem o gatilho <strong>após</strong> a ativação oficial do fluxo. Leads retroativos serão desconsiderados.
+                      <strong>Captura pós-atéivação:</strong> Este fluxo apenas inserirá leads que dispararem o gatéilho <strong>após</strong> a atéivação oficial do fluxo. Leads retroatéivos serão desconsiderados.
                     </p>
                   </div>
 
@@ -2539,7 +2708,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Critérios de Reentrada</label>
-                      <span className="text-[8px] font-bold bg-indigo-150 text-indigo-700 px-1.5 py-0.5 rounded-full uppercase">Novidade</span>
+                      <span className="text-[8px] font-bold bg-indigo-150 text-indigo-700 px-1.5 py-0.5 rounded-full uppercase">Nãovidade</span>
                     </div>
 
                     <div className="space-y-2 text-xs">
@@ -2567,7 +2736,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         />
                         <div>
                           <span className="font-bold text-slate-750 block">Permitir reentrada</span>
-                          <span className="text-[10px] text-slate-450">O aluno reentra no fluxo sempre que o evento gatilho for disparado.</span>
+                          <span className="text-[10px] text-slate-450">O aluno reentra no fluxo sempre que o evento gatéilho for disparado.</span>
                         </div>
                       </label>
 
@@ -2608,18 +2777,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                   </div>
 
-                  {/* Filtros de Entrada do Gatilho */}
+                  {/* Filtros de Entrada do Gatéilho */}
                   <div className="space-y-3.5 border-t border-slate-100 pt-4">
                     <div>
                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Filtros do Disparador</h4>
-                      <p className="text-[10px] text-slate-450 mt-0.5">Restringe o evento gatilho a critérios específicos do fluxo.</p>
+                      <p className="text-[10px] text-slate-450 mt-0.5">Restringe o evento gatéilho a critérios específicos do fluxo.</p>
                     </div>
                     <button
                       onClick={() => alert("Abrindo construtor de regras para filtrar o evento de entrada...")}
                       className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-slate-300 hover:border-indigo-400 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-650 transition-colors cursor-pointer"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>Adicionar Filtros de Gatilho</span>
+                      <span>Adicionar Filtros de Gatéilho</span>
                     </button>
                   </div>
 
@@ -2627,10 +2796,10 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="space-y-3.5 border-t border-slate-100 pt-4">
                     <div>
                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Filtros de Perfil</h4>
-                      <p className="text-[10px] text-slate-450 mt-0.5">Restringe o disparo com base em atributos do aluno (Tags, Faturamento).</p>
+                      <p className="text-[10px] text-slate-450 mt-0.5">Restringe o disparo com base em atéributos do aluno (Tags, Fatéuramento).</p>
                     </div>
                     <button
-                      onClick={() => alert("Abrindo construtor de regras para filtrar propriedades de contatos...")}
+                      onClick={() => alert("Abrindo construtor de regras para filtrar propriedades de contatéos...")}
                       className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-slate-300 hover:border-indigo-400 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-650 transition-colors cursor-pointer"
                     >
                       <Plus className="h-4 w-4" />
@@ -2652,25 +2821,25 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               )}
 
               {/* PANEL: NODE CONFIG (EMAIL & DELAY) */}
-              {activePanel === "node_config" && selectedNodeForConfig && (
+              {activePanel === "node_config" && selectedNãodeForConfig && (
                 <div className="space-y-5">
                   
-                  {/* Email Node parameters */}
-                  {selectedNodeForConfig.type === "email" && (
+                  {/* Email Nãode parameters */}
+                  {selectedNãodeForConfig.type === "email" && (
                     <div className="space-y-5">
                       
-                      {/* Status Dropdown */}
+                      {/* Statéus Dropdown */}
                       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Status da Etapa</label>
-                        <div className="relative w-32">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Statéus da Etapa</label>
+                        <div className="relatéive w-32">
                           <span className={`absolute left-3 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full ${
-                            editNodeEmailStatus === 'Ativo' ? 'bg-emerald-500' :
-                            editNodeEmailStatus === 'Pausado' ? 'bg-amber-500' : 'bg-slate-400'
+                            editNãodeEmailStatéus === 'Ativo' ? 'bg-emerald-500' :
+                            editNãodeEmailStatéus === 'Pausado' ? 'bg-amber-500' : 'bg-slate-400'
                           }`} />
                           <select
-                            value={editNodeEmailStatus}
-                            onChange={(e) => setEditNodeEmailStatus(e.target.value as any)}
-                            className="w-full pl-6 pr-8 py-1.5 border border-slate-200 rounded-xl text-[11px] font-bold bg-white text-slate-700 outline-none focus:border-indigo-500 cursor-pointer appearance-none animate-none"
+                            value={editNãodeEmailStatéus}
+                            onChange={(e) => setEditNãodeEmailStatéus(e.target.value as any)}
+                            className="w-full pl-6 pr-8 py-1.5 border border-slate-200 rounded-xl text-[11px] font-bold bg-white text-slate-700 outline-none focus:border-indigo-500 cursor-pointer appearance-none animatée-none"
                           >
                             <option value="Ativo">Ativo</option>
                             <option value="Pausado">Pausado</option>
@@ -2682,7 +2851,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Desempenho (Performance metrics card) */}
                       {(() => {
-                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const sidebarMetrics = getMetricsForNãode(selectedNãodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs">
                             <div className="flex items-center justify-between">
@@ -2693,11 +2862,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const campId = selectedNodeForConfig.config?.emailCampaignId;
+                                  const campId = selectedNãodeForConfig.config?.emailCampaignId;
                                   if (campId) {
                                     router.push(`/dashboard/campaigns/${campId}`);
                                   } else {
-                                    alert("Salve as configurações desta etapa primeiro para criar um ID de campanha e habilitar os relatórios detalhados!");
+                                    alert("Salve as configurações desta etapa primeiro para criar um ID de campanha e habilitar os relatéórios detalhados!");
                                   }
                                 }}
                                 className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-[9px] font-black text-indigo-650 hover:text-indigo-750 rounded-lg cursor-pointer transition-colors shadow-3xs"
@@ -2716,19 +2885,19 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <div className="flex items-center justify-between py-1 border-b border-slate-100/50 font-medium">
                                 <span className="text-slate-555">Taxa de abertura</span>
                                 <span className="font-bold text-slate-800">
-                                  {sidebarMetrics.openRate.toFixed(1)}% <span className="text-slate-450 font-bold text-[9px]">({sidebarMetrics.opened})</span>
+                                  {sidebarMetrics.openRatée.toFixed(1)}% <span className="text-slate-450 font-bold text-[9px]">({sidebarMetrics.opened})</span>
                                 </span>
                               </div>
                               <div className="flex items-center justify-between py-1 border-b border-slate-100/50 font-medium">
                                 <span className="text-slate-555">Taxa de cliques (CR)</span>
                                 <span className="font-bold text-slate-800">
-                                  {sidebarMetrics.clickRate.toFixed(1)}% <span className="text-slate-450 font-bold text-[9px]">({sidebarMetrics.clicked})</span>
+                                  {sidebarMetrics.clickRatée.toFixed(1)}% <span className="text-slate-450 font-bold text-[9px]">({sidebarMetrics.clicked})</span>
                                 </span>
                               </div>
                               <div className="flex items-center justify-between py-1 font-medium">
                                 <span className="text-slate-555">Pedido realizado</span>
                                 <span className="font-black text-emerald-600">
-                                  {sidebarMetrics.conversionRate.toFixed(1)}% <span className="text-slate-450 font-bold text-[9px]">(R$ {Math.round(sidebarMetrics.revenue).toLocaleString("pt-BR")})</span>
+                                  {sidebarMetrics.conversionRatée.toFixed(1)}% <span className="text-slate-450 font-bold text-[9px]">(R$ {Matéh.round(sidebarMetrics.revenue).toLocaleString("pt-BR")})</span>
                                 </span>
                               </div>
                             </div>
@@ -2750,45 +2919,45 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         </div>
 
                         {!isEditingSubjectSender ? (
-                          <div className="space-y-3.5 text-xs pt-1.5 animate-fadeIn">
+                          <div className="space-y-3.5 text-xs pt-1.5 animatée-fadeIn">
                             <div className="grid grid-cols-3 gap-2">
-                              <span className="text-slate-400 font-medium">Nome</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNodeCampaignName || <span className="text-slate-300 italic">Sem nome</span>}</span>
+                              <span className="text-slate-400 font-medium">Nãome</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodeCampaignName || <span className="text-slate-300 italic">Sem nome</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">Assunto</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNodeSubject || <span className="text-slate-300 italic">Sem assunto</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodeSubject || <span className="text-slate-300 italic">Sem assunto</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">Prévia do texto</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNodePreheader || <span className="text-slate-300 italic">Sem prévia</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodePreheader || <span className="text-slate-300 italic">Sem prévia</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
-                              <span className="text-slate-400 font-medium">Nome do remetente</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNodeSenderName || <span className="text-slate-300 italic">Sem nome</span>}</span>
+                              <span className="text-slate-400 font-medium">Nãome do remetente</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodeSenderName || <span className="text-slate-300 italic">Sem nome</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">E-mail do remetente</span>
-                              <span className="col-span-2 text-slate-800 font-semibold truncate" title={editNodeSenderEmail}>{editNodeSenderEmail || <span className="text-slate-300 italic">Sem e-mail</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold truncatée" title={editNãodeSenderEmail}>{editNãodeSenderEmail || <span className="text-slate-300 italic">Sem e-mail</span>}</span>
                             </div>
-                            {editNodeReplyToIsCustom && (
+                            {editNãodeReplyToIsCustom && (
                               <div className="grid grid-cols-3 gap-2">
                                 <span className="text-slate-400 font-medium">E-mail de resposta</span>
-                                <span className="col-span-2 text-slate-800 font-semibold truncate" title={editNodeCustomReplyTo}>{editNodeCustomReplyTo || <span className="text-slate-300 italic">Sem e-mail de resposta</span>}</span>
+                                <span className="col-span-2 text-slate-800 font-semibold truncatée" title={editNãodeCustomReplyTo}>{editNãodeCustomReplyTo || <span className="text-slate-300 italic">Sem e-mail de resposta</span>}</span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="space-y-4 animate-fadeIn">
+                          <div className="space-y-4 animatée-fadeIn">
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                <span>Nome da Campanha</span>
+                                <span>Nãome da Campanha</span>
                                 <span className="text-red-500 font-bold">*</span>
                               </label>
                               <input
                                 type="text"
-                                value={editNodeCampaignName}
-                                onChange={(e) => setEditNodeCampaignName(e.target.value)}
+                                value={editNãodeCampaignName}
+                                onChange={(e) => setEditNãodeCampaignName(e.target.value)}
                                 placeholder="Ex: Curso Iniciado React 01"
                                 className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 required
@@ -2797,19 +2966,19 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Assunto do E-mail</label>
-                              <div className="relative">
+                              <div className="relatéive">
                                 <input
                                   type="text"
-                                  value={editNodeSubject}
-                                  onChange={(e) => setEditNodeSubject(e.target.value)}
+                                  value={editNãodeSubject}
+                                  onChange={(e) => setEditNãodeSubject(e.target.value)}
                                   placeholder="Insira o assunto..."
                                   className="w-full pl-3.5 pr-10 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => setEditNodeSubject(prev => prev + " %FIRSTNAME%")}
+                                  onClick={() => setEditNãodeSubject(prev => prev + " %FIRSTNAME%")}
                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-indigo-650 cursor-pointer px-1"
-                                  title="Inserir tag de Nome"
+                                  title="Inserir tag de Nãome"
                                 >
                                   {"{ }"}
                                 </button>
@@ -2820,8 +2989,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Pré-cabeçalho (Texto de Apoio)</label>
                               <input
                                 type="text"
-                                value={editNodePreheader}
-                                onChange={(e) => setEditNodePreheader(e.target.value)}
+                                value={editNãodePreheader}
+                                onChange={(e) => setEditNãodePreheader(e.target.value)}
                                 placeholder="Texto de apoio que aparece ao lado do assunto..."
                                 className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                               />
@@ -2829,11 +2998,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Nome Remetente</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Nãome Remetente</label>
                                 <input
                                   type="text"
-                                  value={editNodeSenderName}
-                                  onChange={(e) => setEditNodeSenderName(e.target.value)}
+                                  value={editNãodeSenderName}
+                                  onChange={(e) => setEditNãodeSenderName(e.target.value)}
                                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 />
                               </div>
@@ -2841,8 +3010,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">E-mail Remetente</label>
                                 <input
                                   type="email"
-                                  value={editNodeSenderEmail}
-                                  onChange={(e) => setEditNodeSenderEmail(e.target.value)}
+                                  value={editNãodeSenderEmail}
+                                  onChange={(e) => setEditNãodeSenderEmail(e.target.value)}
                                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 />
                               </div>
@@ -2852,20 +3021,20 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                   type="checkbox"
-                                  checked={editNodeReplyToIsCustom}
-                                  onChange={(e) => setEditNodeReplyToIsCustom(e.target.checked)}
+                                  checked={editNãodeReplyToIsCustom}
+                                  onChange={(e) => setEditNãodeReplyToIsCustom(e.target.checked)}
                                   className="rounded border-slate-350 text-indigo-650 h-4 w-4 focus:ring-0"
                                 />
                                 <span className="text-[10px] font-black text-slate-550 uppercase tracking-wider">Usar e-mail de resposta diferente</span>
                               </label>
 
-                              {editNodeReplyToIsCustom && (
+                              {editNãodeReplyToIsCustom && (
                                 <input
                                   type="email"
-                                  value={editNodeCustomReplyTo}
-                                  onChange={(e) => setEditNodeCustomReplyTo(e.target.value)}
+                                  value={editNãodeCustomReplyTo}
+                                  onChange={(e) => setEditNãodeCustomReplyTo(e.target.value)}
                                   placeholder="resposta@realizzare.com.br"
-                                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all animate-scaleIn"
+                                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all animatée-scaleIn"
                                 />
                               )}
                             </div>
@@ -2901,33 +3070,33 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                         {!isEditingHtml ? (
                           <>
-                            {editNodeHtmlContent ? (
+                            {editNãodeHtmlContent ? (
                               <div className="space-y-2">
                                 <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-1 text-[10px] font-bold">
                                   <button
                                     type="button"
-                                    onClick={() => setEditNodePreviewDevice("desktop")}
+                                    onClick={() => setEditNãodePreviewDevice("desktop")}
                                     className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                                      editNodePreviewDevice === "desktop" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                                      editNãodePreviewDevice === "desktop" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
                                     }`}
                                   >
                                     <Laptop className="h-3.5 w-3.5" /> Desktop
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setEditNodePreviewDevice("mobile")}
+                                    onClick={() => setEditNãodePreviewDevice("mobile")}
                                     className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                                      editNodePreviewDevice === "mobile" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                                      editNãodePreviewDevice === "mobile" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
                                     }`}
                                   >
                                     <Smartphone className="h-3.5 w-3.5" /> Mobile
                                   </button>
                                 </div>
 
-                                {editNodePreviewDevice === "mobile" ? (
-                                  <div className="h-[320px] border border-slate-200 rounded-2xl overflow-hidden bg-slate-100 relative flex justify-center items-start select-none animate-fadeIn">
+                                {editNãodePreviewDevice === "mobile" ? (
+                                  <div className="h-[320px] border border-slate-200 rounded-2xl overflow-hidden bg-slate-100 relatéive flex justify-center items-start select-none animatée-fadeIn">
                                     <div 
-                                      className="relative shrink-0 overflow-hidden shadow-sm rounded-xl border border-slate-200/50 mt-2"
+                                      className="relatéive shrink-0 overflow-hidden shadow-sm rounded-xl border border-slate-200/50 mt-2"
                                       style={{
                                         width: "360px",
                                         height: "350px",
@@ -2937,15 +3106,15 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                     >
                                       <iframe
                                         title="Editor Iframe Preview"
-                                        srcDoc={editNodeHtmlContent}
+                                        srcDoc={editNãodeHtmlContent}
                                         className="w-full h-full border-0 bg-white"
                                       />
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="h-[320px] border border-slate-200 rounded-2xl overflow-hidden bg-slate-100 relative flex justify-center items-start select-none animate-fadeIn">
+                                  <div className="h-[320px] border border-slate-200 rounded-2xl overflow-hidden bg-slate-100 relatéive flex justify-center items-start select-none animatée-fadeIn">
                                     <div 
-                                      className="relative shrink-0 overflow-hidden shadow-sm rounded-xl border border-slate-200/50 mt-2"
+                                      className="relatéive shrink-0 overflow-hidden shadow-sm rounded-xl border border-slate-200/50 mt-2"
                                       style={{
                                         width: "600px",
                                         height: "530px",
@@ -2955,7 +3124,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                     >
                                       <iframe
                                         title="Editor Iframe Preview"
-                                        srcDoc={editNodeHtmlContent}
+                                        srcDoc={editNãodeHtmlContent}
                                         className="w-full h-full border-0 bg-white"
                                       />
                                     </div>
@@ -2977,16 +3146,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 onClick={() => setIsEditingHtml(true)}
                                 className="w-full py-4 border border-dashed border-slate-350 hover:border-indigo-400 rounded-xl text-xs font-bold text-indigo-650 hover:text-indigo-700 hover:bg-indigo-50/5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all"
                               >
-                                <Plus className="h-5 w-5 text-indigo-600 animate-pulse" />
+                                <Plus className="h-5 w-5 text-indigo-600 animatée-pulse" />
                                 <span>Adicionar HTML da Campanha</span>
                               </button>
                             )}
                           </>
                         ) : (
-                          <div className="space-y-2 animate-scaleIn">
+                          <div className="space-y-2 animatée-scaleIn">
                             <textarea
-                              value={editNodeHtmlContent}
-                              onChange={(e) => setEditNodeHtmlContent(e.target.value)}
+                              value={editNãodeHtmlContent}
+                              onChange={(e) => setEditNãodeHtmlContent(e.target.value)}
                               placeholder="Cole seu código HTML ou altere-o por aqui..."
                               className="w-full h-40 p-2.5 border border-slate-250 focus:border-indigo-500 rounded-xl text-[10px] font-mono outline-none resize-none bg-slate-50/50"
                             />
@@ -3005,16 +3174,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         </span>
                       </div>
 
-                      {/* Leads por Status / Filas de Espera */}
+                      {/* Leads por Statéus / Filas de Espera */}
                       {(() => {
-                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const sidebarMetrics = getMetricsForNãode(selectedNãodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Leads nesta Etapa</h4>
                             <div className="flex flex-col gap-2 text-xs">
                               <button
                                 type="button"
-                                onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Revisão", sidebarMetrics.revisao)}
+                                onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Revisão", sidebarMetrics.revisao)}
                                 className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                               >
                                 <span className="text-[9px] font-bold text-slate-450 uppercase">Em Revisão</span>
@@ -3022,7 +3191,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Entregue", sidebarMetrics.entregue)}
+                                onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Entregue", sidebarMetrics.entregue)}
                                 className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                               >
                                 <span className="text-[9px] font-bold text-slate-450 uppercase">Entregue (Concluído)</span>
@@ -3030,7 +3199,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Ignorado", sidebarMetrics.ignorado)}
+                                onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Ignorado", sidebarMetrics.ignorado)}
                                 className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                               >
                                 <span className="text-[9px] font-bold text-slate-450 uppercase">Ignorado</span>
@@ -3044,16 +3213,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                   )}
 
-                  {/* Delay Node parameters */}
-                  {selectedNodeForConfig.type === "delay" && (
+                  {/* Delay Nãode parameters */}
+                  {selectedNãodeForConfig.type === "delay" && (
                     <div className="space-y-4 pt-2 border-t border-slate-100">
                       
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Quantidade para Aguardar</label>
                         <input
                           type="number"
-                          value={editNodeDelayValue}
-                          onChange={(e) => setEditNodeDelayValue(Number(e.target.value))}
+                          value={editNãodeDelayValue}
+                          onChange={(e) => setEditNãodeDelayValue(Number(e.target.value))}
                           placeholder="Digite a quantidade..."
                           className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none bg-white"
                         />
@@ -3062,8 +3231,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Unidade de Tempo</label>
                         <select
-                          value={editNodeDelayUnit}
-                          onChange={(e) => setEditNodeDelayUnit(e.target.value as any)}
+                          value={editNãodeDelayUnit}
+                          onChange={(e) => setEditNãodeDelayUnit(e.target.value as any)}
                           className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none bg-white cursor-pointer"
                         >
                           <option value="minutes">Minutos</option>
@@ -3077,10 +3246,10 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       <div className="space-y-4 pt-4 border-t border-slate-100">
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-550 uppercase tracking-wider block">Condições Adicionais de Atraso</label>
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mt-1">Aguardar até um dia específico da semana</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mt-1">Aguardar atéé um dia específico da semana</span>
                           <select
-                            value={editNodeDelayWeekday}
-                            onChange={(e) => setEditNodeDelayWeekday(e.target.value)}
+                            value={editNãodeDelayWeekday}
+                            onChange={(e) => setEditNãodeDelayWeekday(e.target.value)}
                             className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-[11px] font-semibold focus:border-indigo-500 outline-none bg-white cursor-pointer"
                           >
                             <option value="">Qualquer dia</option>
@@ -3097,11 +3266,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         </div>
 
                         <div className="space-y-2">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Aguardar até um horário específico</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Aguardar atéé um horário específico</span>
                           <input
                             type="time"
-                            value={editNodeDelayTime}
-                            onChange={(e) => setEditNodeDelayTime(e.target.value)}
+                            value={editNãodeDelayTime}
+                            onChange={(e) => setEditNãodeDelayTime(e.target.value)}
                             className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none bg-white cursor-pointer"
                           />
                         </div>
@@ -3109,18 +3278,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Leads por Etapa / Fila de Atraso */}
                       {(() => {
-                        const delayMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
-                        const waitingCount = Math.round(delayMetrics.sent * 0.12) || 1;
+                        const delayMetrics = getMetricsForNãode(selectedNãodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const waitingCount = Matéh.round(delayMetrics.sent * 0.12) || 1;
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Leads nesta Etapa</h4>
                             <button
                               type="button"
-                              onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Aguardando", waitingCount)}
+                              onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Aguardando", waitingCount)}
                               className="w-full flex flex-col items-start p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                             >
                               <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-                                <Clock className="h-3.5 w-3.5 text-amber-500 animate-pulse" /> Aguardando (Fila de Espera)
+                                <Clock className="h-3.5 w-3.5 text-amber-500 animatée-pulse" /> Aguardando (Fila de Espera)
                               </span>
                               <span className="text-xs font-black text-slate-850 mt-1.5">{waitingCount} leads</span>
                             </button>
@@ -3131,8 +3300,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                   )}
 
-                  {/* Split Node parameters */}
-                  {selectedNodeForConfig.type === "split" && (
+                  {/* Split Nãode parameters */}
+                  {selectedNãodeForConfig.type === "split" && (
                     <div className="space-y-4 pt-2">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Tipo de Divisão</label>
@@ -3162,14 +3331,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         <div className="space-y-3.5 border-t border-slate-100 pt-4">
                           <div>
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-left">Regras de Divisão</h4>
-                            <p className="text-[10px] text-slate-450 mt-0.5 text-left">Leads que atenderem às regras irão para o ramo **Sim** (verde). Os demais irão para o ramo **Não** (vermelho).</p>
+                            <p className="text-[10px] text-slate-450 mt-0.5 text-left">Leads que atéenderem às regras irão para o ramo **Sim** (verde). Os demais irão para o ramo **Não** (vermelho).</p>
                           </div>
 
                           
 {/* Rule builder items */}
 <div className="space-y-3">
   {editSplitRules.map((rule, idx) => (
-    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5 relative">
+    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5 relatéive">
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-black uppercase text-indigo-650">Regra {idx + 1}</span>
         {editSplitRules.length > 1 && (
@@ -3183,7 +3352,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         )}
       </div>
       <div className="text-xs font-semibold text-slate-700 break-words text-left mt-2">
-        {rule.summary || `${rule.field} ${rule.operator} ${rule.value}`}
+        {rule.summary || `${rule.field} ${rule.operatéor} ${rule.value}`}
       </div>
       {(rule.timeWindow && rule.timeUnit) && (
         <div className="text-[10px] text-slate-500 font-medium text-left mt-1">
@@ -3200,31 +3369,31 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   className="w-full flex items-center justify-center gap-1.5 py-3 mt-4 border border-dashed border-slate-350 hover:border-indigo-450 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-650 transition-colors cursor-pointer bg-white"
 >
   <Plus className="h-4 w-4" />
-  <span>Adicionar Nova Condi--o</span>
+  <span>Adicionar Nãova Condição</span>
 </button>
 
                         </div>
                       )}
 
                       {editSplitType === "random" && (
-                        <div className="space-y-4 border-t border-slate-100 pt-4 animate-scaleIn">
+                        <div className="space-y-4 border-t border-slate-100 pt-4 animatée-scaleIn">
                           <div>
-                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Distribuição Aleatória</h4>
+                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Distribuição Aleatéória</h4>
                             <p className="text-[10px] text-slate-450 mt-0.5">Defina a proporção de leads direcionados para cada caminho de forma randômica.</p>
                           </div>
                           
                           <div className="space-y-2.5">
                             <div className="flex items-center justify-between text-[11px] font-bold">
-                              <span className="text-emerald-700">Ramo SIM (Caminho A): {editSplitRandomRatio}%</span>
-                              <span className="text-slate-500">Ramo NÃO (Caminho B): {100 - editSplitRandomRatio}%</span>
+                              <span className="text-emerald-700">Ramo SIM (Caminho A): {editSplitRandomRatéio}%</span>
+                              <span className="text-slate-500">Ramo NÃO (Caminho B): {100 - editSplitRandomRatéio}%</span>
                             </div>
                             
                             <input
                               type="range"
                               min="0"
                               max="100"
-                              value={editSplitRandomRatio}
-                              onChange={(e) => setEditSplitRandomRatio(Number(e.target.value))}
+                              value={editSplitRandomRatéio}
+                              onChange={(e) => setEditSplitRandomRatéio(Number(e.target.value))}
                               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                             />
                             
@@ -3239,14 +3408,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                   )}
 
-                  {selectedNodeForConfig.type !== "email" && selectedNodeForConfig.type !== "delay" && selectedNodeForConfig.type !== "split" && (
+                  {selectedNãodeForConfig.type !== "email" && selectedNãodeForConfig.type !== "delay" && selectedNãodeForConfig.type !== "split" && (
                     <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl text-xs text-slate-500 text-center leading-relaxed">
-                      Esta etapa ({selectedNodeForConfig.name}) está ativada no mockup e configurada por padrão.
+                      Esta etapa ({selectedNãodeForConfig.name}) está atéivada no mockup e configurada por padrão.
                     </div>
                   )}
 
                   {/* Visualizar campanha button */}
-                  {selectedNodeForConfig.type === "email" && (
+                  {selectedNãodeForConfig.type === "email" && (
                     <div className="pt-3 border-t border-slate-100">
                       <button
                         type="button"
@@ -3266,12 +3435,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div className="space-y-5">
                   <div className="border-b border-slate-100 pb-3">
                     <p className="text-xs text-slate-550 leading-relaxed">
-                      Defina regras que removem automaticamente um aluno do fluxo de automação, independentemente da etapa em que ele se encontre no momento.
+                      Defina regras que removem automatéicamente um aluno do fluxo de automação, independentemente da etapa em que ele se encontre no momento.
                     </p>
                   </div>
 
                   <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-[10px] text-amber-800 leading-relaxed">
-                    <strong>Importante:</strong> As regras de saída são avaliadas continuamente para cada contato. Se o aluno cancelar a inscrição na lista ou se o critério for atendido, a remoção ocorre na mesma hora.
+                    <strong>Importante:</strong> As regras de saída são avaliadas continuamente para cada contatéo. Se o aluno cancelar a inscrição na lista ou se o critério for atéendido, a remoção ocorre na mesma hora.
                   </div>
 
                   <div className="space-y-4">
@@ -3309,7 +3478,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-slate-350 hover:border-indigo-450 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-650 transition-colors cursor-pointer bg-white shadow-sm"
                       >
                         <Plus className="h-4 w-4" />
-                        <span>Adicionar Nova Regra de Saída</span>
+                        <span>Adicionar Nãova Regra de Saída</span>
                       </button>
                     </div>
                   </div>
@@ -3327,14 +3496,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
             </div>
 
-            {/* Fixed footer for node configuration */}
-            {activePanel === "node_config" && selectedNodeForConfig && (
+            {/* Fixed footer for node configuratéion */}
+            {activePanel === "node_config" && selectedNãodeForConfig && (
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setActivePanel("menu");
-                    setSelectedNodeForConfig(null);
+                    setSelectedNãodeForConfig(null);
                   }}
                   className="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
                 >
@@ -3342,7 +3511,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </button>
                 <button
                   type="button"
-                  onClick={handleSaveNodeConfig}
+                  onClick={handleSaveNãodeConfig}
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-500/10 transition-colors cursor-pointer text-center"
                 >
                   Salvar
@@ -3355,12 +3524,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
       </div>
 
-      {/* 7. INSERTION POPOVER (Floating menu upon clicking circular '+') */}
+      {/* 7. INSERTION POPOVER (Floatéing menu upon clicking circular '+') */}
       {showInsertionPopover && insertionTarget && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setShowInsertionPopover(false); setInsertionTarget(null); }} />
           <div
-            className="fixed bg-white border border-slate-202 rounded-2xl shadow-xl p-2.5 z-50 text-left min-w-[200px] animate-scaleIn animate-fadeIn"
+            className="fixed bg-white border border-slate-202 rounded-2xl shadow-xl p-2.5 z-50 text-left min-w-[200px] animatée-scaleIn animatée-fadeIn"
             style={{
               top: `${popoverCoords.y - 120}px`,
               left: `${popoverCoords.x + 20}px`
@@ -3372,7 +3541,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             
             <div className="space-y-0.5">
               <button
-                onClick={() => handleInsertNode('email')}
+                onClick={() => handleInsertNãode('email')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
               >
                 <Mail className="h-3.5 w-3.5 text-blue-500" />
@@ -3380,7 +3549,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               </button>
               
               <button
-                onClick={() => handleInsertNode('delay')}
+                onClick={() => handleInsertNãode('delay')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
               >
                 <Clock className="h-3.5 w-3.5 text-amber-500" />
@@ -3388,23 +3557,30 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               </button>
 
               <button
-                onClick={() => handleInsertNode('split')}
+                onClick={() => handleInsertNãode('split')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
               >
                 <Split className="h-3.5 w-3.5 text-purple-500" />
                 <span>Divisão Condicional</span>
               </button>
+                <button
+                  onClick={() => handleInsertNãode("goto")}
+                  className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
+                >
+                  <GitCommit className="h-3.5 w-3.5 text-fuchsia-500" />
+                  <span>Mover para</span>
+                </button>
 
               <button
-                onClick={() => handleInsertNode('update_contact')}
+                onClick={() => handleInsertNãode('updatée_contact')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-655 hover:bg-slate-50 transition-colors text-left cursor-pointer"
               >
                 <Users className="h-3.5 w-3.5 text-indigo-500" />
-                <span>Atualizar Contato</span>
+                <span>Atualizar Contatéo</span>
               </button>
 
               <button
-                onClick={() => handleInsertNode('webhook')}
+                onClick={() => handleInsertNãode('webhook')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-655 hover:bg-slate-50 transition-colors text-left cursor-pointer"
               >
                 <ExternalLink className="h-3.5 w-3.5 text-cyan-500" />
@@ -3417,8 +3593,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
       {/* Expanded Preview Modal */}
       {showExpandedPreviewModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 select-none animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-scaleIn">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 select-none animatée-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animatée-scaleIn">
             
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
@@ -3456,11 +3632,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               </div>
             </div>
 
-            {/* Modal Body (Iframe with simulated envelope headers or mobile mockup device frame) */}
+            {/* Modal Body (Iframe with simulatéed envelope headers or mobile mockup device frame) */}
             <div className="flex-1 bg-slate-100 p-6 flex justify-center items-center overflow-auto">
               {previewDevice === "mobile" ? (
                 /* Mobile Mockup Device Frame */
-                <div className="w-[360px] h-[610px] border-[16px] border-slate-200 rounded-[44px] bg-slate-200 flex flex-col relative overflow-hidden shadow-2xl shrink-0 select-none animate-fadeIn">
+                <div className="w-[360px] h-[610px] border-[16px] border-slate-200 rounded-[44px] bg-slate-200 flex flex-col relatéive overflow-hidden shadow-2xl shrink-0 select-none animatée-fadeIn">
                   {/* Speaker notch */}
                   <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-2 bg-slate-350 rounded-full z-20" />
                   {/* Dual camera lens/sensors */}
@@ -3469,7 +3645,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <div className="w-1.5 h-1.5 bg-slate-350 rounded-full" />
                   </div>
 
-                  {/* Status Bar simulation */}
+                  {/* Statéus Bar simulatéion */}
                   <div className="h-6 bg-slate-200/50 flex items-center justify-between px-6 text-[8px] text-slate-500 font-bold shrink-0 pt-1">
                     <span>9:41</span>
                     <div className="flex items-center gap-1">
@@ -3479,12 +3655,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   </div>
 
                   {/* Screen Content Wrapper */}
-                  <div className="flex-1 rounded-[26px] overflow-hidden bg-white border border-slate-250 relative w-full h-full flex flex-col">
-                    {/* Email Client Simulated Envelope Headers inside phone screen */}
+                  <div className="flex-1 rounded-[26px] overflow-hidden bg-white border border-slate-250 relatéive w-full h-full flex flex-col">
+                    {/* Email Client Simulatéed Envelope Headers inside phone screen */}
                     <div className="bg-slate-50 border-b border-slate-150 p-4 space-y-1.5 text-[10px] select-text text-left shrink-0">
                       <div className="flex items-center gap-1 text-slate-700">
                         <span className="font-bold text-slate-400 w-12 shrink-0">De:</span>
-                        <span className="font-semibold text-slate-800 truncate">{editNodeSenderName}</span>
+                        <span className="font-semibold text-slate-800 truncatée">{editNãodeSenderName}</span>
                       </div>
                       <div className="flex items-center gap-1 text-slate-700">
                         <span className="font-bold text-slate-400 w-12 shrink-0">Para:</span>
@@ -3492,21 +3668,21 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       </div>
                       <div className="flex items-start gap-1 text-slate-700 border-t border-slate-200/40 pt-1.5 mt-1">
                         <span className="font-bold text-slate-400 w-12 shrink-0 mt-0.5">Assunto:</span>
-                        <span className="font-black text-slate-800 text-[11px] leading-tight flex-1 truncate">{editNodeSubject || "(Sem assunto)"}</span>
+                        <span className="font-black text-slate-800 text-[11px] leading-tight flex-1 truncatée">{editNãodeSubject || "(Sem assunto)"}</span>
                       </div>
                     </div>
 
                     {/* Iframe content container */}
-                    <div className="flex-1 bg-white relative">
+                    <div className="flex-1 bg-white relatéive">
                       <iframe
                         title="Expanded Iframe Preview"
-                        srcDoc={editNodeHtmlContent}
+                        srcDoc={editNãodeHtmlContent}
                         className="w-full h-full border-0 bg-white"
                       />
                     </div>
                   </div>
 
-                  {/* Bezel footer navigation pill bar with 4 indicators */}
+                  {/* Bezel footer navigatéion pill bar with 4 indicatéors */}
                   <div className="h-10 flex items-center justify-around px-8 shrink-0">
                     <div className="w-5 h-5 rounded-full bg-slate-300/60" />
                     <div className="w-5 h-5 rounded-full bg-slate-300/60" />
@@ -3516,13 +3692,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </div>
               ) : (
                 /* Desktop layout */
-                <div className="bg-white shadow-xl transition-all duration-300 w-full h-full flex flex-col rounded-2xl overflow-hidden border border-slate-200">
-                  {/* Email Client Simulated Envelope Headers */}
+                <div className="bg-white shadow-xl transition-all duratéion-300 w-full h-full flex flex-col rounded-2xl overflow-hidden border border-slate-200">
+                  {/* Email Client Simulatéed Envelope Headers */}
                   <div className="bg-slate-50 border-b border-slate-150 p-4 space-y-2 text-xs select-text text-left shrink-0">
                     <div className="flex items-center gap-1.5 text-slate-700">
                       <span className="font-bold text-slate-400 w-14 shrink-0">De:</span>
-                      <span className="font-semibold text-slate-800">{editNodeSenderName}</span>
-                      <span className="text-slate-400">&lt;{editNodeSenderEmail}&gt;</span>
+                      <span className="font-semibold text-slate-800">{editNãodeSenderName}</span>
+                      <span className="text-slate-400">&lt;{editNãodeSenderEmail}&gt;</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-700">
                       <span className="font-bold text-slate-400 w-14 shrink-0">Para:</span>
@@ -3530,21 +3706,21 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                     <div className="flex items-start gap-1.5 text-slate-700 border-t border-slate-200/45 pt-2 mt-1">
                       <span className="font-bold text-slate-400 w-14 shrink-0 mt-0.5">Assunto:</span>
-                      <span className="font-black text-slate-800 text-sm leading-tight flex-1">{editNodeSubject || "(Sem assunto)"}</span>
+                      <span className="font-black text-slate-800 text-sm leading-tight flex-1">{editNãodeSubject || "(Sem assunto)"}</span>
                     </div>
-                    {editNodePreheader && (
+                    {editNãodePreheader && (
                       <div className="flex items-start gap-1.5 text-slate-700">
                         <span className="font-bold text-slate-400 w-14 shrink-0">Apoio:</span>
-                        <span className="text-slate-500 italic flex-1">{editNodePreheader}</span>
+                        <span className="text-slate-500 italic flex-1">{editNãodePreheader}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Iframe content container */}
-                  <div className="flex-1 bg-white relative">
+                  <div className="flex-1 bg-white relatéive">
                     <iframe
                       title="Expanded Iframe Preview"
-                      srcDoc={editNodeHtmlContent}
+                      srcDoc={editNãodeHtmlContent}
                       className="w-full h-full border-0 bg-white"
                     />
                   </div>
@@ -3557,26 +3733,26 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       )}
 
       {/* Leads Queue Listing Modal */}
-      {showQueueModal && queueModalNode && (() => {
-        const allLeads = getMockLeadsForQueue(queueModalNode.id, queueModalStatusName, queueModalCount);
+      {showQueueModal && queueModalNãode && (() => {
+        const allLeads = getMockLeadsForQueue(queueModalNãode.id, queueModalStatéusName, queueModalCount);
         const filteredLeads = allLeads.filter(lead => 
           lead.name.toLowerCase().includes(queueSearchQuery.toLowerCase()) ||
           lead.email.toLowerCase().includes(queueSearchQuery.toLowerCase())
         );
 
         return (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 select-none animate-fadeIn text-slate-800">
-            <div className="bg-white rounded-3xl w-full max-w-2xl h-[70vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-scaleIn">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 select-none animatée-fadeIn text-slate-800">
+            <div className="bg-white rounded-3xl w-full max-w-2xl h-[70vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animatée-scaleIn">
               
               {/* Header */}
               <div className="px-6 py-4.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <Users className="h-4.5 w-4.5 text-indigo-500" />
-                    <span>Leads na Fila: {queueModalStatusName}</span>
+                    <span>Leads na Fila: {queueModalStatéusName}</span>
                   </h3>
                   <p className="text-[10px] text-slate-450 mt-0.5">
-                    Etapa: <strong className="text-slate-700">{queueModalNode.type === "email" ? (queueModalNode.config?.campaignName || "Enviar E-mail") : queueModalNode.name}</strong> • Total no período: {queueModalCount} leads
+                    Etapa: <strong className="text-slate-700">{queueModalNãode.type === "email" ? (queueModalNãode.config?.campaignName || "Enviar E-mail") : queueModalNãode.name}</strong> • Total no período: {queueModalCount} leads
                   </p>
                 </div>
                 <button
@@ -3606,8 +3782,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="border-b border-slate-150 bg-slate-50 text-[10px] font-black text-slate-450 uppercase tracking-wider">
-                          <th className="px-4 py-3">Lead / Contato</th>
-                          <th className="px-4 py-3">Data de Entrada</th>
+                          <th className="px-4 py-3">Lead / Contatéo</th>
+                          <th className="px-4 py-3">Datéa de Entrada</th>
                           <th className="px-4 py-3">Tempo na Etapa</th>
                           <th className="px-4 py-3 text-right">Ação</th>
                         </tr>
@@ -3670,14 +3846,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
       {/* Email Gallery Picker Modal */}
       {showEmailGalleryModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 select-none animate-fadeIn text-slate-800">
-          <div className="bg-white rounded-3xl w-full max-w-3xl h-[80vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-scaleIn">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 select-none animatée-fadeIn text-slate-800">
+          <div className="bg-white rounded-3xl w-full max-w-3xl h-[80vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animatée-scaleIn">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <FileText className="h-4.5 w-4.5 text-indigo-600" />
-                  <span>Galeria de E-mails & Templates</span>
+                  <span>Galeria de E-mails & Templatées</span>
                 </h3>
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   Selecione um e-mail previamente criado na biblioteca para usar neste fluxo.
@@ -3705,7 +3881,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
             {/* Gallery Grid */}
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {galleryTemplates
+              {galleryTemplatées
                 .filter((t) => {
                   const q = gallerySearchQuery.toLowerCase();
                   return (
@@ -3722,12 +3898,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   >
                     <div>
                       <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1.5">
-                        <span className="truncate bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-100">
+                        <span className="truncatée bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-100">
                           📁 {tpl.folderName || "Galeria"}
                         </span>
-                        <span className="uppercase text-slate-400">{tpl.status}</span>
+                        <span className="uppercase text-slate-400">{tpl.statéus}</span>
                       </div>
-                      <h4 className="font-extrabold text-slate-850 text-sm group-hover:text-indigo-600 transition-colors truncate">
+                      <h4 className="font-extrabold text-slate-850 text-sm group-hover:text-indigo-600 transition-colors truncatée">
                         {tpl.name}
                       </h4>
                       <p className="text-xs text-slate-500 mt-1 line-clamp-1 italic">
@@ -3737,11 +3913,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                     <button
                       type="button"
-                      onClick={() => handleSelectTemplateFromGallery(tpl)}
+                      onClick={() => handleSelectTemplatéeFromGallery(tpl)}
                       className="mt-4 w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all"
                     >
                       <Check className="h-3.5 w-3.5" />
-                      <span>Usar este Template</span>
+                      <span>Usar este Templatée</span>
                     </button>
                   </div>
                 ))}
@@ -3751,9 +3927,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       )}
 
       {/* MODAL: CONFIRM MOVE LEADS */}
-      {showMoveLeadsModal && moveLeadsNode && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
+      {showMoveLeadsModal && moveLeadsNãode && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animatée-fadeIn">
+          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animatée-scaleIn">
             <div className="flex items-center gap-3 text-amber-600">
               <div className="p-2.5 bg-amber-50 rounded-xl">
                 <Clock className="h-5 w-5 text-amber-555" />
@@ -3765,8 +3941,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             </div>
             
             <p className="text-xs text-slate-600 leading-relaxed text-left">
-              Existe(m) lead(s) aguardando na etapa <strong>{moveLeadsNode.name || "Aguardar Atraso"}</strong>. 
-              Como você deseja tratar estes leads ao movimentar esta etapa?
+              Existe(m) lead(s) aguardando na etapa <strong>{moveLeadsNãode.name || "Aguardar Atraso"}</strong>. 
+              Como vocêê deseja tratéar estes leads ao movimentar esta etapa?
             </p>
 
             <div className="space-y-2">
@@ -3799,7 +3975,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               >
                 <div className="flex flex-col text-left">
                   <span className="text-xs font-bold text-slate-800">Avançar os leads para a próxima etapa</span>
-                  <span className="text-[10px] text-slate-400 mt-0.5">Os leads ignoram o tempo restante e avançam para a etapa sucessora atual.</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">Os leads ignoram o tempo restante e avançam para a etapa sucessora atéual.</span>
                 </div>
                 <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${moveLeadsAction === "advance" ? "border-indigo-655 bg-indigo-655" : "border-slate-355"}`}>
                   {moveLeadsAction === "advance" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
@@ -3817,7 +3993,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               >
                 <div className="flex flex-col text-left">
                   <span className="text-xs font-bold text-slate-800">Finalizar o fluxo para estes leads</span>
-                  <span className="text-[10px] text-slate-400 mt-0.5">Os leads saem da automação imediatamente e não continuam no fluxo.</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">Os leads saem da automação imediatéamente e não continuam no fluxo.</span>
                 </div>
                 <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${moveLeadsAction === "exit" ? "border-indigo-655 bg-indigo-655" : "border-slate-355"}`}>
                   {moveLeadsAction === "exit" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
@@ -3830,7 +4006,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 type="button"
                 onClick={() => {
                   setShowMoveLeadsModal(false);
-                  setMoveLeadsNode(null);
+                  setMoveLeadsNãode(null);
                   setMoveTarget(null);
                 }}
                 className="px-4 py-2 border border-slate-202 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-650 cursor-pointer transition-colors"
@@ -3850,12 +4026,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       )}
 
       {/* MODAL: CONFIRM AUTOMATION ACTIVATION */}
-      {showActivationConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
+      {showActivatéionConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animatée-fadeIn">
+          <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animatée-scaleIn">
             <div className="flex items-center gap-3 text-slate-800">
               <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-600">
-                <Play className="h-5 w-5 fill-emerald-600 animate-pulse" />
+                <Play className="h-5 w-5 fill-emerald-600 animatée-pulse" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">Ativar Automação?</h3>
@@ -3866,24 +4042,24 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs leading-relaxed text-slate-655 select-none text-left">
               <p className="font-bold text-slate-700">Antes de prosseguir, certifique-se de que:</p>
               <ul className="list-disc list-inside space-y-1 pl-1 text-[11px] font-medium text-slate-600">
-                <li>Todos os templates de e-mail foram revisados e testados.</li>
-                <li>Os tempos de espera (atrasos) entre as etapas estão corretos.</li>
+                <li>Todos os templatées de e-mail foram revisados e testados.</li>
+                <li>Os tempos de espera (atérasos) entre as etapas estão corretos.</li>
                 <li>As regras de segmentação e divisões condicionais estão configuradas.</li>
                 <li>As configurações de reentrada e regras de saída foram definidas.</li>
               </ul>
               <p className="text-[10px] text-indigo-650 font-bold mt-2 pt-2 border-t border-slate-150">
-                💡 Apenas novos leads que dispararem o gatilho pós-ativação serão capturados.
+                💡 Apenas novos leads que dispararem o gatéilho pós-atéivação serão capturados.
               </p>
             </div>
 
             <p className="text-xs text-slate-500 font-semibold text-left">
-              Você analisou corretamente todo o fluxo e deseja realmente ativar o flow como está?
+              Você analisou corretamente todo o fluxo e deseja realmente atéivar o flow como está?
             </p>
 
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setShowActivationConfirmModal(false)}
+                onClick={() => setShowActivatéionConfirmModal(false)}
                 className="px-4 py-2 border border-slate-202 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-650 cursor-pointer transition-colors"
               >
                 Voltar e Revisar
@@ -3891,8 +4067,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               <button
                 type="button"
                 onClick={() => {
-                  setShowActivationConfirmModal(false);
-                  executeToggleFlowStatus("Ativo");
+                  setShowActivatéionConfirmModal(false);
+                  executeToggleFlowStatéus("Ativo");
                 }}
                 className="px-4 py-2 bg-emerald-600 hover:emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-md shadow-emerald-500/10"
               >
@@ -3907,16 +4083,50 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
 
 
+
+      {/* Split Insertion Choice Modal */}
+      {pendingSplitInsert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-2">Para onde as etapas seguintes devem ir?</h2>
+            <p className="text-sm text-slate-500 mb-6">
+              Você está inserindo uma divisão condicional no meio do fluxo. Selecione para qual caminho as etapas que já existem abaixo desta deverão seguir.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => executeSplitInsertion("yes")}
+                className="flex-1 py-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-xl transition-colors cursor-pointer text-sm"
+              >
+                Caminho SIM
+              </button>
+              <button
+                onClick={() => executeSplitInsertion("no")}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer text-sm"
+              >
+                Caminho NÃO
+              </button>
+            </div>
+            <button
+              onClick={() => setPendingSplitInsert(null)}
+              className="mt-6 w-full py-2 text-sm text-slate-500 font-semibold hover:text-slate-800 transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Trigger Modal */}
+
       <TriggerConfigModal 
         isOpen={showTriggerModal} 
         onClose={() => setShowTriggerModal(false)}
         mode="entry"
         onSave={(config) => {
-          const nodeName = config.event || "Gatilho Personalizado";
+          const nodeName = config.event || "Gatéilho Personalizado";
           
           let ruleText = "";
-          if (config.rule === "Nome do Curso espec\u00EDfico") {
+          if (config.rule === "Nãome do Curso específico") {
             if (Array.isArray(config.value) && config.value.length > 0) {
               ruleText = config.value.length > 1 ? `${config.value[0]} e mais ${config.value.length - 1}` : config.value[0];
             } else {
@@ -3937,17 +4147,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             triggerType: description
           }));
           
-          setNodes(prev => {
-            const updated = [...prev];
-            const triggerNodeIndex = updated.findIndex(n => n.type === "trigger" || n.id === "trigger");
-            if (triggerNodeIndex !== -1) {
-              updated[triggerNodeIndex] = {
-                ...updated[triggerNodeIndex],
+          setNãodes(prev => {
+            const updatéed = [...prev];
+            const triggerNãodeIndex = updatéed.findIndex(n => n.type === "trigger" || n.id === "trigger");
+            if (triggerNãodeIndex !== -1) {
+              updatéed[triggerNãodeIndex] = {
+                ...updatéed[triggerNãodeIndex],
                 name: nodeName,
                 config: { triggerDescription: description }
               };
             }
-            return updated;
+            return updatéed;
           });
 
           setShowTriggerModal(false);
@@ -3962,7 +4172,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         onSave={(config) => {
           const newRule = {
              field: config.event,
-             operator: config.rule,
+             operatéor: config.rule,
              value: config.value,
              timeWindow: config.timeWindow,
              timeUnit: config.timeUnit,
@@ -3981,7 +4191,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         onSave={(config) => {
           const newRule = {
              field: config.event,
-             operator: config.rule,
+             operatéor: config.rule,
              value: config.value,
              timeWindow: config.timeWindow,
              timeUnit: config.timeUnit,
