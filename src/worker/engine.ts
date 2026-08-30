@@ -51,13 +51,13 @@ export async function processFlows() {
         let futureTime = null;
 
         // Execute node logic based on type
-        if (node.type === "trigger" || node.type === "delay") {
+        if (node.node_type === "trigger" || node.node_type === "delay") {
           // If we are evaluating a trigger or delay here, it means the wait time is over!
           // We just advance to its child.
           const { data: children } = await supabase.from("flow_nodes").select("id").eq("parent_node_id", node.id);
           nextNodeId = children && children.length > 0 ? children[0].id : null;
         } 
-        else if (node.type === "email") {
+        else if (node.node_type === "email") {
           // Send email
           const contact = run.contacts;
           if (contact && contact.email) {
@@ -88,7 +88,7 @@ export async function processFlows() {
           const { data: children } = await supabase.from("flow_nodes").select("id").eq("parent_node_id", node.id);
           nextNodeId = children && children.length > 0 ? children[0].id : null;
         }
-        else if (node.type === "split") {
+        else if (node.node_type === "split") {
            let branch = "yes";
            
            const config = node.config || {};
@@ -121,8 +121,8 @@ export async function processFlows() {
         }
 
         // Fetch next node to see if it is a delay
-        const { data: nextNode } = await supabase.from("flow_nodes").select("type, config").eq("id", nextNodeId).single();
-        if (nextNode && nextNode.type === "delay") {
+        const { data: nextNode } = await supabase.from("flow_nodes").select("node_type, config").eq("id", nextNodeId).single();
+        if (nextNode && nextNode.node_type === "delay") {
            // Calculate future time
            const unit = nextNode.config?.unit || "days";
            const val = parseInt(nextNode.config?.value || "1");

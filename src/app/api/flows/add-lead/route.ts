@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       .from("flow_nodes")
       .select("id")
       .eq("flow_id", flowId)
-      .eq("type", "trigger")
+      .eq("node_type", "trigger")
       .limit(1);
 
     if (nodeError || !nodes || nodes.length === 0) {
