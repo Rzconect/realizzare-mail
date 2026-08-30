@@ -971,8 +971,8 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   }
 }
 
-function getMatchingContacts(contacts: any[], groups: any[], globalOp: "and" | "or", customFields: any[]): number {
-  if (!groups || groups.length === 0) return contacts.length;
+function getMatchingContacts(contacts: any[], groups: any[], globalOp: "and" | "or", customFields: any[]): any[] {
+  if (!groups || groups.length === 0) return contacts;
   
   const matchedContacts = contacts.filter((contact) => {
     const groupResults: boolean[] = groups.map((group) => {
@@ -994,7 +994,7 @@ function getMatchingContacts(contacts: any[], groups: any[], globalOp: "and" | "
     }
   });
   
-  return matchedContacts.length;
+  return matchedContacts;
 }
 
 function CreateCampaignForm() {
