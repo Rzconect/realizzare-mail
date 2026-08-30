@@ -149,9 +149,9 @@ cron.schedule('* * * * *', async () => {
            errorCount++;
         }
         
-        // PAUSA ESTRATÉGICA: Aguarda 75ms entre cada envio (Cerca de 13 envios/segundo)
-        // Isso evita exceder a Quota da AWS de Envios por Segundo (TPS).
-        await new Promise(r => setTimeout(r, 75));
+        // PAUSA PARA SANDBOX: Aguarda 1100ms (1.1s) entre cada envio 
+        // para respeitar o limite de 1 email/segundo da AWS Sandbox.
+        await new Promise(r => setTimeout(r, 1100));
       }
       
       // 5. Finalização
