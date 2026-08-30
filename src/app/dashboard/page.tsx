@@ -34,7 +34,7 @@ import {
   RotateCcw,
   Search,
   Send,
-  MousePointerClick
+  MousePointerClick, X
 } from "lucide-react";
 import {
   AreaChart,
@@ -1741,3 +1741,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+
