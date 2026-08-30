@@ -1366,7 +1366,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           )}
                         </h4>
                         <p className={`text-[9px] text-slate-450 mt-0.5 ${
-                          node.type === "email" ? "break-words whitespace-normal leading-relaxed text-slate-500 font-medium" : "truncate"
+                          node.type === "email" || isTrigger ? "break-words whitespace-normal leading-relaxed text-slate-500 font-medium line-clamp-2" : "truncate"
                         }`}>
                           {isTrigger ? (
                             (node.config?.triggerDescription && node.config?.triggerDescription !== "Disparador não configurado"
@@ -4026,22 +4026,33 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         isOpen={showTriggerModal} 
         onClose={() => setShowTriggerModal(false)}
         onSave={(config) => {
-          const metric = config.summary ? (config.summary.length > 50 ? config.summary.substring(0, 47) + "..." : config.summary) : "Gatilho Personalizado";
-          const description = `Fonte: ${config.source.toUpperCase()}`;
+          const nodeName = config.event || "Gatilho Personalizado";
+          
+          let ruleText = "";
+          if (config.rule === "Nome do Curso espec�fico") {
+            ruleText = Array.isArray(config.value) ? config.value.join(", ") : config.value;
+          } else if (config.rule !== "Nenhuma regra extra") {
+            ruleText = `${config.rule} ${config.value}`;
+          }
+
+          let description = `Fonte: ${config.source.toUpperCase()}`;
+          if (ruleText) {
+            description += ` � Regras: ${ruleText}`;
+          }
+
           setFlow(prev => ({
             ...prev,
-            triggerMetric: metric,
+            triggerMetric: nodeName,
             triggerType: description
           }));
           
-          // Update nodes to reflect selection on the visual node itself
           setNodes(prev => {
             const updated = [...prev];
             const triggerNodeIndex = updated.findIndex(n => n.type === "trigger" || n.id === "trigger");
             if (triggerNodeIndex !== -1) {
               updated[triggerNodeIndex] = {
                 ...updated[triggerNodeIndex],
-                name: metric,
+                name: nodeName,
                 config: { triggerDescription: description }
               };
             }
