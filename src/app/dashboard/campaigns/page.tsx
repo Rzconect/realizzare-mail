@@ -154,6 +154,13 @@ export default function CampaignsPage() {
     };
     
     fetchCampaigns();
+    
+    // Auto-refresh silencioso a cada 15 segundos
+    const intervalId = setInterval(() => {
+      fetchCampaigns();
+    }, 15000);
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   // Date utilities
