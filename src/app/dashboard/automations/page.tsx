@@ -171,6 +171,8 @@ export default function AutomationsPage() {
             status: (f.status === "active" ? "Ativo" : (f.status === "paused" ? "Pausado" : "Rascunho")) as "Ativo" | "Pausado" | "Rascunho",
             updatedAt: new Date(f.updated_at || f.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
             activeContacts: activeContactsMap[f.id] || 0,
+              finishedContacts: f.finished_contacts || 0,
+              certificatesIssued: f.certificates_issued || 0,
             revenue: f.metrics_json?.revenue || 0.00
           }));
           setFlows(mapped);
@@ -780,7 +782,7 @@ export default function AutomationsPage() {
                 <th className="py-4 px-4 w-36">Última Atualização</th>
                 <th className="py-4 px-4 w-32 text-center">Contatos Atuais</th>
                 <th className="py-4 px-4 w-28 text-center">Finalizaram</th>
-                <th className="py-4 px-4 w-36 text-center">Certificados Emitidos</th>
+                <th className="py-4 px-4 w-36 text-center">Pedidos Realizados</th>
                 <th className="py-4 px-4 w-32 text-right">Receita Gerada</th>
                 <th className="py-4 px-4 w-12 rounded-tr-3xl"></th>
               </tr>
@@ -872,14 +874,8 @@ export default function AutomationsPage() {
 
                       {/* Finalizaram */}
                       {(() => {
-                        const finishedContacts = flow.finishedContacts !== undefined ? flow.finishedContacts : (
-                          flow.status === "Ativo" ? Math.round(flow.activeContacts * 3.5 + 14) :
-                          flow.status === "Pausado" ? Math.round(flow.activeContacts * 1.5 + 4) : 0
-                        );
-                        const certificatesIssued = flow.certificatesIssued !== undefined ? flow.certificatesIssued : (
-                          flow.status === "Ativo" ? Math.round(finishedContacts * 0.8) :
-                          flow.status === "Pausado" ? Math.round(finishedContacts * 0.7) : 0
-                        );
+                        const finishedContacts = flow.finishedContacts || 0;
+                        const certificatesIssued = flow.certificatesIssued || 0;
                         
                         return (
                           <>
