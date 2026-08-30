@@ -1628,18 +1628,27 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Transaction Event Details Modal */}
+      {/* Event Details Modal */}
       {selectedEventModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fadeIn">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 relative">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-extrabold text-base">
-                  💳
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-extrabold text-base ${
+                  selectedEventModal.type === "purchase" ? "bg-emerald-50 border border-emerald-100 text-emerald-600" :
+                  selectedEventModal.type === "open" ? "bg-purple-50 border border-purple-100 text-purple-600" :
+                  "bg-teal-50 border border-teal-100 text-teal-600"
+                }`}>
+                  {selectedEventModal.type === "purchase" ? "💳" : selectedEventModal.type === "open" ? <Eye className="h-5 w-5" /> : <MousePointerClick className="h-5 w-5" />}
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base">Detalhes da Transação Pagar.me</h3>
-                  <span className="text-[10px] text-slate-500 font-semibold">Integrado via Webhook Pagar.me V5</span>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    {selectedEventModal.type === "purchase" ? "Detalhes da Transação Pagar.me" : 
+                     selectedEventModal.type === "open" ? "E-mail Aberto" : "E-mail Clicado"}
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-semibold">
+                    {selectedEventModal.type === "purchase" ? "Integrado via Webhook Pagar.me V5" : "Realizzare Mail"}
+                  </span>
                 </div>
               </div>
               <button
@@ -1647,18 +1656,22 @@ export default function DashboardPage() {
                 onClick={() => setSelectedEventModal(null)}
                 className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                ✕
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3.5 text-xs">
               <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Dados do Aluno / Comprador</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                  {selectedEventModal.type === "purchase" ? "Dados do Aluno / Comprador" : "Dados do Contato"}
+                </span>
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-slate-800 text-sm">{selectedEventModal.name}</span>
-                  <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
-                    Compra Aprovada
-                  </span>
+                  {selectedEventModal.type === "purchase" && (
+                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
+                      Compra Aprovada
+                    </span>
+                  )}
                 </div>
                 <div className="flex justify-between text-slate-600 font-medium">
                   <span>E-mail:</span>
@@ -1672,22 +1685,35 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              <div className="border border-slate-200 rounded-2xl p-4 space-y-2.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Resumo do Item Adquirido</span>
-                <div className="text-slate-900 font-bold text-xs leading-relaxed">
+              <div className="border border-slate-100 rounded-2xl p-4 space-y-3">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block border-b border-slate-100 pb-2">
+                  {selectedEventModal.type === "purchase" ? "Resumo do Item Adquirido" : "Detalhes da Campanha"}
+                </span>
+                <strong className="block text-slate-850 font-extrabold text-sm pb-1">
                   {selectedEventModal.itemTitle || selectedEventModal.eventLabel}
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-slate-700 font-medium">
-                  <span>Valor Total Transacionado:</span>
-                  <strong className="text-emerald-700 font-black text-base">R$ {selectedEventModal.amount ? selectedEventModal.amount.toFixed(2) : "49.90"}</strong>
-                </div>
-                <div className="flex justify-between items-center text-slate-600 font-medium">
-                  <span>Método de Pagamento:</span>
-                  <span className="bg-slate-100 text-slate-800 font-bold text-[10px] px-2 py-0.5 rounded-md uppercase">
-                    {selectedEventModal.paymentMethod || "Cartão / PIX"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-slate-500 text-[11px]">
+                </strong>
+                
+                {selectedEventModal.type === "purchase" ? (
+                  <>
+                    <div className="flex justify-between items-center text-emerald-700 font-black text-lg">
+                      <span>Valor Total Transacionado:</span>
+                      <span>R$ {selectedEventModal.amount ? selectedEventModal.amount.toFixed(2) : "0.00"}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600 font-semibold pt-1">
+                      <span>Método de Pagamento:</span>
+                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest uppercase">Cartão / PIX</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between items-center text-slate-700 font-medium text-sm pt-1">
+                    <span>Ação:</span>
+                    <span className={`font-black ${selectedEventModal.type === "open" ? "text-purple-600" : "text-teal-600"}`}>
+                      {selectedEventModal.type === "open" ? "Abriu a campanha" : "Clicou no link da campanha"}
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between text-slate-500 font-medium pt-1">
                   <span>Data e Hora do Evento:</span>
                   <span>{selectedEventModal.date} às {selectedEventModal.time}</span>
                 </div>
