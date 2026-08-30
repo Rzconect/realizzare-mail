@@ -54,7 +54,7 @@ export default function CampaignsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Custom range picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -215,7 +215,7 @@ export default function CampaignsPage() {
   const paginatedCampaigns = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredCampaigns.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredCampaigns, currentPage]);
+  }, [filteredCampaigns, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
 
@@ -995,12 +995,28 @@ export default function CampaignsPage() {
           </table>
         </div>
 
-        {/* Pagination footer */}
-        {totalPages > 1 && (
+        {totalPages > 0 && (
           <div className="flex items-center justify-between border-t border-slate-100 pt-4 flex-col sm:flex-row gap-4">
-            <span className="text-xs text-slate-500 font-medium">
-              Mostrando página <strong className="text-slate-700">{currentPage}</strong> de <strong className="text-slate-700">{totalPages}</strong> ({filteredCampaigns.length} campanhas no total)
-            </span>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 font-medium">
+              <span>
+                Mostrando página <strong className="text-slate-700">{currentPage}</strong> de <strong className="text-slate-700">{totalPages}</strong> ({filteredCampaigns.length} campanhas no total)
+              </span>
+              <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
+                <span>Campanhas por página:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none focus:border-indigo-500 shadow-sm"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -1176,3 +1192,4 @@ export default function CampaignsPage() {
     </div>
   );
 }
+
