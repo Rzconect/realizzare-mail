@@ -10,6 +10,16 @@ export async function POST(req: Request) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    if (campaignData && campaignData.target_list && campaignData.target_list.endsWith("||IDS||")) {
+      const name = campaignData.target_list.split("||IDS||")[0];
+      if (name && name !== "Nenhuma lista selecionada") {
+        const { data: matched } = await supabase.from("lists").select("id").eq("name", name).limit(1);
+        if (matched && matched.length > 0) {
+          campaignData.target_list = name + "||IDS||" + matched[0].id;
+        }
+      }
+    }
+
     // 1. CLONE CAMPAIGN
     if (cloneFromId) {
       const { data: setRes } = await supabase.from("account_settings").select("settings").maybeSingle();
