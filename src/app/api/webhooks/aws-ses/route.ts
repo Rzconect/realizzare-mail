@@ -56,6 +56,19 @@ export async function POST(req: NextRequest) {
               await supabase.from("campaigns").update({ open_count: (camp.open_count || 0) + 1 }).eq("id", campaignId);
             }
           }
+          await supabase.from("inbound_webhook_events").insert({
+            org_id: "00000000-0000-0000-0000-000000000001",
+            source: "aws_ses",
+            event_type: "email.opened",
+            payload: {
+              event: "email.opened",
+              email: mail.destination ? mail.destination[0] : "",
+              campaign_id: campaignId,
+              contact_id: contactId,
+              timestamp: new Date().toISOString()
+            },
+            status: "processed"
+          });
         } else if (eventType === "Click") {
           if (campaignId) {
             const { data: camp } = await supabase.from("campaigns").select("click_count").eq("id", campaignId).maybeSingle();
@@ -63,6 +76,20 @@ export async function POST(req: NextRequest) {
               await supabase.from("campaigns").update({ click_count: (camp.click_count || 0) + 1 }).eq("id", campaignId);
             }
           }
+          await supabase.from("inbound_webhook_events").insert({
+            org_id: "00000000-0000-0000-0000-000000000001",
+            source: "aws_ses",
+            event_type: "email.clicked",
+            payload: {
+              event: "email.clicked",
+              email: mail.destination ? mail.destination[0] : "",
+              campaign_id: campaignId,
+              contact_id: contactId,
+              link: message.click ? message.click.link : "",
+              timestamp: new Date().toISOString()
+            },
+            status: "processed"
+          });
         } else if (eventType === "Bounce") {
           const bounce = message.bounce || {};
           const bouncedRecipients = bounce.bouncedRecipients || [];
