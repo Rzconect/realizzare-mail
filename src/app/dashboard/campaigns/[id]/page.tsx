@@ -715,21 +715,20 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   };
 
   const handleDuplicate = async () => {
-    if (!data) return;
     try {
-      const { id: _ignored, created_at, updated_at, sent_at, scheduled_at, ...campaignData } = data;
-      const { data: newCampaign, error } = await supabase
-        .from("campaigns")
-        .insert({
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: rawCampaign, error: fetchError } = await supabase.from("campaigns").select("*").eq("id", campaignId).single();
+      if (fetchError || !rawCampaign) throw fetchError;
+      const { id: _ignored, created_at, updated_at, sent_at, scheduled_at, ...campaignData } = rawCampaign;
+      const { data: newCampaign, error } = await supabase.from("campaigns").insert({
           ...campaignData,
           name: `C�pia de ${campaignData.name}`,
           status: "draft",
-        })
-        .select()
-        .single();
+        }).select().single();
       if (error) throw error;
       alert("Campanha duplicada com sucesso!");
-      router.push(`/dashboard/campaigns/create?edit=${newCampaign.id}`);
+      window.location.href = `/dashboard/campaigns/create?edit=${newCampaign.id}`;
     } catch (err) {
       console.error(err);
       alert("Erro ao duplicar campanha");
