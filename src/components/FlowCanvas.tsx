@@ -262,6 +262,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
   // UI Panels states
   const [showTriggerModal, setShowTriggerModal] = useState(false);
+  const [showExitRuleModal, setShowExitRuleModal] = useState(false);
+  const [showSplitRuleModal, setShowSplitRuleModal] = useState(false);
   const [activePanel, setActivePanel] = useState<"menu" | "trigger_select" | "trigger_config" | "node_config" | "exit_rules" | null>("menu");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedNodeForConfig, setSelectedNodeForConfig] = useState<FlowNode | null>(null);
@@ -275,7 +277,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [moveLeadsAction, setMoveLeadsAction] = useState<"move" | "exit" | "advance">("move");
 
   // State for split rules builder
-  const [editSplitRules, setEditSplitRules] = useState<Array<{ field: string; operator: string; value: string }>>([]);
+  const [editSplitRules, setEditSplitRules] = useState<Array<{ field: string; operator: string; value: any; timeWindow?: number | null; timeUnit?: string; summary?: string }>>([]);
 
   // Temp state for editing Node configs
   const [editNodeName, setEditNodeName] = useState("");
@@ -3163,111 +3165,44 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             <p className="text-[10px] text-slate-450 mt-0.5 text-left">Leads que atenderem às regras irão para o ramo **Sim** (verde). Os demais irão para o ramo **Não** (vermelho).</p>
                           </div>
 
-                          {/* Rule builder items */}
-                          <div className="space-y-3">
-                            {editSplitRules.map((rule, idx) => (
-                              <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5 relative">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[9px] font-black uppercase text-indigo-650">Regra {idx + 1}</span>
-                                  {editSplitRules.length > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditSplitRules(prev => prev.filter((_, i) => i !== idx))}
-                                      className="text-[10px] text-red-500 hover:text-red-700 font-bold cursor-pointer"
-                                    >
-                                      Remover
-                                    </button>
-                                  )}
-                                </div>
+                          
+{/* Rule builder items */}
+<div className="space-y-3">
+  {editSplitRules.map((rule, idx) => (
+    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5 relative">
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] font-black uppercase text-indigo-650">Regra {idx + 1}</span>
+        {editSplitRules.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setEditSplitRules(prev => prev.filter((_, i) => i !== idx))}
+            className="text-[10px] text-red-500 hover:text-red-700 font-bold cursor-pointer"
+          >
+            Remover
+          </button>
+        )}
+      </div>
+      <div className="text-xs font-semibold text-slate-700 break-words text-left mt-2">
+        {rule.summary || `${rule.field} ${rule.operator} ${rule.value}`}
+      </div>
+      {(rule.timeWindow && rule.timeUnit) && (
+        <div className="text-[10px] text-slate-500 font-medium text-left mt-1">
+          Janela de Tempo: -ltimo(s) {rule.timeWindow} {rule.timeUnit === "minutes" ? "minuto(s)" : rule.timeUnit === "hours" ? "hora(s)" : "dia(s)"}
+        </div>
+      )}
+    </div>
+  ))}
+</div>
 
-                                <div className="space-y-2 text-left">
-                                  {/* Field Selector */}
-                                  <div className="space-y-1">
-                                    <label className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Propriedade</label>
-                                    <select
-                                      value={rule.field}
-                                      onChange={(e) => {
-                                        const nextField = e.target.value;
-                                        setEditSplitRules(prev => prev.map((r, i) => {
-                                          if (i === idx) {
-                                            return {
-                                              field: nextField,
-                                              operator: "eq",
-                                              value: nextField === "status" ? "active" : ""
-                                            };
-                                          }
-                                          return r;
-                                        }));
-                                      }}
-                                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none bg-white cursor-pointer"
-                                    >
-                                      <option value="status">Status do Lead</option>
-                                      <option value="course">Curso Matriculado</option>
-                                      <option value="tag">Tag Contém</option>
-                                      <option value="total_spent">Total Pago (Faturamento)</option>
-                                    </select>
-                                  </div>
+<button
+  type="button"
+  onClick={() => setShowSplitRuleModal(true)}
+  className="w-full flex items-center justify-center gap-1.5 py-3 mt-4 border border-dashed border-slate-350 hover:border-indigo-450 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-650 transition-colors cursor-pointer bg-white"
+>
+  <Plus className="h-4 w-4" />
+  <span>Adicionar Nova Condi--o</span>
+</button>
 
-                                  {/* Operator Selector */}
-                                  <div className="space-y-1">
-                                    <label className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Condição</label>
-                                    <select
-                                      value={rule.operator}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        setEditSplitRules(prev => prev.map((r, i) => i === idx ? { ...r, operator: val } : r));
-                                      }}
-                                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none bg-white cursor-pointer"
-                                    >
-                                      <option value="eq">Igual a</option>
-                                      <option value="neq">Diferente de</option>
-                                      <option value="contains">Contém texto</option>
-                                      {rule.field === "total_spent" && <option value="gt">Maior que</option>}
-                                    </select>
-                                  </div>
-
-                                  {/* Value Input */}
-                                  <div className="space-y-1">
-                                    <label className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Valor</label>
-                                    {rule.field === "status" ? (
-                                      <select
-                                        value={rule.value}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setEditSplitRules(prev => prev.map((r, i) => i === idx ? { ...r, value: val } : r));
-                                        }}
-                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none bg-white cursor-pointer"
-                                      >
-                                        <option value="active">Ativo (Active)</option>
-                                        <option value="bounced">Bounced</option>
-                                        <option value="unsubscribed">Unsubscribed</option>
-                                      </select>
-                                    ) : (
-                                      <input
-                                        type={rule.field === "total_spent" ? "number" : "text"}
-                                        value={rule.value}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setEditSplitRules(prev => prev.map((r, i) => i === idx ? { ...r, value: val } : r));
-                                        }}
-                                        placeholder={rule.field === "total_spent" ? "Ex: 197" : "Digite o valor..."}
-                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none bg-white"
-                                      />
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setEditSplitRules(prev => [...prev, { field: "course", operator: "eq", value: "" }])}
-                            className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-slate-350 hover:border-indigo-450 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-650 transition-colors cursor-pointer"
-                          >
-                            <Plus className="h-4 w-4" />
-                            <span>Adicionar Regra</span>
-                          </button>
                         </div>
                       )}
 
@@ -3350,8 +3285,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         {flow.exitConditions.map((cond, idx) => (
                           <div key={idx} className="flex items-center justify-between p-3 border border-slate-200 rounded-xl bg-slate-50/50 text-xs">
                             <div className="font-semibold text-slate-700">
-                              {cond.field === "unsubscribed" ? "Cancelou inscrição na lista" :
-                               cond.field === "course_finished" ? "Concluiu o curso de React" : cond.field}
+                              {cond.summary || cond.field}
                             </div>
                             <button
                               onClick={() => setFlow(p => ({ ...p, exitConditions: p.exitConditions?.filter((_, i) => i !== idx) }))}
@@ -3369,65 +3303,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     )}
 
                     <div className="flex flex-col gap-2">
-                      {(() => {
-                        const hasUnsubscribedRule = flow.exitConditions?.some(c => c.field === "unsubscribed");
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (hasUnsubscribedRule) {
-                                setFlow(p => ({ ...p, exitConditions: p.exitConditions?.filter(c => c.field !== "unsubscribed") }));
-                              } else {
-                                const newRules = [...(flow.exitConditions || []), { field: "unsubscribed", operator: "eq", value: "true" }];
-                                setFlow(p => ({ ...p, exitConditions: newRules }));
-                              }
-                            }}
-                            className={`flex items-center justify-between px-4 py-2.5 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              hasUnsubscribedRule
-                                ? "bg-indigo-50 border-indigo-300 text-indigo-700 shadow-sm"
-                                : "bg-white border-slate-200 text-slate-655 hover:border-indigo-400 hover:text-indigo-650"
-                            }`}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <span className={`h-1.5 w-1.5 rounded-full ${hasUnsubscribedRule ? "bg-indigo-600" : "bg-slate-300"}`} />
-                              Se Aluno Cancelar Inscrição
-                            </span>
-                            <span className={`text-[10px] uppercase font-black ${hasUnsubscribedRule ? "text-indigo-600" : "text-slate-400"}`}>
-                              {hasUnsubscribedRule ? "Ativo" : "Inativo"}
-                            </span>
-                          </button>
-                        );
-                      })()}
-
-                      {(() => {
-                        const hasCourseFinishedRule = flow.exitConditions?.some(c => c.field === "course_finished");
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (hasCourseFinishedRule) {
-                                setFlow(p => ({ ...p, exitConditions: p.exitConditions?.filter(c => c.field !== "course_finished") }));
-                              } else {
-                                const newRules = [...(flow.exitConditions || []), { field: "course_finished", operator: "eq", value: "true" }];
-                                setFlow(p => ({ ...p, exitConditions: newRules }));
-                              }
-                            }}
-                            className={`flex items-center justify-between px-4 py-2.5 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              hasCourseFinishedRule
-                                ? "bg-indigo-50 border-indigo-300 text-indigo-700 shadow-sm"
-                                : "bg-white border-slate-200 text-slate-655 hover:border-indigo-400 hover:text-indigo-650"
-                            }`}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <span className={`h-1.5 w-1.5 rounded-full ${hasCourseFinishedRule ? "bg-indigo-600" : "bg-slate-300"}`} />
-                              Se Aluno Concluir o Curso
-                            </span>
-                            <span className={`text-[10px] uppercase font-black ${hasCourseFinishedRule ? "text-indigo-600" : "text-slate-400"}`}>
-                              {hasCourseFinishedRule ? "Ativo" : "Inativo"}
-                            </span>
-                          </button>
-                        );
-                      })()}
+                      <button
+                        type="button"
+                        onClick={() => setShowExitRuleModal(true)}
+                        className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-slate-350 hover:border-indigo-450 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-650 transition-colors cursor-pointer bg-white shadow-sm"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Adicionar Nova Regra de Saída</span>
+                      </button>
                     </div>
                   </div>
 
@@ -4021,23 +3904,31 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       )}
 
 
+
+
+
       {/* Trigger Modal */}
       <TriggerConfigModal 
         isOpen={showTriggerModal} 
         onClose={() => setShowTriggerModal(false)}
+        mode="entry"
         onSave={(config) => {
           const nodeName = config.event || "Gatilho Personalizado";
           
           let ruleText = "";
-          if (config.rule === "Nome do Curso espec�fico") {
-            ruleText = Array.isArray(config.value) ? config.value.join(", ") : config.value;
+          if (config.rule === "Nome do Curso espec\u00EDfico") {
+            if (Array.isArray(config.value) && config.value.length > 0) {
+              ruleText = config.value.length > 1 ? `${config.value[0]} e mais ${config.value.length - 1}` : config.value[0];
+            } else {
+              ruleText = config.value;
+            }
           } else if (config.rule !== "Nenhuma regra extra") {
             ruleText = `${config.rule} ${config.value}`;
           }
 
           let description = `Fonte: ${config.source.toUpperCase()}`;
           if (ruleText) {
-            description += ` � Regras: ${ruleText}`;
+            description += ` - Regras: ${ruleText}`;
           }
 
           setFlow(prev => ({
@@ -4060,6 +3951,44 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           });
 
           setShowTriggerModal(false);
+        }}
+      />
+
+      {/* Exit Rule Modal */}
+      <TriggerConfigModal 
+        isOpen={showExitRuleModal} 
+        onClose={() => setShowExitRuleModal(false)}
+        mode="exit"
+        onSave={(config) => {
+          const newRule = {
+             field: config.event,
+             operator: config.rule,
+             value: config.value,
+             timeWindow: config.timeWindow,
+             timeUnit: config.timeUnit,
+             summary: config.summary
+          };
+          setFlow(p => ({ ...p, exitConditions: [...(p.exitConditions || []), newRule] }));
+          setShowExitRuleModal(false);
+        }}
+      />
+
+      {/* Split Rule Modal */}
+      <TriggerConfigModal 
+        isOpen={showSplitRuleModal} 
+        onClose={() => setShowSplitRuleModal(false)}
+        mode="split"
+        onSave={(config) => {
+          const newRule = {
+             field: config.event,
+             operator: config.rule,
+             value: config.value,
+             timeWindow: config.timeWindow,
+             timeUnit: config.timeUnit,
+             summary: config.summary
+          };
+          setEditSplitRules(prev => [...prev, newRule]);
+          setShowSplitRuleModal(false);
         }}
       />
     </div>

@@ -99,7 +99,7 @@ const mockCoursesList = [
   "Marketing Digital de Performance"
 ];
 
-export default function AutomaçãonsPage() {
+export default function AutomationsPage() {
   const router = useRouter();
   const [flows, setFlows] = useState<Flow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -158,8 +158,8 @@ export default function AutomaçãonsPage() {
           const mapped = data.map((f: any) => ({
             id: f.id,
             name: f.name,
-            triggerDescription: f.description || f.trigger_type || "Gatilho Padrão",
-            type: "Automação" as "Automação" | "Transacional" | "Sistema",
+            triggerDescription: f.description || f.trigger_type || "Gatilho Padr-o",
+            type: "Automa��o",
             status: (f.status === "active" ? "Ativo" : (f.status === "paused" ? "Pausado" : "Rascunho")) as "Ativo" | "Pausado" | "Rascunho",
             updatedAt: new Date(f.updated_at || f.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
             activeContacts: f.metrics_json?.active_contacts || 0,

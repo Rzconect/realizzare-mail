@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { X, CreditCard, Activity, Webhook, UserCircle2, Check } from "lucide-react";
+import { X, CreditCard, Activity, Webhook, UserCircle2, Check, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface TriggerConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (config: any) => void;
+  mode?: "entry" | "exit" | "split";
 }
 
-export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerConfigModalProps) {
+export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "entry" }: TriggerConfigModalProps) {
   const [customTriggerSource, setCustomTriggerSource] = useState("pagarme");
   const [selectedEvent, setSelectedEvent] = useState("");
   const [selectedRule, setSelectedRule] = useState("Nenhuma regra extra");
   const [condValue, setCondValue] = useState("");
+  
+  const [timeWindow, setTimeWindow] = useState("");
+  const [timeUnit, setTimeUnit] = useState("minutes");
   
   const [courses, setCourses] = useState<{id: string, name: string}[]>([]);
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
@@ -35,9 +39,10 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
     setSelectedRule("Nenhuma regra extra");
     setCondValue("");
     setSelectedCourses([]);
+    setTimeWindow("");
   }, [customTriggerSource]);
 
-  const isCourseEvent = selectedEvent.includes("course") || selectedEvent.includes("Matrícula") || selectedEvent.includes("Certificado") || selectedEvent.includes("Reprovação") || selectedEvent.includes("Teste");
+  const isCourseEvent = selectedEvent.includes("course") || selectedEvent.includes("Matr\u00EDcula") || selectedEvent.includes("Certificado") || selectedEvent.includes("Reprova\u00E7\u00E3o") || selectedEvent.includes("Teste");
   const isPagarmeEvent = customTriggerSource === "pagarme";
 
   if (!isOpen) return null;
@@ -47,6 +52,12 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
       prev.includes(courseName) ? prev.filter(c => c !== courseName) : [...prev, courseName]
     );
   };
+  
+  const title = mode === "entry" ? "Configura\u00E7\u00E3o de Gatilho de Entrada" : 
+                mode === "exit" ? "Nova Regra de Sa\u00EDda" : "Condi\u00E7\u00E3o de Divis\u00E3o";
+  const desc = mode === "entry" ? "Configure regras complexas ouvindo eventos externos ou dados do usu\u00E1rio." :
+               mode === "exit" ? "Se o contato atender a esta regra, ele ser\u00E1 removido do fluxo imediatamente." :
+               "Contatos que atenderem a esta regra ir\u00E3o para o caminho \u0027Sim\u0027.";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
@@ -54,10 +65,10 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
         <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
           <div>
             <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">✨</div>
-              Configuração de Gatilho de Entrada
+              <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">\u2728</div>
+              {title}
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium mt-1">Configure regras complexas ouvindo eventos externos ou dados do usuário.</p>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">{desc}</p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors">
             <X className="h-4 w-4" />
@@ -91,7 +102,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 <option value="">Selecione o evento...</option>
                 {customTriggerSource === "pagarme" && (
                   <>
-                    <option>Transação Aprovada (order_paid)</option>
+                    <option>Transa\u00E7\u00E3o Aprovada (order_paid)</option>
                     <option>Boleto Gerado (order_created)</option>
                     <option>Assinatura Cancelada (subscription_canceled)</option>
                     <option>Carrinho Abandonado (checkout_abandoned)</option>
@@ -101,22 +112,22 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                   <>
                     <option>Curso Iniciado (course.progress - Inicio)</option>
                     <option>Curso em Andamento 50% (course.progress - Meio)</option>
-                    <option>Curso Concluído 100% (course.progress - Fim)</option>
-                    <option>Clique em Emissão/Checkout (checkout_click)</option>
-                    <option>Visualizou Página (page_view)</option>
+                    <option>Curso Conclu\u00EDdo 100% (course.progress - Fim)</option>
+                    <option>Clique em Emiss\u00E3o/Checkout (checkout_click)</option>
+                    <option>Visualizou P\u00E1gina (page_view)</option>
                     <option>Adicionou ao Carrinho (add_to_cart)</option>
                   </>
                 )}
                 {customTriggerSource === "api" && (
                   <>
-                    <option>Matrícula Realizada</option>
+                    <option>Matr\u00EDcula Realizada</option>
                     <option>Teste Aprovado</option>
-                    <option>Reprovação na Prova (course.exam_failed)</option>
+                    <option>Reprova\u00E7\u00E3o na Prova (course.exam_failed)</option>
                     <option>Certificado Emitido (certificate_issued)</option>
                     <option>Contato Criado / Atualizado</option>
                     <option>Descadastro de Email (contact.unsubscribed)</option>
-                    <option>Reativação de Contato (contact.reactivated)</option>
-                    <option>Evento Customizado POST genérico</option>
+                    <option>Reativa\u00E7\u00E3o de Contato (contact.reactivated)</option>
+                    <option>Evento Customizado POST gen\u00E9rico</option>
                   </>
                 )}
                 {customTriggerSource === "user" && (
@@ -125,10 +136,10 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                     <option>Campo: Nome / Sobrenome Alterado</option>
                     <option>Campo: Email Alterado</option>
                     <option>Campo: Telefone / WhatsApp</option>
-                    <option>Campo: Gênero</option>
+                    <option>Campo: G\u00EAnero</option>
                     <option>Campo: Data de Nascimento</option>
                     <option>Campo: CPF</option>
-                    <option>Campo: CEP / Endereço Completo</option>
+                    <option>Campo: CEP / Endere\u00E7o Completo</option>
                     <option>Tag Adicionada ou Removida</option>
                     <option>Campo Personalizado Alterado</option>
                   </>
@@ -141,12 +152,12 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Regra Adicional (Opcional)</label>
                 <select value={selectedRule} onChange={(e) => setSelectedRule(e.target.value)} className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none">
                   <option>Nenhuma regra extra</option>
-                  <option>Nome do Curso específico</option>
-                  {isPagarmeEvent && <option>SKU do Produto específico</option>}
+                  <option>Nome do Curso espec\u00EDfico</option>
+                  {isPagarmeEvent && <option>SKU do Produto espec\u00EDfico</option>}
                   <option>Igual a</option>
-                  <option>Não é igual a</option>
-                  <option>Contém</option>
-                  <option>Não contém</option>
+                  <option>N\u00E3o \u00E9 igual a</option>
+                  <option>Cont\u00E9m</option>
+                  <option>N\u00E3o cont\u00E9m</option>
                   <option>Maior que (Valor/Data)</option>
                   <option>Menor que (Valor/Data)</option>
                 </select>
@@ -154,7 +165,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor Condicional</label>
                 
-                {selectedRule === "Nome do Curso específico" ? (
+                {selectedRule === "Nome do Curso espec\u00EDfico" ? (
                   <div className="relative mt-1.5">
                     <button 
                       type="button"
@@ -195,12 +206,40 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                     type="text" 
                     value={condValue}
                     onChange={(e) => setCondValue(e.target.value)}
-                    placeholder={selectedRule === "SKU do Produto específico" ? "Ex: SKU-123, SKU-456" : "Ex: Valor esperado"} 
+                    placeholder={selectedRule === "SKU do Produto espec\u00EDfico" ? "Ex: SKU-123, SKU-456" : "Ex: Valor esperado"} 
                     className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none" 
                   />
                 )}
               </div>
             </div>
+            
+            {(mode === "exit" || mode === "split") && (
+              <div className="border-t border-slate-200 pt-4 mt-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  Janela de Tempo (Opcional)
+                </label>
+                <div className="flex gap-2 mt-1.5">
+                  <input 
+                    type="number" 
+                    value={timeWindow}
+                    onChange={(e) => setTimeWindow(e.target.value)}
+                    placeholder="Ex: 60" 
+                    className="w-1/2 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none" 
+                  />
+                  <select 
+                    value={timeUnit}
+                    onChange={(e) => setTimeUnit(e.target.value)}
+                    className="w-1/2 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none"
+                  >
+                    <option value="minutes">Minutos atr\u00E1s</option>
+                    <option value="hours">Horas atr\u00E1s</option>
+                    <option value="days">Dias atr\u00E1s</option>
+                  </select>
+                </div>
+                <p className="text-[9px] text-slate-400 mt-1">Deixe em branco para considerar qualquer data.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -211,7 +250,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
           <button
             type="button"
             onClick={() => {
-              const ruleText = selectedRule === "Nome do Curso específico" 
+              const ruleText = selectedRule === "Nome do Curso espec\u00EDfico" 
                 ? `[Cursos: ${selectedCourses.join(", ")}]` 
                 : (selectedRule !== "Nenhuma regra extra" ? `[${selectedRule} ${condValue}]` : "");
                 
@@ -219,14 +258,16 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 source: customTriggerSource,
                 event: selectedEvent,
                 rule: selectedRule,
-                value: selectedRule === "Nome do Curso específico" ? selectedCourses : condValue,
+                value: selectedRule === "Nome do Curso espec\u00EDfico" ? selectedCourses : condValue,
+                timeWindow: timeWindow ? parseInt(timeWindow) : null,
+                timeUnit,
                 summary: `${selectedEvent} ${ruleText}`
               });
               onClose();
             }}
             className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm"
           >
-            Salvar Gatilho
+            {mode === "entry" ? "Salvar Gatilho" : "Salvar Regra"}
           </button>
         </div>
       </div>
