@@ -312,6 +312,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [showMetadataMenu, setShowMetadataMenu] = useState(false);
   const [showActivationConfirmModal, setShowActivationConfirmModal] = useState(false);
   const [showManualAddModal, setShowManualAddModal] = useState(false);
+  const [showTagsDropdown, setShowTagsDropdown] = useState(false);
   const [manualContacts, setManualContacts] = useState<any[]>([]);
   const [manualSearchQuery, setManualSearchQuery] = useState("");
   const [isAddingLead, setIsAddingLead] = useState(false);
@@ -1558,6 +1559,23 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       </div>
                     </div>
 
+                    {/* Botão de Adicionar Contato Manualmente */}
+                    {isTrigger && (
+                      <div className="relative shrink-0 mt-0.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowManualAddModal(true);
+                          }}
+                          className="p-1 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors cursor-pointer"
+                          title="Adicionar leads manualmente a este fluxo"
+                        >
+                          <UserPlus className="h-4.5 w-4.5" />
+                        </button>
+                      </div>
+                    )}
+                    
                     {/* 3-Dots Options Dropdown Button for non-triggers */}
                     {!isTrigger && (
                       <div className="relative shrink-0 mt-0.5">

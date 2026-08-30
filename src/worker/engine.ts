@@ -84,16 +84,25 @@ export async function processFlows() {
           nextNodeId = children && children.length > 0 ? children[0].id : null;
         }
         else if (node.type === "split") {
-           // Basic split eval: random or rule
-           // For now, always go "yes" just as a placeholder until we implement the full rule engine
-           const branch = "yes";
+           let branch = "yes";
+           
+           const config = node.config || {};
+           if (config.splitType === "random") {
+              const ratio = config.randomRatio !== undefined ? config.randomRatio : 50;
+              const rand = Math.random() * 100;
+              branch = rand <= ratio ? "yes" : "no";
+           } else {
+              // Condição por regras ainda será implementada. Por enquanto, se não for random, vai pro SIM.
+              branch = "yes";
+           }
+           
            const { data: children } = await supabase.from("flow_nodes").select("id").eq("parent_node_id", node.id).eq("branch_label", branch);
            nextNodeId = children && children.length > 0 ? children[0].id : null;
            
            await supabase.from("flow_run_logs").insert({
                run_id: run.id,
                node_id: node.id,
-               action_taken: `Divisão Condicional: caminho SIM`
+               action_taken: `Divisão Condicional: caminho ${branch.toUpperCase()}`
            });
         }
         else if (node.type === "goto") {
