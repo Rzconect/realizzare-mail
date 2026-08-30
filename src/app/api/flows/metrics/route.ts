@@ -50,7 +50,31 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // Fetch active flow runs to count leads waiting at each node
+    const { data: runs, error: runsError } = await supabase
+      .from("flow_runs")
+      .select("current_node_id")
+      .eq("flow_id", flowId)
+      .eq("status", "running");
+      
+    const waitingCounts: Record<string, number> = {};
+    if (!runsError && runs) {
+      runs.forEach(run => {
+        const nid = run.current_node_id;
+        if (nid) {
+          waitingCounts[nid] = (waitingCounts[nid] || 0) + 1;
+        }
+      });
+    }
+
     const result: Record<string, any> = {};
+    // Ensure nodes with waiting leads but no sent emails are included
+    for (const nid of Object.keys(waitingCounts)) {
+      if (!nodeMetrics[nid]) {
+        nodeMetrics[nid] = { sent: 0, opened: new Set(), clicked: new Set() };
+      }
+    }
+
     for (const [nid, m] of Object.entries(nodeMetrics)) {
       const opened = m.opened.size;
       const clicked = m.clicked.size;
@@ -64,7 +88,7 @@ export async function GET(req: NextRequest) {
         clickRate: sent > 0 ? (clicked / sent) * 100 : 0,
         conversionRate: 0,
         revenue: 0,
-        espera: 0,
+        espera: waitingCounts[nid] || 0,
         revisao: 0,
         entregue: sent,
         ignorado: 0

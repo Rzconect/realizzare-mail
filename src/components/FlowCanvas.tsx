@@ -1185,7 +1185,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       }
       
       alert("Fluxo salvo com sucesso no Supabase!");
-      router.push("/dashboard/automations");
+      
     } catch(e) {
       console.error(e);
       alert("Erro ao salvar fluxo");
@@ -1640,7 +1640,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   {/* Render Detailed Metrics if node is delay and toggle is active */}
                   {node.type === "delay" && showDetailedMetrics && (() => {
                     const delayMetrics = getMetricsForNode(node.id, typeof nodeMetricsData !== "undefined" ? nodeMetricsData : {}, flowPeriod, flowCustomStart, flowCustomEnd);
-                    const waitingCount = 0;
+                    const waitingCount = delayMetrics.espera || 0;
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2.5">
                         <div 
@@ -3338,7 +3338,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       {/* Leads por Etapa / Fila de Atraso */}
                       {(() => {
                         const delayMetrics = getMetricsForNode(selectedNodeForConfig.id, typeof nodeMetricsData !== "undefined" ? nodeMetricsData : {}, flowPeriod, flowCustomStart, flowCustomEnd);
-                        const waitingCount = 0;
+                        const waitingCount = delayMetrics.espera || 0;
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Leads nesta Etapa</h4>
