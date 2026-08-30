@@ -46,13 +46,13 @@ import {
   Check
 } from "lucide-react";
 
-interface FlowNãode {
+interface FlowNode {
   id: string;
   type: 'trigger' | 'email' | 'sms' | 'whatsapp' | 'delay' | 'split' | 'goto' | 'update_contact' | 'update_list' | 'internal_alert' | 'webhook' | 'end';
   name?: string;
   config?: any;
-  yesBranch?: FlowNãode[];
-  noBranch?: FlowNãode[];
+  yesBranch?: FlowNode[];
+  noBranch?: FlowNode[];
 }
 
 interface FlowConfig {
@@ -134,53 +134,16 @@ const getDaysBetween = (start: Date, end: Date) => {
   return diffDays;
 };
 
-const getMetricsForNãode = (nodeId: string, preset: string, customStart?: string, customEnd?: string) => {
-  const { start, end } = getPeriodDates(preset, customStart, customEnd);
-  const days = getDaysBetween(start, end);
-  
-  let seed = 0;
-  for (let i = 0; i < nodeId.length; i++) {
-    seed += nodeId.charCodeAt(i);
-  }
-  
-  const baseVolumePerDay = 15 + (seed % 25);
-  const baseOpenRate = 0.35 + ((seed % 20) / 100);
-  const baseClickRate = 0.015 + ((seed % 40) / 1000);
-  const baseConversionRate = 0.005 + ((seed % 20) / 1000);
-  
-  const totalSent = Math.round(baseVolumePerDay * days);
-  const totalOpened = Math.round(totalSent * baseOpenRate);
-  const totalClicked = Math.round(totalSent * baseClickRate);
-  const totalConversions = Math.round(totalSent * baseConversionRate);
-  
-  const openRate = totalSent > 0 ? (totalOpened / totalSent) * 100 : 0;
-  const clickRate = totalSent > 0 ? (totalClicked / totalSent) * 100 : 0;
-  const conversionRate = totalSent > 0 ? (totalConversions / totalSent) * 100 : 0;
-  
-  const revenue = totalConversions * (65 + (seed % 120));
-  
-  const espera = Math.round(baseVolumePerDay * 0.15);
-  const revisao = Math.round(baseVolumePerDay * 0.05);
-  const entregue = totalSent;
-  const ignorado = Math.round(totalSent * 0.08);
-  
-  return {
-    sent: totalSent,
-    opened: totalOpened,
-    clicked: totalClicked,
-    conversions: totalConversions,
-    openRate,
-    clickRate,
-    conversionRate,
-    revenue,
-    espera,
-    revisao,
-    entregue,
-    ignorado
+const getMetricsForNode = (nodeId: string, preset: string, customStart?: string, customEnd?: string) => {
+    const defaultMetrics = {
+      sent: 0, opened: 0, clicked: 0, conversions: 0,
+      openRate: 0, clickRate: 0, conversionRate: 0, revenue: 0,
+      espera: 0, revisao: 0, entregue: 0, ignorado: 0
+    };
+    return nodeMetricsData[nodeId] || defaultMetrics;
   };
-};
 
-const getMockLeadsForQueue = (nodeId: string, statusName: string, count: number) => {
+  const getMockLeadsForQueue = (nodeId: string, statusName: string, count: number) => {
   const firstNames = ["Ana", "Bruno", "Carlos", "Diana", "Eduardo", "Fernanda", "Gabriel", "Helena", "Igor", "Julia", "Lucas", "Mariana", "Nelson", "Oláivia", "Pedro", "Renata", "Samuel", "Tatiana", "Valter", "Yasmin"];
   const lastNames = ["Silva", "Santos", "Oláiveira", "Souza", "Rodrigues", "Ferreira", "Almeida", "Pereira", "Carvalho", "Gomes", "Martins", "Rocha", "Ribeiro", "Cardoso", "Costa", "Teixeira", "Mendes", "Nascimento", "Moreira", "Lima"];
   const domains = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "uol.com.br", "realizzare.com.br"];
@@ -243,9 +206,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     exitConditions: []
   });
 
-  // 2. Nãodes list state (recursive layout tree representation)
+  // 2. Nodes list state (recursive layout tree representation)
   // Initiated with the default single disparador setup
-  const [nodes, setNodes] = useState<FlowNãode[]>([
+  const [nodes, setNodes] = useState<FlowNode[]>([
     {
       id: "trigger",
       type: "trigger",
@@ -269,35 +232,35 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [showSplitRuleModal, setShowSplitRuleModal] = useState(false);
   const [activePanel, setActivePanel] = useState<"menu" | "trigger_select" | "trigger_config" | "node_config" | "exit_rules" | null>("menu");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedNãodeForConfig, setSelectedNãodeForConfig] = useState<FlowNãode | null>(null);
-  const [activeNãodeOptionsDropdownId, setActiveNãodeOptionsDropdownId] = useState<string | null>(null);
-  const [activeNãodeStatusDropdownId, setActiveNãodeStatusDropdownId] = useState<string | null>(null);
+  const [selectedNodeForConfig, setSelectedNodeForConfig] = useState<FlowNode | null>(null);
+  const [activeNodeOptionsDropdownId, setActiveNodeOptionsDropdownId] = useState<string | null>(null);
+  const [activeNodeStatusDropdownId, setActiveNodeStatusDropdownId] = useState<string | null>(null);
 
   // States for dragging and moving nodes
   const [showMoveLeadsModal, setShowMoveLeadsModal] = useState(false);
-  const [moveLeadsNode, setMoveLeadsNãode] = useState<FlowNãode | null>(null);
+  const [moveLeadsNode, setMoveLeadsNode] = useState<FlowNode | null>(null);
   const [moveTarget, setMoveTarget] = useState<{ sourceId: string; targetParentId: string; targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined } | null>(null);
   const [moveLeadsAction, setMoveLeadsAction] = useState<"move" | "exit" | "advance">("move");
 
   // State for split rules builder
   const [editSplitRules, setEditSplitRules] = useState<Array<{ field: string; operator: string; value: any; timeWindow?: number | null; timeUnit?: string; summary?: string }>>([]);
 
-  // Temp state for editing Nãode configs
-  const [editNãodeName, setEditNãodeName] = useState("");
-  const [editNãodeCampaignName, setEditNãodeCampaignName] = useState("");
-  const [editNãodeSubject, setEditNãodeSubject] = useState("");
-  const [editNãodePreheader, setEditNãodePreheader] = useState("");
-  const [editNãodeSenderName, setEditNãodeSenderName] = useState("Realizzare Cursos");
-  const [editNãodeSenderEmail, setEditNãodeSenderEmail] = useState("contato@realizzare.com.br");
-  const [editNãodeReplyToEmail, setEditNãodeReplyToEmail] = useState("suporte@realizzare.com.br");
-  const [editNãodeReplyToIsCustom, setEditNãodeReplyToIsCustom] = useState(false);
-  const [editNãodeCustomReplyTo, setEditNãodeCustomReplyTo] = useState("");
-  const [editNãodeHtmlContent, setEditNãodeHtmlContent] = useState("");
-  const [editNãodeDelayValue, setEditNãodeDelayValue] = useState(2);
-  const [editNãodeDelayUnit, setEditNãodeDelayUnit] = useState<"minutes" | "hours" | "days" | "weeks">("days");
-  const [editNãodeDelayWeekday, setEditNãodeDelayWeekday] = useState("");
-  const [editNãodeDelayTime, setEditNãodeDelayTime] = useState("");
-  const [editNãodePreviewDevice, setEditNãodePreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  // Temp state for editing Node configs
+  const [editNodeName, setEditNodeName] = useState("");
+  const [editNodeCampaignName, setEditNodeCampaignName] = useState("");
+  const [editNodeSubject, setEditNodeSubject] = useState("");
+  const [editNodePreheader, setEditNodePreheader] = useState("");
+  const [editNodeSenderName, setEditNodeSenderName] = useState("Realizzare Cursos");
+  const [editNodeSenderEmail, setEditNodeSenderEmail] = useState("contato@realizzare.com.br");
+  const [editNodeReplyToEmail, setEditNodeReplyToEmail] = useState("suporte@realizzare.com.br");
+  const [editNodeReplyToIsCustom, setEditNodeReplyToIsCustom] = useState(false);
+  const [editNodeCustomReplyTo, setEditNodeCustomReplyTo] = useState("");
+  const [editNodeHtmlContent, setEditNodeHtmlContent] = useState("");
+  const [editNodeDelayValue, setEditNodeDelayValue] = useState(2);
+  const [editNodeDelayUnit, setEditNodeDelayUnit] = useState<"minutes" | "hours" | "days" | "weeks">("days");
+  const [editNodeDelayWeekday, setEditNodeDelayWeekday] = useState("");
+  const [editNodeDelayTime, setEditNodeDelayTime] = useState("");
+  const [editNodePreviewDevice, setEditNodePreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [isEditingSubjectSender, setIsEditingSubjectSender] = useState(false);
 
   // Condition builder temp states
@@ -308,11 +271,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [showDetailedMetrics, setShowDetailedMetrics] = useState(false);
   const [showExpandedPreviewModal, setShowExpandedPreviewModal] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
-  const [editNãodeEmailStatus, setEditNãodeEmailStatus] = useState<'Ativo' | 'Pausado' | 'Rascunho'>('Ativo');
+  const [editNodeEmailStatus, setEditNodeEmailStatus] = useState<'Ativo' | 'Pausado' | 'Rascunho'>('Ativo');
   const [showMetadataMenu, setShowMetadataMenu] = useState(false);
   const [showActivationConfirmModal, setShowActivationConfirmModal] = useState(false);
   const [showManualAddModal, setShowManualAddModal] = useState(false);
   const [showTagsDropdown, setShowTagsDropdown] = useState(false);
+  const [nodeMetricsData, setNodeMetricsData] = useState<Record<string, any>>({});
   const [manualContacts, setManualContacts] = useState<any[]>([]);
   const [manualSearchQuery, setManualSearchQuery] = useState("");
   const [isAddingLead, setIsAddingLead] = useState(false);
@@ -323,6 +287,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     if (data) setManualContacts(data);
   };
   
+  useEffect(() => {
+    if (editId) {
+      fetch("/api/flows/metrics?flowId=" + editId)
+        .then(res => res.json())
+        .then(data => {
+          if (data.metrics) setNodeMetricsData(data.metrics);
+        })
+        .catch(console.error);
+    }
+  }, [editId]);
+
   useEffect(() => {
     if (showManualAddModal) handleLoadContacts();
   }, [showManualAddModal]);
@@ -381,12 +356,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [editSplitType, setEditSplitType] = useState<"condition" | "random">("condition");
   const [editSplitRandomRatio, setEditSplitRandomRatio] = useState<number>(50);
 
-  // Nãode insertion popup state
+  // Node insertion popup state
   const [insertionTarget, setInsertionTarget] = useState<{ parentId: string; branch?: 'yes' | 'no' | 'yes_start' | 'no_start' } | null>(null);
 
   // Leads Queue Modal state
   const [showQueueModal, setShowQueueModal] = useState(false);
-  const [queueModalNãode, setQueueModalNãode] = useState<FlowNãode | null>(null);
+  const [queueModalNode, setQueueModalNode] = useState<FlowNode | null>(null);
   const [queueModalStatusName, setQueueModalStatusName] = useState<string>("");
   const [queueModalCount, setQueueModalCount] = useState<number>(0);
   const [queueSearchQuery, setQueueSearchQuery] = useState<string>("");
@@ -411,11 +386,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   };
 
   const handleSelectTemplateFromGallery = (tpl: any) => {
-    setEditNãodeCampaignName(tpl.name || "");
-    setEditNãodeSubject(tpl.subject || "");
-    setEditNãodePreheader(tpl.previewText || "");
-    setEditNãodeHtmlContent(tpl.htmlContent || "");
-    setEditNãodeEmailStatus("Ativo");
+    setEditNodeCampaignName(tpl.name || "");
+    setEditNodeSubject(tpl.subject || "");
+    setEditNodePreheader(tpl.previewText || "");
+    setEditNodeHtmlContent(tpl.htmlContent || "");
+    setEditNodeEmailStatus("Ativo");
 
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("realizzare_email_templates");
@@ -443,8 +418,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setShowEmailGalleryModal(false);
   };
 
-  const handleOpenQueueModal = (node: FlowNãode, statusName: string, count: number) => {
-    setQueueModalNãode(node);
+  const handleOpenQueueModal = (node: FlowNode, statusName: string, count: number) => {
+    setQueueModalNode(node);
     setQueueModalStatusName(statusName);
     setQueueModalCount(count);
     setQueueSearchQuery("");
@@ -489,12 +464,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 .eq("is_deleted", false);
                 
             if (nodesData && !nodesError && nodesData.length > 0) {
-               const resolveSequence = (parentId: string | null, branchLabel: string | null): FlowNãode[] => {
-                  const sequence: FlowNãode[] = [];
+               const resolveSequence = (parentId: string | null, branchLabel: string | null): FlowNode[] => {
+                  const sequence: FlowNode[] = [];
                   let current = nodesData.find((n: any) => n.parent_node_id === parentId && n.branch_label === branchLabel);
                   
                   while(current) {
-                    const node: FlowNãode = {
+                    const node: FlowNode = {
                       id: current.id,
                       type: current.node_type as any,
                       name: current.config?.name || "",
@@ -635,7 +610,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   };
 
   // Direct insertion helper
-  const insertNãodeDirectly = (parentId: string, branch: "yes" | "no" | "yes_start" | "no_start" | undefined, type: FlowNãode["type"]) => {
+  const insertNodeDirectly = (parentId: string, branch: "yes" | "no" | "yes_start" | "no_start" | undefined, type: FlowNode["type"]) => {
     // If inserting a goto, we don't insert immediately, we enter selection mode
     if (type === "goto") {
       setSelectingGotoTarget({ parentId, branch });
@@ -644,7 +619,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       return;
     }
 
-    const checkHasDownstream = (tree: FlowNãode[], targetId: string): boolean => {
+    const checkHasDownstream = (tree: FlowNode[], targetId: string): boolean => {
       const idx = tree.findIndex(n => n.id === targetId);
       if (idx !== -1 && idx < tree.length - 1) return true;
       for (const node of tree) {
@@ -663,20 +638,20 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       }
     }
 
-    const countEmailNãodes = (tree: FlowNãode[]): number => {
+    const countEmailNodes = (tree: FlowNode[]): number => {
       let count = 0;
       for (const node of tree) {
         if (node.type === "email") count++;
-        if (node.yesBranch) count += countEmailNãodes(node.yesBranch);
-        if (node.noBranch) count += countEmailNãodes(node.noBranch);
+        if (node.yesBranch) count += countEmailNodes(node.yesBranch);
+        if (node.noBranch) count += countEmailNodes(node.noBranch);
       }
       return count;
     };
     
-    const emailIndex = countEmailNãodes(nodes) + 1;
+    const emailIndex = countEmailNodes(nodes) + 1;
     const emailName = `E-mail ${String(emailIndex).padStart(2, "0")}`;
 
-    const newNãode: FlowNãode = {
+    const newNode: FlowNode = {
       id: crypto.randomUUID(),
       type,
       name: type === "email" ? emailName :
@@ -707,21 +682,21 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     };
 
     if (type === "split") {
-      newNãode.yesBranch = [];
-      newNãode.noBranch = [];
+      newNode.yesBranch = [];
+      newNode.noBranch = [];
     }
 
-    const insertIntoTree = (tree: FlowNãode[]): FlowNãode[] => {
+    const insertIntoTree = (tree: FlowNode[]): FlowNode[] => {
       return tree.map(node => {
         if (node.id === parentId) {
           if (branch === "yes") {
-            return { ...node, yesBranch: [...(node.yesBranch || []), newNãode] };
+            return { ...node, yesBranch: [...(node.yesBranch || []), newNode] };
           } else if (branch === "yes_start") {
-            return { ...node, yesBranch: [newNãode, ...(node.yesBranch || [])] };
+            return { ...node, yesBranch: [newNode, ...(node.yesBranch || [])] };
           } else if (branch === "no") {
-            return { ...node, noBranch: [...(node.noBranch || []), newNãode] };
+            return { ...node, noBranch: [...(node.noBranch || []), newNode] };
           } else if (branch === "no_start") {
-            return { ...node, noBranch: [newNãode, ...(node.noBranch || [])] };
+            return { ...node, noBranch: [newNode, ...(node.noBranch || [])] };
           }
         }
         if (node.yesBranch || node.noBranch) {
@@ -735,11 +710,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    const insertInFlatChain = (chain: FlowNãode[]): FlowNãode[] => {
+    const insertInFlatChain = (chain: FlowNode[]): FlowNode[] => {
       const idx = chain.findIndex(n => n.id === parentId);
       if (idx !== -1 && !branch) {
         const copy = [...chain];
-        copy.splice(idx + 1, 0, newNãode);
+        copy.splice(idx + 1, 0, newNode);
         return copy;
       }
       return chain.map(node => {
@@ -767,24 +742,24 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     if (!selectingGotoTarget) return;
     const { parentId, branch } = selectingGotoTarget;
 
-    const newNãode: FlowNãode = {
+    const newNode: FlowNode = {
       id: crypto.randomUUID(),
       type: "goto",
       name: "Mover para",
       config: { targetId }
     };
 
-    const insertIntoTree = (tree: FlowNãode[]): FlowNãode[] => {
+    const insertIntoTree = (tree: FlowNode[]): FlowNode[] => {
       return tree.map(node => {
         if (node.id === parentId) {
           if (branch === "yes") {
-            return { ...node, yesBranch: [...(node.yesBranch || []), newNãode] };
+            return { ...node, yesBranch: [...(node.yesBranch || []), newNode] };
           } else if (branch === "yes_start") {
-            return { ...node, yesBranch: [newNãode, ...(node.yesBranch || [])] };
+            return { ...node, yesBranch: [newNode, ...(node.yesBranch || [])] };
           } else if (branch === "no") {
-            return { ...node, noBranch: [...(node.noBranch || []), newNãode] };
+            return { ...node, noBranch: [...(node.noBranch || []), newNode] };
           } else if (branch === "no_start") {
-            return { ...node, noBranch: [newNãode, ...(node.noBranch || [])] };
+            return { ...node, noBranch: [newNode, ...(node.noBranch || [])] };
           }
         }
         if (node.yesBranch || node.noBranch) {
@@ -798,11 +773,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       });
     };
 
-    const insertInFlatChain = (chain: FlowNãode[]): FlowNãode[] => {
+    const insertInFlatChain = (chain: FlowNode[]): FlowNode[] => {
       const idx = chain.findIndex(n => n.id === parentId);
       if (idx !== -1 && !branch) {
         const copy = [...chain];
-        copy.splice(idx + 1, 0, newNãode);
+        copy.splice(idx + 1, 0, newNode);
         return copy;
       }
       return chain.map(node => {
@@ -829,7 +804,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     if (!pendingSplitInsert) return;
     const { parentId, branch } = pendingSplitInsert;
 
-    const newNãode: FlowNãode = {
+    const newNode: FlowNode = {
       id: crypto.randomUUID(),
       type: "split",
       name: "Divisão Condicional",
@@ -839,17 +814,17 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     };
 
     let extracted = [];
-    const extractAndInsert = (tree: FlowNãode[]): FlowNãode[] => {
+    const extractAndInsert = (tree: FlowNode[]): FlowNode[] => {
       const idx = tree.findIndex(n => n.id === parentId);
       if (idx !== -1 && !branch) {
         extracted = tree.slice(idx + 1);
         if (choice === "yes") {
-           newNãode.yesBranch = extracted;
+           newNode.yesBranch = extracted;
         } else {
-           newNãode.noBranch = extracted;
+           newNode.noBranch = extracted;
         }
         const copy = tree.slice(0, idx + 1);
-        copy.push(newNãode);
+        copy.push(newNode);
         return copy;
       }
       return tree.map(node => {
@@ -868,14 +843,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setPendingSplitInsert(null);
   };
 
-  const handleAddNãodeDirectly = (type: FlowNãode["type"]) => {
-    const lastNãode = nodes[nodes.length - 1];
-    if (lastNãode) {
-      insertNãodeDirectly(lastNãode.id, undefined, type);
+  const handleAddNodeDirectly = (type: FlowNode["type"]) => {
+    const lastNode = nodes[nodes.length - 1];
+    if (lastNode) {
+      insertNodeDirectly(lastNode.id, undefined, type);
     }
   };
 
-  // Nãode insertion helper
+  // Node insertion helper
   const openInsertionMenu = (parentId: string, branch?: 'yes' | 'no' | 'yes_start' | 'no_start', e?: React.MouseEvent) => {
     setInsertionTarget({ parentId, branch });
     if (e) {
@@ -884,38 +859,38 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setShowInsertionPopover(true);
   };
 
-  const handleInsertNãode = (type: FlowNãode['type']) => {
+  const handleInsertNode = (type: FlowNode['type']) => {
     if (!insertionTarget) return;
-    insertNãodeDirectly(insertionTarget.parentId, insertionTarget.branch, type);
+    insertNodeDirectly(insertionTarget.parentId, insertionTarget.branch, type);
     setShowInsertionPopover(false);
     setInsertionTarget(null);
   };
 
-  // Nãode editing handlers
-  const handleOpenNãodeConfig = (node: FlowNãode) => {
-    setSelectedNãodeForConfig(node);
-    setEditNãodeName(node.name || "");
+  // Node editing handlers
+  const handleOpenNodeConfig = (node: FlowNode) => {
+    setSelectedNodeForConfig(node);
+    setEditNodeName(node.name || "");
     setIsEditingSubjectSender(false);
     
     if (node.type === "email") {
       const cfg = node.config || {};
-      setEditNãodeCampaignName(cfg.campaignName || "");
-      setEditNãodeSubject(cfg.subject || "");
-      setEditNãodePreheader(cfg.preheader || "");
-      setEditNãodeSenderName(cfg.senderName || "Realizzare Cursos");
-      setEditNãodeSenderEmail(cfg.senderEmail || "contato@realizzare.com.br");
-      setEditNãodeReplyToEmail(cfg.replyTo || "suporte@realizzare.com.br");
-      setEditNãodeReplyToIsCustom(cfg.replyToIsCustom || false);
-      setEditNãodeCustomReplyTo(cfg.customReplyTo || "");
-      setEditNãodeHtmlContent(cfg.htmlContent || "");
-      setEditNãodeEmailStatus(cfg.status || "Ativo");
+      setEditNodeCampaignName(cfg.campaignName || "");
+      setEditNodeSubject(cfg.subject || "");
+      setEditNodePreheader(cfg.preheader || "");
+      setEditNodeSenderName(cfg.senderName || "Realizzare Cursos");
+      setEditNodeSenderEmail(cfg.senderEmail || "contato@realizzare.com.br");
+      setEditNodeReplyToEmail(cfg.replyTo || "suporte@realizzare.com.br");
+      setEditNodeReplyToIsCustom(cfg.replyToIsCustom || false);
+      setEditNodeCustomReplyTo(cfg.customReplyTo || "");
+      setEditNodeHtmlContent(cfg.htmlContent || "");
+      setEditNodeEmailStatus(cfg.status || "Ativo");
       setIsEditingHtml(false);
     } else if (node.type === "delay") {
       const cfg = node.config || {};
-      setEditNãodeDelayValue(cfg.value || 2);
-      setEditNãodeDelayUnit(cfg.unit || "days");
-      setEditNãodeDelayWeekday(cfg.weekday || "");
-      setEditNãodeDelayTime(cfg.time || "");
+      setEditNodeDelayValue(cfg.value || 2);
+      setEditNodeDelayUnit(cfg.unit || "days");
+      setEditNodeDelayWeekday(cfg.weekday || "");
+      setEditNodeDelayTime(cfg.time || "");
     } else if (node.type === "split") {
       const cfg = node.config || {};
       setEditSplitType(cfg.splitType || "condition");
@@ -926,30 +901,30 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setActivePanel("node_config");
   };
 
-  const handleSaveNãodeConfig = () => {
-    if (!selectedNãodeForConfig) return;
+  const handleSaveNodeConfig = () => {
+    if (!selectedNodeForConfig) return;
 
     let updatedConfig: any = {};
-    let lockedName = editNãodeName;
+    let lockedName = editNodeName;
 
-    if (selectedNãodeForConfig.type === "email") {
-      if (!editNãodeCampaignName.trim()) {
-        alert("O Nãome da Campanha é obrigatório para poder salvar!");
+    if (selectedNodeForConfig.type === "email") {
+      if (!editNodeCampaignName.trim()) {
+        alert("O Nome da Campanha é obrigatório para poder salvar!");
         return;
       }
       lockedName = "Enviar E-mail";
       updatedConfig = {
-        emailCampaignId: selectedNãodeForConfig.config?.emailCampaignId || `flow-camp-${Math.random().toString(36).substr(2, 9)}`,
-        campaignName: editNãodeCampaignName,
-        subject: editNãodeSubject,
-        preheader: editNãodePreheader,
-        senderName: editNãodeSenderName,
-        senderEmail: editNãodeSenderEmail,
-        replyTo: editNãodeReplyToIsCustom ? editNãodeCustomReplyTo : editNãodeReplyToEmail,
-        replyToIsCustom: editNãodeReplyToIsCustom,
-        customReplyTo: editNãodeCustomReplyTo,
-        htmlContent: editNãodeHtmlContent,
-        status: editNãodeEmailStatus
+        emailCampaignId: selectedNodeForConfig.config?.emailCampaignId || `flow-camp-${Math.random().toString(36).substr(2, 9)}`,
+        campaignName: editNodeCampaignName,
+        subject: editNodeSubject,
+        preheader: editNodePreheader,
+        senderName: editNodeSenderName,
+        senderEmail: editNodeSenderEmail,
+        replyTo: editNodeReplyToIsCustom ? editNodeCustomReplyTo : editNodeReplyToEmail,
+        replyToIsCustom: editNodeReplyToIsCustom,
+        customReplyTo: editNodeCustomReplyTo,
+        htmlContent: editNodeHtmlContent,
+        status: editNodeEmailStatus
       };
 
       // 2-Way Sync node email template into E-mails library
@@ -967,24 +942,24 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
           const storedTemplates = localStorage.getItem("realizzare_email_templates");
           let templatesList = storedTemplates ? JSON.parse(storedTemplates) : [];
-          const tplId = `node-tpl-${selectedNãodeForConfig.id}`;
-          const tplName = editNãodeCampaignName.trim();
+          const tplId = `node-tpl-${selectedNodeForConfig.id}`;
+          const tplName = editNodeCampaignName.trim();
           const existingIdx = templatesList.findIndex(
             (t: any) => t.id === tplId || (t.flowId === flow.id && t.name.trim().toLowerCase() === tplName.toLowerCase())
           );
 
           const tplData = {
             id: tplId,
-            nodeId: selectedNãodeForConfig.id,
+            nodeId: selectedNodeForConfig.id,
             name: tplName,
-            subject: editNãodeSubject || tplName,
-            previewText: editNãodePreheader || "",
-            htmlContent: editNãodeHtmlContent || "<div></div>",
+            subject: editNodeSubject || tplName,
+            previewText: editNodePreheader || "",
+            htmlContent: editNodeHtmlContent || "<div></div>",
             folderId: folderId,
             folderName: currentFlowName,
             flowId: flow.id,
             flowName: currentFlowName,
-            status: editNãodeEmailStatus || "Ativo",
+            status: editNodeEmailStatus || "Ativo",
             updatedAt: new Date().toLocaleDateString("pt-BR"),
             metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
           };
@@ -999,15 +974,15 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           console.error("Erro ao sincronizar nó com e-mails library:", e);
         }
       }
-    } else if (selectedNãodeForConfig.type === "delay") {
+    } else if (selectedNodeForConfig.type === "delay") {
       lockedName = "Aguardar Atraso";
       updatedConfig = {
-        value: editNãodeDelayValue,
-        unit: editNãodeDelayUnit,
-        weekday: editNãodeDelayWeekday,
-        time: editNãodeDelayTime
+        value: editNodeDelayValue,
+        unit: editNodeDelayUnit,
+        weekday: editNodeDelayWeekday,
+        time: editNodeDelayTime
       };
-    } else if (selectedNãodeForConfig.type === "split") {
+    } else if (selectedNodeForConfig.type === "split") {
       lockedName = "Divisão Condicional";
       updatedConfig = {
         splitType: editSplitType,
@@ -1015,12 +990,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         rules: editSplitRules
       };
     } else {
-      updatedConfig = selectedNãodeForConfig.config || {};
+      updatedConfig = selectedNodeForConfig.config || {};
     }
 
-    const updateInTree = (tree: FlowNãode[]): FlowNãode[] => {
+    const updateInTree = (tree: FlowNode[]): FlowNode[] => {
       return tree.map(node => {
-        if (node.id === selectedNãodeForConfig.id) {
+        if (node.id === selectedNodeForConfig.id) {
           return {
             ...node,
             name: lockedName,
@@ -1040,13 +1015,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
     setNodes(updateInTree(nodes));
     setActivePanel("menu");
-    setSelectedNãodeForConfig(null);
+    setSelectedNodeForConfig(null);
   };
 
-  const handleDeleteNãode = (id: string) => {
+  const handleDeleteNode = (id: string) => {
     if (id === "trigger") return;
     
-    const deleteFromTree = (tree: FlowNãode[]): FlowNãode[] => {
+    const deleteFromTree = (tree: FlowNode[]): FlowNode[] => {
       const filtered = tree.filter(node => node.id !== id);
       return filtered.map(node => {
         if (node.yesBranch || node.noBranch) {
@@ -1063,16 +1038,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setNodes(deleteFromTree(nodes));
   };
 
-  const handleDuplicateNãode = (node: FlowNãode) => {
+  const handleDuplicateNode = (node: FlowNode) => {
     if (node.id === "trigger") return;
-    const copy: FlowNãode = {
+    const copy: FlowNode = {
       ...node,
       id: crypto.randomUUID(),
       name: `${node.name} (Cópia)`
     };
 
     // Append copy directly below target parent (or next in flat chain)
-    const duplicateInTree = (chain: FlowNãode[]): FlowNãode[] => {
+    const duplicateInTree = (chain: FlowNode[]): FlowNode[] => {
       const idx = chain.findIndex(n => n.id === node.id);
       if (idx !== -1) {
         const copyChain = [...chain];
@@ -1137,7 +1112,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       }).eq("id", flow.id);
       
       // 2. Flatten nodes
-      const flattenNãodes = (tree: FlowNãode[], flowId: string, parentId: string | null = null, branchLabel: string | null = null): any[] => {
+      const flattenNodes = (tree: FlowNode[], flowId: string, parentId: string | null = null, branchLabel: string | null = null): any[] => {
         let flat: any[] = [];
         let prevId = parentId;
         
@@ -1146,7 +1121,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           const currentParentId = i === 0 ? prevId : tree[i-1].id;
           const currentBranchLabel = i === 0 ? branchLabel : null;
           
-          const flatNãode = {
+          const flatNode = {
              id: node.id,
              flow_id: flowId,
              node_type: node.type,
@@ -1156,14 +1131,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
              is_deleted: false
           };
           
-          flat.push(flatNãode);
+          flat.push(flatNode);
           
           if (node.type === 'split') {
              if (node.yesBranch && node.yesBranch.length > 0) {
-               flat = flat.concat(flattenNãodes(node.yesBranch, flowId, node.id, 'yes'));
+               flat = flat.concat(flattenNodes(node.yesBranch, flowId, node.id, 'yes'));
              }
              if (node.noBranch && node.noBranch.length > 0) {
-               flat = flat.concat(flattenNãodes(node.noBranch, flowId, node.id, 'no'));
+               flat = flat.concat(flattenNodes(node.noBranch, flowId, node.id, 'no'));
              }
           }
         }
@@ -1171,23 +1146,23 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         return flat;
       };
 
-      const flatNãodes = flattenNãodes(nodes, flow.id);
+      const flatNodes = flattenNodes(nodes, flow.id);
 
       // 3. Upsert flat nodes
-      if (flatNãodes.length > 0) {
-         const { error: upsertError } = await supabase.from("flow_nodes").upsert(flatNãodes);
+      if (flatNodes.length > 0) {
+         const { error: upsertError } = await supabase.from("flow_nodes").upsert(flatNodes);
          if (upsertError) throw upsertError;
       }
 
       // 4. Soft delete missing nodes
-      const { data: existingNãodes } = await supabase.from("flow_nodes")
+      const { data: existingNodes } = await supabase.from("flow_nodes")
           .select("id")
           .eq("flow_id", flow.id)
           .eq("is_deleted", false);
           
-      if (existingNãodes) {
-         const flatIds = flatNãodes.map((n: any) => n.id);
-         const missingIds = existingNãodes.map((n: any) => n.id).filter((id: any) => !flatIds.includes(id));
+      if (existingNodes) {
+         const flatIds = flatNodes.map((n: any) => n.id);
+         const missingIds = existingNodes.map((n: any) => n.id).filter((id: any) => !flatIds.includes(id));
          
          if (missingIds.length > 0) {
             await supabase.from("flow_nodes")
@@ -1224,9 +1199,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     });
   };
 
-  const handleSetNãodeStatus = (nodeId: string, nextStatus: "Ativo" | "Rascunho") => {
-    setNodes(prevNãodes => {
-      const updateStatusInTree = (tree: FlowNãode[]): FlowNãode[] => {
+  const handleSetNodeStatus = (nodeId: string, nextStatus: "Ativo" | "Rascunho") => {
+    setNodes(prevNodes => {
+      const updateStatusInTree = (tree: FlowNode[]): FlowNode[] => {
         return tree.map(node => {
           if (node.id === nodeId) {
             return {
@@ -1247,32 +1222,32 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           return node;
         });
       };
-      return updateStatusInTree(prevNãodes);
+      return updateStatusInTree(prevNodes);
     });
   };
 
-  const findNãodeById = (tree: FlowNãode[], id: string): FlowNãode | null => {
+  const findNodeById = (tree: FlowNode[], id: string): FlowNode | null => {
     for (const n of tree) {
       if (n.id === id) return n;
       if (n.yesBranch || n.noBranch) {
-        const found = findNãodeById(n.yesBranch || [], id) || findNãodeById(n.noBranch || [], id);
+        const found = findNodeById(n.yesBranch || [], id) || findNodeById(n.noBranch || [], id);
         if (found) return found;
       }
     }
     return null;
   };
 
-  const moveNãodeInTree = (
+  const moveNodeInTree = (
     sourceId: string, 
     targetParentId: string, 
     targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined
   ) => {
-    setNodes(prevNãodes => {
-      let extracted: FlowNãode | null = null;
+    setNodes(prevNodes => {
+      let extracted: FlowNode | null = null;
 
       // Helper 1: Extract the node from tree (move it alone by resetting its children)
-      const extract = (tree: FlowNãode[]): FlowNãode[] => {
-        const nextTree: FlowNãode[] = [];
+      const extract = (tree: FlowNode[]): FlowNode[] => {
+        const nextTree: FlowNode[] = [];
         for (const n of tree) {
           if (n.id === sourceId) {
             extracted = { ...n, yesBranch: [], noBranch: [] };
@@ -1287,15 +1262,15 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         return nextTree;
       };
 
-      const treeWithoutSource = extract(prevNãodes);
+      const treeWithoutSource = extract(prevNodes);
 
       if (!extracted) {
         console.error("Source node not found");
-        return prevNãodes;
+        return prevNodes;
       }
 
       // Helper 2: Insert into new position
-      const insertInto = (tree: FlowNãode[]): FlowNãode[] => {
+      const insertInto = (tree: FlowNode[]): FlowNode[] => {
         return tree.map(node => {
           if (node.id === targetParentId) {
             if (targetBranch === 'yes') {
@@ -1331,7 +1306,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         });
       };
 
-      const insertInFlatChain = (chain: FlowNãode[]): FlowNãode[] => {
+      const insertInFlatChain = (chain: FlowNode[]): FlowNode[] => {
         const idx = chain.findIndex(n => n.id === targetParentId);
         if (idx !== -1 && !targetBranch) {
           const copy = [...chain];
@@ -1358,23 +1333,23 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     });
   };
 
-  const handleMoveNãodeRequest = (sourceId: string, targetParentId: string, targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined) => {
+  const handleMoveNodeRequest = (sourceId: string, targetParentId: string, targetBranch: 'yes' | 'no' | 'yes_start' | 'no_start' | undefined) => {
     // Cannot move to itself
     if (sourceId === targetParentId) return;
 
-    const node = findNãodeById(nodes, sourceId);
+    const node = findNodeById(nodes, sourceId);
     if (!node) return;
 
     // Check if node is a delay step (Aguardar)
     if (node.type === "delay") {
       // Simulate that there are waiting leads (e.g. 12 leads)
-      setMoveLeadsNãode(node);
+      setMoveLeadsNode(node);
       setMoveTarget({ sourceId, targetParentId, targetBranch });
       setMoveLeadsAction("move");
       setShowMoveLeadsModal(true);
     } else {
       // Não leads or not a delay node: move immediately
-      moveNãodeInTree(sourceId, targetParentId, targetBranch);
+      moveNodeInTree(sourceId, targetParentId, targetBranch);
     }
   };
 
@@ -1382,7 +1357,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     if (!moveTarget) return;
     
     // Move the node
-    moveNãodeInTree(moveTarget.sourceId, moveTarget.targetParentId, moveTarget.targetBranch);
+    moveNodeInTree(moveTarget.sourceId, moveTarget.targetParentId, moveTarget.targetBranch);
 
     // Apply action description feedback
     let alertMsg = "";
@@ -1396,13 +1371,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     alert(alertMsg);
 
     setShowMoveLeadsModal(false);
-    setMoveLeadsNãode(null);
+    setMoveLeadsNode(null);
     setMoveTarget(null);
   };
 
-  // Nãode renderer: Recursive tree generator
-  const renderNãodeChain = (
-    chain: FlowNãode[],
+  // Node renderer: Recursive tree generator
+  const renderNodeChain = (
+    chain: FlowNode[],
     branchInfo?: { parentId: string; branchType: 'yes' | 'no' }
   ) => {
     return (
@@ -1426,9 +1401,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 if (type) {
                   if (type.startsWith("move:")) {
                     const sourceId = type.split(":")[1];
-                    handleMoveNãodeRequest(sourceId, branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start');
+                    handleMoveNodeRequest(sourceId, branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start');
                   } else {
-                    insertNãodeDirectly(branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start', type as any);
+                    insertNodeDirectly(branchInfo.parentId, branchInfo.branchType === 'yes' ? 'yes_start' : 'no_start', type as any);
                   }
                 }
               }}
@@ -1468,9 +1443,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       if (type) {
                         if (type.startsWith("move:")) {
                           const sourceId = type.split(":")[1];
-                          handleMoveNãodeRequest(sourceId, chain[index - 1].id, undefined);
+                          handleMoveNodeRequest(sourceId, chain[index - 1].id, undefined);
                         } else {
-                          insertNãodeDirectly(chain[index - 1].id, undefined, type as any);
+                          insertNodeDirectly(chain[index - 1].id, undefined, type as any);
                         }
                       }
                     }}
@@ -1482,7 +1457,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </div>
               )}
 
-              {/* Nãode Card */}
+              {/* Node Card */}
               <div 
                 className="relative group/node select-none animate-fadeIn"
                 draggable={!isTrigger}
@@ -1501,7 +1476,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       }
                       executeGotoInsertion(node.id);
                     } else {
-                      isTrigger ? setShowTriggerModal(true) : handleOpenNãodeConfig(node);
+                      isTrigger ? setShowTriggerModal(true) : handleOpenNodeConfig(node);
                     }
                   }}
                   className={`bg-white border hover:border-indigo-500 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md relative ${
@@ -1547,7 +1522,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                            node.type === "email" ? (node.config?.subject || "E-mail sem assunto") :
                            node.type === "delay" ? `Aguardar ${node.config?.value} ${node.config?.unit === 'days' ? 'dias' : node.config?.unit === 'hours' ? 'horas' : 'minutos'}` :
                            node.type === "goto" ? (() => {
-                               const target = findNãodeById(nodes, node.config?.targetId);
+                               const target = findNodeById(nodes, node.config?.targetId);
                                return target ? `Pula para: ${target.name || "Etapa"}` : "Destino pendente";
                              })() :
                            isSplit ? (
@@ -1583,8 +1558,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveNãodeOptionsDropdownId(activeNãodeOptionsDropdownId === node.id ? null : node.id);
-                            setActiveNãodeStatusDropdownId(null);
+                            setActiveNodeOptionsDropdownId(activeNodeOptionsDropdownId === node.id ? null : node.id);
+                            setActiveNodeStatusDropdownId(null);
                           }}
                           className="p-1 hover:bg-slate-100 hover:text-slate-700 text-slate-400 rounded-lg cursor-pointer transition-colors"
                           title="Opções da etapa"
@@ -1593,14 +1568,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         </button>
 
                         {/* Options Dropdown Menu */}
-                        {activeNãodeOptionsDropdownId === node.id && (
+                        {activeNodeOptionsDropdownId === node.id && (
                           <>
                             {/* Simple invisible overlay to close clicking outside */}
                             <div 
                               className="fixed inset-0 z-40 cursor-default" 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveNãodeOptionsDropdownId(null);
+                                setActiveNodeOptionsDropdownId(null);
                               }}
                             />
                             
@@ -1609,8 +1584,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveNãodeOptionsDropdownId(null);
-                                  handleOpenNãodeConfig(node);
+                                  setActiveNodeOptionsDropdownId(null);
+                                  handleOpenNodeConfig(node);
                                 }}
                                 className="w-full px-3.5 py-2 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 cursor-pointer transition-colors"
                               >
@@ -1621,8 +1596,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveNãodeOptionsDropdownId(null);
-                                  handleDuplicateNãode(node);
+                                  setActiveNodeOptionsDropdownId(null);
+                                  handleDuplicateNode(node);
                                 }}
                                 className="w-full px-3.5 py-2 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-2 cursor-pointer transition-colors"
                               >
@@ -1634,8 +1609,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveNãodeOptionsDropdownId(null);
-                                  handleDeleteNãode(node.id);
+                                  setActiveNodeOptionsDropdownId(null);
+                                  handleDeleteNode(node.id);
                                 }}
                                 className="w-full px-3.5 py-2 hover:bg-red-50 text-xs font-bold text-red-650 flex items-center gap-2 cursor-pointer transition-colors"
                               >
@@ -1651,7 +1626,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                   {/* Render Detailed Metrics if node is delay and toggle is active */}
                   {node.type === "delay" && showDetailedMetrics && (() => {
-                    const delayMetrics = getMetricsForNãode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                    const delayMetrics = getMetricsForNode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
                     const waitingCount = 0;
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2.5">
@@ -1672,7 +1647,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                   {/* Render Detailed Metrics if node is email and toggle is active */}
                   {node.type === "email" && showDetailedMetrics && (() => {
-                    const nodeMetrics = getMetricsForNãode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                    const nodeMetrics = getMetricsForNode(node.id, flowPeriod, flowCustomStart, flowCustomEnd);
                     return (
                       <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-3.5">
                         {/* Metric Rates (List Layout matching the reference image) */}
@@ -1737,8 +1712,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveNãodeStatusDropdownId(activeNãodeStatusDropdownId === node.id ? null : node.id);
-                              setActiveNãodeOptionsDropdownId(null);
+                              setActiveNodeStatusDropdownId(activeNodeStatusDropdownId === node.id ? null : node.id);
+                              setActiveNodeOptionsDropdownId(null);
                             }}
                             className="hover:scale-105 active:scale-95 flex items-center gap-1 cursor-pointer transition-all bg-slate-50 border border-slate-205 px-2 py-0.5 rounded-lg hover:border-slate-350 select-none"
                             title="Clique para alterar o status do e-mail"
@@ -1751,16 +1726,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             }>{node.config?.status || "Ativo"}</span>
                           </button>
 
-                          {activeNãodeStatusDropdownId === node.id && (
+                          {activeNodeStatusDropdownId === node.id && (
                             <>
-                              <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveNãodeStatusDropdownId(null); }} />
+                              <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveNodeStatusDropdownId(null); }} />
                               <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28 z-50 text-left animate-scaleIn select-none">
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setActiveNãodeStatusDropdownId(null);
-                                    handleSetNãodeStatus(node.id, "Ativo");
+                                    setActiveNodeStatusDropdownId(null);
+                                    handleSetNodeStatus(node.id, "Ativo");
                                   }}
                                   className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${(node.config?.status || "Ativo") === "Ativo" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                                 >
@@ -1771,8 +1746,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setActiveNãodeStatusDropdownId(null);
-                                    handleSetNãodeStatus(node.id, "Rascunho");
+                                    setActiveNodeStatusDropdownId(null);
+                                    handleSetNodeStatus(node.id, "Rascunho");
                                   }}
                                   className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${(node.config?.status || "Ativo") === "Rascunho" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                                 >
@@ -1796,8 +1771,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveNãodeStatusDropdownId(activeNãodeStatusDropdownId === node.id ? null : node.id);
-                            setActiveNãodeOptionsDropdownId(null);
+                            setActiveNodeStatusDropdownId(activeNodeStatusDropdownId === node.id ? null : node.id);
+                            setActiveNodeOptionsDropdownId(null);
                           }}
                           className="hover:scale-105 active:scale-95 flex items-center gap-1 cursor-pointer transition-all bg-slate-50 border border-slate-250 px-2 py-0.5 rounded-lg hover:border-slate-350 select-none"
                           title="Clique para alterar o status do e-mail"
@@ -1812,16 +1787,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           }>{status}</span>
                         </button>
 
-                        {activeNãodeStatusDropdownId === node.id && (
+                        {activeNodeStatusDropdownId === node.id && (
                           <>
-                            <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveNãodeStatusDropdownId(null); }} />
+                            <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveNodeStatusDropdownId(null); }} />
                             <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28 z-50 text-left animate-scaleIn select-none">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveNãodeStatusDropdownId(null);
-                                  handleSetNãodeStatus(node.id, "Ativo");
+                                  setActiveNodeStatusDropdownId(null);
+                                  handleSetNodeStatus(node.id, "Ativo");
                                 }}
                                 className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${status === "Ativo" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                               >
@@ -1832,8 +1807,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveNãodeStatusDropdownId(null);
-                                  handleSetNãodeStatus(node.id, "Rascunho");
+                                  setActiveNodeStatusDropdownId(null);
+                                  handleSetNodeStatus(node.id, "Rascunho");
                                 }}
                                 className={`w-full px-3 py-1.5 hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors ${status === "Rascunho" ? "text-indigo-600 bg-indigo-50/10 font-bold" : "text-slate-600"}`}
                               >
@@ -1861,7 +1836,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="flex gap-12">
                     {/* Yes Branch */}
                     <div className="flex flex-col items-center border-r-2 border-dashed border-slate-200/50 pr-6">
-                      {renderNãodeChain(node.yesBranch || [], { parentId: node.id, branchType: 'yes' })}
+                      {renderNodeChain(node.yesBranch || [], { parentId: node.id, branchType: 'yes' })}
                       
                       {!(node.yesBranch && node.yesBranch.length > 0 && ["split", "goto"].includes(node.yesBranch[node.yesBranch.length - 1].type)) && (
                           <>
@@ -1883,9 +1858,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             if (type) {
                               if (type.startsWith("move:")) {
                                 const sourceId = type.split(":")[1];
-                                handleMoveNãodeRequest(sourceId, node.id, 'yes');
+                                handleMoveNodeRequest(sourceId, node.id, 'yes');
                               } else {
-                                insertNãodeDirectly(node.id, 'yes', type as any);
+                                insertNodeDirectly(node.id, 'yes', type as any);
                               }
                             }
                           }}
@@ -1904,7 +1879,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                     {/* Não Branch */}
                     <div className="flex flex-col items-center pl-6">
-                      {renderNãodeChain(node.noBranch || [], { parentId: node.id, branchType: 'no' })}
+                      {renderNodeChain(node.noBranch || [], { parentId: node.id, branchType: 'no' })}
                       
                       {!(node.noBranch && node.noBranch.length > 0 && ["split", "goto"].includes(node.noBranch[node.noBranch.length - 1].type)) && (
                           <>
@@ -1926,9 +1901,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             if (type) {
                               if (type.startsWith("move:")) {
                                 const sourceId = type.split(":")[1];
-                                handleMoveNãodeRequest(sourceId, node.id, 'no');
+                                handleMoveNodeRequest(sourceId, node.id, 'no');
                               } else {
-                                insertNãodeDirectly(node.id, 'no', type as any);
+                                insertNodeDirectly(node.id, 'no', type as any);
                               }
                             }
                           }}
@@ -2342,7 +2317,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", "email")}
-                  onClick={() => handleAddNãodeDirectly("email")}
+                  onClick={() => handleAddNodeDirectly("email")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2352,7 +2327,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", "whatsapp")}
-                  onClick={() => handleAddNãodeDirectly("whatsapp")}
+                  onClick={() => handleAddNodeDirectly("whatsapp")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2372,7 +2347,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", "delay")}
-                  onClick={() => handleAddNãodeDirectly("delay")}
+                  onClick={() => handleAddNodeDirectly("delay")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2382,7 +2357,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", "split")}
-                  onClick={() => handleAddNãodeDirectly("split")}
+                  onClick={() => handleAddNodeDirectly("split")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2390,7 +2365,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <Plus className="h-3.5 w-3.5 text-slate-455 hover:text-indigo-650" />
                 </div>
                   <div
-                    onClick={() => handleAddNãodeDirectly("goto")}
+                    onClick={() => handleAddNodeDirectly("goto")}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData("text/plain", "goto");
@@ -2415,7 +2390,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", "update_contact")}
-                  onClick={() => handleAddNãodeDirectly("update_contact")}
+                  onClick={() => handleAddNodeDirectly("update_contact")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2425,7 +2400,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", "update_list")}
-                  onClick={() => handleAddNãodeDirectly("update_list")}
+                  onClick={() => handleAddNodeDirectly("update_list")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2435,7 +2410,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <div
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", "webhook")}
-                  onClick={() => handleAddNãodeDirectly("webhook")}
+                  onClick={() => handleAddNodeDirectly("webhook")}
                   className="flex items-center justify-between px-3 py-2.5 border border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 cursor-grab active:cursor-grabbing transition-all text-xs font-bold"
                   title="Clique para adicionar ao final ou arraste para o canvas"
                 >
@@ -2482,8 +2457,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           >
             <div className="w-full h-full flex flex-col items-center justify-start pt-20 pb-40 pointer-events-auto">
               
-              {/* Nãodes layout recursive chain render */}
-              {renderNãodeChain(nodes)}
+              {/* Nodes layout recursive chain render */}
+              {renderNodeChain(nodes)}
 
               {/* Connection to final End node */}
                 {(() => {
@@ -2511,9 +2486,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         if (type) {
                           if (type.startsWith("move:")) {
                             const sourceId = type.split(":")[1];
-                            handleMoveNãodeRequest(sourceId, nodes[nodes.length - 1].id, undefined);
+                            handleMoveNodeRequest(sourceId, nodes[nodes.length - 1].id, undefined);
                           } else {
-                            insertNãodeDirectly(nodes[nodes.length - 1].id, undefined, type as any);
+                            insertNodeDirectly(nodes[nodes.length - 1].id, undefined, type as any);
                           }
                         }
                       }}
@@ -2591,12 +2566,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 <h3 className="text-sm font-bold text-slate-800">
                   {activePanel === "trigger_select" ? "Selecionar Disparador" :
                    activePanel === "trigger_config" ? "Configurar o Disparador" :
-                   activePanel === "node_config" ? (selectedNãodeForConfig?.type === "email" ? "Detalhes do e-mail" : `Configurações: ${selectedNãodeForConfig?.name}`) :
+                   activePanel === "node_config" ? (selectedNodeForConfig?.type === "email" ? "Detalhes do e-mail" : `Configurações: ${selectedNodeForConfig?.name}`) :
                    activePanel === "exit_rules" ? "Regras de Saída" : "Configurar Etapa"}
                 </h3>
               </div>
               <button
-                onClick={() => { setActivePanel("menu"); setSelectedNãodeForConfig(null); }}
+                onClick={() => { setActivePanel("menu"); setSelectedNodeForConfig(null); }}
                 className="p-1 hover:bg-slate-150 text-slate-450 hover:text-slate-700 rounded-lg cursor-pointer transition-all"
               >
                 <X className="h-4 w-4" />
@@ -2877,11 +2852,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               )}
 
               {/* PANEL: NODE CONFIG (EMAIL & DELAY) */}
-              {activePanel === "node_config" && selectedNãodeForConfig && (
+              {activePanel === "node_config" && selectedNodeForConfig && (
                 <div className="space-y-5">
                   
-                  {/* Email Nãode parameters */}
-                  {selectedNãodeForConfig.type === "email" && (
+                  {/* Email Node parameters */}
+                  {selectedNodeForConfig.type === "email" && (
                     <div className="space-y-5">
                       
                       {/* Status Dropdown */}
@@ -2889,12 +2864,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Status da Etapa</label>
                         <div className="relative w-32">
                           <span className={`absolute left-3 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full ${
-                            editNãodeEmailStatus === 'Ativo' ? 'bg-emerald-500' :
-                            editNãodeEmailStatus === 'Pausado' ? 'bg-amber-500' : 'bg-slate-400'
+                            editNodeEmailStatus === 'Ativo' ? 'bg-emerald-500' :
+                            editNodeEmailStatus === 'Pausado' ? 'bg-amber-500' : 'bg-slate-400'
                           }`} />
                           <select
-                            value={editNãodeEmailStatus}
-                            onChange={(e) => setEditNãodeEmailStatus(e.target.value as any)}
+                            value={editNodeEmailStatus}
+                            onChange={(e) => setEditNodeEmailStatus(e.target.value as any)}
                             className="w-full pl-6 pr-8 py-1.5 border border-slate-200 rounded-xl text-[11px] font-bold bg-white text-slate-700 outline-none focus:border-indigo-500 cursor-pointer appearance-none animate-none"
                           >
                             <option value="Ativo">Ativo</option>
@@ -2907,7 +2882,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Desempenho (Performance metrics card) */}
                       {(() => {
-                        const sidebarMetrics = getMetricsForNãode(selectedNãodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs">
                             <div className="flex items-center justify-between">
@@ -2918,7 +2893,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const campId = selectedNãodeForConfig.config?.emailCampaignId;
+                                  const campId = selectedNodeForConfig.config?.emailCampaignId;
                                   if (campId) {
                                     router.push(`/dashboard/campaigns/${campId}`);
                                   } else {
@@ -2978,28 +2953,28 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           <div className="space-y-3.5 text-xs pt-1.5 animate-fadeIn">
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">Nãome</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodeCampaignName || <span className="text-slate-300 italic">Sem nome</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNodeCampaignName || <span className="text-slate-300 italic">Sem nome</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">Assunto</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodeSubject || <span className="text-slate-300 italic">Sem assunto</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNodeSubject || <span className="text-slate-300 italic">Sem assunto</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">Prévia do texto</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodePreheader || <span className="text-slate-300 italic">Sem prévia</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNodePreheader || <span className="text-slate-300 italic">Sem prévia</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">Nãome do remetente</span>
-                              <span className="col-span-2 text-slate-800 font-semibold">{editNãodeSenderName || <span className="text-slate-300 italic">Sem nome</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold">{editNodeSenderName || <span className="text-slate-300 italic">Sem nome</span>}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <span className="text-slate-400 font-medium">E-mail do remetente</span>
-                              <span className="col-span-2 text-slate-800 font-semibold truncate" title={editNãodeSenderEmail}>{editNãodeSenderEmail || <span className="text-slate-300 italic">Sem e-mail</span>}</span>
+                              <span className="col-span-2 text-slate-800 font-semibold truncate" title={editNodeSenderEmail}>{editNodeSenderEmail || <span className="text-slate-300 italic">Sem e-mail</span>}</span>
                             </div>
-                            {editNãodeReplyToIsCustom && (
+                            {editNodeReplyToIsCustom && (
                               <div className="grid grid-cols-3 gap-2">
                                 <span className="text-slate-400 font-medium">E-mail de resposta</span>
-                                <span className="col-span-2 text-slate-800 font-semibold truncate" title={editNãodeCustomReplyTo}>{editNãodeCustomReplyTo || <span className="text-slate-300 italic">Sem e-mail de resposta</span>}</span>
+                                <span className="col-span-2 text-slate-800 font-semibold truncate" title={editNodeCustomReplyTo}>{editNodeCustomReplyTo || <span className="text-slate-300 italic">Sem e-mail de resposta</span>}</span>
                               </div>
                             )}
                           </div>
@@ -3007,13 +2982,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           <div className="space-y-4 animate-fadeIn">
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                <span>Nãome da Campanha</span>
+                                <span>Nome da Campanha</span>
                                 <span className="text-red-500 font-bold">*</span>
                               </label>
                               <input
                                 type="text"
-                                value={editNãodeCampaignName}
-                                onChange={(e) => setEditNãodeCampaignName(e.target.value)}
+                                value={editNodeCampaignName}
+                                onChange={(e) => setEditNodeCampaignName(e.target.value)}
                                 placeholder="Ex: Curso Iniciado React 01"
                                 className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 required
@@ -3025,14 +3000,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <div className="relative">
                                 <input
                                   type="text"
-                                  value={editNãodeSubject}
-                                  onChange={(e) => setEditNãodeSubject(e.target.value)}
+                                  value={editNodeSubject}
+                                  onChange={(e) => setEditNodeSubject(e.target.value)}
                                   placeholder="Insira o assunto..."
                                   className="w-full pl-3.5 pr-10 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => setEditNãodeSubject(prev => prev + " %FIRSTNAME%")}
+                                  onClick={() => setEditNodeSubject(prev => prev + " %FIRSTNAME%")}
                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-indigo-650 cursor-pointer px-1"
                                   title="Inserir tag de Nãome"
                                 >
@@ -3045,8 +3020,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Pré-cabeçalho (Texto de Apoio)</label>
                               <input
                                 type="text"
-                                value={editNãodePreheader}
-                                onChange={(e) => setEditNãodePreheader(e.target.value)}
+                                value={editNodePreheader}
+                                onChange={(e) => setEditNodePreheader(e.target.value)}
                                 placeholder="Texto de apoio que aparece ao lado do assunto..."
                                 className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                               />
@@ -3054,11 +3029,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Nãome Remetente</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Nome Remetente</label>
                                 <input
                                   type="text"
-                                  value={editNãodeSenderName}
-                                  onChange={(e) => setEditNãodeSenderName(e.target.value)}
+                                  value={editNodeSenderName}
+                                  onChange={(e) => setEditNodeSenderName(e.target.value)}
                                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 />
                               </div>
@@ -3066,8 +3041,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">E-mail Remetente</label>
                                 <input
                                   type="email"
-                                  value={editNãodeSenderEmail}
-                                  onChange={(e) => setEditNãodeSenderEmail(e.target.value)}
+                                  value={editNodeSenderEmail}
+                                  onChange={(e) => setEditNodeSenderEmail(e.target.value)}
                                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                                 />
                               </div>
@@ -3077,18 +3052,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                   type="checkbox"
-                                  checked={editNãodeReplyToIsCustom}
-                                  onChange={(e) => setEditNãodeReplyToIsCustom(e.target.checked)}
+                                  checked={editNodeReplyToIsCustom}
+                                  onChange={(e) => setEditNodeReplyToIsCustom(e.target.checked)}
                                   className="rounded border-slate-350 text-indigo-650 h-4 w-4 focus:ring-0"
                                 />
                                 <span className="text-[10px] font-black text-slate-550 uppercase tracking-wider">Usar e-mail de resposta diferente</span>
                               </label>
 
-                              {editNãodeReplyToIsCustom && (
+                              {editNodeReplyToIsCustom && (
                                 <input
                                   type="email"
-                                  value={editNãodeCustomReplyTo}
-                                  onChange={(e) => setEditNãodeCustomReplyTo(e.target.value)}
+                                  value={editNodeCustomReplyTo}
+                                  onChange={(e) => setEditNodeCustomReplyTo(e.target.value)}
                                   placeholder="resposta@realizzare.com.br"
                                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all animate-scaleIn"
                                 />
@@ -3126,30 +3101,30 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                         {!isEditingHtml ? (
                           <>
-                            {editNãodeHtmlContent ? (
+                            {editNodeHtmlContent ? (
                               <div className="space-y-2">
                                 <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-1 text-[10px] font-bold">
                                   <button
                                     type="button"
-                                    onClick={() => setEditNãodePreviewDevice("desktop")}
+                                    onClick={() => setEditNodePreviewDevice("desktop")}
                                     className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                                      editNãodePreviewDevice === "desktop" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                                      editNodePreviewDevice === "desktop" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
                                     }`}
                                   >
                                     <Laptop className="h-3.5 w-3.5" /> Desktop
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setEditNãodePreviewDevice("mobile")}
+                                    onClick={() => setEditNodePreviewDevice("mobile")}
                                     className={`flex-1 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                                      editNãodePreviewDevice === "mobile" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
+                                      editNodePreviewDevice === "mobile" ? "bg-white text-indigo-700 shadow-xs font-black" : "text-slate-500"
                                     }`}
                                   >
                                     <Smartphone className="h-3.5 w-3.5" /> Mobile
                                   </button>
                                 </div>
 
-                                {editNãodePreviewDevice === "mobile" ? (
+                                {editNodePreviewDevice === "mobile" ? (
                                   <div className="h-[320px] border border-slate-200 rounded-2xl overflow-hidden bg-slate-100 relative flex justify-center items-start select-none animate-fadeIn">
                                     <div 
                                       className="relative shrink-0 overflow-hidden shadow-sm rounded-xl border border-slate-200/50 mt-2"
@@ -3162,7 +3137,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                     >
                                       <iframe
                                         title="Editor Iframe Preview"
-                                        srcDoc={editNãodeHtmlContent}
+                                        srcDoc={editNodeHtmlContent}
                                         className="w-full h-full border-0 bg-white"
                                       />
                                     </div>
@@ -3180,7 +3155,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                                     >
                                       <iframe
                                         title="Editor Iframe Preview"
-                                        srcDoc={editNãodeHtmlContent}
+                                        srcDoc={editNodeHtmlContent}
                                         className="w-full h-full border-0 bg-white"
                                       />
                                     </div>
@@ -3210,8 +3185,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         ) : (
                           <div className="space-y-2 animate-scaleIn">
                             <textarea
-                              value={editNãodeHtmlContent}
-                              onChange={(e) => setEditNãodeHtmlContent(e.target.value)}
+                              value={editNodeHtmlContent}
+                              onChange={(e) => setEditNodeHtmlContent(e.target.value)}
                               placeholder="Cole seu código HTML ou altere-o por aqui..."
                               className="w-full h-40 p-2.5 border border-slate-250 focus:border-indigo-500 rounded-xl text-[10px] font-mono outline-none resize-none bg-slate-50/50"
                             />
@@ -3232,14 +3207,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Leads por Status / Filas de Espera */}
                       {(() => {
-                        const sidebarMetrics = getMetricsForNãode(selectedNãodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const sidebarMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Leads nesta Etapa</h4>
                             <div className="flex flex-col gap-2 text-xs">
                               <button
                                 type="button"
-                                onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Revisão", sidebarMetrics.revisao)}
+                                onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Revisão", sidebarMetrics.revisao)}
                                 className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                               >
                                 <span className="text-[9px] font-bold text-slate-450 uppercase">Em Revisão</span>
@@ -3247,7 +3222,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Entregue", sidebarMetrics.entregue)}
+                                onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Entregue", sidebarMetrics.entregue)}
                                 className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                               >
                                 <span className="text-[9px] font-bold text-slate-450 uppercase">Entregue (Concluído)</span>
@@ -3255,7 +3230,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Ignorado", sidebarMetrics.ignorado)}
+                                onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Ignorado", sidebarMetrics.ignorado)}
                                 className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                               >
                                 <span className="text-[9px] font-bold text-slate-450 uppercase">Ignorado</span>
@@ -3269,16 +3244,16 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                   )}
 
-                  {/* Delay Nãode parameters */}
-                  {selectedNãodeForConfig.type === "delay" && (
+                  {/* Delay Node parameters */}
+                  {selectedNodeForConfig.type === "delay" && (
                     <div className="space-y-4 pt-2 border-t border-slate-100">
                       
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Quantidade para Aguardar</label>
                         <input
                           type="number"
-                          value={editNãodeDelayValue}
-                          onChange={(e) => setEditNãodeDelayValue(Number(e.target.value))}
+                          value={editNodeDelayValue}
+                          onChange={(e) => setEditNodeDelayValue(Number(e.target.value))}
                           placeholder="Digite a quantidade..."
                           className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none bg-white"
                         />
@@ -3287,8 +3262,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Unidade de Tempo</label>
                         <select
-                          value={editNãodeDelayUnit}
-                          onChange={(e) => setEditNãodeDelayUnit(e.target.value as any)}
+                          value={editNodeDelayUnit}
+                          onChange={(e) => setEditNodeDelayUnit(e.target.value as any)}
                           className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none bg-white cursor-pointer"
                         >
                           <option value="minutes">Minutos</option>
@@ -3304,8 +3279,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           <label className="text-[10px] font-black text-slate-550 uppercase tracking-wider block">Condições Adicionais de Atraso</label>
                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mt-1">Aguardar até um dia específico da semana</span>
                           <select
-                            value={editNãodeDelayWeekday}
-                            onChange={(e) => setEditNãodeDelayWeekday(e.target.value)}
+                            value={editNodeDelayWeekday}
+                            onChange={(e) => setEditNodeDelayWeekday(e.target.value)}
                             className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-[11px] font-semibold focus:border-indigo-500 outline-none bg-white cursor-pointer"
                           >
                             <option value="">Qualquer dia</option>
@@ -3325,8 +3300,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Aguardar até um horário específico</span>
                           <input
                             type="time"
-                            value={editNãodeDelayTime}
-                            onChange={(e) => setEditNãodeDelayTime(e.target.value)}
+                            value={editNodeDelayTime}
+                            onChange={(e) => setEditNodeDelayTime(e.target.value)}
                             className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none bg-white cursor-pointer"
                           />
                         </div>
@@ -3334,14 +3309,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                       {/* Leads por Etapa / Fila de Atraso */}
                       {(() => {
-                        const delayMetrics = getMetricsForNãode(selectedNãodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
+                        const delayMetrics = getMetricsForNode(selectedNodeForConfig.id, flowPeriod, flowCustomStart, flowCustomEnd);
                         const waitingCount = 0;
                         return (
                           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-2xs mt-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Leads nesta Etapa</h4>
                             <button
                               type="button"
-                              onClick={() => handleOpenQueueModal(selectedNãodeForConfig, "Aguardando", waitingCount)}
+                              onClick={() => handleOpenQueueModal(selectedNodeForConfig, "Aguardando", waitingCount)}
                               className="w-full flex flex-col items-start p-3 bg-white border border-slate-200 hover:border-indigo-350 hover:bg-indigo-50/5 rounded-xl transition-all text-left cursor-pointer shadow-3xs"
                             >
                               <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
@@ -3356,8 +3331,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                   )}
 
-                  {/* Split Nãode parameters */}
-                  {selectedNãodeForConfig.type === "split" && (
+                  {/* Split Node parameters */}
+                  {selectedNodeForConfig.type === "split" && (
                     <div className="space-y-4 pt-2">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Tipo de Divisão</label>
@@ -3464,14 +3439,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                   )}
 
-                  {selectedNãodeForConfig.type !== "email" && selectedNãodeForConfig.type !== "delay" && selectedNãodeForConfig.type !== "split" && (
+                  {selectedNodeForConfig.type !== "email" && selectedNodeForConfig.type !== "delay" && selectedNodeForConfig.type !== "split" && (
                     <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl text-xs text-slate-500 text-center leading-relaxed">
-                      Esta etapa ({selectedNãodeForConfig.name}) está ativada no mockup e configurada por padrão.
+                      Esta etapa ({selectedNodeForConfig.name}) está ativada no mockup e configurada por padrão.
                     </div>
                   )}
 
                   {/* Visualizar campanha button */}
-                  {selectedNãodeForConfig.type === "email" && (
+                  {selectedNodeForConfig.type === "email" && (
                     <div className="pt-3 border-t border-slate-100">
                       <button
                         type="button"
@@ -3553,13 +3528,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             </div>
 
             {/* Fixed footer for node configuration */}
-            {activePanel === "node_config" && selectedNãodeForConfig && (
+            {activePanel === "node_config" && selectedNodeForConfig && (
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setActivePanel("menu");
-                    setSelectedNãodeForConfig(null);
+                    setSelectedNodeForConfig(null);
                   }}
                   className="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
                 >
@@ -3567,7 +3542,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </button>
                 <button
                   type="button"
-                  onClick={handleSaveNãodeConfig}
+                  onClick={handleSaveNodeConfig}
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-500/10 transition-colors cursor-pointer text-center"
                 >
                   Salvar
@@ -3597,7 +3572,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             
             <div className="space-y-0.5">
               <button
-                onClick={() => handleInsertNãode('email')}
+                onClick={() => handleInsertNode('email')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
               >
                 <Mail className="h-3.5 w-3.5 text-blue-500" />
@@ -3605,7 +3580,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               </button>
               
               <button
-                onClick={() => handleInsertNãode('delay')}
+                onClick={() => handleInsertNode('delay')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
               >
                 <Clock className="h-3.5 w-3.5 text-amber-500" />
@@ -3613,14 +3588,14 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               </button>
 
               <button
-                onClick={() => handleInsertNãode('split')}
+                onClick={() => handleInsertNode('split')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
               >
                 <Split className="h-3.5 w-3.5 text-purple-500" />
                 <span>Divisão Condicional</span>
               </button>
                 <button
-                  onClick={() => handleInsertNãode("goto")}
+                  onClick={() => handleInsertNode("goto")}
                   className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left cursor-pointer"
                 >
                   <GitCommit className="h-3.5 w-3.5 text-fuchsia-500" />
@@ -3628,7 +3603,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </button>
 
               <button
-                onClick={() => handleInsertNãode('update_contact')}
+                onClick={() => handleInsertNode('update_contact')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-655 hover:bg-slate-50 transition-colors text-left cursor-pointer"
               >
                 <Users className="h-3.5 w-3.5 text-indigo-500" />
@@ -3636,7 +3611,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               </button>
 
               <button
-                onClick={() => handleInsertNãode('webhook')}
+                onClick={() => handleInsertNode('webhook')}
                 className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-655 hover:bg-slate-50 transition-colors text-left cursor-pointer"
               >
                 <ExternalLink className="h-3.5 w-3.5 text-cyan-500" />
@@ -3716,7 +3691,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <div className="bg-slate-50 border-b border-slate-150 p-4 space-y-1.5 text-[10px] select-text text-left shrink-0">
                       <div className="flex items-center gap-1 text-slate-700">
                         <span className="font-bold text-slate-400 w-12 shrink-0">De:</span>
-                        <span className="font-semibold text-slate-800 truncate">{editNãodeSenderName}</span>
+                        <span className="font-semibold text-slate-800 truncate">{editNodeSenderName}</span>
                       </div>
                       <div className="flex items-center gap-1 text-slate-700">
                         <span className="font-bold text-slate-400 w-12 shrink-0">Para:</span>
@@ -3724,7 +3699,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       </div>
                       <div className="flex items-start gap-1 text-slate-700 border-t border-slate-200/40 pt-1.5 mt-1">
                         <span className="font-bold text-slate-400 w-12 shrink-0 mt-0.5">Assunto:</span>
-                        <span className="font-black text-slate-800 text-[11px] leading-tight flex-1 truncate">{editNãodeSubject || "(Sem assunto)"}</span>
+                        <span className="font-black text-slate-800 text-[11px] leading-tight flex-1 truncate">{editNodeSubject || "(Sem assunto)"}</span>
                       </div>
                     </div>
 
@@ -3732,7 +3707,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <div className="flex-1 bg-white relative">
                       <iframe
                         title="Expanded Iframe Preview"
-                        srcDoc={editNãodeHtmlContent}
+                        srcDoc={editNodeHtmlContent}
                         className="w-full h-full border-0 bg-white"
                       />
                     </div>
@@ -3753,8 +3728,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="bg-slate-50 border-b border-slate-150 p-4 space-y-2 text-xs select-text text-left shrink-0">
                     <div className="flex items-center gap-1.5 text-slate-700">
                       <span className="font-bold text-slate-400 w-14 shrink-0">De:</span>
-                      <span className="font-semibold text-slate-800">{editNãodeSenderName}</span>
-                      <span className="text-slate-400">&lt;{editNãodeSenderEmail}&gt;</span>
+                      <span className="font-semibold text-slate-800">{editNodeSenderName}</span>
+                      <span className="text-slate-400">&lt;{editNodeSenderEmail}&gt;</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-700">
                       <span className="font-bold text-slate-400 w-14 shrink-0">Para:</span>
@@ -3762,12 +3737,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     </div>
                     <div className="flex items-start gap-1.5 text-slate-700 border-t border-slate-200/45 pt-2 mt-1">
                       <span className="font-bold text-slate-400 w-14 shrink-0 mt-0.5">Assunto:</span>
-                      <span className="font-black text-slate-800 text-sm leading-tight flex-1">{editNãodeSubject || "(Sem assunto)"}</span>
+                      <span className="font-black text-slate-800 text-sm leading-tight flex-1">{editNodeSubject || "(Sem assunto)"}</span>
                     </div>
-                    {editNãodePreheader && (
+                    {editNodePreheader && (
                       <div className="flex items-start gap-1.5 text-slate-700">
                         <span className="font-bold text-slate-400 w-14 shrink-0">Apoio:</span>
-                        <span className="text-slate-500 italic flex-1">{editNãodePreheader}</span>
+                        <span className="text-slate-500 italic flex-1">{editNodePreheader}</span>
                       </div>
                     )}
                   </div>
@@ -3776,7 +3751,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div className="flex-1 bg-white relative">
                     <iframe
                       title="Expanded Iframe Preview"
-                      srcDoc={editNãodeHtmlContent}
+                      srcDoc={editNodeHtmlContent}
                       className="w-full h-full border-0 bg-white"
                     />
                   </div>
@@ -3789,8 +3764,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       )}
 
       {/* Leads Queue Listing Modal */}
-      {showQueueModal && queueModalNãode && (() => {
-        const allLeads = getMockLeadsForQueue(queueModalNãode.id, queueModalStatusName, queueModalCount);
+      {showQueueModal && queueModalNode && (() => {
+        const allLeads = getMockLeadsForQueue(queueModalNode.id, queueModalStatusName, queueModalCount);
         const filteredLeads = allLeads.filter(lead => 
           lead.name.toLowerCase().includes(queueSearchQuery.toLowerCase()) ||
           lead.email.toLowerCase().includes(queueSearchQuery.toLowerCase())
@@ -3808,7 +3783,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <span>Leads na Fila: {queueModalStatusName}</span>
                   </h3>
                   <p className="text-[10px] text-slate-450 mt-0.5">
-                    Etapa: <strong className="text-slate-700">{queueModalNãode.type === "email" ? (queueModalNãode.config?.campaignName || "Enviar E-mail") : queueModalNãode.name}</strong> • Total no período: {queueModalCount} leads
+                    Etapa: <strong className="text-slate-700">{queueModalNode.type === "email" ? (queueModalNode.config?.campaignName || "Enviar E-mail") : queueModalNode.name}</strong> • Total no período: {queueModalCount} leads
                   </p>
                 </div>
                 <button
@@ -4062,7 +4037,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 type="button"
                 onClick={() => {
                   setShowMoveLeadsModal(false);
-                  setMoveLeadsNãode(null);
+                  setMoveLeadsNode(null);
                   setMoveTarget(null);
                 }}
                 className="px-4 py-2 border border-slate-202 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-650 cursor-pointer transition-colors"

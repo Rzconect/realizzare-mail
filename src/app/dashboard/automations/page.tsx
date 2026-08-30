@@ -158,11 +158,11 @@ export default function AutomationsPage() {
           const mapped = data.map((f: any) => ({
             id: f.id,
             name: f.name,
-            triggerDescription: f.description || f.trigger_type || "Gatilho Padr-o",
+            triggerDescription: f.description || f.trigger_type || "Gatilho Padrão",
             type: "Automação",
             status: (f.status === "active" ? "Ativo" : (f.status === "paused" ? "Pausado" : "Rascunho")) as "Ativo" | "Pausado" | "Rascunho",
             updatedAt: new Date(f.updated_at || f.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
-            activeContacts: f.metrics_json?.active_contacts || 0,
+            activeContacts: activeContactsMap[f.id] || 0,
             revenue: f.metrics_json?.revenue || 0.00
           }));
           setFlows(mapped);

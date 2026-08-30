@@ -39,14 +39,15 @@ export async function POST(req: NextRequest) {
       const tags = mail.tags || {};
       let campaignId = tags.campaign_id ? tags.campaign_id[0] : "";
       let contactId = tags.contact_id ? tags.contact_id[0] : "";
+      let flowId = tags.flow_id ? tags.flow_id[0] : "";
+      let nodeId = tags.node_id ? tags.node_id[0] : "";
 
-      // Fallback to headers if present (for Bounces/Deliveries)
-      if (!campaignId || !contactId) {
-        headers.forEach((h: any) => {
-          if (h.name?.toLowerCase() === "x-campaign-id" && !campaignId) campaignId = h.value;
-          if (h.name?.toLowerCase() === "x-contact-id" && !contactId) contactId = h.value;
-        });
-      }
+      headers.forEach((h: any) => {
+        if (h.name?.toLowerCase() === "x-campaign-id" && !campaignId) campaignId = h.value;
+        if (h.name?.toLowerCase() === "x-contact-id" && !contactId) contactId = h.value;
+        if (h.name?.toLowerCase() === "x-flow-id" && !flowId) flowId = h.value;
+        if (h.name?.toLowerCase() === "x-node-id" && !nodeId) nodeId = h.value;
+      });
 
       if (supabase) {
         if (eventType === "Open") {
@@ -75,6 +76,8 @@ export async function POST(req: NextRequest) {
               email: mail.destination ? mail.destination[0] : "",
               campaign_id: campaignId,
               contact_id: contactId,
+              flow_id: flowId,
+              node_id: nodeId,
               timestamp: new Date().toISOString()
             },
             status: "processed"
@@ -105,6 +108,8 @@ export async function POST(req: NextRequest) {
               email: mail.destination ? mail.destination[0] : "",
               campaign_id: campaignId,
               contact_id: contactId,
+              flow_id: flowId,
+              node_id: nodeId,
               link: message.click ? message.click.link : "",
               timestamp: new Date().toISOString()
             },
@@ -131,7 +136,9 @@ export async function POST(req: NextRequest) {
                 event: "email.bounce",
                 email,
                 campaign_id: campaignId,
-                contact_id: contactId,
+              contact_id: contactId,
+              flow_id: flowId,
+              node_id: nodeId,
                 bounce_type: bounce.bounceType,
                 sub_type: bounce.bounceSubType,
                 timestamp: new Date().toISOString()
@@ -160,7 +167,9 @@ export async function POST(req: NextRequest) {
                 event: "email.spam_complaint",
                 email,
                 campaign_id: campaignId,
-                contact_id: contactId,
+              contact_id: contactId,
+              flow_id: flowId,
+              node_id: nodeId,
                 feedback_type: complaint.complaintFeedbackType,
                 timestamp: new Date().toISOString()
               },
@@ -176,6 +185,8 @@ export async function POST(req: NextRequest) {
               event: "email.delivered",
               campaign_id: campaignId,
               contact_id: contactId,
+              flow_id: flowId,
+              node_id: nodeId,
               recipients: mail.destination,
               timestamp: new Date().toISOString()
             },

@@ -70,7 +70,12 @@ export async function processFlows() {
                  from: `"Realizzare" <contato@realizzarecursos.com.br>`,
                  to: contact.email,
                  subject,
-                 html
+                 html,
+                 headers: {
+                   "X-Flow-Id": run.flow_id,
+                   "X-Node-Id": node.id,
+                   "X-Contact-Id": contact.id
+                 }
                });
              }
              // Log the action
