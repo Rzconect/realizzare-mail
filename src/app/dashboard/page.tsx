@@ -123,6 +123,7 @@ export default function DashboardPage() {
   });
   const [isSyncing, setIsSyncing] = useState(false);
   const [eventsSearchTerm, setEventsSearchTerm] = useState("");
+  const [eventsTypeFilter, setEventsTypeFilter] = useState<"all" | "email" | "purchase">("all");
   const [attributionDaysWindow, setAttributionDaysWindow] = useState<string>("14 dias");
 
   useEffect(() => {
@@ -367,12 +368,6 @@ export default function DashboardPage() {
             }
           }
 
-          if (!cName && campaignObj?.target_list) {
-            const cleanTargetName = campaignObj.target_list.replace(/👤/g, "").replace(/\([^)]*\)/g, "").trim();
-            if (cleanTargetName && !cleanTargetName.includes("@")) {
-              cName = cleanTargetName;
-            }
-          }
 
           // Skip tracking events without real contact email
           if (!cEmail) return;
