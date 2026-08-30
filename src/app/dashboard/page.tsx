@@ -867,6 +867,35 @@ export default function DashboardPage() {
       setIsLoadingDailyStats(true);
       const supabase = createClient();
       try {
+        const now = new Date();
+        let start = new Date();
+        let end = new Date();
+        if (period === "today") {
+          start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+          end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        } else if (period === "7") {
+          start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          start.setHours(0, 0, 0, 0);
+          end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        } else if (period === "30") {
+          start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          start.setHours(0, 0, 0, 0);
+          end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        } else if (period === "90") {
+          start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          start.setHours(0, 0, 0, 0);
+          end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        } else if (period === "current_month") {
+          start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+          end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        } else if (period === "custom") {
+          start = new Date(customStartDate);
+          end = new Date(customEndDate);
+          end.setHours(23, 59, 59, 999);
+        }
+        const startMs = start.getTime();
+        const endMs = end.getTime();
+
         const slots = getMockDailyStats();
         const slotMap = new Map<string, { envios: number; abertos: number; clicados: number }>();
         slots.forEach((s) => slotMap.set(s.name, { envios: 0, abertos: 0, clicados: 0 }));
@@ -879,6 +908,9 @@ export default function DashboardPage() {
         if (dbCampaigns && dbCampaigns.length > 0) {
           dbCampaigns.forEach((c: any) => {
             const dateObj = new Date(c.sent_at || c.created_at);
+            const eventTime = dateObj.getTime();
+            if (eventTime < startMs || eventTime > endMs) return;
+
             const slotName = period === "today"
               ? `${String(dateObj.getHours()).padStart(2, "0")}:00`
               : `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
@@ -1748,6 +1780,9 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+
 
 
 
