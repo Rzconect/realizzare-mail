@@ -128,17 +128,17 @@ cron.schedule('* * * * *', async () => {
               await new Promise(r => setTimeout(r, 100)); // simula atraso
               successCount++;
            } else {
-              // MODO REAL - Envia via AWS SES
-              const mailOptions = {
-                from: process.env.SMTP_FROM || 'contato@realizzarecursos.com.br',
-                to: email,
-                subject: subjectContent,
-                html: htmlContent,
-                headers: {
-                  'X-Campaign-ID': campaign.id,
-                  'X-Contact-ID': contact.id || email
-                }
-              };
+                // Setup E-mail Options
+                const mailOptions = {
+                  from: `"${campaign.from_name || 'Realizzare Cursos'}" <${campaign.from_email || 'contato@realizzarecursos.com.br'}>`,
+                  to: email,
+                  replyTo: campaign.reply_to || 'contato@realizzare.com',
+                  subject: subjectContent,
+                  html: htmlContent,
+                  headers: {
+                    'X-SES-MESSAGE-TAGS': `campaign_id=${campaign.id}, contact_id=${contact.id || email}`
+                  }
+                };
               
               await transporter.sendMail(mailOptions);
               console.log(`   ✅ Enviado para: ${email}`);

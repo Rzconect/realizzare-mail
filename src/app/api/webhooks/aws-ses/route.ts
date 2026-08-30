@@ -35,16 +35,35 @@ export async function POST(req: NextRequest) {
       const mail = message.mail || {};
       const headers = mail.headers || [];
 
-      // Extract custom headers (e.g. X-Campaign-ID, X-Contact-ID)
-      let campaignId = "";
-      let contactId = "";
-      headers.forEach((h: any) => {
-        if (h.name?.toLowerCase() === "x-campaign-id") campaignId = h.value;
-        if (h.name?.toLowerCase() === "x-contact-id") contactId = h.value;
-      });
+      // Extract tags (AWS SES converts X-SES-MESSAGE-TAGS into mail.tags)
+      const tags = mail.tags || {};
+      let campaignId = tags.campaign_id ? tags.campaign_id[0] : "";
+      let contactId = tags.contact_id ? tags.contact_id[0] : "";
+
+      // Fallback to headers if present (for Bounces/Deliveries)
+      if (!campaignId || !contactId) {
+        headers.forEach((h: any) => {
+          if (h.name?.toLowerCase() === "x-campaign-id" && !campaignId) campaignId = h.value;
+          if (h.name?.toLowerCase() === "x-contact-id" && !contactId) contactId = h.value;
+        });
+      }
 
       if (supabase) {
-        if (eventType === "Bounce") {
+        if (eventType === "Open") {
+          if (campaignId) {
+            const { data: camp } = await supabase.from("campaigns").select("open_count").eq("id", campaignId).maybeSingle();
+            if (camp) {
+              await supabase.from("campaigns").update({ open_count: (camp.open_count || 0) + 1 }).eq("id", campaignId);
+            }
+          }
+        } else if (eventType === "Click") {
+          if (campaignId) {
+            const { data: camp } = await supabase.from("campaigns").select("click_count").eq("id", campaignId).maybeSingle();
+            if (camp) {
+              await supabase.from("campaigns").update({ click_count: (camp.click_count || 0) + 1 }).eq("id", campaignId);
+            }
+          }
+        } else if (eventType === "Bounce") {
           const bounce = message.bounce || {};
           const bouncedRecipients = bounce.bouncedRecipients || [];
 
