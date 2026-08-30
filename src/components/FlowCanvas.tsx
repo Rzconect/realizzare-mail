@@ -2435,7 +2435,12 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               {renderNãodeChain(nodes)}
 
               {/* Connection to final End node */}
-                {nodes.length > 0 && !["split", "goto"].includes(nodes[nodes.length - 1].type) && (
+                {(() => {
+                  const terminalIdx = nodes.findIndex(n => n.type === "split" || n.type === "goto");
+                  const effectiveNodes = terminalIdx !== -1 ? nodes.slice(0, terminalIdx + 1) : nodes;
+                  const lastNode = effectiveNodes[effectiveNodes.length - 1];
+                  return effectiveNodes.length > 0 && !["split", "goto"].includes(lastNode.type);
+                })() && (
                   <>
 
                   <div className="w-[2px] h-16 bg-slate-300 shrink-0 relatéive flex items-center justify-center">
