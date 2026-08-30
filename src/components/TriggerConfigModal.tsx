@@ -37,7 +37,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
     setSelectedCourses([]);
   }, [customTriggerSource]);
 
-  const isCourseEvent = selectedEvent.includes("course") || selectedEvent.includes("Matr�cula") || selectedEvent.includes("Certificado") || selectedEvent.includes("Reprova��o") || selectedEvent.includes("Teste");
+  const isCourseEvent = selectedEvent.includes("course") || selectedEvent.includes("Matrícula") || selectedEvent.includes("Certificado") || selectedEvent.includes("Reprovação") || selectedEvent.includes("Teste");
   const isPagarmeEvent = customTriggerSource === "pagarme";
 
   if (!isOpen) return null;
@@ -55,9 +55,9 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
           <div>
             <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
               <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">?</div>
-              Configura��o de Gatilho de Entrada
+              Configuração de Gatilho de Entrada
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium mt-1">Configure regras complexas ouvindo eventos externos ou dados do usu�rio.</p>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">Configure regras complexas ouvindo eventos externos ou dados do usuário.</p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors">
             <X className="h-4 w-4" />
@@ -91,7 +91,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 <option value="">Selecione o evento...</option>
                 {customTriggerSource === "pagarme" && (
                   <>
-                    <option>Transa��o Aprovada (order_paid)</option>
+                    <option>Transação Aprovada (order_paid)</option>
                     <option>Boleto Gerado (order_created)</option>
                     <option>Assinatura Cancelada (subscription_canceled)</option>
                     <option>Carrinho Abandonado (checkout_abandoned)</option>
@@ -101,34 +101,34 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                   <>
                     <option>Curso Iniciado (course.progress - Inicio)</option>
                     <option>Curso em Andamento 50% (course.progress - Meio)</option>
-                    <option>Curso Conclu�do 100% (course.progress - Fim)</option>
-                    <option>Clique em Emiss�o/Checkout (checkout_click)</option>
-                    <option>Visualizou P�gina (page_view)</option>
+                    <option>Curso Concluído 100% (course.progress - Fim)</option>
+                    <option>Clique em Emissão/Checkout (checkout_click)</option>
+                    <option>Visualizou Página (page_view)</option>
                     <option>Adicionou ao Carrinho (add_to_cart)</option>
                   </>
                 )}
                 {customTriggerSource === "api" && (
                   <>
-                    <option>Matr�cula Realizada</option>
+                    <option>Matrícula Realizada</option>
                     <option>Teste Aprovado</option>
-                    <option>Reprova��o na Prova (course.exam_failed)</option>
+                    <option>Reprovação na Prova (course.exam_failed)</option>
                     <option>Certificado Emitido (certificate_issued)</option>
                     <option>Contato Criado / Atualizado</option>
                     <option>Descadastro de Email (contact.unsubscribed)</option>
-                    <option>Reativa��o de Contato (contact.reactivated)</option>
-                    <option>Evento Customizado POST gen�rico</option>
+                    <option>Reativação de Contato (contact.reactivated)</option>
+                    <option>Evento Customizado POST genérico</option>
                   </>
                 )}
                 {customTriggerSource === "user" && (
                   <>
-                    <option>Novo Lead Cadastrado</option>
-                    <option>Campo: Nome / Sobrenome Alterado</option>
+                    <option>Nãovo Lead Cadastrado</option>
+                    <option>Campo: Nãome / Sobrenome Alterado</option>
                     <option>Campo: Email Alterado</option>
                     <option>Campo: Telefone / WhatsApp</option>
-                    <option>Campo: G�nero</option>
+                    <option>Campo: Gênero</option>
                     <option>Campo: Data de Nascimento</option>
                     <option>Campo: CPF</option>
-                    <option>Campo: CEP / Endere�o Completo</option>
+                    <option>Campo: CEP / Endereço Completo</option>
                     <option>Tag Adicionada ou Removida</option>
                     <option>Campo Personalizado Alterado</option>
                   </>
@@ -141,12 +141,12 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Regra Adicional (Opcional)</label>
                 <select value={selectedRule} onChange={(e) => setSelectedRule(e.target.value)} className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none">
                   <option>Nenhuma regra extra</option>
-                  <option>Nome do Curso espec�fico</option>
-                  {isPagarmeEvent && <option>SKU do Produto espec�fico</option>}
+                  <option>Nãome do Curso específico</option>
+                  {isPagarmeEvent && <option>SKU do Produto específico</option>}
                   <option>Igual a</option>
-                  <option>N�o � igual a</option>
-                  <option>Cont�m</option>
-                  <option>N�o cont�m</option>
+                  <option>Não é igual a</option>
+                  <option>Contém</option>
+                  <option>Não contém</option>
                   <option>Maior que (Valor/Data)</option>
                   <option>Menor que (Valor/Data)</option>
                 </select>
@@ -154,7 +154,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor Condicional</label>
                 
-                {selectedRule === "Nome do Curso espec�fico" ? (
+                {selectedRule === "Nãome do Curso específico" ? (
                   <div className="relative mt-1.5">
                     <button 
                       type="button"
@@ -195,7 +195,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                     type="text" 
                     value={condValue}
                     onChange={(e) => setCondValue(e.target.value)}
-                    placeholder={selectedRule === "SKU do Produto espec�fico" ? "Ex: SKU-123, SKU-456" : "Ex: Valor esperado"} 
+                    placeholder={selectedRule === "SKU do Produto específico" ? "Ex: SKU-123, SKU-456" : "Ex: Valor esperado"} 
                     className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none" 
                   />
                 )}
@@ -211,7 +211,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
           <button
             type="button"
             onClick={() => {
-              const ruleText = selectedRule === "Nome do Curso espec�fico" 
+              const ruleText = selectedRule === "Nãome do Curso específico" 
                 ? `[Cursos: ${selectedCourses.join(", ")}]` 
                 : (selectedRule !== "Nenhuma regra extra" ? `[${selectedRule} ${condValue}]` : "");
                 
@@ -219,7 +219,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave }: TriggerC
                 source: customTriggerSource,
                 event: selectedEvent,
                 rule: selectedRule,
-                value: selectedRule === "Nome do Curso espec�fico" ? selectedCourses : condValue,
+                value: selectedRule === "Nãome do Curso específico" ? selectedCourses : condValue,
                 summary: `${selectedEvent} ${ruleText}`
               });
               onClose();

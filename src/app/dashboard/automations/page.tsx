@@ -99,7 +99,7 @@ const mockCoursesList = [
   "Marketing Digital de Performance"
 ];
 
-export default function AutomationsPage() {
+export default function AutomaçãonsPage() {
   const router = useRouter();
   const [flows, setFlows] = useState<Flow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1109,7 +1109,7 @@ export default function AutomationsPage() {
                 <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
                   <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-xs flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
-                    O gatilho ser� configurado dentro do fluxo
+                    O gatilho será configurado dentro do fluxo
                   </div>
               </div>
 
@@ -1264,7 +1264,7 @@ export default function AutomationsPage() {
                 <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Gatilho de Entrada (Trigger)</label>
                   <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-xs flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-indigo-400"></span>
-                    O gatilho ser� configurado dentro do fluxo
+                    O gatilho será configurado dentro do fluxo
                   </div>
               </div>
 
