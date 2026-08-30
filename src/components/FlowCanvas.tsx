@@ -36,7 +36,7 @@ import {
   MessageSquare,
   RefreshCw,
   Sliders,
-  Users,
+  Users, UserPlus,
   Database,
   ExternalLink,
   BookOpen,
@@ -311,6 +311,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [editNãodeEmailStatus, setEditNãodeEmailStatus] = useState<'Ativo' | 'Pausado' | 'Rascunho'>('Ativo');
   const [showMetadataMenu, setShowMetadataMenu] = useState(false);
   const [showActivationConfirmModal, setShowActivationConfirmModal] = useState(false);
+  const [showManualAddModal, setShowManualAddModal] = useState(false);
   
   // HTML editing state
   const [isEditingHtml, setIsEditingHtml] = useState(false);
@@ -4031,7 +4032,52 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       )}
 
       {/* MODAL: CONFIRM AUTOMATION ACTIVATION */}
-      {showActivationConfirmModal && (
+      
+        {/* MODAL: MANUAL ADD LEAD */}
+        {showManualAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-lg w-full p-6 animate-scaleIn flex flex-col">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <div className="flex items-center gap-3 text-slate-800">
+                  <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
+                    <UserPlus className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Gerenciar Leads no Fluxo</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">Adicione ou remova contatos manualmente</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowManualAddModal(false)}
+                  className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              
+              <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-xl border border-slate-150 border-dashed">
+                <Users className="h-8 w-8 text-slate-300 mb-3" />
+                <h4 className="text-sm font-bold text-slate-700 mb-1">Motor de Automação em Construção</h4>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  A interface para adicionar contatos manualmente já está pronta! Assim que conectarmos o Motor de Automação, você poderá pesquisar e inserir contatos diretamente nesta tela.
+                </p>
+              </div>
+              
+              <div className="flex justify-end pt-4 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowManualAddModal(false)}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-md"
+                >
+                  Entendi
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {showActivationConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white border border-slate-202 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
             <div className="flex items-center gap-3 text-slate-800">
