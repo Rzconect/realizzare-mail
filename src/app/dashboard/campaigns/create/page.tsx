@@ -971,7 +971,7 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   }
 }
 
-function countMatchingContacts(contacts: any[], groups: any[], globalOp: "and" | "or", customFields: any[]): number {
+function getMatchingContacts(contacts: any[], groups: any[], globalOp: "and" | "or", customFields: any[]): number {
   if (!groups || groups.length === 0) return contacts.length;
   
   const matchedContacts = contacts.filter((contact) => {
@@ -1239,7 +1239,7 @@ function CreateCampaignForm() {
     const fetchRealLists = async () => {
       try {
         const supabase = createClient();
-        const { data: realLists } = await supabase.from("lists").select("id, name");
+        const { data: realLists } = await supabase.from("lists").select("id, name, subscriber_count, type");
         const stored = localStorage.getItem("realizzare_lists");
         let localLists = [];
         if (stored) {
@@ -1248,7 +1248,7 @@ function CreateCampaignForm() {
 
         let allLists: any[] = [];
         if (realLists && realLists.length > 0) {
-          allLists = realLists.map((l: any) => ({ id: l.id, name: l.name }));
+          allLists = realLists.map((l: any) => ({ id: l.id, name: l.name, subscriber_count: l.subscriber_count, type: l.type }));
         }
         
         localLists.forEach((l: any) => {
@@ -1259,7 +1259,7 @@ function CreateCampaignForm() {
 
         const formatted = await Promise.all(allLists.map(async (l: any) => {
           const contactsStr = localStorage.getItem("realizzare_contacts");
-          let count = 0;
+          let count = l.subscriber_count || 0;
           if (contactsStr) {
             try {
               const contactsList = JSON.parse(contactsStr);
@@ -1464,7 +1464,7 @@ function CreateCampaignForm() {
 
   // Step 3 dynamic calculation
   const audienceEstimateCount = useMemo(() => {
-    let count = 0;
+    let count = l.subscriber_count || 0;
     selectedIncludeLists.forEach((listId) => {
       const match = listsList.find((l) => l.id === listId);
       if (match) count += match.count;
@@ -1641,7 +1641,7 @@ function CreateCampaignForm() {
         if (!isGeneral) {
           try {
             const supabase = createClient();
-            const { data: dbLists } = await supabase.from("lists").select("id, name");
+            const { data: dbLists } = await supabase.from("lists").select("id, name, subscriber_count, type");
             const matchedIds = dbLists
               ?.filter((l: any) => selectedNames.some((sn: any) => sn.toLowerCase() === l.name.toLowerCase()))
               .map((l: any) => l.id) || [];
@@ -1822,7 +1822,7 @@ function CreateCampaignForm() {
     setIsPreviewLoading(true);
     setPreviewCount(null);
     setTimeout(() => {
-      const count = countMatchingContacts(contacts, segmentGroups, globalOperator, customFields);
+      const count = getMatchingContacts(contacts, segmentGroups, globalOperator, customFields).length;
       setPreviewCount(count);
       setIsPreviewLoading(false);
     }, 800);
@@ -1831,15 +1831,7 @@ function CreateCampaignForm() {
   const handleSaveSegment = async () => {
     if (!newSegmentName.trim()) return;
 
-    const matchedContacts = contacts.filter((c: any) => {
-      if (c.status !== "active") return false;
-      
-      const groupResults: boolean[] = segmentGroups.map((group) => {
-        if (!group.rules || group.rules.length === 0) return true;
-        const ruleResults: boolean[] = group.rules.map((rule: any) => evaluateRule(c, rule, customFields));
-        if (group.logicalOperator === "or") return ruleResults.some((r: boolean) => r === true);
-        return ruleResults.every((r: boolean) => r === true);
-      });
+    const matchedContacts = getMatchingContacts(contacts, segmentGroups, globalOperator, customFields);
       
       if (globalOperator === "or") return groupResults.some((r: boolean) => r === true);
       return groupResults.every((r: boolean) => r === true);
