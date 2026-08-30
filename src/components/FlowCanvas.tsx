@@ -4028,8 +4028,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         onSave={(config) => {
           setFlow(prev => ({
             ...prev,
-            triggerMetric: "Personalizado (Regra Configuradada)",
-            triggerType: "Automa��o Avan�ada"
+            triggerMetric: config.summary ? (config.summary.length > 50 ? config.summary.substring(0, 47) + "..." : config.summary) : "Gatilho Personalizado",
+            triggerType: `Fonte: ${config.source.toUpperCase()}`
           }));
           setShowTriggerModal(false);
         }}
