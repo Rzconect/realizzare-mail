@@ -1211,8 +1211,17 @@ function CreateCampaignForm() {
   const [selectedIncludeLists, setSelectedIncludeLists] = useState<string[]>([]);
   const [selectedExcludeLists, setSelectedExcludeLists] = useState<string[]>([]);
   const [sendType, setSendType] = useState<"immediate" | "scheduled">("immediate");
-  const [scheduledDate, setScheduledDate] = useState("2026-07-20");
-  const [scheduledTime, setScheduledTime] = useState("09:00");
+  
+  // Calcula a data e hora atual no fuso horário local para ser o padrão
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+  });
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const now = new Date();
+    return String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  });
+  
   const [timezoneMode, setTimezoneMode] = useState<"account" | "recipient_local">("account");
   const [lateTimezoneBehavior, setLateTimezoneBehavior] = useState<"send_immediately" | "send_next_day">("send_immediately");
   const [determineRecipientsAtSendTime, setDetermineRecipientsAtSendTime] = useState(false);
