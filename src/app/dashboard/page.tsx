@@ -253,7 +253,7 @@ export default function DashboardPage() {
       const { data: trackingEvents } = await supabase
         .from("inbound_webhook_events")
         .select("*")
-        .in("event_type", ["email.open", "email.click"])
+        .in("event_type", ["email.open", "email.click", "email.opened", "email.clicked"])
         .order("created_at", { ascending: false });
 
       // Fetch campaigns for title mapping and target_list resolution
@@ -383,7 +383,7 @@ export default function DashboardPage() {
             cName = words.length > 0 ? words.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : cEmail;
           }
 
-          const isClick = te.event_type === "email.click";
+          const isClick = te.event_type === "email.click" || te.event_type === "email.clicked";
 
           allEventsPool.push({
             id: te.id || Math.random().toString(),
@@ -930,7 +930,7 @@ export default function DashboardPage() {
         const { data: trackingEvents } = await supabase
           .from("inbound_webhook_events")
           .select("*")
-          .in("event_type", ["email.open", "email.click"]);
+          .in("event_type", ["email.open", "email.click", "email.opened", "email.clicked"]);
 
         const uniqueOpensPerSlot = new Map<string, Set<string>>();
         const uniqueClicksPerSlot = new Map<string, Set<string>>();
@@ -950,11 +950,11 @@ export default function DashboardPage() {
             // Deduplication Key: Unique contact interaction PER CAMPAIGN
             const uniqueKey = `${email}_${campId}`;
 
-            if (t.event_type === "email.open") {
+            if (t.event_type === "email.open" || t.event_type === "email.opened") {
               if (!uniqueOpensPerSlot.has(slotName)) uniqueOpensPerSlot.set(slotName, new Set());
               uniqueOpensPerSlot.get(slotName)!.add(uniqueKey);
             }
-            if (t.event_type === "email.click") {
+            if (t.event_type === "email.click" || t.event_type === "email.clicked") {
               if (!uniqueClicksPerSlot.has(slotName)) uniqueClicksPerSlot.set(slotName, new Set());
               uniqueClicksPerSlot.get(slotName)!.add(uniqueKey);
             }
@@ -1780,6 +1780,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
 
 
 
