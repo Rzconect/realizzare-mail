@@ -312,6 +312,38 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [showMetadataMenu, setShowMetadataMenu] = useState(false);
   const [showActivationConfirmModal, setShowActivationConfirmModal] = useState(false);
   const [showManualAddModal, setShowManualAddModal] = useState(false);
+  const [manualContacts, setManualContacts] = useState<any[]>([]);
+  const [manualSearchQuery, setManualSearchQuery] = useState("");
+  const [isAddingLead, setIsAddingLead] = useState(false);
+  
+  const handleLoadContacts = async () => {
+    const supabase = createClient();
+    const { data } = await supabase.from("contacts").select("id, email, first_name").limit(50);
+    if (data) setManualContacts(data);
+  };
+  
+  useEffect(() => {
+    if (showManualAddModal) handleLoadContacts();
+  }, [showManualAddModal]);
+  
+  const handleAddLeadToFlow = async (contactId: string) => {
+    setIsAddingLead(true);
+    try {
+      const res = await fetch("/api/flows/add-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flowId: editId, contactId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert("Lead adicionado ao fluxo com sucesso!");
+      setShowManualAddModal(false);
+    } catch (e: any) {
+      alert("Erro ao adicionar lead: " + e.message);
+    } finally {
+      setIsAddingLead(false);
+    }
+  };
   
   // HTML editing state
   const [isEditingHtml, setIsEditingHtml] = useState(false);
@@ -4055,21 +4087,43 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 </button>
               </div>
               
-              <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-xl border border-slate-150 border-dashed">
-                <Users className="h-8 w-8 text-slate-300 mb-3" />
-                <h4 className="text-sm font-bold text-slate-700 mb-1">Motor de Automação em Construção</h4>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  A interface para adicionar contatos manualmente já está pronta! Assim que conectarmos o Motor de Automação, você poderá pesquisar e inserir contatos diretamente nesta tela.
-                </p>
+              <div className="flex-1 flex flex-col">
+                <input 
+                  type="text" 
+                  placeholder="Pesquisar por email ou nome..."
+                  value={manualSearchQuery}
+                  onChange={(e) => setManualSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm focus:border-indigo-500 outline-none mb-3"
+                />
+                <div className="max-h-64 overflow-y-auto border border-slate-100 rounded-xl">
+                  {manualContacts.filter(c => c.email.toLowerCase().includes(manualSearchQuery.toLowerCase()) || (c.first_name || "").toLowerCase().includes(manualSearchQuery.toLowerCase())).map(contact => (
+                    <div key={contact.id} className="flex items-center justify-between p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">{contact.first_name || "Sem nome"}</p>
+                        <p className="text-xs text-slate-500">{contact.email}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleAddLeadToFlow(contact.id)}
+                        disabled={isAddingLead}
+                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition-colors"
+                      >
+                        Inserir no Fluxo
+                      </button>
+                    </div>
+                  ))}
+                  {manualContacts.length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-500">Nenhum contato encontrado.</div>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-end pt-4 mt-2">
                 <button
                   type="button"
                   onClick={() => setShowManualAddModal(false)}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-md"
+                  className="px-5 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold cursor-pointer transition-colors"
                 >
-                  Entendi
+                  Fechar
                 </button>
               </div>
             </div>

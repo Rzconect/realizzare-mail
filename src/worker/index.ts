@@ -3,6 +3,7 @@ dotenv.config({ path: '.env.local' });
 import cron from 'node-cron';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
+import { processFlows } from './engine';
 
 // ==========================================
 // CONFIGURAÇÕES INICIAIS
@@ -46,6 +47,9 @@ cron.schedule('* * * * *', async () => {
   console.log(`[${agora}] Buscando campanhas pendentes...`);
 
   try {
+    // 0. Executar Motor de Fluxos (Flow Engine)
+    await processFlows();
+
     // 1. Buscar campanhas agendadas com horário atrasado ou igual a agora
     const { data: campaigns, error } = await supabase
       .from('campaigns')
