@@ -485,13 +485,22 @@ export default function CampaignsPage() {
             Crie, envie e acompanhe o desempenho dos seus disparos de e-mail marketing.
           </p>
         </div>
-        <Link
-          href="/dashboard/campaigns/create"
-          className="flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer text-sm"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Criar Campanha</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/emails"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-xl font-bold transition-all cursor-pointer text-sm"
+          >
+            <Mail className="h-5 w-5" />
+            <span>Galeria de E-mails</span>
+          </Link>
+          <Link
+            href="/dashboard/campaigns/create"
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer text-sm"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Criar Campanha</span>
+          </Link>
+        </div>
       </div>
 
       {/* KPI Line Section */}

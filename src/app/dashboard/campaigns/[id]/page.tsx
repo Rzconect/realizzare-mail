@@ -268,16 +268,52 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       try {
         const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
-        
+
         let isFlowEmail = false;
         let flowNodeId = null;
+        let dbCamp = null;
 
         // 1. Fetch real campaign from Supabase
-        const { data: dbCamp } = await supabase
+        const { data: realCamp } = await supabase
           .from("campaigns")
           .select("*")
           .eq("id", campaignId)
           .maybeSingle();
+
+        if (realCamp) {
+          dbCamp = realCamp;
+        } else if (campaignId && campaignId.startsWith("flow-camp-")) {
+          // It is a flow campaign, find the node
+          const { data: nodes } = await supabase.from("flow_nodes").select("id, config, flow_id");
+          const flowNode = (nodes || []).find((n) => n.config && n.config.emailCampaignId === campaignId);
+          
+          if (flowNode) {
+            isFlowEmail = true;
+            flowNodeId = flowNode.id;
+            dbCamp = {
+              id: campaignId,
+              name: flowNode.config.campaignName || "E-mail de Fluxo",
+              status: flowNode.config.status === "Ativo" ? "sent" : "draft",
+              subject: flowNode.config.subject,
+              html_content: flowNode.config.htmlContent || "",
+              target_list: "Contato de Fluxo",
+              sent_count: 0
+            };
+            
+            // Try to find if this node has been executed in flow_run_logs
+            const { data: runLogs } = await supabase
+              .from("flow_run_logs")
+              .select("created_at")
+              .eq("node_id", flowNodeId)
+              .like("action_taken", "E-mail enviado%");
+              
+            if (runLogs && runLogs.length > 0) {
+              dbCamp.status = "sent";
+              dbCamp.sent_count = runLogs.length;
+              dbCamp.sent_at = runLogs[0].created_at;
+            }
+          }
+        }
 
         if (dbCamp) {
           // 2. Fetch tracking events for opens & clicks
@@ -300,8 +336,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           const campOpens = new Set<string>();
           const campClicks = new Set<string>();
 
-          (trackingEvents || []).forEach((te: any) => {
+          (trackingEvents || []).forEach((te) => {
             const payload = te.payload || {};
+            // Match standard campaign or flow node
             if (payload.campaign_id === campaignId || payload.campaignId === campaignId || (isFlowEmail && (payload.node_id === flowNodeId || payload.nodeId === flowNodeId))) {
               const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
               if (email) {
@@ -311,156 +348,81 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             }
           });
 
-          // Resolve recipients list from target_list or contacts
-          let recipientsPool: any[] = [];
-          const targetStr = (dbCamp.target_list || "").trim();
-
-          if (dbCamp.status === "sent" && dbCamp.sent_count === 0) {
-            // Se foi disparado com 0 envios, não mostra contatos falsos
-            recipientsPool = [];
-          } else if (targetStr.includes("||IDS||")) {
-            const [, idsPart] = targetStr.split("||IDS||");
-            const rawIds = idsPart ? idsPart.split(",").filter(Boolean) : [];
-            
-            const contactIds = rawIds.filter((id: string) => id.startsWith("contact-")).map((id: string) => id.replace("contact-", ""));
-            const listIds = rawIds.filter((id: string) => !id.startsWith("contact-") && !id.startsWith("seg-"));
-            
-            if (contactIds.length > 0) {
-                (contactsList || []).forEach((c: any) => {
-                  if (contactIds.includes(c.id)) {
-                      recipientsPool.push({ email: c.email.toLowerCase(), name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), contactId: c.id });
-                  }
-                });
-            }
-            
-            if (listIds.length > 0) {
-                const { data: subs } = await supabase.from("list_subscriptions").select("contact_id").in("list_id", listIds).eq("status", "subscribed");
-                const subscribedContactIds = (subs || []).map((s: any) => s.contact_id);
-                (contactsList || []).forEach((c: any) => {
-                  if (subscribedContactIds.includes(c.id) && c.status === "active") {
-                      recipientsPool.push({ email: c.email.toLowerCase(), name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), contactId: c.id });
-                  }
-                });
+          // Resolve recipients list
+          let recipientsPool = [];
+          
+          if (isFlowEmail) {
+            // For flow emails, the recipients are the ones in flow_run_logs
+            const { data: logRecipients } = await supabase
+              .from("flow_run_logs")
+              .select("run_id, created_at, action_taken, flow_runs(contact_id)")
+              .eq("node_id", flowNodeId)
+              .like("action_taken", "E-mail enviado%");
+              
+            if (logRecipients) {
+              const contactIds = Array.from(new Set(logRecipients.map((l) => l.flow_runs?.contact_id).filter(Boolean)));
+              if (contactsList) {
+                recipientsPool = contactsList.filter((c) => contactIds.includes(c.id));
+              }
             }
           } else {
-            const emailMatches = targetStr.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
-            if (emailMatches && emailMatches.length > 0) {
-              emailMatches.forEach((em: string) => {
-                const cleanEm = em.trim().toLowerCase();
-                const contactObj = (contactsList || []).find((c: any) => (c.email || "").toLowerCase() === cleanEm);
-                recipientsPool.push({
-                  email: cleanEm,
-                  name: contactObj ? `${contactObj.first_name || ""} ${contactObj.last_name || ""}`.trim() : cleanEm.split("@")[0],
-                  contactId: contactObj?.id || null
-                });
-              });
-            } else if (targetStr.toLowerCase().includes("geral") || targetStr.toLowerCase().includes("todos")) {
-              (contactsList || []).forEach((c: any) => {
-                if (c.status === "active") {
-                  recipientsPool.push({
-                    email: c.email.toLowerCase(),
-                    name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
-                    contactId: c.id
-                  });
-                }
-              });
+            const targetStr = (dbCamp.target_list || "").trim();
+            if (dbCamp.status === "sent" && dbCamp.sent_count === 0) {
+              recipientsPool = [];
+            } else if (targetStr.includes("||IDS||")) {
+              const [, idsPart] = targetStr.split("||IDS||");
+              const rawIds = idsPart ? idsPart.split(",").filter(Boolean) : [];
+              if (contactsList) {
+                recipientsPool = contactsList.filter((c) => rawIds.includes(c.id));
+              }
             }
           }
 
-          // Deduplicate recipients
-          const recMap = new Map();
-          recipientsPool.forEach(r => recMap.set(r.email, r));
-          recipientsPool = Array.from(recMap.values());
+          const recipientRows = recipientsPool.map((c) => {
+            const eml = (c.email || "").toLowerCase().trim();
+            const isOpen = campOpens.has(eml);
+            const isClick = campClicks.has(eml);
 
-          const campaignSentTimestamp = dbCamp.sent_at ? new Date(dbCamp.sent_at).getTime() : new Date(dbCamp.created_at || Date.now()).getTime();
-
-          // Verified sandbox contacts list
-          const verifiedSandboxEmails = new Set([
-            "leonardo.christian16@outlook.com",
-            "leonardo.chrs23@gmail.com",
-            "contato@realizzare.com.br",
-            "contato@realizzarecursos.com.br"
-          ]);
-
-          // Build factual recipient row details with LAST-TOUCH ATTRIBUTION
-          const recipientRows = recipientsPool.map(r => {
-            const emailLower = r.email.toLowerCase();
-            const hasOpened = campOpens.has(emailLower);
-            const hasClicked = campClicks.has(emailLower);
-
-            // LAST-TOUCH ATTRIBUTION ENGINE:
-            // For each purchase by this contact, find the MOST RECENT email interaction (open or click) that occurred before the purchase.
-            // The sale is attributed EXCLUSIVELY to the campaign of that LAST interaction (preventing duplicates)!
-            let revAmount = 0;
-
-            const contactPurchases = (purchaseEvents || []).filter((pe: any) => 
-              (pe.contact_email || "").toLowerCase() === emailLower
-            );
-
-            contactPurchases.forEach((pe: any) => {
-              const purchaseTime = pe.created_at ? new Date(pe.created_at).getTime() : Date.now();
-
-              // Find all interactions (open or click) by this email across ALL campaigns before purchaseTime
-              const priorInteractions = (trackingEvents || []).filter((te: any) => {
-                const payload = te.payload || {};
-                const teEmail = (payload.email || payload.contact_email || "").toLowerCase().trim();
-                if (teEmail !== emailLower) return false;
-
-                const eventTime = te.created_at ? new Date(te.created_at).getTime() : 0;
-                return eventTime <= purchaseTime;
-              });
-
-              // Sort by eventTime descending to get the LATEST interaction before purchase
-              priorInteractions.sort((a: any, b: any) => {
-                const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
-                const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
-                return tB - tA;
-              });
-
-              const latestInteraction = priorInteractions[0];
-              if (latestInteraction) {
-                const payload = latestInteraction.payload || {};
-                const lastCampId = payload.campaign_id || payload.campaignId;
-                // Attribute revenue ONLY if the LAST interaction belonged to THIS campaign!
-                if (lastCampId === campaignId) {
-                  revAmount += Number(pe.metadata?.amount || pe.amount || 0);
+            // Calculate attributed revenue (7 day window)
+            let rev = 0;
+            if (isOpen || isClick) {
+              const interactionTime = new Date(dbCamp.sent_at || dbCamp.created_at || Date.now()).getTime();
+              (purchaseEvents || []).forEach((pe) => {
+                const pEmail = (pe.contact_email || "").toLowerCase().trim();
+                if (pEmail === eml) {
+                  const pTime = new Date(pe.created_at).getTime();
+                  if (pTime >= interactionTime && pTime <= interactionTime + 7 * 24 * 60 * 60 * 1000) {
+                    const amt = pe.metadata?.amount || 0;
+                    rev += Number(amt);
+                  }
                 }
-              }
-            });
+              });
+            }
 
             return {
-              email: r.email,
-              name: r.name || r.email,
-              contactId: r.contactId,
-              opened: hasOpened,
-              clicked: hasClicked,
-              revenue: revAmount
+              id: c.id,
+              name: c.first_name ? `${c.first_name} ${c.last_name || ""}`.trim() : "Sem Nome",
+              email: c.email || "",
+              opened: isOpen,
+              clicked: isClick,
+              revenue: rev
             };
           });
 
-          const sentDateObj = dbCamp.sent_at || dbCamp.created_at;
-          const formattedDate = sentDateObj ? new Date(sentDateObj).toLocaleString("pt-BR", {
-            day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
-          }) : "Disparado por Automação";
-
-          // Auto-trigger cron if overdue
-          if (dbCamp.status === "scheduled" && dbCamp.scheduled_at && new Date(dbCamp.scheduled_at) <= new Date()) {
-            fetch("/api/cron/campaigns").catch(console.error);
-          }
-
-          // Calculate deliverability metrics
           const isScheduled = dbCamp.status === "scheduled";
           const isDraft = dbCamp.status === "draft";
           
-          const totalSent = (isScheduled || isDraft) ? 0 : (dbCamp.sent_count || recipientRows.length);
-          const deliveredCount = (isScheduled || isDraft) ? 0 : recipientRows.filter(r => 
-            r.opened || r.clicked || verifiedSandboxEmails.has(r.email.toLowerCase())
-          ).length;
+          let totalSent = dbCamp.sent_count || 0;
+          if (!isScheduled && !isDraft && totalSent === 0 && recipientsPool.length > 0) {
+            totalSent = recipientsPool.length;
+          }
+
+          const deliveredCount = totalSent > 0 ? totalSent : 0;
           const bouncedCount = (isScheduled || isDraft) ? 0 : Math.max(0, totalSent - deliveredCount);
 
           const totalOpens = campOpens.size;
           const totalClicks = campClicks.size;
-          const totalConversions = recipientRows.filter(r => r.revenue > 0).length;
+          const totalConversions = recipientRows.filter((r) => r.revenue > 0).length;
           const totalRevenue = recipientRows.reduce((acc, r) => acc + r.revenue, 0);
 
           setCustomCampaign({
@@ -471,15 +433,18 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             fromName: dbCamp.from_name || "Realizzare Cursos",
             fromEmail: dbCamp.from_email || "contato@realizzarecursos.com.br",
             replyTo: dbCamp.reply_to || "contato@realizzare.com",
-            status: dbCamp.status === "sent" ? "Enviado" : dbCamp.status === "sending" ? "Enviando" : dbCamp.status === "scheduled" ? "Agendado" : "Rascunho",
-            targetList: dbCamp.target_list || "Lista Geral de Alunos",
-            dateStr: formattedDate,
+            status: isScheduled ? "Agendada" : isDraft ? "Rascunho" : "Enviado",
+            targetList: dbCamp.target_list || "Base Principal",
+            sentAtDate: dbCamp.sent_at 
+              ? new Date(dbCamp.sent_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) 
+              : "Ainda não disparado",
+            recipientCount: totalSent,
             sentCount: totalSent,
             openCount: totalOpens,
             clickCount: totalClicks,
             conversions: totalConversions,
             revenue: totalRevenue,
-            htmlContent: dbCamp.html_content || "",
+            htmlContent: dbCamp.html_content || dbCamp.htmlContent || "",
             recipientRows: recipientRows,
             deliveryStats: {
               attempts: totalSent,
@@ -494,77 +459,6 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           return;
         }
 
-        // 2. Check if it's a flow campaign
-        if (campaignId && campaignId.startsWith("flow-camp-")) {
-          const storedFlows = localStorage.getItem("realizzare_mock_flows");
-          if (storedFlows) {
-            try {
-              const flows = JSON.parse(storedFlows);
-              for (const f of flows) {
-                const nodesKey = `realizzare_flow_nodes_${f.id}`;
-                const storedNodes = localStorage.getItem(nodesKey);
-                if (storedNodes) {
-                  const nodesList = JSON.parse(storedNodes);
-                  const findNodeInTree = (nodes: any[]): any => {
-                    for (const node of nodes) {
-                      if (node.type === "email" && node.config?.emailCampaignId === campaignId) {
-                        return node;
-                      }
-                      if (node.yesBranch) {
-                        const res = findNodeInTree(node.yesBranch);
-                        if (res) return res;
-                      }
-                      if (node.noBranch) {
-                        const res = findNodeInTree(node.noBranch);
-                        if (res) return res;
-                      }
-                    }
-                    return null;
-                  };
-
-                  const matchedNode = findNodeInTree(nodesList);
-                  if (matchedNode) {
-                    const cfg = matchedNode.config || {};
-                    const isNodeActive = cfg.status === "Ativo" || f.status === "Ativo";
-                    
-                    const detail = {
-                      id: campaignId,
-                      name: cfg.campaignName || `${f.name} → ${cfg.subject || "Enviar E-mail"}`,
-                      subject: cfg.subject || "Sem Assunto",
-                      previewText: cfg.preheader || "Sem pré-cabeçalho",
-                      fromName: cfg.senderName || "Realizzare Cursos",
-                      fromEmail: cfg.senderEmail || "contato@realizzare.com.br",
-                      replyTo: cfg.replyTo || "suporte@realizzare.com.br",
-                      status: (isNodeActive ? "Enviando" : "Rascunho") as any,
-                      targetList: f.triggerDescription || "Disparador do Flow",
-                      dateStr: "Disparado por Automação (Flow)",
-                      sentCount: isNodeActive ? 1 : 0,
-                      openCount: isNodeActive ? 1 : 0,
-                      clickCount: isNodeActive ? 1 : 0,
-                      conversions: 0,
-                      revenue: 0,
-                      htmlContent: cfg.htmlContent,
-                      recipientRows: [],
-                      deliveryStats: {
-                        attempts: isNodeActive ? 1 : 0,
-                        ignored: 0,
-                        sent: isNodeActive ? 1 : 0,
-                        bounced: 0,
-                        delivered: isNodeActive ? 1 : 0,
-                        spamComplaints: 0,
-                        unsubscribed: 0
-                      }
-                    };
-                    setCustomCampaign(detail);
-                    return;
-                  }
-                }
-              }
-            } catch (e) {
-              console.error(e);
-            }
-          }
-        }
       } catch (err) {
         console.error("Error loading real campaign detail:", err);
       }
