@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
-  Mail,
+  Mail, FileText,
   Search,
   Calendar,
   Filter,

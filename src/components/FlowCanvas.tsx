@@ -42,7 +42,7 @@ import {
   BookOpen,
   DollarSign,
   MoreHorizontal,
-  FileText,
+  FileText, Folder,
   Check
 } from "lucide-react";
 
@@ -340,6 +340,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const [showEmailGalleryModal, setShowEmailGalleryModal] = useState(false);
   const [gallerySearchQuery, setGallerySearchQuery] = useState("");
   const [galleryTemplates, setGalleryTemplates] = useState<any[]>([]);
+    const [galleryExpandedFolders, setGalleryExpandedFolders] = useState<Record<string, boolean>>({});
 
   const openEmailGallery = () => {
     if (typeof window !== "undefined") {

@@ -481,6 +481,15 @@ export default function ContactProfilePage({ params }: PageProps) {
           dbCampaignsData.forEach((c: any) => campaignMap.set(c.id, c.name));
         }
 
+        const flowNodeMap = new Map<string, any>();
+        if (flowNodesData) {
+          flowNodesData.forEach((n: any) => {
+            if (n.config && n.config.campaignName) {
+              flowNodeMap.set(n.id, { name: n.config.campaignName, flowName: n.flows?.name || "Automação" });
+            }
+          });
+        }
+
         const { data: trackingEventsData } = await supabase
           .from("inbound_webhook_events")
           .select("*")
@@ -491,6 +500,20 @@ export default function ContactProfilePage({ params }: PageProps) {
           .select("*, courses(name)")
           .eq("contact_id", contact.id)
           .order("created_at", { ascending: false });
+
+        const { data: flowRunsData } = await supabase
+          .from("flow_runs")
+          .select("*, flows(name)")
+          .eq("contact_id", contact.id);
+
+        const { data: flowRunLogsData } = await supabase
+          .from("flow_run_logs")
+          .select("*")
+          .in("run_id", (flowRunsData || []).map(r => r.id));
+
+        const { data: flowNodesData } = await supabase
+          .from("flow_nodes")
+          .select("id, config, flow_id, flows(name)");
 
         let rawEvents: any[] = [];
         const contactEmailLower = (contact.email || "").toLowerCase().trim();
@@ -535,8 +558,16 @@ export default function ContactProfilePage({ params }: PageProps) {
               const isDataLayerAction = te.event_type === "user.action" || te.source === "datalayer_js" || te.provider === "datalayer_js" || payload.event === "checkout_click";
 
               if (isOpen || isClick) {
-                const campTitle = campaignMap.get(payload.campaign_id) || "Campanha Realizzare";
-                const flowName = payload.flow_name || payload.flowName || "";
+                let campTitle = campaignMap.get(payload.campaign_id);
+                let flowName = payload.flow_name || payload.flowName || "";
+                
+                if (payload.node_id && flowNodeMap.has(payload.node_id)) {
+                  const nodeData = flowNodeMap.get(payload.node_id);
+                  campTitle = nodeData.name;
+                  if (!flowName) flowName = nodeData.flowName;
+                }
+                if (!campTitle) campTitle = "Campanha Realizzare";
+
                 const flowPrefix = flowName ? `Fluxo: ${flowName} • ` : "";
 
                 rawEvents.push({
@@ -678,6 +709,51 @@ export default function ContactProfilePage({ params }: PageProps) {
             payload: e.payload || null,
             timestamp: e.timestamp
           }));
+
+        // D. Flow Runs and Flow Emails
+        if (flowRunsData) {
+          flowRunsData.forEach((r: any) => {
+            const flowName = r.flows?.name || "Automação";
+            rawEvents.push({
+              id: "run-start-" + r.id,
+              type: "signup",
+              label: "Entrou na Automação",
+              details: `O lead entrou no fluxo de automação '${flowName}'`,
+              timestamp: r.created_at
+            });
+            
+            if (r.status === "completed") {
+               rawEvents.push({
+                  id: "run-end-" + r.id,
+                  type: "check",
+                  label: "Finalizou a Automação",
+                  details: `O lead completou todas as etapas do fluxo '${flowName}'`,
+                  timestamp: r.updated_at
+               });
+            }
+          });
+        }
+
+        if (flowRunLogsData) {
+          flowRunLogsData.forEach((log: any) => {
+            if (log.action_taken && log.action_taken.startsWith("E-mail enviado")) {
+              let campTitle = "E-mail";
+              let flowName = "Automação";
+              if (log.node_id && flowNodeMap.has(log.node_id)) {
+                 const nd = flowNodeMap.get(log.node_id);
+                 campTitle = nd.name;
+                 flowName = nd.flowName;
+              }
+              rawEvents.push({
+                id: "log-" + log.id,
+                type: "send",
+                label: "E-mail Enviado (Automação)",
+                details: `Fluxo: ${flowName} • Campanha: '${campTitle}'`,
+                timestamp: log.created_at
+              });
+            }
+          });
+        }
 
         const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
         const emailsOpenedCount = new Set(rawEvents.filter((e) => e.type === "open").map(e => e.payload?.campaign_id)).size;

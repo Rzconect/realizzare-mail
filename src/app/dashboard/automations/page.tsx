@@ -157,10 +157,12 @@ export default function AutomationsPage() {
         if (data) {
           
             let activeContactsMap: Record<string, number> = {};
+            let finishedContactsMap: Record<string, number> = {};
             try {
               const res = await fetch("/api/flows/summary");
               const summaryData = await res.json();
               if (summaryData.activeContacts) activeContactsMap = summaryData.activeContacts;
+                if (summaryData.finishedContacts) finishedContactsMap = summaryData.finishedContacts;
             } catch (e) {}
             
             const mapped = data.map((f: any) => ({
@@ -171,7 +173,7 @@ export default function AutomationsPage() {
             status: (f.status === "active" ? "Ativo" : (f.status === "paused" ? "Pausado" : "Rascunho")) as "Ativo" | "Pausado" | "Rascunho",
             updatedAt: new Date(f.updated_at || f.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
             activeContacts: activeContactsMap[f.id] || 0,
-              finishedContacts: f.finished_contacts || 0,
+              finishedContacts: finishedContactsMap[f.id] || f.finished_contacts || 0,
               certificatesIssued: f.certificates_issued || 0,
             revenue: f.metrics_json?.revenue || 0.00
           }));

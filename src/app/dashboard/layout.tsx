@@ -272,7 +272,6 @@ export default function DashboardLayout({
         { name: "Início", href: "/dashboard", icon: LayoutDashboard },
         { name: "Contatos", href: "/dashboard/contacts", icon: Users },
         { name: "Campanhas", href: "/dashboard/campaigns", icon: Mail },
-        { name: "E-mails", href: "/dashboard/emails", icon: FileText },
         { name: "Automações", href: "/dashboard/automations", icon: GitBranch },
         { name: "Conteúdos", href: "/dashboard/contents", icon: Image },
         { name: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },

@@ -268,6 +268,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       try {
         const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
+        
+        let isFlowEmail = false;
+        let flowNodeId = null;
 
         // 1. Fetch real campaign from Supabase
         const { data: dbCamp } = await supabase
@@ -299,7 +302,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
           (trackingEvents || []).forEach((te: any) => {
             const payload = te.payload || {};
-            if (payload.campaign_id === campaignId || payload.campaignId === campaignId) {
+            if (payload.campaign_id === campaignId || payload.campaignId === campaignId || (isFlowEmail && (payload.node_id === flowNodeId || payload.nodeId === flowNodeId))) {
               const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
               if (email) {
                 if (te.event_type === "email.open") campOpens.add(email);

@@ -11,17 +11,21 @@ export async function GET(req: NextRequest) {
 
     const { data: runs, error: runsErr } = await supabase
       .from("flow_runs")
-      .select("flow_id")
-      .eq("status", "running");
+      .select("flow_id, status");
 
     if (runsErr) throw runsErr;
 
     const activeContactsByFlow: Record<string, number> = {};
+    const finishedContactsByFlow: Record<string, number> = {};
     runs?.forEach(r => {
-      activeContactsByFlow[r.flow_id] = (activeContactsByFlow[r.flow_id] || 0) + 1;
+      if (r.status === "running") {
+        activeContactsByFlow[r.flow_id] = (activeContactsByFlow[r.flow_id] || 0) + 1;
+      } else if (r.status === "completed") {
+        finishedContactsByFlow[r.flow_id] = (finishedContactsByFlow[r.flow_id] || 0) + 1;
+      }
     });
 
-    return NextResponse.json({ activeContacts: activeContactsByFlow });
+    return NextResponse.json({ activeContacts: activeContactsByFlow, finishedContacts: finishedContactsByFlow });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
