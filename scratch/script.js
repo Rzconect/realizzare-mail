@@ -1,12 +1,12 @@
 ﻿
 const fs = require("fs");
-let content = fs.readFileSync("src/app/dashboard/campaigns/[id]/page.tsx", "utf8");
+let content = fs.readFileSync("src/components/FlowCanvas.tsx", "utf8");
 
-content = content.replace(
-  `sent_count: 0`,
-  `sent_count: 0, sent_at: null`
-);
+content = content.replace(/galleryTemplates\.filter\(\(t\)/g, "galleryTemplates.filter((t: any)");
+content = content.replace(/filtered\.reduce\(\(acc, tpl\)/g, "filtered.reduce((acc: any, tpl: any)");
+content = content.replace(/keys\.map\(\(folderName\)/g, "keys.map((folderName: string)");
+content = content.replace(/templates\.map\(\(tpl\)/g, "templates.map((tpl: any)");
 
-fs.writeFileSync("src/app/dashboard/campaigns/[id]/page.tsx", content, "utf8");
-console.log("Fixed missing property in dbCamp!");
+fs.writeFileSync("src/components/FlowCanvas.tsx", content, "utf8");
+console.log("Fixed implicitly any in FlowCanvas!");
 

@@ -3899,7 +3899,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             {/* Gallery Grid */}
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 space-y-4">
               {(() => {
-                const filtered = galleryTemplates.filter((t) => {
+                const filtered = galleryTemplates.filter((t: any) => {
                   const q = gallerySearchQuery.toLowerCase();
                   return (
                     !q ||
@@ -3914,7 +3914,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 }
 
                 // Group by folderName
-                const grouped = filtered.reduce((acc, tpl) => {
+                const grouped = filtered.reduce((acc: any, tpl: any) => {
                   const fName = tpl.folderName || "Galeria Geral";
                   if (!acc[fName]) acc[fName] = [];
                   acc[fName].push(tpl);
@@ -3928,7 +3928,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   return a.localeCompare(b);
                 });
 
-                return keys.map((folderName) => {
+                return keys.map((folderName: string) => {
                   const templates = grouped[folderName];
                   return (
                     <details key={folderName} className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs" open={folderName === flow.name || gallerySearchQuery.length > 0}>
@@ -3942,7 +3942,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       </summary>
                       
                       <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 bg-slate-50/20">
-                        {templates.map((tpl) => (
+                        {templates.map((tpl: any) => (
                           <div
                             key={tpl.id}
                             className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-3xs hover:shadow-md transition-all flex flex-col justify-between group/card"
