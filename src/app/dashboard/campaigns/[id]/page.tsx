@@ -285,7 +285,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         } else if (campaignId && campaignId.startsWith("flow-camp-")) {
           // It is a flow campaign, find the node
           const { data: nodes } = await supabase.from("flow_nodes").select("id, config, flow_id");
-          const flowNode = (nodes || []).find((n) => n.config && n.config.emailCampaignId === campaignId);
+          const flowNode = (nodes || []).find((n: any) => n.config && n.config.emailCampaignId === campaignId);
           
           if (flowNode) {
             isFlowEmail = true;
@@ -336,7 +336,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           const campOpens = new Set<string>();
           const campClicks = new Set<string>();
 
-          (trackingEvents || []).forEach((te) => {
+          (trackingEvents || []).forEach((te: any) => {
             const payload = te.payload || {};
             // Match standard campaign or flow node
             if (payload.campaign_id === campaignId || payload.campaignId === campaignId || (isFlowEmail && (payload.node_id === flowNodeId || payload.nodeId === flowNodeId))) {
@@ -360,9 +360,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               .like("action_taken", "E-mail enviado%");
               
             if (logRecipients) {
-              const contactIds = Array.from(new Set(logRecipients.map((l) => l.flow_runs?.contact_id).filter(Boolean)));
+              const contactIds = Array.from(new Set(logRecipients.map((l: any) => l.flow_runs?.contact_id).filter(Boolean)));
               if (contactsList) {
-                recipientsPool = contactsList.filter((c) => contactIds.includes(c.id));
+                recipientsPool = contactsList.filter((c: any) => contactIds.includes(c.id));
               }
             }
           } else {
@@ -373,12 +373,12 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               const [, idsPart] = targetStr.split("||IDS||");
               const rawIds = idsPart ? idsPart.split(",").filter(Boolean) : [];
               if (contactsList) {
-                recipientsPool = contactsList.filter((c) => rawIds.includes(c.id));
+                recipientsPool = contactsList.filter((c: any) => rawIds.includes(c.id));
               }
             }
           }
 
-          const recipientRows = recipientsPool.map((c) => {
+          const recipientRows = recipientsPool.map((c: any) => {
             const eml = (c.email || "").toLowerCase().trim();
             const isOpen = campOpens.has(eml);
             const isClick = campClicks.has(eml);
@@ -387,7 +387,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             let rev = 0;
             if (isOpen || isClick) {
               const interactionTime = new Date(dbCamp.sent_at || dbCamp.created_at || Date.now()).getTime();
-              (purchaseEvents || []).forEach((pe) => {
+              (purchaseEvents || []).forEach((pe: any) => {
                 const pEmail = (pe.contact_email || "").toLowerCase().trim();
                 if (pEmail === eml) {
                   const pTime = new Date(pe.created_at).getTime();
@@ -422,8 +422,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
           const totalOpens = campOpens.size;
           const totalClicks = campClicks.size;
-          const totalConversions = recipientRows.filter((r) => r.revenue > 0).length;
-          const totalRevenue = recipientRows.reduce((acc, r) => acc + r.revenue, 0);
+          const totalConversions = recipientRows.filter((r: any) => r.revenue > 0).length;
+          const totalRevenue = recipientRows.reduce((acc: any, r: any) => acc + r.revenue, 0);
 
           setCustomCampaign({
             id: dbCamp.id,
