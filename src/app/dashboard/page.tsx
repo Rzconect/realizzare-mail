@@ -246,11 +246,15 @@ export default function DashboardPage() {
         });
       }
 
-      // Fetch live transaction events from reporting_events
-      const { data: eventsData } = await supabase
-        .from("reporting_events")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Fetch live transaction events securely via API (bypassing RLS)
+      let eventsData = [];
+      try {
+        const eventsRes = await fetch("/api/dashboard/events");
+        const eventsJson = await eventsRes.json();
+        if (eventsJson.eventsData) eventsData = eventsJson.eventsData;
+      } catch (err) {
+        console.error("Failed to fetch reporting events via API", err);
+      }
 
       // Fetch tracking events (open and click)
       const { data: trackingEvents } = await supabase
