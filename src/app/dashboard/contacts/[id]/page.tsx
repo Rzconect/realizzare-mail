@@ -481,6 +481,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           dbCampaignsData.forEach((c: any) => campaignMap.set(c.id, c.name));
         }
 
+        const { data: flowNodesData } = await supabase.from("flow_nodes").select("id, config, flow_id, flows(name)");
         const flowNodeMap = new Map<string, any>();
         if (flowNodesData) {
           flowNodesData.forEach((n: any) => {
@@ -509,11 +510,9 @@ export default function ContactProfilePage({ params }: PageProps) {
         const { data: flowRunLogsData } = await supabase
           .from("flow_run_logs")
           .select("*")
-          .in("run_id", (flowRunsData || []).map(r => r.id));
+          .in("run_id", (flowRunsData || []).map((r: any) => r.id));
 
-        const { data: flowNodesData } = await supabase
-          .from("flow_nodes")
-          .select("id, config, flow_id, flows(name)");
+
 
         let rawEvents: any[] = [];
         const contactEmailLower = (contact.email || "").toLowerCase().trim();
