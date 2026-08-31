@@ -297,7 +297,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               subject: flowNode.config.subject,
               html_content: flowNode.config.htmlContent || "",
               target_list: "Contato de Fluxo",
-              sent_count: 0
+              sent_count: 0, sent_at: null
             };
             
             // Try to find if this node has been executed in flow_run_logs
