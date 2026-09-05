@@ -315,6 +315,49 @@ export default function EmailsLibraryPage() {
             .eq("node_type", "email")
             .eq("is_deleted", false);
 
+          // --- BEGIN METRICS FETCH FOR FLOW NODES ---
+          const { data: flowLogs } = await supabase
+            .from("flow_run_logs")
+            .select("node_id")
+            .like("action_taken", "E-mail enviado%");
+
+          const nodeSentCounts: Record<string, number> = {};
+          if (flowLogs) {
+             flowLogs.forEach((log: any) => {
+               if (log.node_id) {
+                 nodeSentCounts[log.node_id] = (nodeSentCounts[log.node_id] || 0) + 1;
+               }
+             });
+          }
+
+          const { data: webhookEvents } = await supabase
+            .from("inbound_webhook_events")
+            .select("event_type, payload")
+            .in("event_type", ["email.opened", "email.open", "email.clicked", "email.click"]);
+
+          const nodeOpenCounts: Record<string, Set<string>> = {};
+          const nodeClickCounts: Record<string, Set<string>> = {};
+
+          if (webhookEvents) {
+             webhookEvents.forEach((ev: any) => {
+                const p = ev.payload || {};
+                const nodeId = p.node_id || p.nodeId;
+                const email = (p.email || p.contact_email || "").toLowerCase().trim();
+                
+                if (nodeId && email) {
+                   if (ev.event_type === "email.opened" || ev.event_type === "email.open") {
+                      if (!nodeOpenCounts[nodeId]) nodeOpenCounts[nodeId] = new Set();
+                      nodeOpenCounts[nodeId].add(email);
+                   }
+                   if (ev.event_type === "email.clicked" || ev.event_type === "email.click") {
+                      if (!nodeClickCounts[nodeId]) nodeClickCounts[nodeId] = new Set();
+                      nodeClickCounts[nodeId].add(email);
+                   }
+                }
+             });
+          }
+          // --- END METRICS FETCH FOR FLOW NODES ---
+
           if (dbEmailNodes && dbEmailNodes.length > 0) {
             dbEmailNodes.forEach((node: any) => {
               const flowName = node.flows?.name || "Automação";
@@ -336,6 +379,12 @@ export default function EmailsLibraryPage() {
                 (t: any) => t.id === tplId || (t.flowId === flowId && t.name.trim().toLowerCase() === tplName.trim().toLowerCase())
               );
 
+              const sCount = nodeSentCounts[node.id] || 0;
+              const oCount = nodeOpenCounts[node.id] ? nodeOpenCounts[node.id].size : 0;
+              const cCount = nodeClickCounts[node.id] ? nodeClickCounts[node.id].size : 0;
+              const oRate = sCount > 0 ? (oCount / sCount) * 100 : 0;
+              const cRate = sCount > 0 ? (cCount / sCount) * 100 : 0;
+
               if (existingIdx < 0) {
                 loadedTemplates.unshift({
                   id: tplId,
@@ -353,13 +402,15 @@ export default function EmailsLibraryPage() {
                   flowName: flowName,
                   status: nodeStatus,
                   updatedAt: new Date(node.created_at || Date.now()).toLocaleDateString("pt-BR"),
-                  metrics: { sentCount: 0, openCount: 0, openRate: 0, clickCount: 0, clickRate: 0, conversionCount: 0, conversionRevenue: 0.0 }
+                  metrics: { sentCount: sCount, openCount: oCount, openRate: parseFloat(oRate.toFixed(1)), clickCount: cCount, clickRate: parseFloat(cRate.toFixed(1)), conversionCount: 0, conversionRevenue: 0.0 }
                 });
               } else {
                 // Ensure flowName and flowId are linked and status synced
                 loadedTemplates[existingIdx].flowId = flowId;
                 loadedTemplates[existingIdx].flowName = flowName;
                 loadedTemplates[existingIdx].status = nodeStatus;
+                // Also update metrics in case it exists from local storage
+                loadedTemplates[existingIdx].metrics = { sentCount: sCount, openCount: oCount, openRate: parseFloat(oRate.toFixed(1)), clickCount: cCount, clickRate: parseFloat(cRate.toFixed(1)), conversionCount: 0, conversionRevenue: 0.0 };
               }
             });
           }

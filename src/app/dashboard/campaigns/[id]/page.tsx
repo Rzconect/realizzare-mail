@@ -316,25 +316,21 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         }
 
         if (dbCamp) {
-          // 2. Fetch tracking events for opens & clicks
+          // 2. Fetch tracking events for opens & clicks (Optimized)
           const { data: trackingEvents } = await supabase
             .from("inbound_webhook_events")
-            .select("*");
+            .select("created_at, event_type, payload")
+            .in("event_type", ["email.opened", "email.open", "email.clicked", "email.click"]);
 
           // 3. Fetch purchase reporting events for conversions
           const { data: purchaseEvents } = await supabase
             .from("reporting_events")
-            .select("*")
+            .select("created_at, event_type, contact_email, metadata")
             .eq("event_type", "purchase");
 
-          // 4. Fetch all contacts
-          const { data: contactsList } = await supabase
-            .from("contacts")
-            .select("*");
-
           // Extract open/click events matching this campaign ID or email
-          const campOpens = new Set<string>();
-          const campClicks = new Set<string>();
+          const campOpens = new Map<string, string>(); // email -> date
+          const campClicks = new Map<string, string>(); // email -> date
 
           (trackingEvents || []).forEach((te: any) => {
             const payload = te.payload || {};
@@ -342,14 +338,23 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             if (payload.campaign_id === campaignId || payload.campaignId === campaignId || (isFlowEmail && (payload.node_id === flowNodeId || payload.nodeId === flowNodeId))) {
               const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
               if (email) {
-                if (te.event_type === "email.opened" || te.event_type === "email.open") campOpens.add(email);
-                if (te.event_type === "email.clicked" || te.event_type === "email.click") campClicks.add(email);
+                const eventDate = te.created_at;
+                if (te.event_type === "email.opened" || te.event_type === "email.open") {
+                  if (!campOpens.has(email) || new Date(eventDate) > new Date(campOpens.get(email)!)) {
+                    campOpens.set(email, eventDate);
+                  }
+                }
+                if (te.event_type === "email.clicked" || te.event_type === "email.click") {
+                  if (!campClicks.has(email) || new Date(eventDate) > new Date(campClicks.get(email)!)) {
+                    campClicks.set(email, eventDate);
+                  }
+                }
               }
             }
           });
 
-          // Resolve recipients list
-          let recipientsPool = [];
+          // Resolve recipients list efficiently
+          let recipientsPool: any[] = [];
           
           if (isFlowEmail) {
             // For flow emails, the recipients are the ones in flow_run_logs
@@ -359,10 +364,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               .eq("node_id", flowNodeId)
               .like("action_taken", "E-mail enviado%");
               
-            if (logRecipients) {
+            if (logRecipients && logRecipients.length > 0) {
               const contactIds = Array.from(new Set(logRecipients.map((l: any) => l.flow_runs?.contact_id).filter(Boolean)));
-              if (contactsList) {
-                recipientsPool = contactsList.filter((c: any) => contactIds.includes(c.id));
+              if (contactIds.length > 0) {
+                 const { data: cData } = await supabase.from("contacts").select("*").in("id", contactIds);
+                 recipientsPool = cData || [];
               }
             }
           } else {
@@ -372,16 +378,23 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             } else if (targetStr.includes("||IDS||")) {
               const [, idsPart] = targetStr.split("||IDS||");
               const rawIds = idsPart ? idsPart.split(",").filter(Boolean) : [];
-              if (contactsList) {
-                recipientsPool = contactsList.filter((c: any) => rawIds.includes(c.id));
+              if (rawIds.length > 0) {
+                const { data: cData } = await supabase.from("contacts").select("*").in("id", rawIds);
+                recipientsPool = cData || [];
               }
+            } else {
+              // fallback, fetch all if list is general and not IDs
+              const { data: cData } = await supabase.from("contacts").select("*");
+              recipientsPool = cData || [];
             }
           }
 
           const recipientRows = recipientsPool.map((c: any) => {
             const eml = (c.email || "").toLowerCase().trim();
-            const isOpen = campOpens.has(eml);
-            const isClick = campClicks.has(eml);
+            const openDate = campOpens.get(eml) || null;
+            const clickDate = campClicks.get(eml) || null;
+            const isOpen = !!openDate;
+            const isClick = !!clickDate;
 
             // Calculate attributed revenue (7 day window)
             let rev = 0;
@@ -405,7 +418,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               email: c.email || "",
               opened: isOpen,
               clicked: isClick,
-              revenue: rev
+              openDate: openDate,
+              clickDate: clickDate,
+              revenue: rev,
+              sentDate: dbCamp.sent_at || dbCamp.created_at
             };
           });
 
@@ -570,35 +586,53 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     };
   }, [data]);
 
-  // Hourly engagement data (Stacked BarChart matching Home page style)
+  // Daily engagement data (Stacked BarChart matching Home page style)
   const hourlyData = useMemo(() => {
     if (data.status === "Agendado" || data.status === "Rascunho") {
       return [
-        { time: "00:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-        { time: "05:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-        { time: "10:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-        { time: "15:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-        { time: "20:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 }
+        { time: "Dia 1", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
+        { time: "Dia 2", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 }
       ];
     }
 
-    const bounceVal = data.deliveryStats.bounced || 0;
-    const deliveredVal = data.deliveryStats.delivered || 0;
-    const openVal = data.openCount || 0;
-    const clickVal = data.clickCount || 0;
-    const salesVal = data.conversions || 0;
+    const aggregated: Record<string, any> = {};
 
-    return [
-      { time: "00:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "05:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "10:05", bounce: bounceVal, entregue: deliveredVal, aberta: openVal, clicada: clickVal, vendas: salesVal },
-      { time: "15:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "20:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "01:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "06:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "11:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "16:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 },
-      { time: "21:00", bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 }
+    // Grouping helper
+    const addEvent = (dateStr: string, key: string, val: number = 1) => {
+      if (!dateStr) return;
+      const dateObj = new Date(dateStr);
+      if (isNaN(dateObj.getTime())) return;
+      const dayStr = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+      if (!aggregated[dayStr]) {
+        aggregated[dayStr] = { time: dayStr, bounce: 0, entregue: 0, aberta: 0, clicada: 0, vendas: 0 };
+      }
+      aggregated[dayStr][key] += val;
+    };
+
+    const rows = data.recipientRows || [];
+    rows.forEach((r: any) => {
+      if (r.sentDate) {
+        addEvent(r.sentDate, "entregue");
+      }
+      if (r.openDate) addEvent(r.openDate, "aberta");
+      if (r.clickDate) addEvent(r.clickDate, "clicada");
+      if (r.revenue > 0 && (r.clickDate || r.openDate || r.sentDate)) {
+        addEvent(r.clickDate || r.openDate || r.sentDate, "vendas");
+      }
+    });
+
+    const result = Object.values(aggregated).sort((a: any, b: any) => {
+      const [da, ma] = a.time.split("/");
+      const [db, mb] = b.time.split("/");
+      return new Date(2025, parseInt(ma)-1, parseInt(da)).getTime() - new Date(2025, parseInt(mb)-1, parseInt(db)).getTime();
+    });
+
+    if (result.length > 0) {
+      result[0].bounce += (data.deliveryStats.bounced || 0);
+    }
+
+    return result.length > 0 ? result : [
+      { time: "Hoje", bounce: data.deliveryStats.bounced || 0, entregue: data.deliveryStats.delivered || 0, aberta: data.openCount || 0, clicada: data.clickCount || 0, vendas: data.conversions || 0 }
     ];
   }, [data]);
 
@@ -844,7 +878,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <Tooltip
                   contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", fontSize: "12px" }}
                   itemStyle={{ fontWeight: "bold" }}
-                  formatter={(value: any) => [Number(value).toLocaleString("pt-BR") + " destinatários"]}
+                  formatter={(value: any, name: any) => [Number(value).toLocaleString("pt-BR") + " " + String(name).toLowerCase(), name]}
                 />
                 {visibleLines.bounce && (
                   <Bar stackId="a" dataKey="bounce" name="Falha / Bounce" fill="#ef4444" radius={[0, 0, 0, 0]} maxBarSize={44} />
@@ -1021,15 +1055,16 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             <thead>
               <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50/50">
                 <th className="py-3 px-4">Aluno / Lead</th>
-                <th className="py-3 px-4 text-center">Aberto?</th>
-                <th className="py-3 px-4 text-center">Clicado?</th>
+                <th className="py-3 px-4 text-center">Data de Envio</th>
+                <th className="py-3 px-4 text-center">Última Abertura</th>
+                <th className="py-3 px-4 text-center">Último Clique</th>
                 <th className="py-3 px-4 text-right">Atribuição de Venda (Last-Touch)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
               {paginatedRecipientRows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={5} className="py-8 text-center text-slate-400 font-medium">
                     Nenhum destinatário encontrado com os filtros aplicados.
                   </td>
                 </tr>
@@ -1047,11 +1082,19 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                         </div>
                       </div>
                     </td>
+                    <td className="py-3 px-4 text-center font-medium text-slate-600">
+                      {row.sentDate ? new Date(row.sentDate).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "-"}
+                    </td>
                     <td className="py-3 px-4 text-center font-bold">
                       {row.opened ? (
-                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[11px] inline-flex items-center gap-1">
-                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" /> Sim
-                        </span>
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3 text-emerald-600" /> Aberto
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-normal">
+                            {row.openDate ? new Date(row.openDate).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "-"}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full text-[11px]">
                           Não
@@ -1060,9 +1103,14 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     </td>
                     <td className="py-3 px-4 text-center font-bold">
                       {row.clicked ? (
-                        <span className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full text-[11px] inline-flex items-center gap-1">
-                          <CheckCircle className="h-3.5 w-3.5 text-indigo-600" /> Sim
-                        </span>
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <span className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3 text-indigo-600" /> Clicado
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-normal">
+                            {row.clickDate ? new Date(row.clickDate).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "-"}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full text-[11px]">
                           Não
