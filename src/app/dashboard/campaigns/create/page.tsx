@@ -1230,6 +1230,7 @@ function CreateCampaignForm() {
   // Segment creator modal states
   const [showSegmentModal, setShowSegmentModal] = useState(false);
   const [newSegmentName, setNewSegmentName] = useState("");
+  const [isSegmentDynamic, setIsSegmentDynamic] = useState(true);
   const [segmentGroups, setSegmentGroups] = useState<SegmentGroup[]>([
     {
       id: "group-1",
@@ -1285,7 +1286,8 @@ function CreateCampaignForm() {
           return {
             id: l.id,
             name: l.name,
-            count: count
+            count: count,
+            isSegment: l.type === "segmentation" || l.type === "segment"
           };
         }));
         setListsList(formatted);
@@ -2503,80 +2505,6 @@ function CreateCampaignForm() {
               <div className="space-y-4">
                 
                 {/* Enviar Para Search & Select */}
-                {/* Atalhos de Segmentação Pronta (Recomendações Inteligentes) */}
-                <div className="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-3.5 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                      <Zap className="h-4 w-4 text-indigo-600" />
-                      <span>Recomendações Prontas de Segmentação</span>
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-medium">Aplicação com 1 clique</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* Botão Leads Engajados */}
-                    <div className="bg-white border border-slate-200 rounded-md p-2.5 flex flex-col gap-2 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold text-slate-800">🔥 Leads Engajados</span>
-                        <div className="flex gap-1">
-                          {[30, 60, 90].map((d) => (
-                            <button
-                              key={d}
-                              type="button"
-                              onClick={() => {
-                                const segId = `seg-engaged-${d}d`;
-                                const segName = `Leads Engajados (${d} dias)`;
-                                const count = Math.round((contacts.length || 22450) * (d === 30 ? 0.65 : d === 60 ? 0.78 : 0.88));
-                                setListsList(prev => {
-                                  if (prev.some(l => l.id === segId)) return prev;
-                                  return [...prev, { id: segId, name: segName, count }];
-                                });
-                                if (!selectedIncludeLists.includes(segId)) {
-                                  setSelectedIncludeLists(prev => [...prev, segId]);
-                                }
-                              }}
-                              className="px-1.5 py-0.5 text-[10px] font-extrabold bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded border border-indigo-150 transition-all cursor-pointer"
-                            >
-                              {d}d
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Filtra automaticamente leads que abriram qualquer e-mail no período selecionado.
-                      </p>
-                    </div>
-
-                    {/* Botão Excluir Leads Desengajados */}
-                    <div className="bg-white border border-slate-200 rounded-md p-2.5 flex flex-col gap-2 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold text-slate-800">🚫 Excluir Desengajados</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const segId = `seg-disengaged-60d`;
-                            const segName = `Leads Desengajados (> 60 dias sem abertura)`;
-                            const count = Math.round((contacts.length || 22450) * 0.12);
-                            setListsList(prev => {
-                              if (prev.some(l => l.id === segId)) return prev;
-                              return [...prev, { id: segId, name: segName, count }];
-                            });
-                            if (!selectedExcludeLists.includes(segId)) {
-                              setSelectedExcludeLists(prev => [...prev, segId]);
-                            }
-                          }}
-                          className="px-2 py-0.5 text-[10px] font-extrabold bg-red-50 hover:bg-red-600 hover:text-white text-red-700 rounded border border-red-150 transition-all cursor-pointer"
-                        >
-                          Aplicar Exclusão
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Exclui leads cadastrados a mais de 5 dias sem abertura nos últimos 60 dias.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="space-y-1.5 relative">
                   <div className="flex justify-between items-center select-none">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Enviar Para</label>
@@ -2632,7 +2560,7 @@ function CreateCampaignForm() {
                       <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-72 overflow-y-auto bg-white border border-slate-202 rounded-md shadow-xl p-1.5 space-y-2 animate-fadeIn animate-scaleIn">
                         
                         {/* Section 1: Listas */}
-                        <details className="group" open>
+                        <details className="group">
                           <summary className="text-[10px] font-black uppercase text-slate-500 tracking-wider px-2 py-1.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 rounded-md select-none transition-colors">
                             <span>Listas ({filteredIncludeOptions.filter(l => !l.isSegment).length})</span>
                             <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-open:rotate-180 transition-transform" />
