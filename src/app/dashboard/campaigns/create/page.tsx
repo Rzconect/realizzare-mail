@@ -1040,6 +1040,7 @@ function CreateCampaignForm() {
   const [customFields, setCustomFields] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [showSelectContactsModal, setShowSelectContactsModal] = useState(false);
+  const [activeContactTarget, setActiveContactTarget] = useState<"include" | "exclude">("include");
   const [showPreviewSegmentContactsModal, setShowPreviewSegmentContactsModal] = useState(false);
   const [contactSearchQuery, setContactSearchQuery] = useState("");
 
@@ -2558,7 +2559,6 @@ function CreateCampaignForm() {
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowIncludeDropdown(false)} />
                       <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-72 overflow-y-auto bg-white border border-slate-202 rounded-md shadow-xl p-1.5 space-y-2 animate-fadeIn animate-scaleIn">
-                        
                         {/* Section 1: Listas */}
                         <details className="group">
                           <summary className="text-[10px] font-black uppercase text-slate-500 tracking-wider px-2 py-1.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 rounded-md select-none transition-colors">
@@ -2627,82 +2627,12 @@ function CreateCampaignForm() {
                           </div>
                         </details>
 
-                        
-                        {/* Section 3: Contatos Individuais/Diretos */}
-                        <details className="group border-t border-slate-100 pt-1 mt-1">
-                          <summary className="text-[10px] font-black uppercase text-slate-500 tracking-wider px-2 py-1.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 rounded-md select-none transition-colors">
-                            <div className="flex items-center gap-2">
-                              <span>Contatos Diretos ({contacts.length})</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                  setShowIncludeDropdown(false);
-                                  setShowSelectContactsModal(true);
-                                }}
-                                className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 underline ml-2"
-                              >
-                                Ver Todos
-                              </button>
-                            </div>
-                            <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-open:rotate-180 transition-transform" />
-                          </summary>
-                          <div className="pt-1 pb-2 space-y-0.5 px-1">
-                          {contacts.length === 0 ? (
-                            <div className="text-xs text-slate-400 p-2 italic text-center">Nenhum contato na base.</div>
-                          ) : (
-                            includeSearchQuery.length < 2 ? (
-                                <div className="text-xs text-slate-400 p-2 italic text-center">Digite para buscar contatos específicos...</div>
-                            ) : (
-                                contacts
-                                  .filter(c => {
-                                    const q = includeSearchQuery.toLowerCase();
-                                    return (c.first_name || "").toLowerCase().includes(q) || (c.last_name || "").toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q);
-                                  })
-                                  .slice(0, 5)
-                                  .map((c) => {
-                                  const contactListId = "contact-" + c.id;
-                                  const isSelected = selectedIncludeLists.includes(contactListId);
-                                  const displayName = c.name || c.email;
-                                  return (
-                                    <button
-                                      key={c.id}
-                                      type="button"
-                                      onClick={() => {
-                                        setListsList(prev => {
-                                          if (prev.some(item => item.id === contactListId)) return prev;
-                                          return [...prev, { id: contactListId, name: displayName, count: 1 }];
-                                        });
-                                        if (isSelected) {
-                                          setSelectedIncludeLists(prev => prev.filter(id => id !== contactListId));
-                                        } else {
-                                          setSelectedIncludeLists(prev => [...prev, contactListId]);
-                                        }
-                                        setIncludeSearchQuery("");
-                                      }}
-                                      className={`w-full text-left text-xs px-3 py-1.5 rounded-lg flex items-center justify-between transition-colors ${
-                                        isSelected ? "bg-emerald-50 text-emerald-800 font-bold" : "hover:bg-slate-100 text-slate-700"
-                                      }`}
-                                    >
-                                      <span className="truncate">{displayName}</span>
-                                      <span className="text-[9px] text-emerald-600 font-extrabold bg-emerald-100/60 px-1.5 py-0.5 rounded shrink-0">Contato Direto</span>
-                                    </button>
-                                  );
-                                })
-                            )
-                          )}
-                          </div>
-                        </details>
-                        
-                        {/* Footer Action Button */}
-
-
                         <div className="border-t border-slate-100 pt-1">
                           <button
                             type="button"
                             onClick={() => {
                               setShowIncludeDropdown(false);
+                              setActiveContactTarget("include");
                               setShowSelectContactsModal(true);
                             }}
                             className="w-full text-center text-xs py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
@@ -2711,7 +2641,7 @@ function CreateCampaignForm() {
                             <span>Pesquisar e Selecionar Contatos Específicos</span>
                           </button>
                         </div>
-                      </div>
+</div>
                     </>
                   )}
                 </div>
@@ -2759,35 +2689,90 @@ function CreateCampaignForm() {
                   {showExcludeDropdown && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowExcludeDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-60 overflow-y-auto bg-white border border-slate-202 rounded-md shadow-xl p-1.5 space-y-1 animate-fadeIn animate-scaleIn">
-                        {filteredExcludeOptions.length === 0 ? (
-                          <div className="text-xs text-slate-400 p-3 text-center">Nenhuma lista encontrada para exclusão.</div>
-                        ) : (
-                          filteredExcludeOptions.map((l) => {
-                            const isSelected = selectedExcludeLists.includes(l.id);
-                            return (
-                              <button
-                                key={l.id}
-                                type="button"
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setSelectedExcludeLists(prev => prev.filter(id => id !== l.id));
-                                  } else {
-                                    setSelectedExcludeLists(prev => [...prev, l.id]);
-                                  }
-                                  setExcludeSearchQuery("");
-                                }}
-                                className={`w-full text-left text-xs px-3 py-2.5 rounded-lg flex items-center justify-between transition-colors ${
-                                  isSelected ? "bg-red-50 text-red-750 font-bold" : "hover:bg-slate-50 text-slate-700"
-                                }`}
-                              >
-                                <span>{l.name}</span>
-                                <span className="text-[10px] text-slate-500 font-bold">({l.count.toLocaleString("pt-BR")} leads)</span>
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
+                      <div className="absolute left-0 right-0 mt-1.5 z-20 max-h-72 overflow-y-auto bg-white border border-slate-202 rounded-md shadow-xl p-1.5 space-y-2 animate-fadeIn animate-scaleIn">
+                        {/* Section 1: Listas */}
+                        <details className="group">
+                          <summary className="text-[10px] font-black uppercase text-slate-500 tracking-wider px-2 py-1.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 rounded-md select-none transition-colors">
+                            <span>Listas ({filteredExcludeOptions.filter(l => !l.isSegment).length})</span>
+                            <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-open:rotate-180 transition-transform" />
+                          </summary>
+                          <div className="pt-1 pb-2 space-y-0.5 px-1">
+                          {filteredExcludeOptions.filter(l => !l.isSegment).length === 0 ? (
+                            <div className="text-xs text-slate-400 p-2 italic text-center">Nenhuma lista encontrada.</div>
+                          ) : (
+                            filteredExcludeOptions.filter(l => !l.isSegment).map((l) => {
+                              const isSelected = selectedExcludeLists.includes(l.id);
+                              return (
+                                <button
+                                  key={l.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) setSelectedExcludeLists(prev => prev.filter(id => id !== l.id));
+                                    else setSelectedExcludeLists(prev => [...prev, l.id]);
+                                    setExcludeSearchQuery("");
+                                  }}
+                                  className={`w-full text-left text-xs px-3 py-2 rounded-lg flex items-center justify-between transition-colors ${
+                                    isSelected ? "bg-red-50 text-red-700 font-bold" : "hover:bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  <span className="truncate">{l.name}</span>
+                                  <span className="text-slate-400">({l.count} leads)</span>
+                                </button>
+                              );
+                            })
+                          )}
+                          </div>
+                        </details>
+
+                        {/* Section 2: Segmentações */}
+                        <details className="group border-t border-slate-100 pt-1 mt-1">
+                          <summary className="text-[10px] font-black uppercase text-slate-500 tracking-wider px-2 py-1.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 rounded-md select-none transition-colors">
+                            <span>Segmentações ({filteredExcludeOptions.filter(l => l.isSegment).length})</span>
+                            <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-open:rotate-180 transition-transform" />
+                          </summary>
+                          <div className="pt-1 pb-2 space-y-0.5 px-1">
+                          {filteredExcludeOptions.filter(l => l.isSegment).length === 0 ? (
+                            <div className="text-xs text-slate-400 p-2 italic text-center">Nenhuma segmentação encontrada.</div>
+                          ) : (
+                            filteredExcludeOptions.filter(l => l.isSegment).map((l) => {
+                              const isSelected = selectedExcludeLists.includes(l.id);
+                              return (
+                                <button
+                                  key={l.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) setSelectedExcludeLists(prev => prev.filter(id => id !== l.id));
+                                    else setSelectedExcludeLists(prev => [...prev, l.id]);
+                                    setExcludeSearchQuery("");
+                                  }}
+                                  className={`w-full text-left text-xs px-3 py-2 rounded-lg flex items-center justify-between transition-colors ${
+                                    isSelected ? "bg-red-50 text-red-700 font-bold" : "hover:bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  <span className="truncate">{l.name}</span>
+                                  <span className="text-slate-400">({l.count} leads)</span>
+                                </button>
+                              );
+                            })
+                          )}
+                          </div>
+                        </details>
+
+                        <div className="border-t border-slate-100 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExcludeDropdown(false);
+                              setActiveContactTarget("exclude");
+                              setShowSelectContactsModal(true);
+                            }}
+                            className="w-full text-center text-xs py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>Pesquisar e Selecionar Contatos Específicos</span>
+                          </button>
+                        </div>
+</div>
                     </>
                   )}
                 </div>
@@ -3457,7 +3442,7 @@ function CreateCampaignForm() {
                   })
                   .map((c) => {
                     const contactListId = `contact-${c.id}`;
-                    const isSelected = selectedIncludeLists.includes(contactListId);
+                    const isSelected = activeContactTarget === "include" ? selectedIncludeLists.includes(contactListId) : selectedExcludeLists.includes(contactListId);
                     const displayName = `👤 ${c.first_name || ""} ${c.last_name || ""} (${c.email})`.trim();
 
                     return (
@@ -3468,10 +3453,18 @@ function CreateCampaignForm() {
                             if (prev.some((item) => item.id === contactListId)) return prev;
                             return [...prev, { id: contactListId, name: displayName, count: 1 }];
                           });
-                          if (isSelected) {
-                            setSelectedIncludeLists((prev) => prev.filter((id) => id !== contactListId));
+                          if (activeContactTarget === "include") {
+                            if (isSelected) {
+                              setSelectedIncludeLists((prev) => prev.filter((id) => id !== contactListId));
+                            } else {
+                              setSelectedIncludeLists((prev) => [...prev, contactListId]);
+                            }
                           } else {
-                            setSelectedIncludeLists((prev) => [...prev, contactListId]);
+                            if (isSelected) {
+                              setSelectedExcludeLists((prev) => prev.filter((id) => id !== contactListId));
+                            } else {
+                              setSelectedExcludeLists((prev) => [...prev, contactListId]);
+                            }
                           }
                         }}
                         className={`p-3 rounded-md border flex items-center justify-between cursor-pointer transition-all ${
@@ -3501,7 +3494,7 @@ function CreateCampaignForm() {
 
             <div className="pt-4 border-t border-slate-200 flex items-center justify-between shrink-0">
               <span className="text-xs font-bold text-slate-600">
-                {selectedIncludeLists.filter((id) => id.startsWith("contact-")).length} contatos selecionados
+                {(activeContactTarget === "include" ? selectedIncludeLists : selectedExcludeLists).filter((id) => id.startsWith("contact-")).length} contatos selecionados
               </span>
               <button
                 type="button"
@@ -3547,71 +3540,95 @@ function CreateCampaignForm() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2">
-              {contacts.filter((c: any) => {
-                if (c.status !== "active" || c.is_subscribed === false) return false;
-                
-                if (selectedIncludeLists.length === 0) return false;
+              {(() => {
+                const finalContacts = contacts.filter((c: any) => {
+                  if (c.status !== "active" || c.is_subscribed === false) return false;
+                  
+                  // 1. Check Include
+                  if (selectedIncludeLists.length === 0) return false;
+                  let isIncluded = false;
+                  if (selectedIncludeLists.includes(`contact-${c.id}`)) {
+                    isIncluded = true;
+                  } else if (c.list_ids && c.list_ids.some((lid: string) => selectedIncludeLists.includes(lid))) {
+                    isIncluded = true;
+                  } else if (selectedIncludeLists.some((id) => id.startsWith("seg-"))) {
+                    // For dynamic segments not fully evaluated, fallback true if selected
+                    isIncluded = true;
+                  }
+                  if (!isIncluded) return false;
 
-                let isIncluded = false;
-                if (selectedIncludeLists.includes(`contact-${c.id}`)) {
-                  isIncluded = true;
-                } else if (c.list_ids && c.list_ids.some((lid: string) => selectedIncludeLists.includes(lid))) {
-                  isIncluded = true;
-                } else if (selectedIncludeLists.some((id) => id.startsWith("seg-"))) {
-                  isIncluded = true;
-                }
+                  // 2. Check Exclude
+                  let isExcluded = false;
+                  if (selectedExcludeLists.includes(`contact-${c.id}`)) {
+                    isExcluded = true;
+                  } else if (c.list_ids && c.list_ids.some((lid: string) => selectedExcludeLists.includes(lid))) {
+                    isExcluded = true;
+                  } else if (selectedExcludeLists.some((id) => id.startsWith("seg-"))) {
+                    isExcluded = true;
+                  }
+                  if (isExcluded) return false;
 
-                if (!isIncluded) return false;
-
-                if (!contactSearchQuery) return true;
-                const q = contactSearchQuery.toLowerCase();
-                const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
-                const email = (c.email || "").toLowerCase();
-                return fullName.includes(q) || email.includes(q);
-              }).length === 0 ? (
-                <div className="text-xs text-slate-400 p-6 text-center">Nenhum contato ativo inscrito em lista encontrado nesta segmentação.</div>
-              ) : (
-                contacts
-                  .filter((c: any) => {
-                    if (c.status !== "active" || c.is_subscribed === false) return false;
-                    if (!contactSearchQuery) return true;
+                  // 3. Search query
+                  if (contactSearchQuery) {
                     const q = contactSearchQuery.toLowerCase();
                     const fullName = `${c.first_name || ""} ${c.last_name || ""}`.toLowerCase();
                     const email = (c.email || "").toLowerCase();
-                    return fullName.includes(q) || email.includes(q);
-                  })
-                  .map((c: any) => (
-                    <div
-                      key={c.id}
-                      className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-md border border-slate-150 flex items-center justify-between transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
-                          {(c.first_name ? c.first_name.charAt(0) : "A").toUpperCase()}
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800">
-                            {c.first_name || ""} {c.last_name || ""}
-                          </h4>
-                          <span className="text-[11px] text-slate-500">{c.email}</span>
-                        </div>
+                    if (!fullName.includes(q) && !email.includes(q)) return false;
+                  }
+
+                  return true;
+                });
+
+                if (finalContacts.length === 0) {
+                  return <div className="text-xs text-slate-400 p-6 text-center">Nenhum contato ativo inscrito na segmentação após aplicar as regras.</div>;
+                }
+
+                return finalContacts.map((c: any) => (
+                  <div
+                    key={c.id}
+                    className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-md border border-slate-150 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
+                        {(c.first_name ? c.first_name.charAt(0) : "A").toUpperCase()}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-full">
-                          Ativo
-                        </span>
-                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded-full">
-                          Em Lista
-                        </span>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-800">
+                          {c.first_name || ""} {c.last_name || ""}
+                        </h4>
+                        <span className="text-[11px] text-slate-500">{c.email}</span>
                       </div>
                     </div>
-                  ))
-              )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-full">
+                        Ativo
+                      </span>
+                      <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded-full">
+                        Incluso
+                      </span>
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
 
             <div className="pt-4 border-t border-slate-200 flex items-center justify-between shrink-0">
               <span className="text-xs font-bold text-slate-600">
-                {contacts.filter((c: any) => c.status === "active" && c.is_subscribed !== false).length} contatos ativos inscritos em lista
+                {contacts.filter((c: any) => {
+                  if (c.status !== "active" || c.is_subscribed === false) return false;
+                  if (selectedIncludeLists.length === 0) return false;
+                  let isIncluded = false;
+                  if (selectedIncludeLists.includes(`contact-${c.id}`)) isIncluded = true;
+                  else if (c.list_ids && c.list_ids.some((lid: string) => selectedIncludeLists.includes(lid))) isIncluded = true;
+                  else if (selectedIncludeLists.some((id) => id.startsWith("seg-"))) isIncluded = true;
+                  if (!isIncluded) return false;
+                  let isExcluded = false;
+                  if (selectedExcludeLists.includes(`contact-${c.id}`)) isExcluded = true;
+                  else if (c.list_ids && c.list_ids.some((lid: string) => selectedExcludeLists.includes(lid))) isExcluded = true;
+                  else if (selectedExcludeLists.some((id) => id.startsWith("seg-"))) isExcluded = true;
+                  if (isExcluded) return false;
+                  return true;
+                }).length} contatos ativos na lista/segmentação
               </span>
               <button
                 type="button"
