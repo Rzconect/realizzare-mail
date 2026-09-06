@@ -1569,7 +1569,7 @@ function CreateCampaignForm() {
         .filter(Boolean)
         .join(", ");
       
-      const targetListStr = (listNames || "Nenhuma lista selecionada") + "||IDS||" + selectedIncludeLists.join(",");
+      const targetListStr = (listNames || "Nenhuma lista selecionada") + "||IDS||" + selectedIncludeLists.join(",") + "||EXCLUDE_IDS||" + selectedExcludeLists.join(",");
 
       const campaignData = {
         org_id: "00000000-0000-0000-0000-000000000001",
@@ -1982,7 +1982,7 @@ function CreateCampaignForm() {
           ) : (
             <button
               type="button"
-              onClick={() => setWizardStep((s) => s - 1)}
+              onClick={() => { saveDraftToDatabase(true).then(() => setWizardStep((s) => s - 1)) }}
               className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-655 rounded-md text-xs font-bold transition-all cursor-pointer"
             >
               Voltar
@@ -1993,7 +1993,7 @@ function CreateCampaignForm() {
             <button
               type="button"
               disabled={wizardStep === 1 ? !isStep1Valid : !isStep2Valid}
-              onClick={() => setWizardStep((s) => s + 1)}
+              onClick={() => { saveDraftToDatabase(true).then(() => setWizardStep((s) => s + 1)) }}
               className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md text-xs font-bold shadow-md disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
             >
               Continuar
