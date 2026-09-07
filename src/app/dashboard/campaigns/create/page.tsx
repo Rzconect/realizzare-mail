@@ -1136,7 +1136,9 @@ function CreateCampaignForm() {
       // Sync lists and segments dynamically from DB & local storage
       const loadDynamicAudienceLists = async () => {
         const audienceMap = new Map<string, ListSegment>();
-        initialListsAndSegments.forEach(item => audienceMap.set(item.id, item));
+        
+        // Add default lists ONLY if they don't get overwritten by DB later
+        initialListsAndSegments.forEach(item => audienceMap.set(item.name.toLowerCase(), item));
 
         try {
           const storedCustomLists = localStorage.getItem("realizzare_custom_lists");
@@ -1144,9 +1146,8 @@ function CreateCampaignForm() {
             const parsed = JSON.parse(storedCustomLists);
             parsed.forEach((l: any) => {
               if (l.name) {
-                const itemKey = l.id || `list-${l.name}`;
-                audienceMap.set(itemKey, {
-                  id: itemKey,
+                audienceMap.set(l.name.toLowerCase(), {
+                  id: l.id || `list-${l.name}`,
                   name: l.name,
                   count: l.subscriberCount || l.count || 0,
                   description: l.description || "Lista de contatos",
@@ -1162,9 +1163,8 @@ function CreateCampaignForm() {
             const parsed = JSON.parse(storedSegments);
             parsed.forEach((s: any) => {
               if (s.name) {
-                const itemKey = s.id || `seg-${s.name}`;
-                audienceMap.set(itemKey, {
-                  id: itemKey,
+                audienceMap.set(s.name.toLowerCase(), {
+                  id: s.id || `seg-${s.name}`,
                   name: s.name,
                   count: s.count || s.subscriberCount || 0,
                   description: s.description || "Segmento de público",
@@ -1185,19 +1185,21 @@ function CreateCampaignForm() {
           
           if (dbLists && dbLists.length > 0) {
             dbLists.forEach((l: any) => {
-              audienceMap.set(l.id, {
+              audienceMap.set(l.name.toLowerCase(), {
                 id: l.id,
                 name: l.name,
                 count: l.subscriber_count || 0,
-                description: l.description || (l.type === "segment" ? "Segmentação de público" : "Lista de transmissão"),
-                isSegment: l.type === "segment",
+                description: l.description || (l.type === "segment" || l.type === "segmentation" ? "Segmentação de público" : "Lista de transmissão"),
+                isSegment: l.type === "segment" || l.type === "segmentation",
                 isStatic: true
               });
             });
           }
         } catch (e) {}
 
-        setListsList(Array.from(audienceMap.values()));
+        // Optionally fetch extra local counts if we really need to, but Supabase count is source of truth
+        const finalArray = Array.from(audienceMap.values());
+        setListsList(finalArray);
       };
 
       loadDynamicAudienceLists();
@@ -1247,57 +1249,7 @@ function CreateCampaignForm() {
 
   // Pre-populate fields if editing a draft & fetch real lists from Supabase
   useEffect(() => {
-    const fetchRealLists = async () => {
-      try {
-        const supabase = createClient();
-        const { data: realLists } = await supabase.from("lists").select("id, name, subscriber_count, type");
-        const stored = localStorage.getItem("realizzare_lists");
-        let localLists = [];
-        if (stored) {
-          try { localLists = JSON.parse(stored); } catch(e){}
-        }
-
-        let allLists: any[] = [];
-        if (realLists && realLists.length > 0) {
-          allLists = realLists.map((l: any) => ({ id: l.id, name: l.name, subscriber_count: l.subscriber_count, type: l.type }));
-        }
-        
-        localLists.forEach((l: any) => {
-          if (!allLists.some(al => al.name.toLowerCase() === l.name.toLowerCase())) {
-            allLists.push({ id: l.id, name: l.name });
-          }
-        });
-
-        const formatted = await Promise.all(allLists.map(async (l: any) => {
-          const contactsStr = localStorage.getItem("realizzare_contacts");
-            let count = l.subscriber_count || 0;
-          if (contactsStr) {
-            try {
-              const contactsList = JSON.parse(contactsStr);
-              contactsList.forEach((c: any) => {
-                const profileStr = localStorage.getItem(`realizzare_profile_${c.id}`);
-                if (profileStr) {
-                  const profile = JSON.parse(profileStr);
-                  const isSub = profile.lists?.some((pl: any) => pl.name.toLowerCase() === l.name.toLowerCase() && pl.status === "subscribed");
-                  if (isSub) count++;
-                }
-              });
-            } catch(e){}
-          }
-          return {
-            id: l.id,
-            name: l.name,
-            count: count,
-            isSegment: l.type === "segmentation" || l.type === "segment"
-          };
-        }));
-        setListsList(formatted);
-      } catch (err) {
-        console.error("Erro ao carregar listas do Supabase:", err);
-      }
-    };
-
-    fetchRealLists();
+    
 
     if (editId) {
       const loadDraft = async () => {
