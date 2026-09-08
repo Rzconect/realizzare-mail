@@ -119,7 +119,7 @@ export default function DashboardPage() {
   const [selectedEventModal, setSelectedEventModal] = useState<any>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
     const now = new Date();
-    return `Hoje às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    return `Hoje às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
   });
   const [isSyncing, setIsSyncing] = useState(false);
   const [eventsSearchTerm, setEventsSearchTerm] = useState("");
@@ -190,7 +190,7 @@ export default function DashboardPage() {
         await new Promise((r) => setTimeout(r, 1200 - elapsed));
       }
       const now = new Date();
-      const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       setLastSyncTime(`Hoje às ${timeStr}`);
       await loadMetrics();
       setIsSyncing(false);
@@ -249,7 +249,7 @@ export default function DashboardPage() {
       // Fetch live transaction events securely via API (bypassing RLS)
       let eventsData = [];
       try {
-        const eventsRes = await fetch("/api/dashboard/events");
+        const eventsRes = await fetch("/api/dashboard/events", { cache: "no-store", next: { revalidate: 0 } });
         const eventsJson = await eventsRes.json();
         if (eventsJson.eventsData) eventsData = eventsJson.eventsData;
       } catch (err) {
@@ -638,7 +638,7 @@ export default function DashboardPage() {
         }
       });
 
-      const nowStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      const nowStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       setLastSyncTime(`Hoje às ${nowStr}`);
 
     } catch (err) {
@@ -1111,7 +1111,7 @@ export default function DashboardPage() {
         {/* Period Selector Dropdown Wrapper */}
         <div className="flex flex-col items-end gap-1.5">
           <div className="text-[10px] text-slate-400 font-medium">
-            Última sincronização: <span className="font-bold text-slate-600">{lastSyncTime}</span>
+            Atualizado automaticamente: <span className="font-bold text-slate-600">{lastSyncTime}</span>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
