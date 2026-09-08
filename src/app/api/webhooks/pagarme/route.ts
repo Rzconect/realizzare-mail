@@ -6,6 +6,18 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("--> Webhook Pagar.me recebido:", body?.type || body?.event);
 
+    
+    // ALWAYS LOG RAW PAYLOAD FOR DEBUGGING
+    try {
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.SUPABASE_SERVICE_ROLE_KEY || "");
+      await supabase.from("inbound_webhook_events").insert({
+        org_id: "00000000-0000-0000-0000-000000000001",
+        event_type: body?.type || body?.event || "unknown_pagarme",
+        payload: body,
+        created_at: new Date().toISOString()
+      });
+    } catch(e) {}
+
     const eventType = body?.type || body?.event || "order.paid";
     const data = body?.data || body;
 
