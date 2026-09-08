@@ -266,7 +266,8 @@ export default function DashboardLayout({
   const navigation: SidebarItem[] = isNiltonUser
     ? [
         { name: "Contatos", href: "/dashboard/contacts", icon: Users },
-        { name: "Integração WordPress", href: "/dashboard/settings?sub=integration", icon: Settings }
+        { name: "Integração WordPress", href: "/dashboard/settings?sub=integration", icon: Settings },
+        { name: "Configurações", href: "/dashboard/settings", icon: Settings }
       ]
     : [
         { name: "Início", href: "/dashboard", icon: LayoutDashboard },
@@ -276,6 +277,7 @@ export default function DashboardLayout({
         { name: "Conteúdos", href: "/dashboard/contents", icon: Image },
         { name: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },
         { name: "Cursos", href: "/dashboard/courses", icon: BookOpen },
+        { name: "Configurações", href: "/dashboard/settings", icon: Settings }
       ];
 
   const handleLogout = async () => {
@@ -805,12 +807,9 @@ export default function DashboardLayout({
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-indigo-650 rounded-full transition-all duration-500"
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, (usage.profilesUsed / usage.profilesLimit) * 100)}%` }}
                 />
-              </div>
-              <div className="text-[9px] text-slate-450 font-bold text-right">
-                {Math.round((usage.profilesUsed / usage.profilesLimit) * 100)}% utilizado
               </div>
             </div>
 
@@ -824,12 +823,9 @@ export default function DashboardLayout({
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, (usage.emailsUsed / usage.emailsLimit) * 100)}%` }}
                 />
-              </div>
-              <div className="text-[9px] text-slate-450 font-bold text-right">
-                {Math.round((usage.emailsUsed / usage.emailsLimit) * 100)}% utilizado
               </div>
             </div>
 
@@ -838,14 +834,6 @@ export default function DashboardLayout({
                 <span>Limites renovam em:</span>
                 <span className="text-indigo-650 font-bold">1º do próximo mês</span>
               </div>
-              <Link
-                href="/dashboard/settings"
-                onClick={() => setShowUsagePopover(false)}
-                className="flex items-center justify-center gap-1.5 w-full py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-650 hover:text-slate-800 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
-              >
-                <Settings className="h-3.5 w-3.5 text-slate-450" />
-                <span>Configurações e Limites</span>
-              </Link>
             </div>
           </div>
         </div>
