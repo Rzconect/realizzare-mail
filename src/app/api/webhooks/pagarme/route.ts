@@ -9,6 +9,12 @@ export async function POST(req: Request) {
     const eventType = body?.type || body?.event || "order.paid";
     const data = body?.data || body;
 
+    const validEvents = ["order.paid", "charge.paid", "subscription.activated", "subscription.created"];
+    if (!validEvents.includes(eventType)) {
+      return NextResponse.json({ message: `Webhook ignorado: evento ${eventType} nǜo processado.` }, { status: 200 });
+    }
+
+
     // Extract customer details & address
     const customer = data?.customer || {};
     const email = (customer?.email || data?.email || "").toLowerCase().trim();
