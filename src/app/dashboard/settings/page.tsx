@@ -182,6 +182,66 @@ export default function SettingsPage() {
   const [totpLoading, setTotpLoading] = useState(false);
   const [isTotpVerified, setIsTotpVerified] = useState(false);
 
+  // Evolution API States
+  const [evoQrCode, setEvoQrCode] = useState<string>("");
+  const [isEvoLoading, setIsEvoLoading] = useState(false);
+  const [evoError, setEvoError] = useState("");
+  const [evoStatus, setEvoStatus] = useState("");
+
+  const handleGenerateEvoQrCode = async () => {
+    setIsEvoLoading(true);
+    setEvoError("");
+    setEvoStatus("");
+    try {
+      const response = await fetch("https://evolution-api-production-8158.up.railway.app/instance/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": "RealizzareSenhaSecreta2026"
+        },
+        body: JSON.stringify({
+          instanceName: "RealizzareCRM",
+          qrcode: true,
+          integration: "WHATSAPP-BAILEYS"
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.message && data.message.includes("already exists")) {
+          const connectRes = await fetch("https://evolution-api-production-8158.up.railway.app/instance/connect/RealizzareCRM", {
+            headers: { "apikey": "RealizzareSenhaSecreta2026" }
+          });
+          const connectData = await connectRes.json();
+          if (connectData.base64) {
+            setEvoQrCode(connectData.base64);
+          } else if (connectData.instance?.state === "open") {
+            setEvoStatus("Conectado");
+            localStorage.setItem("realizzare_wa_connected", "true");
+            alert("O WhatsApp já está conectado com sucesso!");
+          } else {
+             setEvoError("Não foi possível carregar o QR Code. Tente reiniciar a instância.");
+          }
+        } else {
+          throw new Error(data.message || "Erro ao gerar QR Code");
+        }
+      } else {
+        if (data.qrcode && data.qrcode.base64) {
+          setEvoQrCode(data.qrcode.base64);
+        } else if (data.hash && data.hash.qrcode) {
+          setEvoQrCode(data.hash.qrcode);
+        } else if (data.base64) {
+          setEvoQrCode(data.base64);
+        }
+      }
+    } catch (err: any) {
+      setEvoError(err.message || "Erro de conexão com o servidor do WhatsApp.");
+    } finally {
+      setIsEvoLoading(false);
+    }
+  };
+
   // Invite user confirmation states
   const [showInviteConfirmModal, setShowInviteConfirmModal] = useState(false);
   const [adminConfirmPassword, setAdminConfirmPassword] = useState("");
@@ -3605,29 +3665,48 @@ export default function SettingsPage() {
                   Para utilizar o atendimento do CRM e o módulo de conversas, você precisa conectar o número de WhatsApp da sua empresa escaneando o QR Code.
                 </p>
 
-                {/* QR Code Simulation */}
-                <div className="border border-slate-200 rounded-3xl p-6 bg-slate-50/50 inline-block mb-4 shadow-sm">
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=simulated-whatsapp-qr-code" alt="QR Code WhatsApp" className="w-56 h-56 mx-auto rounded-xl" />
-                </div>
-                <p className="text-xs font-semibold text-slate-400 mb-6">Abra o WhatsApp no seu celular e aponte para a tela.</p>
+                {/* Real Evolution API QR Code */}
+                {evoStatus === "Conectado" ? (
+                  <div className="border border-emerald-200 rounded-3xl p-6 bg-emerald-50 inline-block mb-4 shadow-sm">
+                    <CheckCircle2 className="h-20 w-20 text-emerald-500 mx-auto mb-2" />
+                    <p className="text-emerald-700 font-bold">Aparelho Conectado</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="border border-slate-200 rounded-3xl p-6 bg-slate-50/50 inline-block mb-4 shadow-sm min-h-[270px] min-w-[270px] flex items-center justify-center">
+                      {isEvoLoading ? (
+                        <div className="flex flex-col items-center">
+                          <RefreshCw className="h-8 w-8 text-emerald-600 animate-spin mb-3" />
+                          <p className="text-sm text-slate-500 font-medium">Gerando QR Code...</p>
+                        </div>
+                      ) : evoQrCode ? (
+                        <img src={evoQrCode} alt="QR Code WhatsApp" className="w-56 h-56 mx-auto rounded-xl" />
+                      ) : evoError ? (
+                        <div className="text-red-500 text-sm max-w-[200px]">{evoError}</div>
+                      ) : (
+                        <div className="text-slate-400 text-sm flex flex-col items-center">
+                          <Lock className="h-8 w-8 mb-2 opacity-30" />
+                          <span>Clique no botão abaixo</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {!evoQrCode && !isEvoLoading && (
+                      <p className="text-xs font-semibold text-slate-400 mb-6">Gere o QR Code para conectar a API.</p>
+                    )}
+                    {evoQrCode && !isEvoLoading && (
+                      <p className="text-xs font-semibold text-slate-400 mb-6">Abra o WhatsApp no seu celular e escaneie o código acima.</p>
+                    )}
 
-                <button 
-                  onClick={() => {
-                    const btn = document.getElementById("simulate-wa-btn");
-                    if (btn) btn.innerHTML = "Conectando...";
-                    setTimeout(() => {
-                      alert("Aparelho conectado com sucesso! O módulo de conversas está liberado.");
-                      localStorage.setItem("realizzare_wa_connected", "true");
-                      if (btn) btn.innerHTML = "Aparelho Conectado ✅";
-                      btn?.classList.replace("bg-emerald-600", "bg-slate-800");
-                      btn?.classList.replace("hover:bg-emerald-700", "hover:bg-slate-900");
-                    }, 1500);
-                  }}
-                  id="simulate-wa-btn"
-                  className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-md"
-                >
-                  Simular Conexão (Teste visual)
-                </button>
+                    <button 
+                      onClick={handleGenerateEvoQrCode}
+                      disabled={isEvoLoading}
+                      className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-md disabled:bg-slate-400"
+                    >
+                      {evoQrCode ? "Gerar Novamente" : "Gerar QR Code"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
