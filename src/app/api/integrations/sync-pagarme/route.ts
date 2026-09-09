@@ -228,6 +228,27 @@ export async function POST(req: Request) {
                   pagarme_id: evt.id
                 }
               });
+            } else {
+              // Update item_title for existing events if it has changed
+              const existingEvent = (existingEvents || []).find((ee: any) => {
+                const meta = ee.metadata || {};
+                if (meta.pagarme_id && meta.pagarme_id === evt.id) return true;
+                const eeDate = new Date(ee.created_at).toISOString().split("T")[0];
+                const eeAmt = Number(meta.amount || 0).toFixed(2);
+                return eeDate === evtDateStr && eeAmt === evtAmtStr;
+              });
+              
+              if (existingEvent) {
+                const currentMeta = existingEvent.metadata || {};
+                if (currentMeta.item_title !== evt.itemTitle) {
+                  currentMeta.item_title = evt.itemTitle;
+                  currentMeta.category = evt.category;
+                  currentMeta.pagarme_id = evt.id;
+                  await supabaseAdmin.from("reporting_events")
+                    .update({ metadata: currentMeta })
+                    .eq("id", existingEvent.id);
+                }
+              }
             }
 
             // Insert or Update Contacts intelligently
@@ -265,32 +286,33 @@ export async function POST(req: Request) {
               contactId = newC?.id;
             }
 
-            // Insert into Purchases
+            // INSERT OR UPDATE PURCHASE
             if (contactId) {
               // Primary dedup: by Pagar.me SKU
               const { data: existingBySku } = await supabaseAdmin
                 .from("purchases")
-                .select("id")
+                .select("id, product_name")
                 .eq("sku", evt.id)
                 .maybeSingle();
 
               // Secondary dedup: by contact + timestamp window + amount
-              // Catches cases where the same purchase was inserted with a different SKU format (e.g., from migration)
-              const paidAtMin = new Date(evt.timestampMs);
-              paidAtMin.setSeconds(0, 0);
-              const paidAtMax = new Date(paidAtMin.getTime() + 60000);
+              const windowStart = new Date(evt.timestampMs - 60000).toISOString();
+              const windowEnd = new Date(evt.timestampMs + 60000).toISOString();
               const { data: existingByTime } = await supabaseAdmin
                 .from("purchases")
-                .select("id")
+                .select("id, product_name")
                 .eq("contact_id", contactId)
                 .eq("amount", evt.amount)
-                .gte("paid_at", paidAtMin.toISOString())
-                .lt("paid_at", paidAtMax.toISOString())
+                .gte("paid_at", windowStart)
+                .lt("paid_at", windowEnd)
                 .maybeSingle();
+                
+              const existingPurchase = existingBySku || existingByTime;
 
-              if (!existingBySku && !existingByTime) {
-                const prodType = evt.category === "assinatura" ? "subscription" : 
-                                 evt.category === "curso" ? "course" : "certificate";
+              const prodType = evt.category === "assinatura" ? "subscription" : 
+                               evt.category === "curso" ? "course" : "certificate";
+
+              if (!existingPurchase) {
                 await supabaseAdmin.from("purchases").insert({
                   org_id: "00000000-0000-0000-0000-000000000001",
                   contact_id: contactId,
@@ -302,6 +324,16 @@ export async function POST(req: Request) {
                   paid_at: new Date(evt.timestampMs).toISOString(),
                   created_at: new Date(evt.timestampMs).toISOString()
                 });
+              } else {
+                if (existingPurchase.product_name !== evt.itemTitle) {
+                  await supabaseAdmin.from("purchases")
+                    .update({ 
+                      product_name: evt.itemTitle,
+                      product_type: prodType,
+                      sku: evt.id // Update SKU if it was previously null or different
+                    })
+                    .eq("id", existingPurchase.id);
+                }
               }
             }
 
