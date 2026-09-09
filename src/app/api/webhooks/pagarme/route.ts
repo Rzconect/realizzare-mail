@@ -183,8 +183,8 @@ export async function POST(req: Request) {
         }
       }
 
-      // Load toggles from settings (default to true if missing)
-      let leadsToAlunos = true;
+      // Load toggles from settings (default to false for Pagar.me unless specified)
+      let leadsToAlunos = false;
       let autoClientes = true;
       try {
         const { data: settingsData } = await supabase

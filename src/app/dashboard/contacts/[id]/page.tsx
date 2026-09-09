@@ -656,28 +656,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           });
         }
 
-        const { data: reportingEventsData } = await supabase
-          .from("reporting_events")
-          .select("*")
-          .eq("contact_email", contact.email)
-          .eq("event_type", "purchase");
-
-        if (reportingEventsData && reportingEventsData.length > 0) {
-          reportingEventsData.forEach((re: any) => {
-            const meta = re.metadata || {};
-            const title = meta.item_title || "Certificado de Conclusão - Realizzare Cursos";
-            const amtStr = (meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            rawEvents.push({
-              id: `reporting-${re.id}`,
-              type: "purchase",
-              label: "Compra Aprovada (Pagar.me)",
-              details: `Adquiriu '${title}' - R$ ${amtStr}`,
-              payload: meta,
-              timestamp: re.created_at
-            });
-          });
-        }
+        // Reporting Events fetch removed to prevent timeline duplication with Purchases
 
         // Smart inference of origin based on data
         let sourceDetail = "captura de lead";
@@ -694,13 +673,17 @@ export default function ContactProfilePage({ params }: PageProps) {
         }
 
         // Always add contact creation event
+        // Subtract 1 minute to ensure it sorts before the webhook event that triggered its creation
+        const contactCreatedAt = new Date(contact.created_at);
+        contactCreatedAt.setMinutes(contactCreatedAt.getMinutes() - 1);
+        
         rawEvents.push({
           id: `created-${contact.id}`,
           type: "import",
           label: "Contato Cadastrado",
           details: `Registrado através de ${sourceDetail}`,
           payload: { contact_id: contact.id, source: contact.source, created_at: contact.created_at, email: contact.email },
-          timestamp: contact.created_at
+          timestamp: contactCreatedAt.toISOString()
         });
 
         // Deduplicate and sort

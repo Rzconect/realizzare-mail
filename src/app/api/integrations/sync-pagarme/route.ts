@@ -58,39 +58,7 @@ export async function POST(req: Request) {
     const seenIds = new Set<string>();
 
     if (authHeader) {
-      // Fetch /charges
-      for (let page = 1; page <= 5; page++) {
-        try {
-          const url = `https://api.pagar.me/core/v5/charges?created_since=${encodeURIComponent(startDate)}&status=paid&page=${page}&size=100`;
-          const pagRes = await fetch(url, {
-            headers: {
-              Authorization: authHeader,
-              "Content-Type": "application/json"
-            }
-          });
-
-          if (pagRes.ok) {
-            const pagData = await pagRes.json();
-            const pageData = pagData?.data || [];
-            if (pageData.length === 0) break;
-            for (const item of pageData) {
-              if (item?.id && !seenIds.has(item.id)) {
-                seenIds.add(item.id);
-                allPaidItems.push(item);
-              }
-            }
-          } else {
-            const errText = await pagRes.text().catch(() => "");
-            console.warn(`Pagar.me /charges notice on page ${page}:`, pagRes.status, errText);
-            break;
-          }
-        } catch (e) {
-          console.error("Fetch charges error:", e);
-          break;
-        }
-      }
-
-      // Fetch /orders as well (not skipping if charges has items)
+      // Fetch /orders
       for (let page = 1; page <= 5; page++) {
         try {
           const url = `https://api.pagar.me/core/v5/orders?created_since=${encodeURIComponent(startDate)}&status=paid&page=${page}&size=100`;
