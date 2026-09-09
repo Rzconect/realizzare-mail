@@ -812,6 +812,27 @@ export default function SettingsPage() {
       }
 
       const newUser = invitePendingData;
+      
+      // Criar o usuário no Supabase via API route
+      const response = await fetch('/api/auth/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: newUser.email,
+          password: newUser.password,
+          name: newUser.name,
+          role: newUser.role
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        alert(`Erro ao criar usuário no Supabase: ${data.error}`);
+        setInviteConfirmLoading(false);
+        return;
+      }
+
       const updated = [...users, newUser];
       setUsers(updated);
       localStorage.setItem("realizzare_auth_users", JSON.stringify(updated));
@@ -823,10 +844,10 @@ export default function SettingsPage() {
       setAdminConfirmPassword("");
       setShowInviteConfirmModal(false);
 
-      alert(`Membro "${newUser.name}" adicionado com sucesso! Quando ele fizer login pela primeira vez com a senha provisória, precisará definir uma nova senha.`);
+      alert(`Membro "${newUser.name}" adicionado com sucesso e integrado ao Supabase! Quando ele fizer login pela primeira vez com a senha provisória, precisará definir uma nova senha.`);
     } catch (err: any) {
       console.error("Invite user confirmation error:", err);
-      alert("Ocorreu um erro ao confirmar a sua senha. Tente novamente.");
+      alert("Ocorreu um erro ao confirmar a sua senha ou ao criar o usuário. Tente novamente.");
     } finally {
       setInviteConfirmLoading(false);
     }
