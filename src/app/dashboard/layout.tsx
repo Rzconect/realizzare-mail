@@ -43,7 +43,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -183,10 +183,8 @@ export default function DashboardLayout({
     setShowNotifications(false);
     setShowUsagePopover(false);
 
-    // Auto-collapse sidebar on contacts page
-    if (pathname === "/dashboard/contacts" || pathname.startsWith("/dashboard/contacts/") || pathname.startsWith("/dashboard/campaigns/create")) {
-      setIsSidebarOpen(false);
-    }
+    // Auto-collapse sidebar on any route change
+    setIsSidebarOpen(false);
   }, [pathname]);
 
   // Close dropdowns on click outside
@@ -436,7 +434,7 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 overflow-hidden font-sans">
       {/* 1. Mobile Topbar Header */}
-      <header className="flex md:hidden w-full h-16 bg-white border-b border-slate-200 items-center justify-between px-4 absolute top-0 left-0 z-40">
+      <header className="flex md:hidden w-full h-14 bg-white border-b border-slate-200 items-center justify-between px-4 absolute top-0 left-0 z-40">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 shrink-0 relative overflow-hidden rounded-lg">
             <img src="/logo.png" alt="Realizzare Logo" className="h-full w-full object-cover" />
@@ -590,7 +588,7 @@ export default function DashboardLayout({
         }`}
       >
         {/* Sidebar Header Logo */}
-        <div className={`flex h-16 items-center border-b border-slate-200 justify-between ${
+        <div className={`flex h-14 items-center border-b border-slate-200 justify-between ${
           isSidebarOpen ? "px-6" : "px-0 justify-center"
         }`}>
           <div className="flex items-center gap-3 overflow-hidden">
@@ -678,7 +676,7 @@ export default function DashboardLayout({
       {/* 4. Main Panel Wrapper */}
       <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
         {/* Desktop Topbar Header */}
-        <header className="hidden md:flex h-16 shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm items-center justify-between px-8 z-10">
+        <header className="hidden md:flex h-14 shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm items-center justify-between px-8 z-10">
           <div className="flex items-center gap-4 ml-auto">
             {/* Notifications Bell Dropdown */}
             <div className="relative notifications-dropdown-container">
@@ -776,7 +774,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Scrollable Content Pane */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-3 md:py-4 pt-20 md:pt-6 bg-slate-50 relative flex flex-col">
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-3 md:py-4 pt-16 md:pt-6 bg-slate-50 relative flex flex-col">
           {children}
         </main>
       </div>
