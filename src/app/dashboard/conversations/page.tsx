@@ -18,6 +18,10 @@ export default function ConversationsPage() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const [filterAssignedTo, setFilterAssignedTo] = useState<string | null>(null);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState("");
 
   // Mock initial chats
   const [chats, setChats] = useState<any[]>([
@@ -167,10 +171,41 @@ export default function ConversationsPage() {
     if (searchQuery && !chat.name.toLowerCase().includes(searchQuery.toLowerCase()) && !chat.phone.includes(searchQuery)) {
       return false;
     }
+    if (filterAssignedTo !== null) {
+      if (filterAssignedTo === "Não Atribuído" && chat.assignedTo !== null) {
+        return false;
+      } else if (filterAssignedTo !== "Não Atribuído" && chat.assignedTo !== filterAssignedTo) {
+        return false;
+      }
+    }
     if (activeFilter === "minhas") return chat.assignedTo === currentUser?.name;
     if (activeFilter === "fila") return !chat.assignedTo;
     return true; // "todos"
   });
+
+  const handleCreateNewChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChatPhone.trim()) return;
+    
+    // Clean phone numbers: remove anything that is not digit or +
+    const cleanPhone = newChatPhone.replace(/[^\d+]/g, '');
+
+    const newChat = {
+      id: "c" + Date.now(),
+      name: "Novo Contato",
+      phone: cleanPhone,
+      initials: "NC",
+      color: "bg-slate-500",
+      assignedTo: currentUser?.name || "Leonardo Christian",
+      status: "Aberto",
+      lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      messages: []
+    };
+    setChats([newChat, ...chats]);
+    setActiveChatId(newChat.id);
+    setShowNewChatModal(false);
+    setNewChatPhone("");
+  };
 
   const activeChat = chats.find(c => c.id === activeChatId);
 
@@ -184,11 +219,54 @@ export default function ConversationsPage() {
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-800">Conversas</h2>
-            <div className="flex gap-2">
-              <button className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
+            <div className="flex gap-2 relative">
+              <button 
+                onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                className={`p-2 rounded-lg transition-colors cursor-pointer ${filterAssignedTo || isFilterDropdownOpen ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}
+                title="Filtrar por Atendente"
+              >
                 <Filter className="h-4 w-4" />
               </button>
-              <button className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-colors cursor-pointer">
+              
+              {isFilterDropdownOpen && (
+                <div className="absolute top-full right-10 mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                  <div className="px-3 py-2 border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Filtrar por Usuário
+                  </div>
+                  <div className="max-h-48 overflow-y-auto p-1">
+                    <button 
+                      onClick={() => { setFilterAssignedTo(null); setIsFilterDropdownOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${filterAssignedTo === null ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span>Todos</span>
+                      {filterAssignedTo === null && <CheckCheck className="h-4 w-4" />}
+                    </button>
+                    <button 
+                      onClick={() => { setFilterAssignedTo("Não Atribuído"); setIsFilterDropdownOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${filterAssignedTo === "Não Atribuído" ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span>Não Atribuído / Bot</span>
+                      {filterAssignedTo === "Não Atribuído" && <CheckCheck className="h-4 w-4" />}
+                    </button>
+                    {users.map(u => (
+                      <button 
+                        key={u.email}
+                        onClick={() => { setFilterAssignedTo(u.name); setIsFilterDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${filterAssignedTo === u.name ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
+                      >
+                        <span className="truncate">{u.name}</span>
+                        {filterAssignedTo === u.name && <CheckCheck className="h-4 w-4" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button 
+                onClick={() => setShowNewChatModal(true)}
+                className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-colors cursor-pointer"
+                title="Nova Conversa"
+              >
                 <Plus className="h-4 w-4" />
               </button>
             </div>
@@ -471,6 +549,60 @@ export default function ConversationsPage() {
           </div>
         )}
       </div>
+
+      {showNewChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800">Nova Conversa</h3>
+              <button onClick={() => setShowNewChatModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateNewChat} className="p-6">
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Número do WhatsApp
+                </label>
+                <div className="flex rounded-xl overflow-hidden shadow-sm border border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                  <div className="bg-slate-50 border-r border-slate-300 px-3 py-2.5 flex items-center justify-center text-slate-500 text-sm font-medium">
+                    +
+                  </div>
+                  <input
+                    type="text"
+                    value={newChatPhone}
+                    onChange={(e) => setNewChatPhone(e.target.value)}
+                    placeholder="Ex: 5511999998888"
+                    className="w-full px-3 py-2.5 text-sm focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                  Digite o Código do País (55) + DDD + Número. Apenas números. Exemplo para o Brasil: 5531988887777.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewChatModal(false)}
+                  className="flex-1 py-2.5 px-4 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newChatPhone.trim()}
+                  className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors shadow-sm"
+                >
+                  Iniciar Conversa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
