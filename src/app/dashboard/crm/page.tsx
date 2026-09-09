@@ -237,6 +237,7 @@ export default function CrmPage() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         deal={selectedDeal}
+        columns={COLUMNS}
       />
     </div>
   );

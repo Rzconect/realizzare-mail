@@ -146,6 +146,17 @@ export default function LoginPage() {
             isNewUser: false,
             expiresAt: keepLoggedIn ? Date.now() + 30 * 24 * 60 * 60 * 1000 : undefined
           };
+          
+          // Verify if MFA is enabled for this account (or force it for admin for safety)
+          const hasSimulatedMfa = localStorage.getItem(`realizzare_mfa_enabled_${inputEmail}`) === "true" || inputEmail === "admin@realizzarecursos.com.br" || inputEmail === "admin@realizzare.com.br" || inputEmail === "contato@realizzarecursos.com.br" || inputEmail === "contato@realizzare.com.br";
+          
+          if (hasSimulatedMfa) {
+            setTempUserSession(adminSession);
+            setStep("2fa");
+            setIsLoading(false);
+            return;
+          }
+
           if (keepLoggedIn) {
             localStorage.setItem("realizzare_current_session", JSON.stringify(adminSession));
           } else {
@@ -236,9 +247,10 @@ export default function LoginPage() {
 
     try {
       const inputEmail = email.trim().toLowerCase();
-      const isMasterAdmin = (inputEmail === "admin@realizzarecursos.com.br");
+      const isMasterAdmin = inputEmail === "admin@realizzarecursos.com.br" || inputEmail === "admin@realizzare.com.br" || inputEmail === "contato@realizzarecursos.com.br" || inputEmail === "contato@realizzare.com.br";
+      const hasSimulatedMfa = localStorage.getItem(`realizzare_mfa_enabled_${inputEmail}`) === "true";
 
-      if (isMasterAdmin) {
+      if (isMasterAdmin || hasSimulatedMfa) {
         // Simulated validation (accepts correct 6-digit structure or default code)
         setTimeout(() => {
           if (tempUserSession) {

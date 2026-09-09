@@ -49,7 +49,7 @@ import {
 export default function SettingsPage() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<
-    "geral" | "email" | "dominios" | "atribuicao" | "integracoes" | "api" | "webhooks" | "suppression" | "ai" | "seguranca"
+    "geral" | "email" | "dominios" | "atribuicao" | "integracoes" | "api" | "webhooks" | "suppression" | "ai" | "seguranca" | "whatsapp"
   >("geral");
   const [activeGeralSubmenu, setActiveGeralSubmenu] = useState<"pessoal" | "conta" | "enderecos" | "usuarios" | "tags" | "uso">("pessoal");
 
@@ -1066,6 +1066,7 @@ export default function SettingsPage() {
                 { id: "webhooks", label: "Webhooks", icon: Webhook },
                 { id: "suppression", label: "Suppression List", icon: Ban },
                 { id: "ai", label: "Inteligência Artificial", icon: Sparkles },
+                { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
                 { id: "seguranca", label: "Segurança", icon: Shield }
               ]
           ).map((tab) => {
@@ -3565,6 +3566,47 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* TAB: WHATSAPP CONFIGS                                */}
+          {/* ==================================================== */}
+          {activeTab === "whatsapp" && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm flex flex-col items-center justify-center text-center">
+                <div className="h-16 w-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                  <MessageSquare className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">Conectar WhatsApp Web</h3>
+                <p className="text-sm text-slate-500 max-w-md mb-8">
+                  Para utilizar o atendimento do CRM e o módulo de conversas, você precisa conectar o número de WhatsApp da sua empresa escaneando o QR Code.
+                </p>
+
+                {/* QR Code Simulation */}
+                <div className="border border-slate-200 rounded-3xl p-6 bg-slate-50/50 inline-block mb-4 shadow-sm">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=simulated-whatsapp-qr-code" alt="QR Code WhatsApp" className="w-56 h-56 mx-auto rounded-xl" />
+                </div>
+                <p className="text-xs font-semibold text-slate-400 mb-6">Abra o WhatsApp no seu celular e aponte para a tela.</p>
+
+                <button 
+                  onClick={() => {
+                    const btn = document.getElementById("simulate-wa-btn");
+                    if (btn) btn.innerHTML = "Conectando...";
+                    setTimeout(() => {
+                      alert("Aparelho conectado com sucesso! O módulo de conversas está liberado.");
+                      localStorage.setItem("realizzare_wa_connected", "true");
+                      if (btn) btn.innerHTML = "Aparelho Conectado ✅";
+                      btn?.classList.replace("bg-emerald-600", "bg-slate-800");
+                      btn?.classList.replace("hover:bg-emerald-700", "hover:bg-slate-900");
+                    }, 1500);
+                  }}
+                  id="simulate-wa-btn"
+                  className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-md"
+                >
+                  Simular Conexão (Teste visual)
+                </button>
               </div>
             </div>
           )}

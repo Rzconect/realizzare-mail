@@ -1,18 +1,475 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot } from "lucide-react";
 
 export default function ConversationsPage() {
-  return (
-    <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-      <div className="flex flex-col items-center justify-center h-full space-y-4 p-8 text-center">
-        <div className="h-16 w-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-indigo-500 shadow-inner">
-          <MessageCircle className="h-8 w-8" />
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  const [isConnected, setIsConnected] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  
+  const [activeFilter, setActiveFilter] = useState<"minhas" | "fila" | "todos">("todos");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [messageText, setMessageText] = useState("");
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
+
+  // Mock initial chats
+  const [chats, setChats] = useState<any[]>([
+    {
+      id: "c1",
+      name: "Gabriela Vitória Miranda da Cruz",
+      phone: "5531999285395",
+      initials: "GC",
+      color: "bg-[#0f7650]",
+      assignedTo: "Leonardo Christian",
+      status: "Aberto",
+      lastMessageTime: "10:45",
+      messages: [
+        { id: "m1", sender: "bot", text: "Olá! Sou o assistente virtual da Realizzare. Como posso te ajudar hoje?", time: "10:40" },
+        { id: "m2", sender: "client", text: "Tenho uma dúvida sobre o certificado do curso de Libras.", time: "10:42" },
+        { id: "m3", sender: "agent", text: "Olá Gabriela, tudo bem? Aqui é o Leonardo. Qual seria a sua dúvida?", time: "10:45" }
+      ]
+    },
+    {
+      id: "c2",
+      name: "Nilton Soares da Silva",
+      phone: "5511988887777",
+      initials: "NS",
+      color: "bg-blue-600",
+      assignedTo: null,
+      status: "Em fila",
+      lastMessageTime: "09:30",
+      messages: [
+        { id: "m1", sender: "client", text: "Gostaria de saber se o NR10 já está liberado.", time: "09:30" }
+      ]
+    }
+  ]);
+
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check connection
+    const connected = localStorage.getItem("realizzare_wa_connected");
+    if (connected !== "true") {
+      setIsConnected(false);
+    }
+
+    // Load users
+    const storedUsers = localStorage.getItem("realizzare_auth_users");
+    if (storedUsers) {
+      try {
+        const parsed = JSON.parse(storedUsers);
+        setUsers(parsed);
+        setCurrentUser(parsed[0]); // mock current user as first user
+      } catch (e) {}
+    } else {
+      const mockUser = { name: "Leonardo Christian", email: "leonardo@realizzare.com.br" };
+      setUsers([mockUser]);
+      setCurrentUser(mockUser);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Handle URL param for new conversation
+    const phoneToOpen = searchParams.get("phone");
+    if (phoneToOpen) {
+      const existingChat = chats.find(c => c.phone === phoneToOpen);
+      if (existingChat) {
+        setActiveChatId(existingChat.id);
+      } else {
+        // Create new chat
+        const newChat = {
+          id: "c" + Date.now(),
+          name: "Novo Contato",
+          phone: phoneToOpen,
+          initials: "NC",
+          color: "bg-slate-500",
+          assignedTo: currentUser?.name || "Leonardo Christian",
+          status: "Aberto",
+          lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          messages: []
+        };
+        setChats([newChat, ...chats]);
+        setActiveChatId(newChat.id);
+      }
+      
+      // Clean URL silently
+      router.replace("/dashboard/conversations");
+    }
+  }, [searchParams, chats, currentUser, router]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeChatId, chats]);
+
+  if (!isConnected) {
+    return (
+      <div className="flex flex-col h-full bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-sm items-center justify-center p-8 text-center">
+        <div className="h-20 w-20 bg-slate-200 rounded-full flex items-center justify-center mb-4">
+          <MessageSquare className="h-10 w-10 text-slate-400" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Conversas</h2>
-        <p className="text-slate-500 max-w-md text-sm leading-relaxed">
-          O módulo de conversas e atendimento está em construção e será disponibilizado em breve.
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">WhatsApp Desconectado</h2>
+        <p className="text-slate-500 max-w-md text-sm mb-6">
+          Você precisa conectar o número de WhatsApp da sua empresa antes de utilizar o módulo de conversas.
         </p>
+        <button 
+          onClick={() => router.push("/dashboard/settings")}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-sm cursor-pointer"
+        >
+          Ir para Configurações
+        </button>
+      </div>
+    );
+  }
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageText.trim() || !activeChatId) return;
+
+    setChats(prev => prev.map(chat => {
+      if (chat.id === activeChatId) {
+        return {
+          ...chat,
+          lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          messages: [
+            ...chat.messages,
+            { id: "m" + Date.now(), sender: "agent", text: messageText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+          ]
+        };
+      }
+      return chat;
+    }));
+    setMessageText("");
+  };
+
+  const handleAssignUser = (userName: string | null) => {
+    if (!activeChatId) return;
+    setChats(prev => prev.map(chat => {
+      if (chat.id === activeChatId) {
+        return {
+          ...chat,
+          assignedTo: userName,
+          status: userName ? "Aberto" : "Em fila"
+        };
+      }
+      return chat;
+    }));
+    setIsAssignDropdownOpen(false);
+  };
+
+  const filteredChats = chats.filter(chat => {
+    if (searchQuery && !chat.name.toLowerCase().includes(searchQuery.toLowerCase()) && !chat.phone.includes(searchQuery)) {
+      return false;
+    }
+    if (activeFilter === "minhas") return chat.assignedTo === currentUser?.name;
+    if (activeFilter === "fila") return !chat.assignedTo;
+    return true; // "todos"
+  });
+
+  const activeChat = chats.find(c => c.id === activeChatId);
+
+  return (
+    <div className="flex h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+      
+      {/* LEFT SIDEBAR - CHAT LIST */}
+      <div className="w-[340px] flex-shrink-0 flex flex-col border-r border-slate-200 bg-slate-50/50">
+        
+        {/* Header */}
+        <div className="p-4 border-b border-slate-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-800">Conversas</h2>
+            <div className="flex gap-2">
+              <button className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
+                <Filter className="h-4 w-4" />
+              </button>
+              <button className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-colors cursor-pointer">
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Buscar ou começar nova conversa" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center px-2 py-2 border-b border-slate-200 gap-1">
+          <button 
+            onClick={() => setActiveFilter("minhas")}
+            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeFilter === "minhas" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}
+          >
+            Minhas ({chats.filter(c => c.assignedTo === currentUser?.name).length})
+          </button>
+          <button 
+            onClick={() => setActiveFilter("fila")}
+            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeFilter === "fila" ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}
+          >
+            Em fila ({chats.filter(c => !c.assignedTo).length})
+          </button>
+          <button 
+            onClick={() => setActiveFilter("todos")}
+            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeFilter === "todos" ? "bg-slate-200 text-slate-800" : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}
+          >
+            Todos ({chats.length})
+          </button>
+        </div>
+
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {filteredChats.map(chat => (
+            <div 
+              key={chat.id}
+              onClick={() => setActiveChatId(chat.id)}
+              className={`flex items-start gap-3 p-3 border-b border-slate-100 cursor-pointer transition-colors ${activeChatId === chat.id ? "bg-indigo-50/50" : "hover:bg-white"}`}
+            >
+              <div className={`h-10 w-10 shrink-0 text-white rounded-full flex items-center justify-center font-bold text-sm ${chat.color}`}>
+                {chat.initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="text-sm font-bold text-slate-800 truncate pr-2">{chat.name}</h4>
+                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">{chat.lastMessageTime}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {chat.messages.length > 0 && chat.messages[chat.messages.length - 1].sender === "agent" && (
+                    <CheckCheck className="h-3 w-3 text-blue-500" />
+                  )}
+                  <p className="text-xs text-slate-500 truncate">
+                    {chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].text : "Nenhuma mensagem"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${chat.assignedTo ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {chat.assignedTo ? "Aberto" : "Aguardando"}
+                  </span>
+                  {chat.assignedTo && (
+                    <span className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1">
+                      <UserIcon className="h-3 w-3" /> {chat.assignedTo.split(" ")[0]}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          {filteredChats.length === 0 && (
+            <div className="p-8 text-center text-slate-400 text-xs font-semibold">
+              Nenhuma conversa encontrada.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* MAIN CHAT AREA */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#EFEAE2]">
+        
+        {activeChat ? (
+          <>
+            {/* Header */}
+            <div className="h-[68px] flex items-center justify-between px-4 bg-slate-50 border-b border-slate-200 shadow-sm z-10 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`h-10 w-10 shrink-0 text-white rounded-full flex items-center justify-center font-bold text-sm ${activeChat.color}`}>
+                  {activeChat.initials}
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800">{activeChat.name}</h2>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-0.5">
+                    <Phone className="h-3 w-3" />
+                    <span>+{activeChat.phone}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {/* Atribuição visual idêntica ao print */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setIsAssignDropdownOpen(!isAssignDropdownOpen)}
+                    className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <div className="h-6 w-6 bg-slate-200 rounded-full flex items-center justify-center text-slate-500">
+                      <UserIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="text-left">
+                      <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none">Responsável</span>
+                      <span className="block text-xs font-bold text-slate-700 leading-none mt-1">
+                        {activeChat.assignedTo ? activeChat.assignedTo.split(" ")[0] : "Atribuir..."}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  </button>
+                  
+                  {isAssignDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsAssignDropdownOpen(false)}></div>
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+                        <button 
+                          onClick={() => handleAssignUser(null)}
+                          className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors border-b border-slate-100 cursor-pointer"
+                        >
+                          Sem responsável (Voltar para fila)
+                        </button>
+                        {users.map((u, i) => {
+                          const nameParts = u.name ? u.name.split(" ") : u.email.split("@")[0].split(" ");
+                          const shortName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
+                          return (
+                            <button 
+                              key={i}
+                              onClick={() => handleAssignUser(u.name || shortName)}
+                              className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer"
+                            >
+                              <div className="h-5 w-5 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-[10px]">
+                                {shortName.charAt(0).toUpperCase()}
+                              </div>
+                              {u.name || shortName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="h-6 w-px bg-slate-200 mx-1"></div>
+                
+                <button className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                  Ver detalhes do contato
+                </button>
+                <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 relative custom-scrollbar bg-[url('https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-cool-dark-green-new-theme-whatsapp.jpg')] bg-cover bg-center bg-fixed bg-opacity-20 before:absolute before:inset-0 before:bg-[#EFEAE2]/90 before:-z-10">
+              
+              <div className="flex justify-center mb-6">
+                <span className="bg-white/80 backdrop-blur border border-slate-200/50 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest shadow-sm">
+                  Hoje
+                </span>
+              </div>
+
+              {/* Bot / System Message representation */}
+              <div className="flex justify-center my-4">
+                <div className="bg-orange-100 border border-orange-200 text-orange-800 text-xs px-4 py-2 rounded-xl flex flex-col items-center gap-1 max-w-sm text-center shadow-sm">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <Bot className="h-3.5 w-3.5" /> Bot de atendimento iniciou o fluxo
+                  </span>
+                  <span className="text-[10px] opacity-80 font-medium">As mensagens abaixo foram enviadas automaticamente.</span>
+                </div>
+              </div>
+
+              {activeChat.messages.map((msg: any) => {
+                const isMine = msg.sender === "agent";
+                const isBot = msg.sender === "bot";
+                
+                if (isBot) {
+                  return (
+                    <div key={msg.id} className="flex justify-start mb-4">
+                      <div className="max-w-[75%] lg:max-w-[60%] rounded-2xl rounded-tl-none px-4 py-2.5 shadow-sm relative group bg-indigo-50 border border-indigo-100">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Bot className="h-3 w-3 text-indigo-500" />
+                          <span className="text-[10px] font-bold text-indigo-500">Bot Realizzare</span>
+                        </div>
+                        <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-[9px] font-semibold text-slate-400">{msg.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} mb-4`}>
+                    <div 
+                      className={`max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2.5 shadow-sm relative group ${
+                        isMine 
+                          ? "bg-[#d9fdd3] border border-[#c3f2bc] rounded-tr-none" 
+                          : "bg-white border border-slate-100 rounded-tl-none"
+                      }`}
+                    >
+                      <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                      <div className="flex items-center justify-end gap-1 mt-1">
+                        <span className={`text-[9px] font-semibold ${isMine ? "text-emerald-700/60" : "text-slate-400"}`}>{msg.time}</span>
+                        {isMine && <CheckCheck className="h-3 w-3 text-blue-500" />}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area */}
+            <div className="bg-[#f0f2f5] p-3 border-t border-slate-200 shrink-0">
+              {activeChat.assignedTo !== currentUser?.name && activeChat.assignedTo !== currentUser?.email?.split('@')[0].split(' ')[0] && activeChat.assignedTo !== null && currentUser ? (
+                <div className="flex items-center justify-between bg-white rounded-xl p-3 border border-amber-200 bg-amber-50 shadow-sm">
+                  <div className="flex items-center gap-2 text-amber-800 text-sm font-semibold">
+                    <Lock className="h-4 w-4" />
+                    Esta conversa está atribuída a {activeChat.assignedTo}.
+                  </div>
+                  <button 
+                    onClick={() => handleAssignUser(currentUser.name)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm cursor-pointer"
+                  >
+                    Assumir Atendimento
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-white rounded-2xl border border-slate-200 p-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                  <button type="button" className="p-2.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors shrink-0 cursor-pointer">
+                    <Plus className="h-5 w-5" />
+                  </button>
+                  <textarea 
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Digite uma mensagem"
+                    className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none focus:outline-none focus:ring-0 resize-none py-3 text-sm text-slate-800 custom-scrollbar"
+                    rows={1}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={!messageText.trim()}
+                    className="p-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl transition-colors shrink-0 shadow-sm cursor-pointer"
+                  >
+                    <Send className="h-4 w-4 ml-0.5" />
+                  </button>
+                </form>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50">
+            <div className="h-24 w-24 bg-slate-200/50 rounded-full flex items-center justify-center mb-6">
+              <MessageSquare className="h-10 w-10 text-slate-400" />
+            </div>
+            <h2 className="text-2xl font-light text-slate-700 mb-2">WhatsApp Realizzare</h2>
+            <p className="text-sm text-slate-500 max-w-sm">
+              Selecione uma conversa na lista ao lado ou busque por um contato para iniciar o atendimento.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
