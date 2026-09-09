@@ -46,9 +46,47 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Webhook ignorado: e-mail não informado." }, { status: 200 });
     }
 
+    // Fetch product mapping early
+    let productMapping: Record<string, string> = {};
+    try {
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.SUPABASE_SERVICE_ROLE_KEY || "");
+      const { data: settingsData } = await supabase
+        .from("account_settings")
+        .select("settings")
+        .eq("org_id", "00000000-0000-0000-0000-000000000001")
+        .maybeSingle();
+      if (settingsData && settingsData.settings && (settingsData.settings as any).pagarme_product_mapping) {
+        productMapping = (settingsData.settings as any).pagarme_product_mapping;
+      }
+    } catch(e) {}
+
     // Extract transaction items and amount
     const items = data?.items || [];
-    const itemTitle = data?.metadata?.course_name || 
+    
+    // Check for mapped product by code
+    const orderCode = data?.code || items[0]?.code || "";
+    let mappedTitle = null;
+    if (orderCode && Object.keys(productMapping).length > 0) {
+      const parts = orderCode.split("-");
+      // Se houver exatamente 3 partes (ex: 21534-172-3728), pegamos a do meio com precisão
+      if (parts.length === 3) {
+        const middleCode = parts[1];
+        if (productMapping[middleCode]) {
+          mappedTitle = productMapping[middleCode];
+        }
+      } else {
+        // Fallback genérico caso fuja do padrão (pega a primeira que bater)
+        for (const p of parts) {
+          if (productMapping[p]) {
+            mappedTitle = productMapping[p];
+            break;
+          }
+        }
+      }
+    }
+
+    const itemTitle = mappedTitle || 
+                      data?.metadata?.course_name || 
                       data?.metadata?.course || 
                       items[0]?.description || 
                       items[0]?.name || 

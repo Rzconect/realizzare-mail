@@ -23,20 +23,23 @@ export async function POST(req: Request) {
 
     // Load secret key from settings DB if not provided in body
     let secretKey = body?.secretKey || process.env.PAGARME_SECRET_KEY || process.env.NEXT_PUBLIC_PAGARME_SECRET_KEY || "";
-    if (!secretKey) {
-      try {
-        const { data: settingsData } = await supabaseAdmin
-          .from("account_settings")
-          .select("settings")
-          .eq("org_id", "00000000-0000-0000-0000-000000000001")
-          .maybeSingle();
-        if (settingsData && settingsData.settings) {
-          const settings = settingsData.settings as any;
-          secretKey = settings.pagarme_secret_key || settings.pagarmeSecretKey || "";
+    let productMapping: Record<string, string> = {};
+
+    try {
+      const { data: settingsData } = await supabaseAdmin
+        .from("account_settings")
+        .select("settings")
+        .eq("org_id", "00000000-0000-0000-0000-000000000001")
+        .maybeSingle();
+      if (settingsData && settingsData.settings) {
+        const settings = settingsData.settings as any;
+        if (!secretKey) {
+            secretKey = settings.pagarme_secret_key || settings.pagarmeSecretKey || "";
         }
-      } catch (e) {
-        console.warn("Could not load secret key from DB settings:", e);
+        if (settings.pagarme_product_mapping) productMapping = settings.pagarme_product_mapping;
       }
+    } catch (e) {
+      console.warn("Could not load DB settings:", e);
     }
 
     let authHeader = "";
@@ -112,7 +115,28 @@ export async function POST(req: Request) {
       const city = address?.city || customer?.city || item?.city || "";
       const state = address?.state || customer?.state || item?.state || "";
       
-      const itemTitle = item?.metadata?.course_name || 
+      // Check for mapped product by code
+      const orderCode = item?.code || item?.items?.[0]?.code || "";
+      let mappedTitle = null;
+      if (orderCode && Object.keys(productMapping).length > 0) {
+        const parts = orderCode.split("-");
+        if (parts.length === 3) {
+          const middleCode = parts[1];
+          if (productMapping[middleCode]) {
+            mappedTitle = productMapping[middleCode];
+          }
+        } else {
+          for (const p of parts) {
+            if (productMapping[p]) {
+              mappedTitle = productMapping[p];
+              break;
+            }
+          }
+        }
+      }
+
+      const itemTitle = mappedTitle || 
+                        item?.metadata?.course_name || 
                         item?.metadata?.course || 
                         item?.items?.[0]?.description || 
                         item?.items?.[0]?.name || 

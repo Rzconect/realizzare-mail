@@ -57,6 +57,8 @@ export default function SettingsPage() {
   const [pagarmeActive, setPagarmeActive] = useState(false);
   const [pagarmeSecretKey, setPagarmeSecretKey] = useState("");
   const [pagarmePublicKey, setPagarmePublicKey] = useState("");
+  const [pagarmeProductMapping, setPagarmeProductMapping] = useState<Record<string, string>>({});
+  const [pagarmeMappingText, setPagarmeMappingText] = useState("");
   
   const [pagbankActive, setPagbankActive] = useState(false);
   const [pagbankToken, setPagbankToken] = useState("");
@@ -279,6 +281,10 @@ export default function SettingsPage() {
           if (cfg.pagarmeActive !== undefined) setPagarmeActive(cfg.pagarmeActive);
           if (cfg.pagarmeSecretKey) setPagarmeSecretKey(cfg.pagarmeSecretKey);
           if (cfg.pagarmePublicKey) setPagarmePublicKey(cfg.pagarmePublicKey);
+          if (cfg.pagarmeProductMapping) {
+            setPagarmeProductMapping(cfg.pagarmeProductMapping);
+            setPagarmeMappingText(Object.entries(cfg.pagarmeProductMapping).map(([k,v]) => `${k}=${v}`).join('\n'));
+          }
           if (cfg.pagbankActive !== undefined) setPagbankActive(cfg.pagbankActive);
           if (cfg.pagbankToken) setPagbankToken(cfg.pagbankToken);
           if (cfg.pagbankPublicKey) setPagbankPublicKey(cfg.pagbankPublicKey);
@@ -375,6 +381,10 @@ export default function SettingsPage() {
           if (cfg.pagarme_active !== undefined) setPagarmeActive(cfg.pagarme_active);
           if (cfg.pagarme_secret_key) setPagarmeSecretKey(cfg.pagarme_secret_key);
           if (cfg.pagarme_public_key) setPagarmePublicKey(cfg.pagarme_public_key);
+          if (cfg.pagarme_product_mapping) {
+            setPagarmeProductMapping(cfg.pagarme_product_mapping);
+            setPagarmeMappingText(Object.entries(cfg.pagarme_product_mapping).map(([k,v]) => `${k}=${v}`).join('\n'));
+          }
           if (cfg.pagbank_active !== undefined) setPagbankActive(cfg.pagbank_active);
           if (cfg.pagbank_token) setPagbankToken(cfg.pagbank_token);
           if (cfg.pagbank_public_key) setPagbankPublicKey(cfg.pagbank_public_key);
@@ -2407,12 +2417,20 @@ export default function SettingsPage() {
                           .eq("org_id", "00000000-0000-0000-0000-000000000001")
                           .maybeSingle();
 
+                        const newMapping: Record<string, string> = {};
+                        pagarmeMappingText.split('\n').forEach(line => {
+                          const [k, ...v] = line.split('=');
+                          if (k && v.length) newMapping[k.trim()] = v.join('=').trim();
+                        });
+                        setPagarmeProductMapping(newMapping);
+
                         const currentSettings = settingsData?.settings || {};
                         const newSettings = {
                           ...currentSettings,
                           pagarme_active: pagarmeActive,
                           pagarme_secret_key: pagarmeSecretKey,
                           pagarme_public_key: pagarmePublicKey,
+                          pagarme_product_mapping: newMapping,
                           pagbank_active: pagbankActive,
                           pagbank_token: pagbankToken,
                           pagbank_public_key: pagbankPublicKey,
@@ -2432,6 +2450,7 @@ export default function SettingsPage() {
                           pagarmeActive,
                           pagarmeSecretKey,
                           pagarmePublicKey,
+                          pagarmeProductMapping: newMapping,
                           pagbankActive,
                           pagbankToken,
                           pagbankPublicKey,
@@ -2525,6 +2544,19 @@ export default function SettingsPage() {
                             <Copy className="h-4 w-4" />
                           </button>
                         </div>
+                      </div>
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">Mapeamento de Produtos (Opcional)</label>
+                        <p className="text-[10px] text-slate-500 mb-2 leading-tight">
+                          Informe o código do produto e o nome correto (um por linha) no formato: <code>Código=Nome do Produto</code>.<br/>Exemplo: <code>172=Consultor em produtos de Cannabis</code>
+                        </p>
+                        <textarea
+                          rows={4}
+                          value={pagarmeMappingText}
+                          onChange={(e) => setPagarmeMappingText(e.target.value)}
+                          placeholder="Ex: 172=Consultor em produtos de Cannabis&#10;175=Mestre Cervejeiro"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
+                        />
                       </div>
                     </div>
                   </div>
