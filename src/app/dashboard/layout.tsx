@@ -26,7 +26,9 @@ import {
   Building2,
   ShieldCheck,
   CheckCircle2,
-  FileText
+  FileText,
+  KanbanSquare,
+  MessageCircle
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -277,18 +279,18 @@ export default function DashboardLayout({
   const navigation: SidebarItem[] = isNiltonUser
     ? [
         { name: "Contatos", href: "/dashboard/contacts", icon: Users },
-        { name: "Integração WordPress", href: "/dashboard/settings?sub=integration", icon: Settings },
-        { name: "Configurações", href: "/dashboard/settings", icon: Settings }
+        { name: "Integração WordPress", href: "/dashboard/settings?sub=integration", icon: Settings }
       ]
     : [
         { name: "Início", href: "/dashboard", icon: LayoutDashboard },
+        { name: "CRM", href: "/dashboard/crm", icon: KanbanSquare },
+        { name: "Conversas", href: "/dashboard/conversations", icon: MessageCircle },
         { name: "Contatos", href: "/dashboard/contacts", icon: Users },
         { name: "Campanhas", href: "/dashboard/campaigns", icon: Mail },
         { name: "Automações", href: "/dashboard/automations", icon: GitBranch },
         { name: "Conteúdos", href: "/dashboard/contents", icon: Image },
         { name: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },
-        { name: "Cursos", href: "/dashboard/courses", icon: BookOpen },
-        { name: "Configurações", href: "/dashboard/settings", icon: Settings }
+        { name: "Cursos", href: "/dashboard/courses", icon: BookOpen }
       ];
 
   const handleLogout = async () => {
@@ -659,29 +661,49 @@ export default function DashboardLayout({
           isSidebarOpen ? "p-4" : "py-4 px-0 flex flex-col items-center justify-center"
         }`}>
           {isSidebarOpen ? (
-            <button
-              onClick={() => setShowUsagePopover(!showUsagePopover)}
-              className="w-full flex items-center justify-between hover:bg-slate-100/70 p-2.5 rounded-2xl border border-slate-200 bg-white transition-all cursor-pointer text-left usage-trigger-btn shadow-sm"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                  <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover" />
+            <div className="flex flex-col gap-2 w-full">
+              <Link
+                href="/dashboard/settings"
+                className="w-full flex items-center gap-3 hover:bg-slate-100/70 p-2.5 rounded-xl border border-transparent hover:border-slate-200 transition-all cursor-pointer text-left text-slate-600 hover:text-slate-900"
+              >
+                <div className="h-9 w-9 shrink-0 flex items-center justify-center">
+                  <Settings className="h-5 w-5" />
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-slate-800 truncate">Realizzare</span>
-                  <span className="text-[10px] text-slate-500 truncate font-semibold">Ver uso da conta</span>
+                <span className="text-sm font-medium truncate">Configurações</span>
+              </Link>
+              <button
+                onClick={() => setShowUsagePopover(!showUsagePopover)}
+                className="w-full flex items-center justify-between hover:bg-slate-100/70 p-2.5 rounded-2xl border border-slate-200 bg-white transition-all cursor-pointer text-left usage-trigger-btn shadow-sm"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                    <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-slate-800 truncate">Realizzare</span>
+                    <span className="text-[10px] text-slate-500 truncate font-semibold">Ver uso da conta</span>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
-            </button>
+                <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+              </button>
+            </div>
           ) : (
-            <button
-              onClick={() => setShowUsagePopover(!showUsagePopover)}
-              className="h-10 w-10 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center hover:bg-slate-100 transition-all cursor-pointer usage-trigger-btn shadow-sm p-0.5"
-              title="Ver uso da conta: Realizzare"
-            >
-              <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover rounded-lg" />
-            </button>
+            <div className="flex flex-col items-center gap-3 w-full">
+              <Link
+                href="/dashboard/settings"
+                className="h-10 w-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-all text-slate-500 hover:text-slate-900 cursor-pointer"
+                title="Configurações"
+              >
+                <Settings className="h-5 w-5" />
+              </Link>
+              <button
+                onClick={() => setShowUsagePopover(!showUsagePopover)}
+                className="h-10 w-10 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center hover:bg-slate-100 transition-all cursor-pointer usage-trigger-btn shadow-sm p-0.5"
+                title="Ver uso da conta: Realizzare"
+              >
+                <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover rounded-lg" />
+              </button>
+            </div>
           )}
         </div>
       </aside>
