@@ -153,9 +153,22 @@ export default function DashboardLayout({
     window.addEventListener("storage", () => {
       checkAuthSession();
     });
-    return () => window.removeEventListener("storage", () => {
-      checkAuthSession();
-    });
+    
+    // Suppress generic ResizeObserver errors caused by Recharts during sidebar transitions
+    const hideResizeErrors = (e: ErrorEvent) => {
+      if (
+        e.message.includes("ResizeObserver loop limit exceeded") ||
+        e.message.includes("ResizeObserver loop completed with undelivered notifications.")
+      ) {
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("error", hideResizeErrors);
+
+    return () => {
+      window.removeEventListener("storage", () => checkAuthSession());
+      window.removeEventListener("error", hideResizeErrors);
+    };
   }, [pathname, router]);
 
   useEffect(() => {
