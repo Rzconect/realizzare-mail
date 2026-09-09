@@ -598,7 +598,7 @@ export default function DashboardLayout({
 
       {/* 3. Desktop Sidebar */}
       <aside
-        className={`hidden md:flex flex-col shrink-0 border-r border-slate-200 bg-white transition-all duration-300 relative ${
+        className={`hidden md:flex flex-col shrink-0 border-r border-slate-200 bg-white transition-all duration-300 relative overflow-x-hidden ${
           isSidebarOpen ? "w-64" : "w-16"
         }`}
       >
@@ -623,7 +623,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation Items */}
-        <nav className={`flex-1 py-6 space-y-2 overflow-y-auto transition-all ${
+        <nav className={`flex-1 py-6 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar transition-all ${
           isSidebarOpen ? "px-4" : "px-2"
         }`}>
           {navigation.map((item) => {
@@ -642,15 +642,10 @@ export default function DashboardLayout({
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
+                title={!isSidebarOpen ? item.name : undefined}
               >
                 <Icon className="h-5 w-5 shrink-0" />
                 {isSidebarOpen && <span className="truncate">{item.name}</span>}
-                {!isSidebarOpen && (
-                  <div className="absolute left-full ml-3 hidden group-hover:flex items-center bg-slate-900 text-white text-xs font-semibold py-1.5 px-3 rounded-xl shadow-xl z-50 pointer-events-none whitespace-nowrap animate-fadeIn">
-                    <span>{item.name}</span>
-                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 border-y-4 border-y-transparent border-r-4 border-r-slate-900" />
-                  </div>
-                )}
               </Link>
             );
           })}

@@ -87,90 +87,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Master Admin accounts (contato@realizzarecursos.com.br, admin@realizzare.com.br, etc.)
-      const isMasterAdminAccount =
-        inputEmail === "contato@realizzarecursos.com.br" ||
-        inputEmail === "contato@realizzare.com.br" ||
-        inputEmail === "admin@realizzare.com.br" ||
-        inputEmail === "admin@realizzarecursos.com.br";
-
-      if (isMasterAdminAccount) {
-        const validAdminPasswords = [
-          "rzconect@2026",
-          "rzconect@2026!",
-          "senha123",
-          "realizzare2026!",
-          "realizzare123!",
-          "admin123",
-          "realizzare123"
-        ];
-
-        // Try Supabase auth first
-        try {
-          const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-            email: inputEmail,
-            password: password,
-          });
-
-          if (!authErr && authData?.user) {
-            const adminSession = {
-              name: authData.user.user_metadata?.name || "Leonardo Christian (Administrador)",
-              email: authData.user.email || inputEmail,
-              role: "Administrador",
-              isNewUser: false,
-              expiresAt: keepLoggedIn ? Date.now() + 30 * 24 * 60 * 60 * 1000 : undefined
-            };
-            if (keepLoggedIn) {
-              localStorage.setItem("realizzare_current_session", JSON.stringify(adminSession));
-            } else {
-              sessionStorage.setItem("realizzare_current_session", JSON.stringify(adminSession));
-            }
-            setIsLoading(false);
-            router.push("/dashboard");
-            return;
-          }
-        } catch (e) {
-          console.warn("Supabase Auth check skipped for Master Admin:", e);
-        }
-
-        // Master Admin fallback password validation (accepts RZconect@2026, senha123, etc.)
-        const isPasswordValid =
-          validAdminPasswords.includes(password.trim().toLowerCase()) ||
-          password.length >= 4;
-
-        if (isPasswordValid) {
-          const adminSession = {
-            name: "Leonardo Christian (Administrador)",
-            email: inputEmail,
-            role: "Administrador",
-            isNewUser: false,
-            expiresAt: keepLoggedIn ? Date.now() + 30 * 24 * 60 * 60 * 1000 : undefined
-          };
-          
-          // Verify if MFA is enabled for this account (or force it for admin for safety)
-          const hasSimulatedMfa = localStorage.getItem(`realizzare_mfa_enabled_${inputEmail}`) === "true" || inputEmail === "admin@realizzarecursos.com.br" || inputEmail === "admin@realizzare.com.br" || inputEmail === "contato@realizzarecursos.com.br" || inputEmail === "contato@realizzare.com.br";
-          
-          if (hasSimulatedMfa) {
-            setTempUserSession(adminSession);
-            setStep("2fa");
-            setIsLoading(false);
-            return;
-          }
-
-          if (keepLoggedIn) {
-            localStorage.setItem("realizzare_current_session", JSON.stringify(adminSession));
-          } else {
-            sessionStorage.setItem("realizzare_current_session", JSON.stringify(adminSession));
-          }
-          setIsLoading(false);
-          router.push("/dashboard");
-          return;
-        }
-      }
-
-      // Standardized Master Admin Credential Check (Now integrated into Supabase Auth database)
-      const isMasterAdmin = false;
-
       let userSession = {
         name: "Administrador Realizzare",
         email: inputEmail,
@@ -179,38 +95,27 @@ export default function LoginPage() {
         expiresAt: keepLoggedIn ? Date.now() + 30 * 24 * 60 * 60 * 1000 : undefined
       };
 
-      if (true) {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
-          email: inputEmail,
-          password: password,
-        });
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: inputEmail,
+        password: password,
+      });
 
-        if (authError) {
-          setError("Credenciais inválidas. Verifique seu e-mail e senha.");
-          setIsLoading(false);
-          return;
-        }
+      if (authError) {
+        setError("Credenciais inválidas. Verifique seu e-mail e senha.");
+        setIsLoading(false);
+        return;
+      }
 
-        if (data.user) {
-          userSession.name = data.user.user_metadata?.name || "Administrador Realizzare";
-          userSession.email = data.user.email || inputEmail;
+      if (data.user) {
+        userSession.name = data.user.user_metadata?.name || "Administrador Realizzare";
+        userSession.email = data.user.email || inputEmail;
 
-          // Check if they are new (to enforce first password & 2FA setup)
-          userSession.isNewUser = data.user.user_metadata?.is_new_user !== false;
+        // Check if they are new (to enforce first password & 2FA setup)
+        userSession.isNewUser = data.user.user_metadata?.is_new_user !== false;
 
-          // Check if user has active MFA factors
-          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-          if (aalData && aalData.nextLevel === "aal2") {
-            setTempUserSession(userSession);
-            setStep("2fa");
-            setIsLoading(false);
-            return;
-          }
-        }
-      } else {
-        // Master Admin Check: check if simulated MFA is enabled
-        const hasSimulatedMfa = localStorage.getItem(`realizzare_mfa_enabled_${inputEmail}`) === "true";
-        if (hasSimulatedMfa) {
+        // Check if user has active MFA factors
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData && aalData.nextLevel === "aal2") {
           setTempUserSession(userSession);
           setStep("2fa");
           setIsLoading(false);
@@ -247,24 +152,6 @@ export default function LoginPage() {
 
     try {
       const inputEmail = email.trim().toLowerCase();
-      const isMasterAdmin = inputEmail === "admin@realizzarecursos.com.br" || inputEmail === "admin@realizzare.com.br" || inputEmail === "contato@realizzarecursos.com.br" || inputEmail === "contato@realizzare.com.br";
-      const hasSimulatedMfa = localStorage.getItem(`realizzare_mfa_enabled_${inputEmail}`) === "true";
-
-      if (isMasterAdmin || hasSimulatedMfa) {
-        // Simulated validation (accepts correct 6-digit structure or default code)
-        setTimeout(() => {
-          if (tempUserSession) {
-            if (keepLoggedIn) {
-              localStorage.setItem("realizzare_current_session", JSON.stringify(tempUserSession));
-            } else {
-              sessionStorage.setItem("realizzare_current_session", JSON.stringify(tempUserSession));
-            }
-          }
-          setIsLoading(false);
-          router.push("/dashboard");
-        }, 600);
-        return;
-      }
 
       // Real Supabase MFA Verification
       const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
