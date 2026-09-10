@@ -60,7 +60,7 @@ export default function ConversationsPage() {
           });
           
           // Remove duplicates based on name to prevent "Leonardo Christian" appearing twice
-          const uniqueUsers = Array.from(new Map(updatedParsed.map(u => [u.name, u])).values());
+          const uniqueUsers = Array.from(new Map(updatedParsed.map((u: any) => [u.name, u])).values());
           
           setUsers(uniqueUsers);
         } catch (e) {}
