@@ -132,8 +132,8 @@ export default function ConversationsPage() {
     }
   }, [searchParams, chats, router]);
 
-  const activeChat = chats.find(c => c.id === activeChatId);
-  const activeChatMessagesLength = activeChat?.messages?.length || 0;
+  const currentActiveChat = chats.find(c => c.id === activeChatId);
+  const activeChatMessagesLength = currentActiveChat?.messages?.length || 0;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
