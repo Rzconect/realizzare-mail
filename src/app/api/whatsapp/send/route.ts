@@ -26,8 +26,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         number: remoteJid,
-        options: { delay: 1200, presence: "composing" },
-        textMessage: { text: text }
+        text: text
       })
     });
 
