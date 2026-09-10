@@ -724,20 +724,20 @@ export default function ConversationsPage() {
                         >
                           Sem responsável (Voltar para fila)
                         </button>
-                        {users.map((u, i) => {
-                          const fullName = u.name || u.email.split("@")[0];
-                          const nameParts = fullName.split(" ");
-                          const initials = nameParts.length > 1 ? `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}` : fullName.charAt(0);
+                        {Array.from(new Set([...users.map(u => u.name || u.email?.split("@")[0] || "Desconhecido"), ...chats.map(c => c.assignedTo).filter(Boolean)])).map((fullName, i) => {
+                          const nameStr = fullName as string;
+                          const nameParts = nameStr.split(" ");
+                          const initials = nameParts.length > 1 ? `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}` : nameStr.charAt(0);
                           return (
                             <button 
                               key={i}
-                              onClick={() => handleAssignUser(fullName)}
+                              onClick={() => handleAssignUser(nameStr)}
                               className="w-full flex items-center gap-2 text-left px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
                             >
                               <div className="h-5 w-5 shrink-0 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-[10px]">
                                 {initials.toUpperCase()}
                               </div>
-                              <span className="truncate">{fullName}</span>
+                              <span className="truncate">{nameStr}</span>
                             </button>
                           );
                         })}
