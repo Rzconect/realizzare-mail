@@ -34,19 +34,34 @@ export default function ConversationsPage() {
     //   setIsConnected(false);
     // }
 
-    // Load users (mock current user for now)
-    const storedUsers = localStorage.getItem("realizzare_auth_users");
-    if (storedUsers) {
-      try {
-        const parsed = JSON.parse(storedUsers);
-        setUsers(parsed);
-        setCurrentUser(parsed[0]); 
-      } catch (e) {}
-    } else {
-      const mockUser = { name: "Leonardo Christian", email: "leonardo@realizzare.com.br" };
-      setUsers([mockUser]);
-      setCurrentUser(mockUser);
-    }
+    const loadUsers = () => {
+      // Load users
+      const storedUsers = localStorage.getItem("realizzare_auth_users");
+      if (storedUsers) {
+        try {
+          const parsed = JSON.parse(storedUsers);
+          setUsers(parsed);
+          
+          // Get current user from session
+          const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
+          if (sessionStr) {
+            setCurrentUser(JSON.parse(sessionStr));
+          } else {
+            setCurrentUser(parsed[0]);
+          }
+        } catch (e) {}
+      } else {
+        const mockUser = { name: "Leonardo Christian", email: "leonardo@realizzare.com.br" };
+        setUsers([mockUser]);
+        setCurrentUser(mockUser);
+      }
+    };
+
+    loadUsers();
+    
+    // Listen for cross-tab or cross-component storage changes
+    window.addEventListener("storage", loadUsers);
+    return () => window.removeEventListener("storage", loadUsers);
   }, []);
 
   useEffect(() => {
