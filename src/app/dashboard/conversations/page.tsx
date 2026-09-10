@@ -465,9 +465,37 @@ export default function ConversationsPage() {
                 <button className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
                   Ver detalhes do contato
                 </button>
-                <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
-                  <MoreVertical className="h-4 w-4" />
-                </button>
+                <div className="relative">
+                  <button 
+                    onClick={() => {
+                      const dropdown = document.getElementById("chat-options-dropdown");
+                      if (dropdown) dropdown.classList.toggle("hidden");
+                    }}
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                  <div id="chat-options-dropdown" className="hidden absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+                    <button 
+                      onClick={async () => {
+                        if (confirm("Tem certeza que deseja apagar esta conversa?")) {
+                          // Call Supabase to delete
+                          const { createClient } = await import('@supabase/supabase-js');
+                          const supabase = createClient(
+                            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                          );
+                          await supabase.from('whatsapp_chats').delete().eq('id', activeChat.id);
+                          setChats(prev => prev.filter(c => c.id !== activeChat.id));
+                          setActiveChatId(null);
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                    >
+                      Apagar Conversa
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
