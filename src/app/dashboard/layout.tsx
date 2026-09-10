@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -805,7 +805,13 @@ export default function DashboardLayout({
 
         {/* Scrollable Content Pane */}
         <main className="flex-1 overflow-y-auto px-4 md:px-8 py-3 md:py-4 pt-16 md:pt-6 bg-slate-50 relative flex flex-col">
-          {children}
+          <React.Suspense fallback={
+            <div className="flex h-full w-full items-center justify-center p-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600"></div>
+            </div>
+          }>
+            {children}
+          </React.Suspense>
         </main>
       </div>
 

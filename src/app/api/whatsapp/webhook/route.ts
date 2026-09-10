@@ -34,6 +34,9 @@ export async function POST(req: Request) {
       const pushName = msg.pushName || phone;
       const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
       const isFromMe = msg.key.fromMe;
+      // Only use pushName if the message is from the contact (not fromMe), 
+      // otherwise we would mistakenly save the account owner's name as the contact's name.
+      const contactName = !isFromMe && msg.pushName ? msg.pushName : phone;
       
       if (!text) return NextResponse.json({ success: true }); // Ignore non-text for now
 
@@ -51,7 +54,7 @@ export async function POST(req: Request) {
           .insert({
             remote_jid: remoteJid,
             phone: phone,
-            name: pushName,
+            name: contactName,
             status: 'Aberto'
           })
           .select()
@@ -61,12 +64,14 @@ export async function POST(req: Request) {
         chat = newChat;
       } else {
         // Update last message time
+        const updatePayload: any = { last_message_time: new Date().toISOString() };
+        if (!isFromMe && msg.pushName && msg.pushName !== chat.name && msg.pushName !== phone) {
+          updatePayload.name = msg.pushName;
+        }
+
         await supabaseAdmin
           .from('whatsapp_chats')
-          .update({ 
-            last_message_time: new Date().toISOString(),
-            name: pushName !== phone ? pushName : chat.name // update name if changed
-          })
+          .update(updatePayload)
           .eq('id', chat.id);
       }
 

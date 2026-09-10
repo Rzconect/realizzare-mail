@@ -231,7 +231,12 @@ export default function ConversationsPage() {
             location: { city: match.city || "", state: match.state || "" },
             enrollments: [],
             purchases: [],
-            timeline: []
+            timeline: match.created_at ? [{
+              id: "timeline-created",
+              label: "Lead Criado",
+              details: "Contato adicionado ao CRM",
+              timestamp: match.created_at
+            }] : []
           };
         }
       } catch (e) {}
@@ -241,12 +246,22 @@ export default function ConversationsPage() {
       try {
         const supabase = createClient();
         const { data, error } = await supabase.from('contacts').select(`
-          id, first_name, last_name, email, phone, city, state,
+          id, first_name, last_name, email, phone, city, state, created_at,
           enrollments ( status, progress, courses ( name ) ),
           purchases ( product_name, product_type, amount, paid_at, status )
         `).eq('id', cId).single();
         
         if (data && !error) {
+          const fetchedTimeline = [];
+          if (data.created_at) {
+            fetchedTimeline.push({
+              id: `timeline-created`,
+              label: "Lead Criado",
+              details: "Contato adicionado ao CRM",
+              timestamp: data.created_at
+            });
+          }
+          
           localProfile = {
             id: data.id,
             first_name: data.first_name || "",
@@ -266,7 +281,7 @@ export default function ConversationsPage() {
               paid_at: p.paid_at,
               status: p.status
             })) || [],
-            timeline: []
+            timeline: fetchedTimeline
           };
         }
       } catch (err) {
@@ -554,14 +569,14 @@ export default function ConversationsPage() {
                       <span>Não Atribuído</span>
                       {filterAssignedTo === "Não Atribuído" && <CheckCheck className="h-4 w-4" />}
                     </button>
-                    {users.map(u => (
+                    {Array.from(new Set([...users.map(u => u.name || u.email?.split("@")[0] || "Desconhecido"), ...chats.map(c => c.assignedTo).filter(Boolean)])).map(name => (
                       <button 
-                        key={u.email}
-                        onClick={() => { setFilterAssignedTo(u.name); setIsFilterDropdownOpen(false); }}
-                        className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${filterAssignedTo === u.name ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
+                        key={name}
+                        onClick={() => { setFilterAssignedTo(name as string); setIsFilterDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${filterAssignedTo === name ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
                       >
-                        <span className="truncate">{u.name}</span>
-                        {filterAssignedTo === u.name && <CheckCheck className="h-4 w-4" />}
+                        <span className="truncate">{name as string}</span>
+                        {filterAssignedTo === name && <CheckCheck className="h-4 w-4" />}
                       </button>
                     ))}
                   </div>
@@ -685,27 +700,27 @@ export default function ConversationsPage() {
                 <div className="relative">
                   <button 
                     onClick={() => setIsAssignDropdownOpen(!isAssignDropdownOpen)}
-                    className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer max-w-[250px]"
+                    className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer w-max max-w-[300px]"
                   >
                     <div className="h-6 w-6 shrink-0 bg-slate-200 rounded-full flex items-center justify-center text-slate-500">
                       <UserIcon className="h-3.5 w-3.5" />
                     </div>
                     <div className="text-left flex flex-col justify-center min-w-0">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-tight truncate">Responsável</span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-tight whitespace-nowrap">Responsável</span>
                       <span className="text-xs font-bold text-slate-700 leading-tight truncate">
                         {activeChat.assignedTo ? activeChat.assignedTo : "Atribuir..."}
                       </span>
                     </div>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 ml-1" />
                   </button>
                   
                   {isAssignDropdownOpen && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setIsAssignDropdownOpen(false)}></div>
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+                      <div className="absolute right-0 top-full mt-1 w-max min-w-[200px] bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
                         <button 
                           onClick={() => handleAssignUser(null)}
-                          className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors border-b border-slate-100 cursor-pointer"
+                          className="w-full text-left px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors border-b border-slate-100 cursor-pointer whitespace-nowrap"
                         >
                           Sem responsável (Voltar para fila)
                         </button>
@@ -717,7 +732,7 @@ export default function ConversationsPage() {
                             <button 
                               key={i}
                               onClick={() => handleAssignUser(fullName)}
-                              className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer truncate"
+                              className="w-full flex items-center gap-2 text-left px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
                             >
                               <div className="h-5 w-5 shrink-0 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-[10px]">
                                 {initials.toUpperCase()}
@@ -908,45 +923,45 @@ export default function ConversationsPage() {
                         </div>
                       </div>
                       
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         {/* Dados do Aluno */}
                         <div>
-                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
-                            <UserIcon className="h-3 w-3 text-slate-400" /> Informações Pessoais
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1 border-b border-slate-200 pb-2">
+                            <UserIcon className="h-4 w-4 text-slate-400" /> Informações Pessoais
                           </h5>
-                          <div className="space-y-1.5 text-xs">
+                          <div className="space-y-2.5 text-sm">
                              <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-[10px]">Telefone:</span>
-                                <span className="font-medium text-slate-700 text-right text-[10px]">{profile.phone || "Não informado"}</span>
+                                <span className="text-slate-500 text-xs">Telefone:</span>
+                                <span className="font-medium text-slate-700 text-right text-xs">{profile.phone || "Não informado"}</span>
                              </div>
                              <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-[10px]">E-mail:</span>
-                                <span className="font-medium text-slate-700 text-right text-[10px] truncate max-w-[150px]" title={profile.email}>{profile.email || "Não informado"}</span>
+                                <span className="text-slate-500 text-xs">E-mail:</span>
+                                <span className="font-medium text-slate-700 text-right text-xs truncate max-w-[150px]" title={profile.email}>{profile.email || "Não informado"}</span>
                              </div>
                              <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-[10px]">Cidade:</span>
-                                <span className="font-medium text-slate-700 text-right text-[10px]">{profile.location?.city || "Não informada"}</span>
+                                <span className="text-slate-500 text-xs">Cidade:</span>
+                                <span className="font-medium text-slate-700 text-right text-xs">{profile.location?.city || "Não informada"}</span>
                              </div>
                              <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-[10px]">Estado:</span>
-                                <span className="font-medium text-slate-700 text-right text-[10px]">{profile.location?.state || "-"}</span>
+                                <span className="text-slate-500 text-xs">Estado:</span>
+                                <span className="font-medium text-slate-700 text-right text-xs">{profile.location?.state || "-"}</span>
                              </div>
                           </div>
                         </div>
 
                         {/* Cursos */}
                         <div>
-                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
-                            <BookOpen className="h-3 w-3 text-slate-400" /> Cursos Matriculados
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1 border-b border-slate-200 pb-2">
+                            <BookOpen className="h-4 w-4 text-slate-400" /> Cursos Matriculados
                           </h5>
                           {profile.enrollments && profile.enrollments.length > 0 ? (
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                               {profile.enrollments.slice(0, 3).map((e: any, i: number) => (
-                                <div key={i} className="bg-white border border-slate-200 rounded p-2 shadow-sm flex flex-col gap-1">
-                                   <span className="text-[10px] font-bold text-slate-700 leading-tight truncate">{e.course_name}</span>
+                                <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex flex-col gap-1.5">
+                                   <span className="text-xs font-bold text-slate-700 leading-tight truncate">{e.course_name}</span>
                                    <div className="flex items-center justify-between">
-                                     <span className="text-slate-500 text-[9px]">Progresso: <strong className="text-slate-700">{e.progress}%</strong></span>
-                                     <span className={`text-[8px] px-1 py-0.5 rounded font-bold uppercase ${e.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                     <span className="text-slate-500 text-[10px]">Progresso: <strong className="text-slate-700">{e.progress}%</strong></span>
+                                     <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${e.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                                        {e.status === 'completed' ? 'Concluído' : 'Ativo'}
                                      </span>
                                    </div>
@@ -954,59 +969,59 @@ export default function ConversationsPage() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-[10px] text-slate-400 italic text-center py-1.5 bg-slate-100/50 rounded border border-slate-200/50">Nenhuma matrícula encontrada.</p>
+                            <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhuma matrícula encontrada.</p>
                           )}
                         </div>
                         
                         {/* Transações */}
                         <div>
-                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
-                            <DollarSign className="h-3 w-3 text-slate-400" /> Últimas Transações
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1 border-b border-slate-200 pb-2">
+                            <DollarSign className="h-4 w-4 text-slate-400" /> Últimas Transações
                           </h5>
                           {profile.purchases && profile.purchases.length > 0 ? (
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                               {profile.purchases.slice(0, 3).map((p: any, i: number) => (
-                                <div key={i} className="bg-white border border-slate-200 rounded p-2 shadow-sm flex justify-between items-center gap-2">
+                                <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex justify-between items-center gap-2">
                                   <div className="min-w-0 flex-1">
-                                    <span className="text-[10px] font-bold text-slate-700 block truncate">{p.product_name}</span>
-                                    <span className="text-[9px] text-slate-400">{formatTransactionDate(p.paid_at, p.product_type)}</span>
+                                    <span className="text-xs font-bold text-slate-700 block truncate">{p.product_name}</span>
+                                    <span className="text-[10px] text-slate-400">{formatTransactionDate(p.paid_at, p.product_type)}</span>
                                   </div>
                                   <div className="text-right shrink-0">
-                                     <span className="text-[10px] font-bold text-emerald-600 block">R$ {p.amount.toFixed(2).replace('.', ',')}</span>
-                                     <span className="text-[8px] font-semibold text-emerald-500 uppercase">Pago</span>
+                                     <span className="text-xs font-bold text-emerald-600 block">R$ {p.amount.toFixed(2).replace('.', ',')}</span>
+                                     <span className="text-[9px] font-semibold text-emerald-500 uppercase">Pago</span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-[10px] text-slate-400 italic text-center py-1.5 bg-slate-100/50 rounded border border-slate-200/50">Nenhuma transação encontrada.</p>
+                            <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhuma transação encontrada.</p>
                           )}
                         </div>
                         
                         {/* Timeline */}
                         <div>
-                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
-                            <Clock className="h-3 w-3 text-slate-400" /> Linha do Tempo
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1 border-b border-slate-200 pb-2">
+                            <Clock className="h-4 w-4 text-slate-400" /> Linha do Tempo
                           </h5>
                           {profile.timeline && profile.timeline.length > 0 ? (
-                            <div className="relative border-l border-slate-200 ml-1.5 space-y-3 pb-1 mt-2">
+                            <div className="relative border-l-2 border-slate-200 ml-2 space-y-4 pb-2 mt-3">
                               {profile.timeline.slice(0, 3).map((t: any, i: number) => (
-                                <div key={i} className="relative pl-3">
-                                  <div className="absolute -left-1 top-1 h-2 w-2 rounded-full bg-white border border-indigo-500" />
-                                  <span className="text-[10px] font-bold text-slate-700 block leading-tight">{t.label}</span>
-                                  <span className="text-[9px] text-slate-500 block leading-tight mt-0.5">{t.details}</span>
-                                  <span className="text-[8px] text-slate-400 block mt-0.5">{formatTimelineTimestamp(t.timestamp)}</span>
+                                <div key={i} className="relative pl-4">
+                                  <div className="absolute -left-[5.5px] top-1.5 h-2.5 w-2.5 rounded-full bg-white border-2 border-indigo-500" />
+                                  <span className="text-xs font-bold text-slate-700 block leading-tight">{t.label}</span>
+                                  <span className="text-[10px] text-slate-500 block leading-tight mt-1">{t.details}</span>
+                                  <span className="text-[9px] text-slate-400 block mt-1">{formatTimelineTimestamp(t.timestamp)}</span>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-[10px] text-slate-400 italic text-center py-1.5 bg-slate-100/50 rounded border border-slate-200/50">Nenhum evento registrado.</p>
+                            <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhum evento registrado.</p>
                           )}
                         </div>
                       </div>
 
-                      <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} className="block text-center mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
-                        Ver histórico completo do CRM <ExternalLink className="h-3 w-3 inline-block ml-0.5 -mt-0.5" />
+                      <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} className="block text-center mt-6 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+                        Ver histórico completo do CRM <ExternalLink className="h-4 w-4 inline-block ml-1 -mt-0.5" />
                       </Link>
                       
                       <button 
@@ -1018,7 +1033,7 @@ export default function ConversationsPage() {
                             return next;
                           });
                         }}
-                        className="w-full text-xs font-bold text-slate-500 hover:text-red-600 py-2 transition-colors mt-2 cursor-pointer"
+                        className="w-full text-sm font-bold text-slate-500 hover:text-red-600 py-3 transition-colors mt-2 cursor-pointer"
                       >
                         Desvincular Contato
                       </button>
