@@ -14,8 +14,16 @@ export async function POST(req: Request) {
     console.log("Recebido Webhook WhatsApp:", JSON.stringify(body, null, 2));
 
     if (body.event === 'messages.upsert' || body.event === 'MESSAGES_UPSERT') {
-      const msg = body.data?.message || (body.data?.messages && body.data.messages[0]) || body.data;
-      if (!msg || !msg.key) return NextResponse.json({ success: true });
+      let msg = body.data;
+      if (body.data?.messages && body.data.messages[0]) {
+        msg = body.data.messages[0];
+      } else if (body.data?.message && body.data.message.key) {
+        msg = body.data.message;
+      }
+      if (!msg || !msg.key) {
+        console.error("Mensagem sem key:", JSON.stringify(body));
+        return NextResponse.json({ success: true });
+      }
 
       const remoteJid = msg.key.remoteJid;
       if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') {
