@@ -89,33 +89,34 @@ export default function ConversationsPage() {
 
       const { data: chatsData } = await supabase
         .from('whatsapp_chats')
-        .select('*')
+        .select('*, whatsapp_messages(*)')
         .order('last_message_time', { ascending: false });
 
       if (chatsData) {
-        // Fetch all messages for these chats
-        const { data: messagesData } = await supabase
-          .from('whatsapp_messages')
-          .select('*')
-          .order('created_at', { ascending: true });
-
-        const mappedChats = chatsData.map(c => ({
-          id: c.id,
-          remoteJid: c.remote_jid,
-          name: c.name,
-          phone: c.phone,
-          initials: c.name.substring(0, 2).toUpperCase(),
-          color: "bg-[#0f7650]",
-          assignedTo: c.assigned_to,
-          status: c.status,
-          lastMessageTime: new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          messages: (messagesData || []).filter(m => m.chat_id === c.id).map(m => ({
-            id: m.id,
-            sender: m.sender === 'user' ? 'client' : m.sender,
-            text: m.text,
-            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }))
-        }));
+        const mappedChats = chatsData.map(c => {
+          // Sort messages ascending by created_at
+          const sortedMessages = (c.whatsapp_messages || []).sort((a: any, b: any) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          
+          return {
+            id: c.id,
+            remoteJid: c.remote_jid,
+            name: c.name,
+            phone: c.phone,
+            initials: c.name.substring(0, 2).toUpperCase(),
+            color: "bg-[#0f7650]",
+            assignedTo: c.assigned_to,
+            status: c.status,
+            lastMessageTime: new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            messages: sortedMessages.map((m: any) => ({
+              id: m.id,
+              sender: m.sender === 'user' ? 'client' : m.sender,
+              text: m.text,
+              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }))
+          };
+        });
 
         setChats(mappedChats);
       }
@@ -195,14 +196,17 @@ export default function ConversationsPage() {
     const chat = chats.find(c => c.id === activeChatId);
     if (!chat) return;
 
-    // Optimistic UI update
+    // Optimistic UI update + Auto Assign
     const textToSend = messageText;
+    const newAssignedTo = currentUser?.name || chat.assignedTo;
     setMessageText("");
     
     setChats(prev => prev.map(c => {
       if (c.id === activeChatId) {
         return {
           ...c,
+          assignedTo: newAssignedTo,
+          status: newAssignedTo ? "Aberto" : "Em fila",
           lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           messages: [
             ...c.messages,
@@ -224,13 +228,28 @@ export default function ConversationsPage() {
           text: textToSend
         })
       });
+      
+      // Update assigned_to in Supabase
+      if (newAssignedTo !== chat.assignedTo) {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        await supabase
+          .from('whatsapp_chats')
+          .update({ assigned_to: newAssignedTo, status: 'Aberto' })
+          .eq('id', chat.id);
+      }
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("Failed to send message or assign:", error);
     }
   };
 
-  const handleAssignUser = (userName: string | null) => {
+  const handleAssignUser = async (userName: string | null) => {
     if (!activeChatId) return;
+    
+    // Optimistic UI update
     setChats(prev => prev.map(chat => {
       if (chat.id === activeChatId) {
         return {
@@ -242,6 +261,21 @@ export default function ConversationsPage() {
       return chat;
     }));
     setIsAssignDropdownOpen(false);
+    
+    // Update Supabase
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      await supabase
+        .from('whatsapp_chats')
+        .update({ assigned_to: userName, status: userName ? 'Aberto' : 'Em fila' })
+        .eq('id', activeChatId);
+    } catch (error) {
+      console.error("Failed to update assigned user:", error);
+    }
   };
 
   const filteredChats = chats.filter(chat => {
@@ -453,18 +487,18 @@ export default function ConversationsPage() {
                 <div className="relative">
                   <button 
                     onClick={() => setIsAssignDropdownOpen(!isAssignDropdownOpen)}
-                    className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer max-w-[250px]"
                   >
-                    <div className="h-6 w-6 bg-slate-200 rounded-full flex items-center justify-center text-slate-500">
+                    <div className="h-6 w-6 shrink-0 bg-slate-200 rounded-full flex items-center justify-center text-slate-500">
                       <UserIcon className="h-3.5 w-3.5" />
                     </div>
-                    <div className="text-left">
-                      <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none">Responsável</span>
-                      <span className="block text-xs font-bold text-slate-700 leading-none mt-1">
-                        {activeChat.assignedTo ? activeChat.assignedTo.split(" ")[0] : "Atribuir..."}
+                    <div className="text-left flex flex-col justify-center min-w-0">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-tight truncate">Responsável</span>
+                      <span className="text-xs font-bold text-slate-700 leading-tight truncate">
+                        {activeChat.assignedTo ? activeChat.assignedTo : "Atribuir..."}
                       </span>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
                   </button>
                   
                   {isAssignDropdownOpen && (
@@ -478,18 +512,19 @@ export default function ConversationsPage() {
                           Sem responsável (Voltar para fila)
                         </button>
                         {users.map((u, i) => {
-                          const nameParts = u.name ? u.name.split(" ") : u.email.split("@")[0].split(" ");
-                          const shortName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
+                          const fullName = u.name || u.email.split("@")[0];
+                          const nameParts = fullName.split(" ");
+                          const initials = nameParts.length > 1 ? `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}` : fullName.charAt(0);
                           return (
                             <button 
                               key={i}
-                              onClick={() => handleAssignUser(u.name || shortName)}
-                              className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer"
+                              onClick={() => handleAssignUser(fullName)}
+                              className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer truncate"
                             >
-                              <div className="h-5 w-5 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-[10px]">
-                                {shortName.charAt(0).toUpperCase()}
+                              <div className="h-5 w-5 shrink-0 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-[10px]">
+                                {initials.toUpperCase()}
                               </div>
-                              {u.name || shortName}
+                              <span className="truncate">{fullName}</span>
                             </button>
                           );
                         })}
