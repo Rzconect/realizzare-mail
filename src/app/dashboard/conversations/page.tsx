@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot } from "lucide-react";
+import Link from "next/link";
+import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight } from "lucide-react";
+import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
 
 export default function ConversationsPage() {
   const searchParams = useSearchParams();
@@ -22,6 +24,10 @@ export default function ConversationsPage() {
   const [filterAssignedTo, setFilterAssignedTo] = useState<string | null>(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatPhone, setNewChatPhone] = useState("");
+  
+  const [showContactDetails, setShowContactDetails] = useState(false);
+  const [linkedContacts, setLinkedContacts] = useState<Record<string, string>>({}); // chatId -> contact email or ID
+  const [searchEmail, setSearchEmail] = useState("");
 
   const [chats, setChats] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -35,6 +41,12 @@ export default function ConversationsPage() {
     // }
 
     const loadUsers = () => {
+      // Load linked contacts
+      const storedContacts = localStorage.getItem("realizzare_chat_contacts");
+      if (storedContacts) {
+        try { setLinkedContacts(JSON.parse(storedContacts)); } catch (e) {}
+      }
+
       // Load users
       const storedUsers = localStorage.getItem("realizzare_auth_users");
       if (storedUsers) {
@@ -168,6 +180,59 @@ export default function ConversationsPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeChatId, activeChatMessagesLength]);
+  
+  // Auto-link logic when opening a chat
+  useEffect(() => {
+    if (!activeChatId || !currentActiveChat) return;
+    
+    // If not already linked, try to match by phone
+    if (!linkedContacts[activeChatId]) {
+      const chatPhoneClean = currentActiveChat.phone.replace(/[^\d]/g, '');
+      
+      let foundContactId = null;
+      for (const [cId, profile] of Object.entries(mockProfileData)) {
+        const profilePhoneClean = profile.phone.replace(/[^\d]/g, '');
+        // Check if phone ends with the same 8-9 digits to handle country codes
+        if (profilePhoneClean.length > 8 && chatPhoneClean.endsWith(profilePhoneClean.slice(-8))) {
+          foundContactId = cId;
+          break;
+        }
+      }
+      
+      if (foundContactId) {
+        setLinkedContacts(prev => {
+          const next = { ...prev, [activeChatId]: foundContactId };
+          localStorage.setItem("realizzare_chat_contacts", JSON.stringify(next));
+          return next;
+        });
+      }
+    }
+  }, [activeChatId, currentActiveChat, linkedContacts]);
+
+  const handleManualLink = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchEmail.trim() || !activeChatId) return;
+    
+    // Search in mockProfileData by email (case insensitive)
+    let foundContactId = null;
+    for (const [cId, profile] of Object.entries(mockProfileData)) {
+      if (profile.email.toLowerCase() === searchEmail.toLowerCase().trim()) {
+        foundContactId = cId;
+        break;
+      }
+    }
+    
+    if (foundContactId) {
+      setLinkedContacts(prev => {
+        const next = { ...prev, [activeChatId]: foundContactId };
+        localStorage.setItem("realizzare_chat_contacts", JSON.stringify(next));
+        return next;
+      });
+      setSearchEmail("");
+    } else {
+      alert("Nenhum contato encontrado com este e-mail.");
+    }
+  };
 
   if (!isConnected) {
     return (
@@ -462,11 +527,14 @@ export default function ConversationsPage() {
         </div>
       </div>
 
-      {/* MAIN CHAT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#EFEAE2]">
+      {/* MAIN CHAT AREA CONTAINER */}
+      <div className="flex-1 flex min-w-0 bg-[#EFEAE2]">
         
-        {activeChat ? (
-          <>
+        {/* CHAT COLUMN */}
+        <div className="flex-1 flex flex-col min-w-0">
+          
+          {activeChat ? (
+            <>
             {/* Header */}
             <div className="h-[68px] flex items-center justify-between px-4 bg-slate-50 border-b border-slate-200 shadow-sm z-10 shrink-0">
               <div className="flex items-center gap-3">
@@ -535,7 +603,10 @@ export default function ConversationsPage() {
 
                 <div className="h-6 w-px bg-slate-200 mx-1"></div>
                 
-                <button className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                <button 
+                  onClick={() => setShowContactDetails(!showContactDetails)}
+                  className={`flex items-center gap-1.5 font-bold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${showContactDetails ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'}`}
+                >
                   Ver detalhes do contato
                 </button>
                 <div className="relative">
@@ -668,14 +739,161 @@ export default function ConversationsPage() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50">
-            <div className="h-24 w-24 bg-slate-200/50 rounded-full flex items-center justify-center mb-6">
-              <MessageSquare className="h-10 w-10 text-slate-400" />
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50">
+              <div className="h-24 w-24 bg-slate-200/50 rounded-full flex items-center justify-center mb-6">
+                <MessageSquare className="h-10 w-10 text-slate-400" />
+              </div>
+              <h2 className="text-2xl font-light text-slate-700 mb-2">WhatsApp Realizzare</h2>
+              <p className="text-sm text-slate-500 max-w-sm">
+                Selecione uma conversa na lista ao lado ou busque por um contato para iniciar o atendimento.
+              </p>
             </div>
-            <h2 className="text-2xl font-light text-slate-700 mb-2">WhatsApp Realizzare</h2>
-            <p className="text-sm text-slate-500 max-w-sm">
-              Selecione uma conversa na lista ao lado ou busque por um contato para iniciar o atendimento.
-            </p>
+          )}
+        </div>
+
+        {/* RIGHT CONTACT PANEL */}
+        {showContactDetails && activeChat && (
+          <div className="w-80 bg-slate-50 border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+            <div className="h-[68px] flex items-center justify-between px-4 border-b border-slate-200 shrink-0 sticky top-0 bg-slate-50 z-10">
+              <h3 className="font-bold text-slate-800 text-sm">Detalhes do Contato</h3>
+              <button onClick={() => setShowContactDetails(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-6">
+              {linkedContacts[activeChat.id] && mockProfileData[linkedContacts[activeChat.id]] ? (
+                (() => {
+                  const profile = mockProfileData[linkedContacts[activeChat.id]];
+                  return (
+                    <>
+                      {/* Profile Header */}
+                      <div className="flex flex-col items-center text-center">
+                        <div className="h-16 w-16 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xl font-bold mb-3">
+                          {profile.first_name.charAt(0)}{profile.last_name.charAt(0)}
+                        </div>
+                        <h4 className="font-bold text-slate-800 text-base">{profile.first_name} {profile.last_name}</h4>
+                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                          <MapPin className="h-3 w-3" /> {profile.location.city}, {profile.location.state}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                          <Mail className="h-3 w-3" /> {profile.email}
+                        </div>
+                      </div>
+                      
+                      {/* Cursos */}
+                      {profile.enrollments && profile.enrollments.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <BookOpen className="h-3.5 w-3.5 text-slate-400" /> Cursos
+                          </h5>
+                          <div className="space-y-2">
+                            {profile.enrollments.slice(0, 3).map((e, i) => (
+                              <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm">
+                                <p className="text-xs font-bold text-slate-700 leading-tight">{e.course_name}</p>
+                                <div className="flex items-center justify-between mt-2">
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${e.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {e.status === 'completed' ? 'Concluído' : 'Ativo'}
+                                  </span>
+                                  <span className="text-[10px] font-medium text-slate-500">{e.progress}% concluído</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Transações */}
+                      {profile.purchases && profile.purchases.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <DollarSign className="h-3.5 w-3.5 text-slate-400" /> Transações
+                          </h5>
+                          <div className="space-y-2">
+                            {profile.purchases.slice(0, 3).map((p, i) => (
+                              <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-bold text-slate-700 leading-tight truncate">{p.product_name}</p>
+                                  <p className="text-[9px] text-slate-400 mt-0.5">{formatTransactionDate(p.paid_at, p.product_type)}</p>
+                                </div>
+                                <span className="text-xs font-bold text-emerald-600 shrink-0">R$ {p.amount.toFixed(2).replace('.', ',')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Timeline */}
+                      {profile.timeline && profile.timeline.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5 text-slate-400" /> Linha do Tempo
+                          </h5>
+                          <div className="relative border-l border-slate-200 ml-2 space-y-4 pb-2">
+                            {profile.timeline.slice(0, 3).map((t, i) => (
+                              <div key={i} className="relative pl-4">
+                                <div className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-white border-2 border-indigo-500" />
+                                <p className="text-xs font-bold text-slate-700">{t.label}</p>
+                                <p className="text-[10px] text-slate-500 leading-tight mt-0.5">{t.details}</p>
+                                <p className="text-[9px] text-slate-400 mt-1">{formatTimelineTimestamp(t.timestamp)}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {profile.timeline.length > 3 && (
+                            <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} className="block text-center mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+                              Ver linha do tempo completa <ExternalLink className="h-3 w-3 inline-block ml-0.5 -mt-0.5" />
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                      
+                      <button 
+                        onClick={() => {
+                          setLinkedContacts(prev => {
+                            const next = { ...prev };
+                            delete next[activeChat.id];
+                            localStorage.setItem("realizzare_chat_contacts", JSON.stringify(next));
+                            return next;
+                          });
+                        }}
+                        className="w-full text-xs font-bold text-slate-500 hover:text-red-600 py-2 transition-colors mt-2"
+                      >
+                        Desvincular Contato
+                      </button>
+                    </>
+                  );
+                })()
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center py-6">
+                  <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <UserIcon className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-sm mb-1">Contato não vinculado</h4>
+                  <p className="text-xs text-slate-500 mb-6">
+                    Não encontramos um perfil com o número +{activeChat.phone}. Digite o e-mail do aluno para buscar na base de dados.
+                  </p>
+                  
+                  <form onSubmit={handleManualLink} className="w-full relative">
+                    <input 
+                      type="email"
+                      required
+                      placeholder="E-mail do contato..."
+                      value={searchEmail}
+                      onChange={(e) => setSearchEmail(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 shadow-sm"
+                    />
+                    <Search className="h-4 w-4 text-slate-400 absolute left-3 top-2.5" />
+                    <button 
+                      type="submit"
+                      disabled={!searchEmail.trim()}
+                      className="absolute right-1.5 top-1.5 bottom-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-lg px-2 flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -136,7 +136,7 @@ export const mockProfileData: Record<string, {
   }
 };
 
-function formatTransactionDate(paidAt: string, productType?: string): string {
+export function formatTransactionDate(paidAt: string, productType?: string): string {
   if (!paidAt) return "Data não informada";
 
   let method = "";
@@ -180,7 +180,7 @@ function formatTransactionDate(paidAt: string, productType?: string): string {
   return `${paidAt}${method}`;
 }
 
-function formatTimelineTimestamp(ts: string): string {
+export function formatTimelineTimestamp(ts: string): string {
   if (!ts) return "";
   try {
     const d = new Date(ts);
