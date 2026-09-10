@@ -207,22 +207,20 @@ export default function SettingsPage() {
       });
 
       const data = await response.json();
+      const errorMessage = data.message || (data.response?.message && data.response.message[0]) || "";
       
-      if (!response.ok) {
-        if (data.message && data.message.includes("already exists")) {
-          const connectRes = await fetch("https://evolution-api-production-8158.up.railway.app/instance/connect/RealizzareCRM", {
-            headers: { "apikey": "RealizzareSenhaSecreta2026" }
-          });
-          const connectData = await connectRes.json();
-          if (connectData.base64) {
-            setEvoQrCode(connectData.base64);
-          } else if (connectData.instance?.state === "open") {
-            setEvoStatus("Conectado");
-            localStorage.setItem("realizzare_wa_connected", "true");
-            alert("O WhatsApp já está conectado com sucesso!");
-          } else {
-             setEvoError("Não foi possível carregar o QR Code. Tente reiniciar a instância.");
-          }
+      if (errorMessage.includes("already in use") || errorMessage.includes("already exists")) {
+        const connectRes = await fetch("https://evolution-api-production-8158.up.railway.app/instance/connect/RealizzareCRM", {
+          headers: { "apikey": "RealizzareSenhaSecreta2026" }
+        });
+        const connectData = await connectRes.json();
+        
+        if (connectData.base64) {
+          setEvoQrCode(connectData.base64);
+          setEvoStatus("Desconectado");
+        } else if (connectData.instance?.state === "open") {
+          setEvoStatus("Conectado");
+          setEvoQrCode(null);
         } else {
           throw new Error(data.message || "Erro ao gerar QR Code");
         }
