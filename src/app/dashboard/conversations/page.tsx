@@ -23,54 +23,24 @@ export default function ConversationsPage() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatPhone, setNewChatPhone] = useState("");
 
-  // Mock initial chats
-  const [chats, setChats] = useState<any[]>([
-    {
-      id: "c1",
-      name: "Gabriela Vitória Miranda da Cruz",
-      phone: "5531999285395",
-      initials: "GC",
-      color: "bg-[#0f7650]",
-      assignedTo: "Leonardo Christian",
-      status: "Aberto",
-      lastMessageTime: "10:45",
-      messages: [
-        { id: "m1", sender: "bot", text: "Olá! Sou o assistente virtual da Realizzare. Como posso te ajudar hoje?", time: "10:40" },
-        { id: "m2", sender: "client", text: "Tenho uma dúvida sobre o certificado do curso de Libras.", time: "10:42" },
-        { id: "m3", sender: "agent", text: "Olá Gabriela, tudo bem? Aqui é o Leonardo. Qual seria a sua dúvida?", time: "10:45" }
-      ]
-    },
-    {
-      id: "c2",
-      name: "Nilton Soares da Silva",
-      phone: "5511988887777",
-      initials: "NS",
-      color: "bg-blue-600",
-      assignedTo: null,
-      status: "Em fila",
-      lastMessageTime: "09:30",
-      messages: [
-        { id: "m1", sender: "client", text: "Gostaria de saber se o NR10 já está liberado.", time: "09:30" }
-      ]
-    }
-  ]);
-
+  const [chats, setChats] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
   useEffect(() => {
     // Check connection
     const connected = localStorage.getItem("realizzare_wa_connected");
-    if (connected !== "true") {
-      setIsConnected(false);
-    }
+    // For now we assume connected since we are testing Evolution API directly
+    // if (connected !== "true") {
+    //   setIsConnected(false);
+    // }
 
-    // Load users
+    // Load users (mock current user for now)
     const storedUsers = localStorage.getItem("realizzare_auth_users");
     if (storedUsers) {
       try {
         const parsed = JSON.parse(storedUsers);
         setUsers(parsed);
-        setCurrentUser(parsed[0]); // mock current user as first user
+        setCurrentUser(parsed[0]); 
       } catch (e) {}
     } else {
       const mockUser = { name: "Leonardo Christian", email: "leonardo@realizzare.com.br" };
@@ -80,33 +50,81 @@ export default function ConversationsPage() {
   }, []);
 
   useEffect(() => {
+    // Fetch initial chats
+    const fetchChats = async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { data: chatsData } = await supabase
+        .from('whatsapp_chats')
+        .select('*')
+        .order('last_message_time', { ascending: false });
+
+      if (chatsData) {
+        // Fetch all messages for these chats
+        const { data: messagesData } = await supabase
+          .from('whatsapp_messages')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        const mappedChats = chatsData.map(c => ({
+          id: c.id,
+          remoteJid: c.remote_jid,
+          name: c.name,
+          phone: c.phone,
+          initials: c.name.substring(0, 2).toUpperCase(),
+          color: "bg-[#0f7650]",
+          assignedTo: c.assigned_to,
+          status: c.status,
+          lastMessageTime: new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          messages: (messagesData || []).filter(m => m.chat_id === c.id).map(m => ({
+            id: m.id,
+            sender: m.sender === 'user' ? 'client' : m.sender,
+            text: m.text,
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }))
+        }));
+
+        setChats(mappedChats);
+      }
+
+      // Subscribe to real-time changes
+      const channel = supabase.channel('whatsapp-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_messages' }, payload => {
+          fetchChats(); // Naive refresh on new message
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_chats' }, payload => {
+          fetchChats();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    fetchChats();
+  }, []);
+
+  useEffect(() => {
     // Handle URL param for new conversation
     const phoneToOpen = searchParams.get("phone");
-    if (phoneToOpen) {
+    if (phoneToOpen && chats.length > 0) {
       const existingChat = chats.find(c => c.phone === phoneToOpen);
       if (existingChat) {
         setActiveChatId(existingChat.id);
       } else {
-        // Create new chat
-        const newChat = {
-          id: "c" + Date.now(),
-          name: "Novo Contato",
-          phone: phoneToOpen,
-          initials: "NC",
-          color: "bg-slate-500",
-          assignedTo: currentUser?.name || "Leonardo Christian",
-          status: "Aberto",
-          lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          messages: []
-        };
-        setChats([newChat, ...chats]);
-        setActiveChatId(newChat.id);
+        // We shouldn't create mock chats in real DB directly from URL unless they send a message
+        console.log("Chat not found for phone:", phoneToOpen);
       }
       
-      // Clean URL silently
-      router.replace("/dashboard/conversations");
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
     }
-  }, [searchParams, chats, currentUser, router]);
+  }, [searchParams, chats]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -132,24 +150,45 @@ export default function ConversationsPage() {
     );
   }
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageText.trim() || !activeChatId) return;
 
-    setChats(prev => prev.map(chat => {
-      if (chat.id === activeChatId) {
+    const chat = chats.find(c => c.id === activeChatId);
+    if (!chat) return;
+
+    // Optimistic UI update
+    const textToSend = messageText;
+    setMessageText("");
+    
+    setChats(prev => prev.map(c => {
+      if (c.id === activeChatId) {
         return {
-          ...chat,
+          ...c,
           lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           messages: [
-            ...chat.messages,
-            { id: "m" + Date.now(), sender: "agent", text: messageText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+            ...c.messages,
+            { id: "optimistic" + Date.now(), sender: "agent", text: textToSend, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
           ]
         };
       }
-      return chat;
+      return c;
     }));
-    setMessageText("");
+
+    // Call real API
+    try {
+      await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: chat.id,
+          remoteJid: chat.remoteJid,
+          text: textToSend
+        })
+      });
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   const handleAssignUser = (userName: string | null) => {
