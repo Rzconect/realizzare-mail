@@ -210,35 +210,51 @@ export default function SettingsPage() {
       const errorMessage = data.message || (data.response?.message && data.response.message[0]) || "";
       
       if (errorMessage.includes("already in use") || errorMessage.includes("already exists")) {
-        const connectRes = await fetch("https://evolution-api-production-8158.up.railway.app/instance/connect/RealizzareCRM", {
-          headers: { "apikey": "RealizzareSenhaSecreta2026" }
-        });
-        const connectData = await connectRes.json();
-        
-        if (connectData.base64) {
-          setEvoQrCode(connectData.base64);
-          setEvoStatus("Desconectado");
-        } else if (connectData.instance?.state === "open") {
-          setEvoStatus("Conectado");
-          setEvoQrCode("");
-        } else {
-          throw new Error(data.message || "Erro ao gerar QR Code");
-        }
+        checkEvoConnection();
       } else {
         if (data.qrcode && data.qrcode.base64) {
           setEvoQrCode(data.qrcode.base64);
-        } else if (data.hash && data.hash.qrcode) {
-          setEvoQrCode(data.hash.qrcode);
-        } else if (data.base64) {
-          setEvoQrCode(data.base64);
+          setEvoStatus("Aguardando QR Code");
+        } else {
+          setEvoError("Erro desconhecido ao gerar QR Code");
+          console.error(data);
         }
       }
-    } catch (err: any) {
-      setEvoError(err.message || "Erro de conexão com o servidor do WhatsApp.");
+    } catch (error) {
+      console.error(error);
+      setEvoError("Erro de rede ao conectar com a Evolution API.");
     } finally {
       setIsEvoLoading(false);
     }
   };
+
+  const checkEvoConnection = async () => {
+    try {
+      const connectRes = await fetch("https://evolution-api-production-8158.up.railway.app/instance/connect/RealizzareCRM", {
+        method: "GET",
+        headers: { "apikey": "RealizzareSenhaSecreta2026" }
+      });
+      const connectData = await connectRes.json();
+      
+      if (connectData.base64) {
+        setEvoQrCode(connectData.base64);
+        setEvoStatus("Desconectado");
+      } else if (connectData.instance?.state === "open") {
+        setEvoStatus("Conectado");
+        setEvoQrCode("");
+      } else {
+        setEvoError(connectData.message || "Erro ao verificar conexão");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "whatsapp") {
+      checkEvoConnection();
+    }
+  }, [activeTab]);
 
   // Invite user confirmation states
   const [showInviteConfirmModal, setShowInviteConfirmModal] = useState(false);
