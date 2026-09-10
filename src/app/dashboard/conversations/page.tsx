@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight } from "lucide-react";
 import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ConversationsPage() {
   const searchParams = useSearchParams();
@@ -28,7 +29,10 @@ export default function ConversationsPage() {
   const [showContactDetails, setShowContactDetails] = useState(false);
   const [linkedContacts, setLinkedContacts] = useState<Record<string, string>>({}); // chatId -> contact email or ID
   const [searchEmail, setSearchEmail] = useState("");
-
+  const [autocompleteResults, setAutocompleteResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [cachedProfiles, setCachedProfiles] = useState<Record<string, any>>({});
+  
   const [chats, setChats] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
@@ -187,11 +191,11 @@ export default function ConversationsPage() {
     
     // If not already linked, try to match by phone
     if (!linkedContacts[activeChatId]) {
-      const chatPhoneClean = currentActiveChat.phone.replace(/[^\d]/g, '');
+      const chatPhoneClean = (currentActiveChat.phone || "").replace(/[^\d]/g, '');
       
       let foundContactId = null;
       for (const [cId, profile] of Object.entries(mockProfileData)) {
-        const profilePhoneClean = profile.phone.replace(/[^\d]/g, '');
+        const profilePhoneClean = ((profile as any).phone || "").replace(/[^\d]/g, '');
         // Check if phone ends with the same 8-9 digits to handle country codes
         if (profilePhoneClean.length > 8 && chatPhoneClean.endsWith(profilePhoneClean.slice(-8))) {
           foundContactId = cId;
@@ -209,28 +213,154 @@ export default function ConversationsPage() {
     }
   }, [activeChatId, currentActiveChat, linkedContacts]);
 
-  const handleManualLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchEmail.trim() || !activeChatId) return;
-    
-    // Search in mockProfileData by email (case insensitive)
-    let foundContactId = null;
-    for (const [cId, profile] of Object.entries(mockProfileData)) {
-      if (profile.email.toLowerCase() === searchEmail.toLowerCase().trim()) {
-        foundContactId = cId;
-        break;
+  const loadProfileForId = async (cId: string) => {
+    if (mockProfileData[cId] || cachedProfiles[cId]) return;
+
+    let localProfile = null;
+    const storedContactsRaw = localStorage.getItem("realizzare_contacts");
+    if (storedContactsRaw) {
+      try {
+        const list = JSON.parse(storedContactsRaw);
+        const match = list.find((c: any) => c.id === cId);
+        if (match) {
+          localProfile = {
+            first_name: match.first_name || "",
+            last_name: match.last_name || "",
+            email: match.email || "",
+            phone: match.phone || "",
+            location: { city: match.city || "", state: match.state || "" },
+            enrollments: [],
+            purchases: [],
+            timeline: []
+          };
+        }
+      } catch (e) {}
+    }
+
+    if (!localProfile) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.from('contacts').select(`
+          id, first_name, last_name, email, phone, city, state,
+          enrollments ( status, progress, courses ( name ) ),
+          purchases ( product_name, product_type, amount, paid_at, status )
+        `).eq('id', cId).single();
+        
+        if (data && !error) {
+          localProfile = {
+            id: data.id,
+            first_name: data.first_name || "",
+            last_name: data.last_name || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            location: { city: data.city || "", state: data.state || "" },
+            enrollments: data.enrollments?.map((e: any) => ({
+              course_name: e.courses?.name || "Curso",
+              status: e.status,
+              progress: parseFloat(e.progress || 0)
+            })) || [],
+            purchases: data.purchases?.map((p: any) => ({
+              product_name: p.product_name || "Produto",
+              product_type: p.product_type || "curso",
+              amount: parseFloat(p.amount || 0),
+              paid_at: p.paid_at,
+              status: p.status
+            })) || [],
+            timeline: []
+          };
+        }
+      } catch (err) {
+        console.error(err);
       }
     }
-    
-    if (foundContactId) {
-      setLinkedContacts(prev => {
-        const next = { ...prev, [activeChatId]: foundContactId };
-        localStorage.setItem("realizzare_chat_contacts", JSON.stringify(next));
-        return next;
-      });
-      setSearchEmail("");
-    } else {
-      alert("Nenhum contato encontrado com este e-mail.");
+
+    if (localProfile) {
+      setCachedProfiles(prev => ({ ...prev, [cId]: localProfile }));
+    }
+  };
+
+  // Watch for linkedContacts changes and load missing profiles
+  useEffect(() => {
+    if (activeChatId && linkedContacts[activeChatId]) {
+      loadProfileForId(linkedContacts[activeChatId]);
+    }
+  }, [activeChatId, linkedContacts]);
+
+  const handleEmailSearch = async (val: string) => {
+    setSearchEmail(val);
+    if (val.trim().length < 3) {
+      setAutocompleteResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const q = val.toLowerCase().trim();
+      const results: any[] = [];
+      const seenIds = new Set<string>();
+
+      // 1. mockProfileData
+      for (const [cId, profile] of Object.entries(mockProfileData)) {
+        const pEmail = (profile as any).email || "";
+        const pFirst = (profile as any).first_name || "";
+        const pLast = (profile as any).last_name || "";
+        if (pEmail.toLowerCase().includes(q) || pFirst.toLowerCase().includes(q)) {
+          if (!seenIds.has(cId)) {
+             seenIds.add(cId);
+             results.push({ id: cId, email: pEmail, name: `${pFirst} ${pLast}`.trim(), source: 'mock' });
+          }
+        }
+      }
+
+      // 2. localStorage
+      const storedContactsRaw = localStorage.getItem("realizzare_contacts");
+      if (storedContactsRaw) {
+        try {
+          const list = JSON.parse(storedContactsRaw);
+          list.forEach((c: any) => {
+            if (c.email?.toLowerCase().includes(q) || c.first_name?.toLowerCase().includes(q)) {
+              if (!seenIds.has(c.id)) {
+                seenIds.add(c.id);
+                results.push({ id: c.id, email: c.email, name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), source: 'local' });
+              }
+            }
+          });
+        } catch (e) {}
+      }
+
+      // 3. Supabase
+      const supabase = createClient();
+      const { data, error } = await supabase.from('contacts').select('id, email, first_name, last_name').ilike('email', `%${q}%`).limit(5);
+      if (data && !error) {
+        data.forEach((c: any) => {
+          if (!seenIds.has(c.id)) {
+            seenIds.add(c.id);
+            results.push({ id: c.id, email: c.email, name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), source: 'db' });
+          }
+        });
+      }
+      setAutocompleteResults(results.slice(0, 5));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectAutocomplete = (cId: string) => {
+    if (!activeChatId) return;
+    setLinkedContacts(prev => {
+      const next = { ...prev, [activeChatId]: cId };
+      localStorage.setItem("realizzare_chat_contacts", JSON.stringify(next));
+      return next;
+    });
+    setSearchEmail("");
+    setAutocompleteResults([]);
+  };
+
+  const handleManualLink = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (autocompleteResults.length > 0) {
+      handleSelectAutocomplete(autocompleteResults[0].id);
     }
   };
 
@@ -762,19 +892,19 @@ export default function ConversationsPage() {
             </div>
             
             <div className="p-4 space-y-6">
-              {linkedContacts[activeChat.id] && mockProfileData[linkedContacts[activeChat.id]] ? (
+              {linkedContacts[activeChat.id] && (mockProfileData[linkedContacts[activeChat.id]] || cachedProfiles[linkedContacts[activeChat.id]]) ? (
                 (() => {
-                  const profile = mockProfileData[linkedContacts[activeChat.id]];
+                  const profile = mockProfileData[linkedContacts[activeChat.id]] || cachedProfiles[linkedContacts[activeChat.id]];
                   return (
                     <>
                       {/* Profile Header */}
                       <div className="flex flex-col items-center text-center">
                         <div className="h-16 w-16 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xl font-bold mb-3">
-                          {profile.first_name.charAt(0)}{profile.last_name.charAt(0)}
+                          {profile.first_name?.charAt(0) || ""}{profile.last_name?.charAt(0) || ""}
                         </div>
                         <h4 className="font-bold text-slate-800 text-base">{profile.first_name} {profile.last_name}</h4>
                         <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
-                          <MapPin className="h-3 w-3" /> {profile.location.city}, {profile.location.state}
+                          <MapPin className="h-3 w-3" /> {profile.location?.city || "-"}, {profile.location?.state || "-"}
                         </div>
                         <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
                           <Mail className="h-3 w-3" /> {profile.email}
@@ -788,7 +918,7 @@ export default function ConversationsPage() {
                             <BookOpen className="h-3.5 w-3.5 text-slate-400" /> Cursos
                           </h5>
                           <div className="space-y-2">
-                            {profile.enrollments.slice(0, 3).map((e, i) => (
+                            {profile.enrollments.slice(0, 3).map((e: any, i: number) => (
                               <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm">
                                 <p className="text-xs font-bold text-slate-700 leading-tight">{e.course_name}</p>
                                 <div className="flex items-center justify-between mt-2">
@@ -810,7 +940,7 @@ export default function ConversationsPage() {
                             <DollarSign className="h-3.5 w-3.5 text-slate-400" /> Transações
                           </h5>
                           <div className="space-y-2">
-                            {profile.purchases.slice(0, 3).map((p, i) => (
+                            {profile.purchases.slice(0, 3).map((p: any, i: number) => (
                               <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex items-center justify-between gap-2">
                                 <div className="min-w-0">
                                   <p className="text-[10px] font-bold text-slate-700 leading-tight truncate">{p.product_name}</p>
@@ -830,7 +960,7 @@ export default function ConversationsPage() {
                             <Clock className="h-3.5 w-3.5 text-slate-400" /> Linha do Tempo
                           </h5>
                           <div className="relative border-l border-slate-200 ml-2 space-y-4 pb-2">
-                            {profile.timeline.slice(0, 3).map((t, i) => (
+                            {profile.timeline.slice(0, 3).map((t: any, i: number) => (
                               <div key={i} className="relative pl-4">
                                 <div className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-white border-2 border-indigo-500" />
                                 <p className="text-xs font-bold text-slate-700">{t.label}</p>
@@ -839,13 +969,12 @@ export default function ConversationsPage() {
                               </div>
                             ))}
                           </div>
-                          {profile.timeline.length > 3 && (
-                            <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} className="block text-center mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
-                              Ver linha do tempo completa <ExternalLink className="h-3 w-3 inline-block ml-0.5 -mt-0.5" />
-                            </Link>
-                          )}
                         </div>
                       )}
+
+                      <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} className="block text-center mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+                        Ver histórico completo do CRM <ExternalLink className="h-3 w-3 inline-block ml-0.5 -mt-0.5" />
+                      </Link>
                       
                       <button 
                         onClick={() => {
@@ -856,7 +985,7 @@ export default function ConversationsPage() {
                             return next;
                           });
                         }}
-                        className="w-full text-xs font-bold text-slate-500 hover:text-red-600 py-2 transition-colors mt-2"
+                        className="w-full text-xs font-bold text-slate-500 hover:text-red-600 py-2 transition-colors mt-2 cursor-pointer"
                       >
                         Desvincular Contato
                       </button>
@@ -873,24 +1002,44 @@ export default function ConversationsPage() {
                     Não encontramos um perfil com o número +{activeChat.phone}. Digite o e-mail do aluno para buscar na base de dados.
                   </p>
                   
-                  <form onSubmit={handleManualLink} className="w-full relative">
-                    <input 
-                      type="email"
-                      required
-                      placeholder="E-mail do contato..."
-                      value={searchEmail}
-                      onChange={(e) => setSearchEmail(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 shadow-sm"
-                    />
-                    <Search className="h-4 w-4 text-slate-400 absolute left-3 top-2.5" />
-                    <button 
-                      type="submit"
-                      disabled={!searchEmail.trim()}
-                      className="absolute right-1.5 top-1.5 bottom-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-lg px-2 flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </form>
+                  <div className="w-full relative">
+                    <form onSubmit={handleManualLink} className="w-full relative">
+                      <input 
+                        type="email"
+                        required
+                        placeholder="E-mail do contato..."
+                        value={searchEmail}
+                        onChange={(e) => handleEmailSearch(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 shadow-sm"
+                      />
+                      <Search className="h-4 w-4 text-slate-400 absolute left-3 top-2.5" />
+                      {isSearching && (
+                        <div className="absolute right-10 top-2.5 h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                      <button 
+                        type="submit"
+                        disabled={!searchEmail.trim() || autocompleteResults.length === 0}
+                        className="absolute right-1.5 top-1.5 bottom-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-lg px-2 flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </form>
+                    
+                    {autocompleteResults.length > 0 && searchEmail.trim().length >= 3 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                        {autocompleteResults.map((res, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSelectAutocomplete(res.id)}
+                            className="w-full text-left px-4 py-2 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors"
+                          >
+                            <p className="text-xs font-bold text-slate-700 truncate">{res.name || "Sem Nome"}</p>
+                            <p className="text-[10px] text-slate-500 truncate">{res.email}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
