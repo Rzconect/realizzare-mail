@@ -898,79 +898,112 @@ export default function ConversationsPage() {
                   return (
                     <>
                       {/* Profile Header */}
-                      <div className="flex flex-col items-center text-center">
-                        <div className="h-16 w-16 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xl font-bold mb-3">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="h-10 w-10 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
                           {profile.first_name?.charAt(0) || ""}{profile.last_name?.charAt(0) || ""}
                         </div>
-                        <h4 className="font-bold text-slate-800 text-base">{profile.first_name} {profile.last_name}</h4>
-                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
-                          <MapPin className="h-3 w-3" /> {profile.location?.city || "-"}, {profile.location?.state || "-"}
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
-                          <Mail className="h-3 w-3" /> {profile.email}
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-slate-800 text-sm truncate">{profile.first_name} {profile.last_name}</h4>
+                          <p className="text-[10px] text-slate-500 truncate">{profile.email}</p>
                         </div>
                       </div>
                       
-                      {/* Cursos */}
-                      {profile.enrollments && profile.enrollments.length > 0 && (
+                      <div className="space-y-4">
+                        {/* Dados do Aluno */}
                         <div>
-                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1">
-                            <BookOpen className="h-3.5 w-3.5 text-slate-400" /> Cursos
+                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
+                            <UserIcon className="h-3 w-3 text-slate-400" /> Informações Pessoais
                           </h5>
-                          <div className="space-y-2">
-                            {profile.enrollments.slice(0, 3).map((e: any, i: number) => (
-                              <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm">
-                                <p className="text-xs font-bold text-slate-700 leading-tight">{e.course_name}</p>
-                                <div className="flex items-center justify-between mt-2">
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${e.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {e.status === 'completed' ? 'Concluído' : 'Ativo'}
-                                  </span>
-                                  <span className="text-[10px] font-medium text-slate-500">{e.progress}% concluído</span>
+                          <div className="space-y-1.5 text-xs">
+                             <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-[10px]">Telefone:</span>
+                                <span className="font-medium text-slate-700 text-right text-[10px]">{profile.phone || "Não informado"}</span>
+                             </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-[10px]">E-mail:</span>
+                                <span className="font-medium text-slate-700 text-right text-[10px] truncate max-w-[150px]" title={profile.email}>{profile.email || "Não informado"}</span>
+                             </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-[10px]">Cidade:</span>
+                                <span className="font-medium text-slate-700 text-right text-[10px]">{profile.location?.city || "Não informada"}</span>
+                             </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-[10px]">Estado:</span>
+                                <span className="font-medium text-slate-700 text-right text-[10px]">{profile.location?.state || "-"}</span>
+                             </div>
+                          </div>
+                        </div>
+
+                        {/* Cursos */}
+                        <div>
+                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
+                            <BookOpen className="h-3 w-3 text-slate-400" /> Cursos Matriculados
+                          </h5>
+                          {profile.enrollments && profile.enrollments.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {profile.enrollments.slice(0, 3).map((e: any, i: number) => (
+                                <div key={i} className="bg-white border border-slate-200 rounded p-2 shadow-sm flex flex-col gap-1">
+                                   <span className="text-[10px] font-bold text-slate-700 leading-tight truncate">{e.course_name}</span>
+                                   <div className="flex items-center justify-between">
+                                     <span className="text-slate-500 text-[9px]">Progresso: <strong className="text-slate-700">{e.progress}%</strong></span>
+                                     <span className={`text-[8px] px-1 py-0.5 rounded font-bold uppercase ${e.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                       {e.status === 'completed' ? 'Concluído' : 'Ativo'}
+                                     </span>
+                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic text-center py-1.5 bg-slate-100/50 rounded border border-slate-200/50">Nenhuma matrícula encontrada.</p>
+                          )}
                         </div>
-                      )}
-                      
-                      {/* Transações */}
-                      {profile.purchases && profile.purchases.length > 0 && (
+                        
+                        {/* Transações */}
                         <div>
-                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1">
-                            <DollarSign className="h-3.5 w-3.5 text-slate-400" /> Transações
+                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
+                            <DollarSign className="h-3 w-3 text-slate-400" /> Últimas Transações
                           </h5>
-                          <div className="space-y-2">
-                            {profile.purchases.slice(0, 3).map((p: any, i: number) => (
-                              <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex items-center justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-[10px] font-bold text-slate-700 leading-tight truncate">{p.product_name}</p>
-                                  <p className="text-[9px] text-slate-400 mt-0.5">{formatTransactionDate(p.paid_at, p.product_type)}</p>
+                          {profile.purchases && profile.purchases.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {profile.purchases.slice(0, 3).map((p: any, i: number) => (
+                                <div key={i} className="bg-white border border-slate-200 rounded p-2 shadow-sm flex justify-between items-center gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] font-bold text-slate-700 block truncate">{p.product_name}</span>
+                                    <span className="text-[9px] text-slate-400">{formatTransactionDate(p.paid_at, p.product_type)}</span>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                     <span className="text-[10px] font-bold text-emerald-600 block">R$ {p.amount.toFixed(2).replace('.', ',')}</span>
+                                     <span className="text-[8px] font-semibold text-emerald-500 uppercase">Pago</span>
+                                  </div>
                                 </div>
-                                <span className="text-xs font-bold text-emerald-600 shrink-0">R$ {p.amount.toFixed(2).replace('.', ',')}</span>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic text-center py-1.5 bg-slate-100/50 rounded border border-slate-200/50">Nenhuma transação encontrada.</p>
+                          )}
                         </div>
-                      )}
-                      
-                      {/* Timeline */}
-                      {profile.timeline && profile.timeline.length > 0 && (
+                        
+                        {/* Timeline */}
                         <div>
-                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" /> Linha do Tempo
+                          <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1 border-b border-slate-200 pb-1">
+                            <Clock className="h-3 w-3 text-slate-400" /> Linha do Tempo
                           </h5>
-                          <div className="relative border-l border-slate-200 ml-2 space-y-4 pb-2">
-                            {profile.timeline.slice(0, 3).map((t: any, i: number) => (
-                              <div key={i} className="relative pl-4">
-                                <div className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-white border-2 border-indigo-500" />
-                                <p className="text-xs font-bold text-slate-700">{t.label}</p>
-                                <p className="text-[10px] text-slate-500 leading-tight mt-0.5">{t.details}</p>
-                                <p className="text-[9px] text-slate-400 mt-1">{formatTimelineTimestamp(t.timestamp)}</p>
-                              </div>
-                            ))}
-                          </div>
+                          {profile.timeline && profile.timeline.length > 0 ? (
+                            <div className="relative border-l border-slate-200 ml-1.5 space-y-3 pb-1 mt-2">
+                              {profile.timeline.slice(0, 3).map((t: any, i: number) => (
+                                <div key={i} className="relative pl-3">
+                                  <div className="absolute -left-1 top-1 h-2 w-2 rounded-full bg-white border border-indigo-500" />
+                                  <span className="text-[10px] font-bold text-slate-700 block leading-tight">{t.label}</span>
+                                  <span className="text-[9px] text-slate-500 block leading-tight mt-0.5">{t.details}</span>
+                                  <span className="text-[8px] text-slate-400 block mt-0.5">{formatTimelineTimestamp(t.timestamp)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic text-center py-1.5 bg-slate-100/50 rounded border border-slate-200/50">Nenhum evento registrado.</p>
+                          )}
                         </div>
-                      )}
+                      </div>
 
                       <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} className="block text-center mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
                         Ver histórico completo do CRM <ExternalLink className="h-3 w-3 inline-block ml-0.5 -mt-0.5" />
