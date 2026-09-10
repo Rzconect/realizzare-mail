@@ -40,15 +40,29 @@ export default function ConversationsPage() {
       if (storedUsers) {
         try {
           const parsed = JSON.parse(storedUsers);
-          setUsers(parsed);
-          
           // Get current user from session
           const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
+          let currentSessionUser = parsed[0];
+          
           if (sessionStr) {
-            setCurrentUser(JSON.parse(sessionStr));
+            currentSessionUser = JSON.parse(sessionStr);
+            setCurrentUser(currentSessionUser);
           } else {
-            setCurrentUser(parsed[0]);
+            setCurrentUser(currentSessionUser);
           }
+          
+          // Force the users array to use the name from the session for the current user
+          const updatedParsed = parsed.map((u: any) => {
+            if (u.email && currentSessionUser.email && u.email.toLowerCase() === currentSessionUser.email.toLowerCase()) {
+              return { ...u, name: currentSessionUser.name };
+            }
+            return u;
+          });
+          
+          // Remove duplicates based on name to prevent "Leonardo Christian" appearing twice
+          const uniqueUsers = Array.from(new Map(updatedParsed.map(u => [u.name, u])).values());
+          
+          setUsers(uniqueUsers);
         } catch (e) {}
       } else {
         const mockUser = { name: "Leonardo Christian", email: "leonardo@realizzare.com.br" };
