@@ -101,8 +101,14 @@ export default function ConversationsPage() {
         })
         .subscribe();
 
+      // Fallback Polling every 4 seconds to guarantee delivery
+      const interval = setInterval(() => {
+        fetchChats();
+      }, 4000);
+
       return () => {
         supabase.removeChannel(channel);
+        clearInterval(interval);
       };
     };
 
