@@ -128,13 +128,16 @@ export default function ConversationsPage() {
       }
       
       const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
+      router.replace(newUrl);
     }
-  }, [searchParams, chats]);
+  }, [searchParams, chats, router]);
+
+  const activeChat = chats.find(c => c.id === activeChatId);
+  const activeChatMessagesLength = activeChat?.messages?.length || 0;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeChatId, chats]);
+  }, [activeChatId, activeChatMessagesLength]);
 
   if (!isConnected) {
     return (
@@ -290,7 +293,7 @@ export default function ConversationsPage() {
                       onClick={() => { setFilterAssignedTo("Não Atribuído"); setIsFilterDropdownOpen(false); }}
                       className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${filterAssignedTo === "Não Atribuído" ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
                     >
-                      <span>Não Atribuído / Bot</span>
+                      <span>Não Atribuído</span>
                       {filterAssignedTo === "Não Atribuído" && <CheckCheck className="h-4 w-4" />}
                     </button>
                     {users.map(u => (
