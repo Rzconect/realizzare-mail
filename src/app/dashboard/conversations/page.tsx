@@ -472,22 +472,12 @@ export default function ConversationsPage() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 relative custom-scrollbar bg-[url('https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-cool-dark-green-new-theme-whatsapp.jpg')] bg-cover bg-center bg-fixed bg-opacity-20 before:absolute before:inset-0 before:bg-[#EFEAE2]/90 before:-z-10">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 relative custom-scrollbar bg-[#EFEAE2]">
               
               <div className="flex justify-center mb-6">
                 <span className="bg-white/80 backdrop-blur border border-slate-200/50 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest shadow-sm">
                   Hoje
                 </span>
-              </div>
-
-              {/* Bot / System Message representation */}
-              <div className="flex justify-center my-4">
-                <div className="bg-orange-100 border border-orange-200 text-orange-800 text-xs px-4 py-2 rounded-xl flex flex-col items-center gap-1 max-w-sm text-center shadow-sm">
-                  <span className="font-bold flex items-center gap-1.5">
-                    <Bot className="h-3.5 w-3.5" /> Bot de atendimento iniciou o fluxo
-                  </span>
-                  <span className="text-[10px] opacity-80 font-medium">As mensagens abaixo foram enviadas automaticamente.</span>
-                </div>
               </div>
 
               {activeChat.messages.map((msg: any) => {
