@@ -220,7 +220,7 @@ export default function SettingsPage() {
           setEvoStatus("Desconectado");
         } else if (connectData.instance?.state === "open") {
           setEvoStatus("Conectado");
-          setEvoQrCode(null);
+          setEvoQrCode("");
         } else {
           throw new Error(data.message || "Erro ao gerar QR Code");
         }
