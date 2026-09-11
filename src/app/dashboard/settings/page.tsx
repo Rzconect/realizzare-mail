@@ -303,24 +303,7 @@ export default function SettingsPage() {
         setActiveTab("integracoes");
       }
 
-      // Load auth users list
-      const defaultUsers = [
-        { name: "Leonardo Christian", email: "contato@realizzarecursos.com.br", password: "RZconect@2026", role: "Administrador", isNewUser: false },
-        { name: "Nilton (Programador)", email: "nilton@realizzare.com.br", password: "RealizzareNilton2026!", role: "Desenvolvedor WordPress", isNewUser: false },
-        { name: "Ana Oliveira", email: "ana.oliveira@gmail.com", password: "senha123", role: "Editor", isNewUser: true },
-        { name: "João Santos", email: "joao.santos@outlook.com", password: "senha123", role: "Visualizador", isNewUser: true }
-      ];
-      const storedUsers = localStorage.getItem("realizzare_auth_users");
-      if (storedUsers) {
-        try {
-          setUsers(JSON.parse(storedUsers));
-        } catch (e) {
-          setUsers(defaultUsers);
-        }
-      } else {
-        setUsers(defaultUsers);
-        localStorage.setItem("realizzare_auth_users", JSON.stringify(defaultUsers));
-      }
+      // Users are now fetched exclusively from Supabase API (via fetchSettings)
 
       const storedUsage = localStorage.getItem("realizzare_account_usage");
       if (storedUsage) {
@@ -394,6 +377,22 @@ export default function SettingsPage() {
       try {
         const supabase = createClient();
         
+        // Fetch Users from Supabase via API route
+        try {
+          const res = await fetch("/api/auth/users");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.users && Array.isArray(data.users)) {
+              setUsers(data.users.map((u: any) => ({
+                ...u,
+                role: u.email.toLowerCase() === "contato@realizzarecursos.com.br" ? "Administrador" : u.role
+              })));
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao buscar usuários", e);
+        }
+
         // Fetch API Keys
         const { data: keysData } = await supabase.from("api_keys").select("*").order("created_at", { ascending: false });
         if (keysData) {
@@ -856,7 +855,7 @@ export default function SettingsPage() {
     try {
       let isVerified = false;
 
-      if (currentUser?.email === "admin@realizzarecursos.com.br") {
+      if (currentUser?.email === "contato@realizzarecursos.com.br") {
         const storedUsers = localStorage.getItem("realizzare_auth_users");
         if (storedUsers) {
           const list = JSON.parse(storedUsers);
@@ -1749,7 +1748,7 @@ export default function SettingsPage() {
                               </span>
                             </td>
                             <td className="py-3 text-right space-x-1.5">
-                              {u.email !== "admin@realizzare.com.br" ? (
+                              {u.email !== "contato@realizzarecursos.com.br" ? (
                                 <>
                                   <button
                                     type="button"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, ArrowRight, AlertCircle, ShieldCheck, KeyRound, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, AlertCircle, ShieldCheck, KeyRound, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [step, setStep] = useState<"login" | "2fa">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [pinCode, setPinCode] = useState("");
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -197,24 +198,24 @@ export default function LoginPage() {
       <div className="absolute top-1/4 left-1/4 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-indigo-500/5 blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 -z-10 h-80 w-80 translate-x-1/2 rounded-full bg-blue-500/5 blur-3xl" />
 
-      <div className="w-full max-w-md space-y-7 rounded-3xl border border-slate-200 bg-white/90 p-8 backdrop-blur-xl shadow-2xl transition-all">
-        {/* Header/Logo with smooth rounded corners */}
+      <div className="w-full max-w-md space-y-7 rounded-2xl border border-slate-100 bg-white p-8 shadow-xl transition-all">
+        {/* Header/Logo */}
         <div className="flex flex-col items-center">
-          <div className="h-16 w-16 relative overflow-hidden rounded-2xl shadow-md">
-            <img src="/logo.png" alt="Realizzare Logo" className="h-full w-full object-cover rounded-2xl" />
+          <div className="h-14 w-14 relative overflow-hidden rounded-xl shadow-sm mb-4">
+            <img src="/logo.png" alt="Realizzare Logo" className="h-full w-full object-cover rounded-xl" />
           </div>
-          <h2 className="mt-5 text-center text-3xl font-black tracking-tight text-slate-900">
-            Realizzare <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">Mail</span>
+          <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900">
+            Realizzare <span className="text-indigo-600">Mail</span>
           </h2>
-          <p className="mt-1.5 text-center text-xs font-semibold text-slate-500">
+          <p className="mt-2 text-center text-sm font-medium text-slate-500">
             {step === "login" ? "Acesse o painel de automação e e-mail marketing" : "Autenticação em 2 Etapas (2FA)"}
           </p>
         </div>
 
         {/* Notifications */}
         {error && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-150 bg-red-50 p-3 text-xs font-bold text-red-700 animate-fadeIn">
-            <AlertCircle className="h-4.5 w-4.5 shrink-0 text-red-600" />
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700 animate-fadeIn">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
             <span>{error}</span>
           </div>
         )}
@@ -224,11 +225,11 @@ export default function LoginPage() {
           <form className="space-y-5 animate-fadeIn" onSubmit={handleLoginSubmit}>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                   E-mail institucional
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <Mail className="h-4.5 w-4.5 text-slate-400" />
                   </div>
                   <input
@@ -237,41 +238,46 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Digite seu e-mail"
-                    className="block w-full rounded-xl border border-slate-200 bg-slate-50/70 py-3 pl-10 pr-3.5 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all shadow-2xs"
+                    className="block w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-3 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700">
-                    Senha
-                  </label>
-                </div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Senha
+                </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <Lock className="h-4.5 w-4.5 text-slate-400" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="block w-full rounded-xl border border-slate-200 bg-slate-50/70 py-3 pl-10 pr-3.5 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all shadow-2xs"
+                    className="block w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-10 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-indigo-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Manter Conectado Checkbox (Alta Visibilidade & Contraste) */}
-            <div className="flex items-center pt-1">
-              <label className="flex items-center gap-2.5 text-xs font-extrabold text-slate-800 select-none cursor-pointer">
+            {/* Manter Conectado Checkbox */}
+            <div className="flex items-center">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 select-none cursor-pointer">
                 <input
                   type="checkbox"
                   checked={keepLoggedIn}
                   onChange={(e) => setKeepLoggedIn(e.target.checked)}
-                  className="h-4 w-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
                 />
                 <span>Manter-se conectado por 30 dias</span>
               </label>
@@ -281,7 +287,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative flex w-full justify-center rounded-xl border border-transparent bg-gradient-to-r from-indigo-600 to-blue-600 py-3.5 px-4 text-xs font-extrabold text-white hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-600/15 transition-all duration-200 cursor-pointer"
+                className="group relative flex w-full justify-center rounded-lg border border-transparent bg-indigo-600 py-3 px-4 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200 cursor-pointer"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
@@ -289,7 +295,7 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Verificando Supabase...
+                    Entrando...
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5">
@@ -298,7 +304,6 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
-
           </form>
         )}
 
