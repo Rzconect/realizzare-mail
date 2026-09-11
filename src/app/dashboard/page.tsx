@@ -322,6 +322,7 @@ export default function DashboardPage() {
             time: dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
             eventLabel: meta.item_title || "Compra de Certificado",
             itemTitle: meta.item_title || "Certificado de Conclusão - Realizzare Cursos",
+            quantity: meta.quantity || 1,
             amount: amt,
             category: meta.category || "certificado",
             paymentMethod: "Cartão / PIX",
@@ -1557,6 +1558,11 @@ export default function DashboardPage() {
                         isPurchase ? "text-emerald-700" : isOpen ? "text-purple-700" : "text-teal-700"
                       }`}>
                         {evt.eventLabel || evt.itemTitle}
+                        {evt.quantity && evt.quantity > 1 ? (
+                          <span className="inline-flex items-center justify-center bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 ml-1.5 rounded-full border border-emerald-200 align-middle">
+                            x{evt.quantity}
+                          </span>
+                        ) : null}
                       </span>
 
                       {/* Bottom row: Timestamp */}

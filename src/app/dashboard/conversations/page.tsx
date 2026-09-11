@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight } from "lucide-react";
 import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ConversationsPage() {
+function ConversationsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -1149,5 +1149,17 @@ export default function ConversationsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ConversationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full w-full items-center justify-center p-8">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600"></div>
+      </div>
+    }>
+      <ConversationsContent />
+    </Suspense>
   );
 }

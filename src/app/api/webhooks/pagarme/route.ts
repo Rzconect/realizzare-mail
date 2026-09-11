@@ -61,10 +61,10 @@ export async function POST(req: Request) {
     } catch(e) {}
 
     // Extract transaction items and amount
-    const items = data?.items || [];
+    const items = data?.items || data?.order?.items || [];
     
     // Check for mapped product by code
-    const orderCode = data?.code || items[0]?.code || "";
+    const orderCode = data?.code || data?.order?.code || items[0]?.code || "";
     let mappedTitle = null;
     if (orderCode && Object.keys(productMapping).length > 0) {
       const parts = orderCode.split("-");
@@ -104,6 +104,8 @@ export async function POST(req: Request) {
       category = "curso";
     }
 
+    const quantity = items[0]?.quantity || 1;
+    
     // Log transaction event & register contact to "Clientes" list
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -130,6 +132,7 @@ export async function POST(req: Request) {
             provider: "pagarme",
             event: eventType,
             item_title: itemTitle,
+            quantity: quantity,
             amount: parseFloat(amountInReais),
             category: category,
             customer_name: name,
@@ -207,11 +210,12 @@ export async function POST(req: Request) {
         if (!existingBySku && !existingByTime) {
           const prodType = category === "assinatura" ? "subscription" : 
                            category === "curso" ? "course" : "certificate";
+          const finalItemTitle = quantity > 1 ? `${itemTitle} (x${quantity})` : itemTitle;
           await supabase.from("purchases").insert({
             org_id: "00000000-0000-0000-0000-000000000001",
             contact_id: contactId,
             product_type: prodType,
-            product_name: itemTitle,
+            product_name: finalItemTitle,
             amount: parseFloat(amountInReais),
             sku: pagarmeId,
             status: "paid",

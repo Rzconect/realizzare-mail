@@ -526,7 +526,11 @@ export default function DashboardLayout({
             {showSettingsDropdown && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setShowSettingsDropdown(false)} />
-                <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
+                  <div className="px-3 py-2 border-b border-slate-100 mb-1 flex flex-col gap-0.5">
+                    <span className="text-xs font-bold text-slate-800 truncate">{currentUser ? currentUser.name : "Usuário"}</span>
+                    <span className="text-[10px] text-slate-500 truncate">{currentUser ? currentUser.email : ""}</span>
+                  </div>
                   <Link
                     href="/dashboard/settings"
                     onClick={() => setShowSettingsDropdown(false)}
@@ -706,7 +710,7 @@ export default function DashboardLayout({
       {/* 4. Main Panel Wrapper */}
       <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
         {/* Desktop Topbar Header */}
-        <header className="hidden md:flex h-14 shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm items-center justify-between px-8 z-10">
+        <header className="hidden md:flex h-14 shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm items-center justify-between px-8 z-40">
           <div className="flex items-center gap-4 ml-auto">
             {/* Notifications Bell Dropdown */}
             <div className="relative notifications-dropdown-container">
@@ -776,17 +780,21 @@ export default function DashboardLayout({
 
               {showSettingsDropdown && (
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowSettingsDropdown(false)} />
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
-                    <Link
-                      href="/dashboard/settings"
-                      onClick={() => setShowSettingsDropdown(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors w-full text-left"
-                    >
-                      <Settings className="h-4 w-4 text-slate-455" />
-                      <span>Configurações</span>
-                    </Link>
-                    <button
+                <div className="fixed inset-0 z-30" onClick={() => setShowSettingsDropdown(false)} />
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
+                  <div className="px-3 py-2 border-b border-slate-100 mb-1 flex flex-col gap-0.5">
+                    <span className="text-xs font-bold text-slate-800 truncate">{currentUser ? currentUser.name : "Usuário"}</span>
+                    <span className="text-[10px] text-slate-500 truncate">{currentUser ? currentUser.email : ""}</span>
+                  </div>
+                  <Link
+                    href="/dashboard/settings"
+                    onClick={() => setShowSettingsDropdown(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors w-full text-left"
+                  >
+                    <Settings className="h-4 w-4 text-slate-455" />
+                    <span>Configurações</span>
+                  </Link>
+                  <button
                       onClick={() => {
                         setShowSettingsDropdown(false);
                         handleLogout();
