@@ -607,7 +607,7 @@ export default function DashboardLayout({
 
       {/* 3. Desktop Sidebar */}
       <aside
-        className={`hidden md:flex flex-col shrink-0 border-r border-slate-200 bg-white transition-all duration-300 relative overflow-x-hidden ${
+        className={`hidden md:flex flex-col shrink-0 border-r border-slate-200 bg-white transition-all duration-300 relative z-50 ${
           isSidebarOpen ? "w-64" : "w-16"
         }`}
       >
