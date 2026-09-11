@@ -95,70 +95,81 @@ function ConversationsContent() {
   }, []);
 
   useEffect(() => {
-    // Fetch initial chats
-    const fetchChats = async () => {
+    let isMounted = true;
+    let channel: any = null;
+    let interval: any = null;
+
+    const initSupabaseAndFetch = async () => {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 
-      const { data: chatsData } = await supabase
-        .from('whatsapp_chats')
-        .select('*, whatsapp_messages(*)')
-        .order('last_message_time', { ascending: false });
+      const fetchChats = async () => {
+        const { data: chatsData } = await supabase
+          .from('whatsapp_chats')
+          .select('*, whatsapp_messages(*)')
+          .order('last_message_time', { ascending: false });
 
-      if (chatsData) {
-        const mappedChats = chatsData.map(c => {
-          // Sort messages ascending by created_at
-          const sortedMessages = (c.whatsapp_messages || []).sort((a: any, b: any) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-          
-          return {
-            id: c.id,
-            remoteJid: c.remote_jid,
-            name: c.name,
-            phone: c.phone,
-            initials: c.name.substring(0, 2).toUpperCase(),
-            color: "bg-[#0f7650]",
-            assignedTo: c.assigned_to,
-            status: c.status,
-            lastMessageTime: new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            messages: sortedMessages.map((m: any) => ({
-              id: m.id,
-              sender: m.sender === 'user' ? 'client' : m.sender,
-              text: m.text,
-              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }))
-          };
-        });
+        if (chatsData && isMounted) {
+          const mappedChats = chatsData.map(c => {
+            // Sort messages ascending by created_at
+            const sortedMessages = (c.whatsapp_messages || []).sort((a: any, b: any) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+            
+            return {
+              id: c.id,
+              remoteJid: c.remote_jid,
+              name: c.name,
+              phone: c.phone,
+              initials: c.name.substring(0, 2).toUpperCase(),
+              color: "bg-[#0f7650]",
+              assignedTo: c.assigned_to,
+              status: c.status,
+              lastMessageTime: new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              messages: sortedMessages.map((m: any) => ({
+                id: m.id,
+                sender: m.sender === 'user' ? 'client' : m.sender,
+                text: m.text,
+                time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }))
+            };
+          });
 
-        setChats(mappedChats);
-      }
+          setChats(mappedChats);
+        }
+      };
+
+      // Initial fetch
+      await fetchChats();
 
       // Subscribe to real-time changes
-      const channel = supabase.channel('whatsapp-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_messages' }, payload => {
-          fetchChats(); // Naive refresh on new message
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_chats' }, payload => {
+      if (isMounted) {
+        channel = supabase.channel('whatsapp-realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_messages' }, () => {
+            fetchChats();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_chats' }, () => {
+            fetchChats();
+          })
+          .subscribe();
+
+        // Fallback Polling every 4 seconds
+        interval = setInterval(() => {
           fetchChats();
-        })
-        .subscribe();
-
-      // Fallback Polling every 4 seconds to guarantee delivery
-      const interval = setInterval(() => {
-        fetchChats();
-      }, 4000);
-
-      return () => {
-        supabase.removeChannel(channel);
-        clearInterval(interval);
-      };
+        }, 4000);
+      }
     };
 
-    fetchChats();
+    initSupabaseAndFetch();
+
+    return () => {
+      isMounted = false;
+      if (channel) channel.unsubscribe();
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {

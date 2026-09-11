@@ -50,6 +50,7 @@ export default function DashboardLayout({
   const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showSidebarSettingsDropdown, setShowSidebarSettingsDropdown] = useState(false);
   const [userAccount, setUserAccount] = useState({
     first_name: "Leonardo",
     last_name: "Christian",
@@ -195,6 +196,7 @@ export default function DashboardLayout({
   // Reset dropdowns on route changes
   useEffect(() => {
     setShowSettingsDropdown(false);
+    setShowSidebarSettingsDropdown(false);
     setShowNotifications(false);
     setShowUsagePopover(false);
 
@@ -208,6 +210,9 @@ export default function DashboardLayout({
       const target = e.target as HTMLElement;
       if (!target.closest(".settings-dropdown-container")) {
         setShowSettingsDropdown(false);
+      }
+      if (!target.closest(".sidebar-settings-dropdown-container")) {
+        setShowSidebarSettingsDropdown(false);
       }
       if (!target.closest(".notifications-dropdown-container")) {
         setShowNotifications(false);
@@ -660,48 +665,82 @@ export default function DashboardLayout({
           isSidebarOpen ? "p-4" : "py-4 px-0 flex flex-col items-center justify-center"
         }`}>
           {isSidebarOpen ? (
-            <div className="flex flex-col gap-2 w-full">
-              <Link
-                href="/dashboard/settings"
-                className="w-full flex items-center gap-3 hover:bg-slate-100/70 p-2.5 rounded-xl border border-transparent hover:border-slate-200 transition-all cursor-pointer text-left text-slate-600 hover:text-slate-900"
-              >
-                <div className="h-9 w-9 shrink-0 flex items-center justify-center">
-                  <Settings className="h-5 w-5" />
-                </div>
-                <span className="text-sm font-medium truncate">Configurações</span>
-              </Link>
+            <div className="flex flex-col gap-2 w-full relative sidebar-settings-dropdown-container">
               <button
-                onClick={() => setShowUsagePopover(!showUsagePopover)}
-                className="w-full flex items-center justify-between hover:bg-slate-100/70 p-2.5 rounded-2xl border border-slate-200 bg-white transition-all cursor-pointer text-left usage-trigger-btn shadow-sm"
+                onClick={() => setShowSidebarSettingsDropdown(!showSidebarSettingsDropdown)}
+                className="w-full flex items-center justify-between hover:bg-slate-100/70 p-2.5 rounded-2xl border border-slate-200 bg-white transition-all cursor-pointer text-left shadow-sm"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-9 w-9 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                    <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover" />
+                  <div className="h-9 w-9 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center shrink-0">
+                    <Settings className="h-5 w-5 text-slate-500" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-slate-800 truncate">Realizzare</span>
-                    <span className="text-[10px] text-slate-500 truncate font-semibold">Ver uso da conta</span>
+                    <span className="text-xs font-bold text-slate-800 truncate">Opções</span>
+                    <span className="text-[10px] text-slate-500 truncate font-semibold">Configurações e Conta</span>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
               </button>
+              {showSidebarSettingsDropdown && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowSidebarSettingsDropdown(false)} />
+                  <div className="absolute bottom-full left-0 mb-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setShowSidebarSettingsDropdown(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors w-full text-left"
+                    >
+                      <Settings className="h-4 w-4 text-slate-400" />
+                      <span>Configurações</span>
+                    </Link>
+                    <button
+                        onClick={() => {
+                          setShowSidebarSettingsDropdown(false);
+                          handleLogout();
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors w-full text-left cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4 text-red-400" />
+                        <span>Encerrar Sessão</span>
+                      </button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3 w-full">
-              <Link
-                href="/dashboard/settings"
-                className="h-10 w-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-all text-slate-500 hover:text-slate-900 cursor-pointer"
-                title="Configurações"
+            <div className="flex flex-col items-center gap-3 w-full relative sidebar-settings-dropdown-container">
+              <button
+                onClick={() => setShowSidebarSettingsDropdown(!showSidebarSettingsDropdown)}
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-slate-100 transition-all text-slate-500 hover:text-slate-900 cursor-pointer shadow-sm"
+                title="Opções"
               >
                 <Settings className="h-5 w-5" />
-              </Link>
-              <button
-                onClick={() => setShowUsagePopover(!showUsagePopover)}
-                className="h-10 w-10 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center hover:bg-slate-100 transition-all cursor-pointer usage-trigger-btn shadow-sm p-0.5"
-                title="Ver uso da conta: Realizzare"
-              >
-                <img src="/r-logo.png" alt="R Logo" className="h-full w-full object-cover rounded-lg" />
               </button>
+              {showSidebarSettingsDropdown && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowSidebarSettingsDropdown(false)} />
+                  <div className="absolute bottom-full left-0 mb-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn text-left">
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setShowSidebarSettingsDropdown(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors w-full text-left"
+                    >
+                      <Settings className="h-4 w-4 text-slate-400" />
+                      <span>Configurações</span>
+                    </Link>
+                    <button
+                        onClick={() => {
+                          setShowSidebarSettingsDropdown(false);
+                          handleLogout();
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors w-full text-left cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4 text-red-400" />
+                        <span>Encerrar Sessão</span>
+                      </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
