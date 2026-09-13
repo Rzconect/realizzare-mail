@@ -14,6 +14,7 @@ interface Deal {
   clientName: string;
   clientColor: string;
   columnId: ColumnId;
+  phone?: string;
 }
 
 const COLUMNS: { id: ColumnId; title: string; color: string }[] = [
@@ -33,6 +34,7 @@ const INITIAL_DEALS: Deal[] = [
     clientName: "Gabriela Vitória Miranda da Cruz",
     clientColor: "bg-[#0f7650]",
     columnId: "novo",
+    phone: "5531973301958",
   },
   {
     id: "d2",
@@ -42,6 +44,7 @@ const INITIAL_DEALS: Deal[] = [
     clientName: "Nilton Soares da Silva",
     clientColor: "bg-blue-600",
     columnId: "novo",
+    phone: "5531973301958",
   },
   {
     id: "d3",
@@ -51,6 +54,7 @@ const INITIAL_DEALS: Deal[] = [
     clientName: "Gabriela Vitória Miranda da Cruz",
     clientColor: "bg-[#0f7650]",
     columnId: "novo",
+    phone: "5531973301958",
   },
 ];
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight } from "lucide-react";
+import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2 } from "lucide-react";
 import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,6 +18,8 @@ function ConversationsContent() {
   const [activeFilter, setActiveFilter] = useState<"minhas" | "fila" | "todos">("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
@@ -175,19 +177,32 @@ function ConversationsContent() {
   useEffect(() => {
     // Handle URL param for new conversation
     const phoneToOpen = searchParams.get("phone");
-    if (phoneToOpen && chats.length > 0) {
+    if (phoneToOpen) {
       const existingChat = chats.find(c => c.phone === phoneToOpen);
       if (existingChat) {
         setActiveChatId(existingChat.id);
       } else {
-        // We shouldn't create mock chats in real DB directly from URL unless they send a message
-        console.log("Chat not found for phone:", phoneToOpen);
+        // Create a temporary chat in state so the user can send the first message
+        const newTempChat = {
+          id: `temp-${Date.now()}`,
+          remoteJid: `${phoneToOpen}@s.whatsapp.net`,
+          name: `Contato ${phoneToOpen}`,
+          phone: phoneToOpen,
+          initials: "NO",
+          color: "bg-slate-400",
+          assignedTo: currentUser ? currentUser.name : "Sem responsável",
+          status: "Aberto",
+          lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          messages: []
+        };
+        setChats(prev => [newTempChat, ...prev]);
+        setActiveChatId(newTempChat.id);
       }
       
       const newUrl = window.location.pathname;
       router.replace(newUrl);
     }
-  }, [searchParams, chats, router]);
+  }, [searchParams, chats, router, currentUser]);
 
   const currentActiveChat = chats.find(c => c.id === activeChatId);
   const activeChatMessagesLength = currentActiveChat?.messages?.length || 0;
@@ -838,7 +853,50 @@ function ConversationsContent() {
                           : "bg-white border border-slate-100 rounded-tl-none"
                       }`}
                     >
-                      <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                      {msg.text.startsWith('[MEDIA:image]') ? (
+                        <div className="flex flex-col gap-2">
+                          <div className="w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden relative group">
+                            <ImageIcon className="h-10 w-10 text-slate-400" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                              <Download className="h-6 w-6 text-white" />
+                            </div>
+                          </div>
+                          <span className="text-xs text-slate-600 truncate w-48 font-medium">{msg.text.replace('[MEDIA:image]', '').trim()}</span>
+                        </div>
+                      ) : msg.text.startsWith('[MEDIA:audio]') ? (
+                        <div className="flex items-center gap-3 bg-black/5 p-2 pr-4 rounded-full min-w-[200px] md:w-64">
+                          <button className="h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm hover:scale-105 transition-transform">
+                            <Play className="h-4 w-4 ml-0.5" />
+                          </button>
+                          <div className="flex-1">
+                            <div className="h-1 bg-slate-300 rounded-full w-full overflow-hidden flex items-center">
+                              <div className="h-full bg-slate-500 w-1/3 rounded-full relative">
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 h-2.5 w-2.5 bg-emerald-500 rounded-full shadow-sm"></div>
+                              </div>
+                            </div>
+                            <div className="flex justify-between mt-1">
+                              <span className="text-[10px] font-medium text-slate-500">0:00</span>
+                              <span className="text-[10px] font-medium text-slate-500">0:15</span>
+                            </div>
+                          </div>
+                          <button className="text-slate-400 hover:text-slate-600 p-1">
+                            <Download className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : msg.text.startsWith('[MEDIA:document]') ? (
+                        <div className="flex items-center gap-3 bg-white/50 p-3 rounded-lg min-w-[200px] md:w-64 border border-slate-200 cursor-pointer hover:bg-white transition-colors shadow-sm">
+                          <div className="h-10 w-10 bg-red-100 text-red-600 rounded-lg flex items-center justify-center shrink-0">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="text-sm font-semibold text-slate-700 truncate">{msg.text.replace('[MEDIA:document]', '').trim()}</span>
+                            <span className="text-[10px] font-medium text-slate-500">PDF Document</span>
+                          </div>
+                          <Download className="h-4 w-4 text-slate-400 shrink-0" />
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                      )}
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span className={`text-[9px] font-semibold ${isMine ? "text-emerald-700/60" : "text-slate-400"}`}>{msg.time}</span>
                         {isMine && <CheckCheck className="h-3 w-3 text-blue-500" />}
@@ -867,9 +925,42 @@ function ConversationsContent() {
                 </div>
               ) : (
                 <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-white rounded-2xl border border-slate-200 p-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-                  <button type="button" className="p-2.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors shrink-0 cursor-pointer">
-                    <Plus className="h-5 w-5" />
-                  </button>
+                  
+                  <div className="relative">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                      className="p-2.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
+                    {showAttachmentMenu && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setShowAttachmentMenu(false)} />
+                        <div className="absolute bottom-full left-0 mb-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 animate-fadeIn flex flex-col gap-1">
+                          <button type="button" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer">
+                            <ImageIcon className="h-4 w-4 text-blue-500" /> Imagem
+                          </button>
+                          <button type="button" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer">
+                            <FileText className="h-4 w-4 text-purple-500" /> Documento
+                          </button>
+                          <button type="button" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer">
+                            <Headphones className="h-4 w-4 text-orange-500" /> Áudio
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*,application/pdf,audio/*" onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      const fileType = file.type.startsWith('image/') ? '[MEDIA:image]' : file.type.startsWith('audio/') ? '[MEDIA:audio]' : '[MEDIA:document]';
+                      const optimisticMsg = `${fileType} ${file.name}`;
+                      setMessageText(optimisticMsg);
+                    }
+                  }} />
+
                   <textarea 
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
@@ -883,6 +974,15 @@ function ConversationsContent() {
                       }
                     }}
                   />
+
+                  <button 
+                    type="button" 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-3 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+                  >
+                    <Paperclip className="h-5 w-5" />
+                  </button>
+
                   <button 
                     type="submit" 
                     disabled={!messageText.trim()}
