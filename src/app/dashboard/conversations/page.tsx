@@ -18,6 +18,7 @@ function ConversationsContent() {
   const [activeFilter, setActiveFilter] = useState<"minhas" | "fila" | "todos">("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [isChatsLoaded, setIsChatsLoaded] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +39,20 @@ function ConversationsContent() {
   
   const [chats, setChats] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Re-link activeChatId if the temp chat was replaced by a real chat
+    if (activeChatId?.startsWith('temp-')) {
+      const exists = chats.some(c => c.id === activeChatId);
+      if (!exists) {
+        const phone = activeChatId.replace('temp-', '');
+        const realChat = chats.find(c => c.phone === phone);
+        if (realChat) {
+          setActiveChatId(realChat.id);
+        }
+      }
+    }
+  }, [chats, activeChatId]);
 
   useEffect(() => {
     // Check connection
@@ -141,7 +156,13 @@ function ConversationsContent() {
             };
           });
 
-          setChats(mappedChats);
+          setChats(prev => {
+            const tempChats = prev.filter(c => c.id.startsWith('temp-'));
+            const mappedPhones = new Set(mappedChats.map((c: any) => c.phone));
+            const activeTempChats = tempChats.filter(c => !mappedPhones.has(c.phone));
+            return [...activeTempChats, ...mappedChats];
+          });
+          setIsChatsLoaded(true);
         }
       };
 
@@ -177,6 +198,8 @@ function ConversationsContent() {
 
   useEffect(() => {
     // Handle URL param for new conversation
+    if (!isChatsLoaded) return;
+    
     const phoneToOpen = searchParams.get("phone");
     if (phoneToOpen) {
       const existingChat = chats.find(c => c.phone === phoneToOpen);
@@ -185,7 +208,7 @@ function ConversationsContent() {
       } else {
         // Create a temporary chat in state so the user can send the first message
         const newTempChat = {
-          id: `temp-${Date.now()}`,
+          id: `temp-${phoneToOpen}`,
           remoteJid: `${phoneToOpen}@s.whatsapp.net`,
           name: `Contato ${phoneToOpen}`,
           phone: phoneToOpen,
@@ -203,7 +226,7 @@ function ConversationsContent() {
       const newUrl = window.location.pathname;
       router.replace(newUrl);
     }
-  }, [searchParams, chats, router, currentUser]);
+  }, [searchParams, chats, router, currentUser, isChatsLoaded]);
 
   const currentActiveChat = chats.find(c => c.id === activeChatId);
   const activeChatMessagesLength = currentActiveChat?.messages?.length || 0;
