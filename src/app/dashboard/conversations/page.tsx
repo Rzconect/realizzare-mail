@@ -20,6 +20,8 @@ function ConversationsContent() {
   const [messageText, setMessageText] = useState("");
   const [isChatsLoaded, setIsChatsLoaded] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -207,12 +209,28 @@ function ConversationsContent() {
         setActiveChatId(existingChat.id);
       } else {
         // Create a temporary chat in state so the user can send the first message
+        // Try to get name from URL first, then from mockProfileData
+        let tempName = searchParams.get("name") || "";
+        if (!tempName) {
+           for (const p of Object.values(mockProfileData)) {
+             const clean = (p.phone || "").replace(/[^\d]/g, '');
+             if (clean && phoneToOpen.includes(clean)) {
+               tempName = `${p.first_name} ${p.last_name}`;
+               break;
+             }
+           }
+        }
+        if (!tempName || tempName === "Contato") tempName = `Contato ${phoneToOpen}`;
+        
+        const initialsMatch = tempName.match(/\b\w/g);
+        const tempInitials = initialsMatch ? initialsMatch.join('').substring(0, 2).toUpperCase() : "NO";
+
         const newTempChat = {
           id: `temp-${phoneToOpen}`,
           remoteJid: `${phoneToOpen}@s.whatsapp.net`,
-          name: `Contato ${phoneToOpen}`,
+          name: tempName,
           phone: phoneToOpen,
-          initials: "NO",
+          initials: tempInitials,
           color: "bg-slate-400",
           assignedTo: currentUser ? currentUser.name : "Sem responsável",
           status: "Aberto",
@@ -506,6 +524,47 @@ function ConversationsContent() {
     }
   };
 
+  const handleRenameChat = async () => {
+    if (!editNameValue.trim() || !activeChatId) {
+      setIsEditingName(false);
+      return;
+    }
+    const newName = editNameValue.trim();
+    setIsEditingName(false);
+    
+    // Update locally
+    const initialsMatch = newName.match(/\b\w/g);
+    const newInitials = initialsMatch ? initialsMatch.join('').substring(0, 2).toUpperCase() : "NO";
+    
+    setChats(prev => prev.map(chat => {
+      if (chat.id === activeChatId) {
+        return {
+          ...chat,
+          name: newName,
+          initials: newInitials
+        };
+      }
+      return chat;
+    }));
+
+    // Update in Supabase if it's not a temp chat
+    if (!activeChatId.startsWith("temp-")) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        await supabase
+          .from('whatsapp_chats')
+          .update({ name: newName })
+          .eq('id', activeChatId);
+      } catch (error) {
+        console.error("Failed to rename chat:", error);
+      }
+    }
+  };
+
   const handleAssignUser = async (userName: string | null) => {
     if (!activeChatId) return;
     
@@ -780,7 +839,28 @@ function ConversationsContent() {
                   {activeChat.initials}
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-800">{activeChat.name}</h2>
+                  {isEditingName ? (
+                    <input 
+                      type="text" 
+                      value={editNameValue} 
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      onBlur={handleRenameChat}
+                      onKeyDown={(e) => e.key === 'Enter' && handleRenameChat()}
+                      autoFocus
+                      className="text-sm font-bold text-slate-800 border-b border-indigo-500 focus:outline-none bg-transparent px-1 py-0"
+                    />
+                  ) : (
+                    <h2 
+                      className="text-sm font-bold text-slate-800 cursor-text hover:bg-slate-200/60 px-1 -ml-1 rounded transition-colors w-max"
+                      onClick={() => {
+                        setEditNameValue(activeChat.name);
+                        setIsEditingName(true);
+                      }}
+                      title="Clique para renomear"
+                    >
+                      {activeChat.name}
+                    </h2>
+                  )}
                   <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-0.5">
                     <Phone className="h-3 w-3" />
                     <span>+{activeChat.phone}</span>

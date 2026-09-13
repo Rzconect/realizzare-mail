@@ -45,9 +45,10 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
   };
 
   const handleOpenConversation = () => {
-    // Navigate to conversations page with the user's phone number as a parameter
+    // Navigate to conversations page with the user's phone number and name
     const phone = deal?.phone || "5531973301958";
-    router.push(`/dashboard/conversations?phone=${phone}`);
+    const name = encodeURIComponent(deal?.clientName || "Contato");
+    router.push(`/dashboard/conversations?phone=${phone}&name=${name}`);
     onClose();
   };
 
