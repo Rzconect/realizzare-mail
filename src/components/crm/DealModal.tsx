@@ -208,7 +208,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium mb-1">
                   <PhoneIcon className="h-3 w-3" />
-                  <span>5531999285395</span>
+                  <span>{deal?.phone || '5531973301958'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium mb-1.5">
                   <span className="relative flex items-center gap-1">

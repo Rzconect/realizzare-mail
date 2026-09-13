@@ -18,6 +18,7 @@ function ConversationsContent() {
   const [activeFilter, setActiveFilter] = useState<"minhas" | "fila" | "todos">("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -556,8 +557,51 @@ function ConversationsContent() {
 
   const activeChat = chats.find(c => c.id === activeChatId);
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    // Only set to false if leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      const fileType = file.type.startsWith('image/') ? '[MEDIA:image]' : file.type.startsWith('audio/') ? '[MEDIA:audio]' : '[MEDIA:document]';
+      const optimisticMsg = `${fileType} ${file.name}`;
+      setMessageText(optimisticMsg);
+    }
+  };
+
   return (
-    <div className="flex h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+    <div 
+      className="flex h-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm relative"
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 bg-indigo-500/10 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-indigo-500 m-4 rounded-2xl pointer-events-none transition-all">
+          <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-4 animate-bounce">
+            <Paperclip className="h-10 w-10 text-indigo-500" />
+            <span className="text-lg font-bold text-slate-700">Solte os arquivos aqui para enviar</span>
+          </div>
+        </div>
+      )}
       
       {/* LEFT SIDEBAR - CHAT LIST */}
       <div className="w-[340px] flex-shrink-0 flex flex-col border-r border-slate-200 bg-slate-50/50">
