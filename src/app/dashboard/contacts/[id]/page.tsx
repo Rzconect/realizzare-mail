@@ -666,14 +666,17 @@ export default function ContactProfilePage({ params }: PageProps) {
         if (purchases && purchases.length > 0) {
           purchases.forEach((p: any) => {
             if (p.status === "paid" || p.status === "approved") {
-              const sku = String(p.sku || "");
+              const nameLower = String(p.product_name || "").toLowerCase();
+              const sku = String(p.sku || ""); // Fallback if sku was manually set to ID
+              
               let added = 0;
               let skuName = "";
-              if (sku === "1") { added = 1; creditsBreakdown.digital += added; skuName = "Certificado Digital"; }
-              else if (sku === "2") { added = 2; creditsBreakdown.impresso += added; skuName = "Certificado Digital + Impresso"; }
-              else if (sku === "3") { added = 1; creditsBreakdown.mensal += added; skuName = "Assinatura Mensal"; }
-              else if (sku === "179") { added = 1; creditsBreakdown.ies_digital += added; skuName = "Certificado Digital IES/MEC"; }
-              else if (sku === "180") { added = 1; creditsBreakdown.ies_impresso += added; skuName = "Certificado Impresso IES/MEC"; }
+
+              if (nameLower.includes("impresso ies/mec") || sku === "180") { added = 1; creditsBreakdown.ies_impresso += added; skuName = "Certificado Impresso IES/MEC"; }
+              else if (nameLower.includes("ies/mec") || sku === "179") { added = 1; creditsBreakdown.ies_digital += added; skuName = "Certificado Digital IES/MEC"; }
+              else if (nameLower.includes("+ impresso") || sku === "2") { added = 1; creditsBreakdown.impresso += added; skuName = "Certificado Digital + Impresso"; }
+              else if (nameLower.includes("assinatura mensal") || sku === "3") { added = 1; creditsBreakdown.mensal += added; skuName = "Assinatura Mensal"; }
+              else if (nameLower.includes("certificado digital") || sku === "1") { added = 1; creditsBreakdown.digital += added; skuName = "Certificado Digital"; }
               
               if (added > 0) {
                 acquiredCredits += added;
