@@ -269,6 +269,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   const [openDrawerInfo, setOpenDrawerInfo] = useState(false);
   const [openDrawerTags, setOpenDrawerTags] = useState(false);
   const [openDrawerCustom, setOpenDrawerCustom] = useState(false);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
   
   // Resolve params using React.use() wrapper as standard in Next.js 15
   const resolvedParams = use(params);
@@ -608,6 +609,14 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         let acquiredCredits = 0;
         let usedCredits = 0;
+        const creditsBreakdown = {
+          digital: 0,
+          impresso: 0,
+          mensal: 0,
+          ies_digital: 0,
+          ies_impresso: 0
+        };
+        const creditsHistory: any[] = [];
 
         if (courseEventsData && courseEventsData.length > 0) {
           courseEventsData.forEach((ce: any) => {
@@ -631,6 +640,14 @@ export default function ContactProfilePage({ params }: PageProps) {
               type = "enrollment";
               note = "(1 crédito de certificado consumido)";
               usedCredits += 1;
+              creditsHistory.push({
+                id: `ch-${ce.id}`,
+                date: ce.created_at,
+                type: "consumed",
+                title: "Emissão de Certificado",
+                amount: -1,
+                course: cName
+              });
             }
 
             rawEvents.push({
@@ -650,11 +667,25 @@ export default function ContactProfilePage({ params }: PageProps) {
           purchases.forEach((p: any) => {
             if (p.status === "paid" || p.status === "approved") {
               const sku = String(p.sku || "");
-              if (sku === "1") acquiredCredits += 1;
-              else if (sku === "2") acquiredCredits += 2;
-              else if (sku === "3") acquiredCredits += 1;
-              else if (sku === "179") acquiredCredits += 1;
-              else if (sku === "180") acquiredCredits += 1;
+              let added = 0;
+              let skuName = "";
+              if (sku === "1") { added = 1; creditsBreakdown.digital += added; skuName = "Certificado Digital"; }
+              else if (sku === "2") { added = 2; creditsBreakdown.impresso += added; skuName = "Certificado Digital + Impresso"; }
+              else if (sku === "3") { added = 1; creditsBreakdown.mensal += added; skuName = "Assinatura Mensal"; }
+              else if (sku === "179") { added = 1; creditsBreakdown.ies_digital += added; skuName = "Certificado Digital IES/MEC"; }
+              else if (sku === "180") { added = 1; creditsBreakdown.ies_impresso += added; skuName = "Certificado Impresso IES/MEC"; }
+              
+              if (added > 0) {
+                acquiredCredits += added;
+                creditsHistory.push({
+                  id: `ph-${p.id}`,
+                  date: p.paid_at || p.created_at,
+                  type: "acquired",
+                  title: skuName,
+                  amount: added,
+                  course: p.product_name
+                });
+              }
             }
 
             const prodName = p.product_name || "Certificado de Conclusão - Realizzare Cursos";
@@ -776,7 +807,10 @@ export default function ContactProfilePage({ params }: PageProps) {
         const emailsOpenedCount = new Set(rawEvents.filter((e) => e.type === "open").map(e => e.payload?.campaign_id)).size;
         const emailsClickedCount = new Set(rawEvents.filter((e) => e.type === "email_click").map(e => e.payload?.campaign_id)).size;
 
+        creditsHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
         const profileObj = {
+          id: contact.id,
           first_name: contact.first_name || "",
           last_name: contact.last_name || "",
           email: contact.email,
@@ -784,12 +818,14 @@ export default function ContactProfilePage({ params }: PageProps) {
           birth_date: contact.birth_date || "",
           gender: contact.gender || "",
           status: contact.status,
+          source: contact.source,
           created_at: new Date(contact.created_at).toISOString().split("T")[0],
           location: {
             country: contact.country || "Brasil",
             state: contact.state || "",
             city: contact.city || ""
           },
+          total_spent: contact.total_spent,
           tags,
           custom_fields: mappedCustomFields,
           lists,
@@ -800,6 +836,9 @@ export default function ContactProfilePage({ params }: PageProps) {
           emails_opened: emailsOpenedCount,
           emails_clicked: emailsClickedCount,
           availableCredits,
+          usedCredits,
+          creditsBreakdown,
+          creditsHistory,
           timeline
         };
 
@@ -1004,7 +1043,10 @@ export default function ContactProfilePage({ params }: PageProps) {
             ...customTimelineEvents,
             { id: "t1", type: "import", label: "Contato Mapeado", details: "Mapeado via Pagar.me V5 Integration", timestamp: created_at }
           ],
-          availableCredits: 0
+          availableCredits: 0,
+          usedCredits: 0,
+          creditsBreakdown: { digital: 0, impresso: 0, mensal: 0, ies_digital: 0, ies_impresso: 0 },
+          creditsHistory: []
         };
 
         setProfile(fallbackProfileObj);
@@ -1770,14 +1812,47 @@ export default function ContactProfilePage({ params }: PageProps) {
              </div>
 
              {/* Credits */}
-             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-               <div className="flex justify-between items-center mb-4">
+             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+               <div className="flex justify-between items-center mb-3">
                  <h3 className="text-[11px] font-black text-amber-500 uppercase tracking-wider">Créditos de Certificado</h3>
-                 <div className="h-5 w-5 rounded-full border border-amber-500 text-amber-500 flex items-center justify-center font-bold text-[10px]">$</div>
+                 {(profile?.creditsHistory?.length > 0) && (
+                   <button 
+                     onClick={() => setShowCreditsModal(true)}
+                     className="text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-600 px-2 py-1 rounded font-bold cursor-pointer transition-colors"
+                   >
+                     Ver Histórico
+                   </button>
+                 )}
                </div>
-               <div className="mt-2">
-                 <div className="text-[40px] font-black text-slate-800 mb-2 leading-none">{profile.availableCredits || 0}</div>
-                 <div className="inline-block bg-amber-50 text-amber-500 border border-amber-200/50 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">{profile.availableCredits || 0} créditos disponíveis</div>
+               
+               <div className="space-y-1.5 mb-3 flex-1">
+                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 border-b border-slate-100 pb-1">
+                   <span>Digital</span>
+                   <span className="text-slate-700">{profile?.creditsBreakdown?.digital || 0}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 border-b border-slate-100 pb-1">
+                   <span>Digital + Impresso</span>
+                   <span className="text-slate-700">{profile?.creditsBreakdown?.impresso || 0}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 border-b border-slate-100 pb-1">
+                   <span>Assinatura Mensal</span>
+                   <span className="text-slate-700">{profile?.creditsBreakdown?.mensal || 0}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 border-b border-slate-100 pb-1">
+                   <span>IES/MEC Digital</span>
+                   <span className="text-slate-700">{profile?.creditsBreakdown?.ies_digital || 0}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 border-b border-slate-100 pb-1">
+                   <span>IES/MEC Impresso</span>
+                   <span className="text-slate-700">{profile?.creditsBreakdown?.ies_impresso || 0}</span>
+                 </div>
+               </div>
+
+               <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                 <span className="text-[10px] font-black uppercase text-slate-400">Total Disponível</span>
+                 <div className="inline-block bg-amber-50 text-amber-500 border border-amber-200/50 text-xs font-black px-2 py-0.5 rounded-md">
+                   {profile?.availableCredits || 0}
+                 </div>
                </div>
              </div>
           </div>
@@ -2126,6 +2201,50 @@ export default function ContactProfilePage({ params }: PageProps) {
               >
                 Confirmar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Credits History Modal */}
+      {showCreditsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 font-sans">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm">Histórico de Créditos</h3>
+              <button
+                onClick={() => setShowCreditsModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto space-y-3 flex-1 bg-slate-50/50">
+              {profile?.creditsHistory?.map((h: any) => (
+                <div key={h.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${h.type === 'acquired' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                      {h.type === 'acquired' ? <CheckCircle2 className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{h.title}</p>
+                      <p className="text-[10px] text-slate-500 max-w-[200px] truncate">{h.course}</p>
+                      <p className="text-[9px] text-slate-400 mt-1 uppercase font-semibold">
+                        {new Date(h.date).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`text-sm font-black ${h.type === 'acquired' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {h.amount > 0 ? `+${h.amount}` : h.amount}
+                  </div>
+                </div>
+              ))}
+              {(!profile?.creditsHistory || profile?.creditsHistory.length === 0) && (
+                <div className="text-center text-xs text-slate-500 py-6">
+                  Nenhum histórico encontrado.
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1902,6 +1902,8 @@ export default function ContactsPage() {
             enrollments (
               status,
               progress,
+              enrolled_at,
+              certificate_issued,
               courses (
                 name
               )

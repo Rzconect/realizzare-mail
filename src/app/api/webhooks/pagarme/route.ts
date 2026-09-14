@@ -85,6 +85,30 @@ export async function POST(req: Request) {
       }
     }
 
+    // Default hardcoded mappings for standard certificate and subscription IDs
+    if (!mappedTitle && orderCode) {
+      const parts = orderCode.split("-");
+      const defaultMap: Record<string, string> = {
+        "1": "Certificado Digital",
+        "2": "Certificado Digital + Impresso",
+        "3": "Assinatura Mensal",
+        "179": "Certificado Digital IES/MEC",
+        "180": "Certificado Impresso IES/MEC"
+      };
+      // Check middle part first
+      if (parts.length === 3 && defaultMap[parts[1]]) {
+        mappedTitle = defaultMap[parts[1]];
+      } else {
+        // Fallback check all parts
+        for (const p of parts) {
+          if (defaultMap[p]) {
+            mappedTitle = defaultMap[p];
+            break;
+          }
+        }
+      }
+    }
+
     const itemTitle = mappedTitle || 
                       data?.metadata?.course_name || 
                       data?.metadata?.course || 
