@@ -1790,7 +1790,7 @@ export default function ContactProfilePage({ params }: PageProps) {
 
                         const certStatus = item.certificate_issued ? "Emitido" : "Não Emitido";
                         const certSub = item.certificate_issued 
-                          ? `Emissão: ${item.enrolled_at ? new Date(item.enrolled_at).toLocaleDateString("pt-BR") : "Hoje"}`
+                          ? `Emissão: ${item.certificate_issued_at ? new Date(item.certificate_issued_at).toLocaleDateString("pt-BR") : "Hoje"}`
                           : "Aguardando solicitação";
 
                         return (
