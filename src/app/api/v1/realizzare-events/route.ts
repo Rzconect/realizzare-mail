@@ -434,10 +434,11 @@ export async function POST(request: Request) {
     try {
       await supabase.from("inbound_webhook_events").insert({
         org_id: DEFAULT_ORG_ID,
-        provider: "wordpress",
+        source: "realizzare_wordpress",
         event_type: eventType,
         payload: body,
-        status: "processed"
+        status: "processed",
+        processed_at: new Date().toISOString()
       });
     } catch (logErr) {
       console.warn("Could not record inbound_webhook_events log:", logErr);
