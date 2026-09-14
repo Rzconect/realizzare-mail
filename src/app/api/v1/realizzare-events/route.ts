@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       }
 
       const firstName = extraData.first_name || cleanEmail.split("@")[0];
-      const lastName = extraData.last_name || "Realizzare";
+      const lastName = extraData.last_name || "";
       const { data: inserted, error } = await supabase
         .from("contacts")
         .insert({
@@ -108,28 +108,37 @@ export async function POST(request: Request) {
     };
 
     // Helper: Find or Create Course
-    const ensureCourse = async (courseNameStr: string, priceNum = 197.00) => {
-      const nameClean = courseNameStr.trim();
-      const { data: existing } = await supabase
-        .from("courses")
-        .select("*")
-        .eq("name", nameClean)
-        .maybeSingle();
+    const ensureCourse = async (courseNameStr: string, priceNum = 197.00, skuStr?: string) => {
+      let existing = null;
+      if (skuStr) {
+        const { data } = await supabase.from("courses").select("*").eq("sku", skuStr).maybeSingle();
+        if (data) existing = data;
+      }
+      if (!existing && courseNameStr) {
+        const nameClean = courseNameStr.trim();
+        const { data } = await supabase.from("courses").select("*").eq("name", nameClean).maybeSingle();
+        if (data) existing = data;
+      }
 
-      if (existing) return existing;
+      if (existing) {
+        if (skuStr && !existing.sku) {
+          await supabase.from("courses").update({ sku: skuStr }).eq("id", existing.id);
+        }
+        return existing;
+      }
 
       const { data: inserted, error } = await supabase
         .from("courses")
         .insert({
           org_id: DEFAULT_ORG_ID,
-          name: nameClean,
+          name: courseNameStr ? courseNameStr.trim() : "Curso sem nome",
           price: priceNum,
-          type: "online"
+          sku: skuStr || null
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error || !inserted) throw error || new Error("Failed to create course");
       return inserted;
     };
 
@@ -282,14 +291,15 @@ export async function POST(request: Request) {
     else if (eventType === "course.enrollment") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
       const courseName = body.course?.title || body.course_name || "Introdução à Programação Web";
-      const coursePrice = Number(body.course?.price || 197.00);
+      const coursePrice = Number(body.course?.price || body.price || 197.00);
+      const courseId = body.course_id || body.course?.id?.toString() || null;
 
       if (!email) {
         return NextResponse.json({ success: false, message: "E-mail do aluno obrigatório." }, { status: 400 });
       }
 
       const contact = await ensureContact(email);
-      const course = await ensureCourse(courseName, coursePrice);
+      const course = await ensureCourse(courseName, coursePrice, courseId);
       const enrollment = await ensureEnrollment(contact.id, course.id);
 
       // Automatic List Transition: Move from 'Leads' to 'Lista Geral de Alunos'
@@ -314,6 +324,7 @@ export async function POST(request: Request) {
     else if (eventType === "course.progress") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
       const courseName = body.course_name || body.course?.title || "Introdução à Programação Web";
+      const courseId = body.course_id || body.course?.id?.toString() || null;
       const progressPercent = Number(body.progress_percent || body.progress_percentage || 0);
 
       if (!email) {
@@ -321,7 +332,7 @@ export async function POST(request: Request) {
       }
 
       const contact = await ensureContact(email);
-      const course = await ensureCourse(courseName);
+      const course = await ensureCourse(courseName, 197.00, courseId);
       const enrollment = await ensureEnrollment(contact.id, course.id);
 
       // Automatic List Transition: Ensure lead is in Alunos list
@@ -348,11 +359,11 @@ export async function POST(request: Request) {
           progress_percent: progressPercent,
           completed_lessons: body.completed_lessons || 0,
           total_lessons: body.total_lessons || 20,
-          course_name: courseName
+          course_name: course.name
         }
       });
 
-      processedResult = { action: "progress_updated", email, courseName, progressPercent };
+      processedResult = { action: "progress_updated", email, courseName: course.name, progressPercent };
     }
 
     // =========================================================================
@@ -361,6 +372,7 @@ export async function POST(request: Request) {
     else if (eventType === "certificate.issued") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
       const courseName = body.certificate?.course_name || body.course_name || "Introdução à Programação Web";
+      const courseId = body.certificate?.course_id || body.course_id || body.course?.id?.toString() || null;
       const certCode = body.certificate?.code || `CERT-${Math.floor(Math.random() * 90000 + 10000)}`;
 
       if (!email) {
@@ -368,7 +380,7 @@ export async function POST(request: Request) {
       }
 
       const contact = await ensureContact(email);
-      const course = await ensureCourse(courseName);
+      const course = await ensureCourse(courseName, 197.00, courseId);
       const enrollment = await ensureEnrollment(contact.id, course.id);
 
       // Ensure in Alunos list
@@ -386,7 +398,7 @@ export async function POST(request: Request) {
         })
         .eq("id", enrollment.id);
 
-      // 2. Log Certificate Event in 'course_events' with credit consumption note (No grade)
+      // 2. Log Certificate Issued in Course Events
       await supabase.from("course_events").insert({
         org_id: DEFAULT_ORG_ID,
         contact_id: contact.id,
@@ -394,15 +406,15 @@ export async function POST(request: Request) {
         enrollment_id: enrollment.id,
         event_type: "certificate_issued",
         metadata: {
+          course_name: course.name,
           code: certCode,
-          course_name: courseName,
-          issued_at: new Date().toISOString(),
-          credit_consumed: true,
+          issued_at: body.timestamp || new Date().toISOString(),
+          credit_consumed: body.certificate?.credit_consumed || false,
           note: "(1 crédito de certificado consumido)"
         }
       });
 
-      processedResult = { action: "certificate_issued", email, courseName, certCode };
+      processedResult = { action: "certificate_issued", email, courseName: course.name, certCode };
     }
 
     // =========================================================================
