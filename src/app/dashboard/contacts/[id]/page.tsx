@@ -344,6 +344,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             enrolled_at,
             completed_at,
             certificate_issued,
+            certificate_issued_at,
             courses (
               name,
               price
@@ -450,9 +451,10 @@ export default function ContactProfilePage({ params }: PageProps) {
           price: `R$ ${e.courses?.price || "0,00"}`.replace(".", ","),
           status: e.status,
           progress: parseFloat(e.progress || 0),
-          enrolled_at: e.enrolled_at ? new Date(e.enrolled_at).toISOString().split("T")[0] : "",
+          enrolled_at: e.enrolled_at ? new Date(e.enrolled_at).toISOString() : "",
           certificate_issued: !!e.certificate_issued,
-          completed_at: e.completed_at ? new Date(e.completed_at).toISOString().split("T")[0] : null
+          certificate_issued_at: e.certificate_issued_at ? new Date(e.certificate_issued_at).toISOString() : null,
+          completed_at: e.completed_at ? new Date(e.completed_at).toISOString() : null
         })) || [];
 
         const purchases = contact.purchases?.map((p: any) => ({
