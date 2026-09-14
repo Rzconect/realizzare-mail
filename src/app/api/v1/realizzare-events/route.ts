@@ -223,7 +223,7 @@ export async function POST(request: Request) {
 
     const handleCourseEnrollmentListTransition = async (contactId: string) => {
       const leadsList = await ensureList("Leads", "Lista de leads cadastrados via formulário ou integração.");
-      const alunosList = await ensureList("Lista Geral de Alunos", "Lista de alunos matriculados em cursos.");
+      const alunosList = await ensureList("Alunos", "Lista de alunos matriculados em cursos.");
 
       if (leadsList) {
         await unsubscribeFromList(contactId, leadsList.id);
@@ -253,7 +253,7 @@ export async function POST(request: Request) {
         .eq("contact_id", contact.id);
 
       if (count && count > 0) {
-        const alunosList = await ensureList("Lista Geral de Alunos", "Lista de alunos matriculados em cursos.");
+        const alunosList = await ensureList("Alunos", "Lista de alunos matriculados em cursos.");
         if (alunosList) await subscribeToList(contact.id, alunosList.id);
       } else {
         const leadsList = await ensureList("Leads", "Lista de leads cadastrados via formulário ou integração.");

@@ -608,13 +608,13 @@ export default function ContactProfilePage({ params }: PageProps) {
         if (courseEventsData && courseEventsData.length > 0) {
           courseEventsData.forEach((ce: any) => {
             const cName = ce.metadata?.course_name || ce.courses?.name || "Realizzare";
-            let label = "Evento do Curso (WordPress)";
+            let label = "Evento do Curso";
             let details = `Curso: ${cName}`;
             let type = "enrollment";
             let note = "";
 
             if (ce.event_type === "started") {
-              label = "Matrícula em Curso (WordPress)";
+              label = "Matrícula em Curso";
               details = `Matriculado no curso '${cName}'`;
               type = "enrollment";
             } else if (ce.event_type === "progress_updated") {
@@ -622,7 +622,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               details = `Concluiu ${ce.metadata?.completed_lessons || 0} aulas do curso '${cName}'`;
               type = "enrollment";
             } else if (ce.event_type === "certificate_issued") {
-              label = "Certificado Emitido (WordPress)";
+              label = "Certificado Emitido";
               details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${cName}'`;
               type = "enrollment";
               note = "(1 crédito de certificado consumido)";
