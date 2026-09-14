@@ -260,18 +260,6 @@ export async function POST(request: Request) {
         if (leadsList) await subscribeToList(contact.id, leadsList.id);
       }
 
-      // Log event in course_events
-      await supabase.from("course_events").insert({
-        org_id: DEFAULT_ORG_ID,
-        contact_id: contact.id,
-        event_type: "started",
-        metadata: {
-          event: "contact_created",
-          origin: student.origin || "WordPress Realizzare",
-          tags: student.tags || []
-        }
-      });
-
       // Log raw payload
       await supabase.from("inbound_webhook_events").insert({
         org_id: DEFAULT_ORG_ID,
