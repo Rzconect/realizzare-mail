@@ -2653,6 +2653,20 @@ export default function SettingsPage() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
                         />
                       </div>
+
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider mb-2">Regras Fixas: Créditos de Certificado</label>
+                        <p className="text-[10px] text-slate-500 mb-2 leading-tight">
+                          Os SKUs abaixo injetam créditos no perfil do aluno automaticamente ao serem pagos:
+                        </p>
+                        <ul className="text-[10px] font-mono text-slate-700 space-y-1 bg-white border border-slate-200 rounded-lg p-2">
+                          <li className="flex justify-between"><span>ID 1: Certificado Digital</span> <span className="text-emerald-600 font-bold">+1 crédito</span></li>
+                          <li className="flex justify-between"><span>ID 2: Cert. Digital + Impresso</span> <span className="text-emerald-600 font-bold">+2 créditos</span></li>
+                          <li className="flex justify-between"><span>ID 3: Assinatura Mensal</span> <span className="text-emerald-600 font-bold">+1 crédito</span></li>
+                          <li className="flex justify-between"><span>ID 179: Cert. Digital IES/MEC</span> <span className="text-emerald-600 font-bold">+1 crédito</span></li>
+                          <li className="flex justify-between"><span>ID 180: Cert. Impresso IES/MEC</span> <span className="text-emerald-600 font-bold">+1 crédito</span></li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
 

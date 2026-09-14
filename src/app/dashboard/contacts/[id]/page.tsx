@@ -311,6 +311,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           birth_date,
           gender,
           status,
+          source,
           created_at,
           country,
           state,
@@ -605,6 +606,9 @@ export default function ContactProfilePage({ params }: PageProps) {
           });
         }
 
+        let acquiredCredits = 0;
+        let usedCredits = 0;
+
         if (courseEventsData && courseEventsData.length > 0) {
           courseEventsData.forEach((ce: any) => {
             const cName = ce.metadata?.course_name || ce.courses?.name || "Realizzare";
@@ -626,6 +630,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${cName}'`;
               type = "enrollment";
               note = "(1 crédito de certificado consumido)";
+              usedCredits += 1;
             }
 
             rawEvents.push({
@@ -643,6 +648,15 @@ export default function ContactProfilePage({ params }: PageProps) {
         // C. Purchase Events (Pagar.me Transactions)
         if (purchases && purchases.length > 0) {
           purchases.forEach((p: any) => {
+            if (p.status === "paid" || p.status === "approved") {
+              const sku = String(p.sku || "");
+              if (sku === "1") acquiredCredits += 1;
+              else if (sku === "2") acquiredCredits += 2;
+              else if (sku === "3") acquiredCredits += 1;
+              else if (sku === "179") acquiredCredits += 1;
+              else if (sku === "180") acquiredCredits += 1;
+            }
+
             const prodName = p.product_name || "Certificado de Conclusão - Realizzare Cursos";
             const amtStr = (p.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const isPaid = p.status === "paid" || p.status === "approved";
@@ -660,14 +674,19 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         // Reporting Events fetch removed to prevent timeline duplication with Purchases
 
-        let sourceDetail = contact.source || "formulário de inscrição padrão";
+        let sourceDetail = contact.source || "Formulário Padrão";
+        
         if (contact.source === "import" || contact.source === "importation") {
-          sourceDetail = "importação de lista";
+          sourceDetail = "Importação de lista";
         } else if (contact.source === "manual") {
-          sourceDetail = "registro manual pelo painel";
+          sourceDetail = "Registro manual";
         } else if (contact.source === "pagarme" || (!contact.source && purchases.length > 0)) {
-          sourceDetail = "nova transação no pagar.me";
+          sourceDetail = "Transação Realizada Pagar.me";
+        } else if (contact.source === "WordPress Realizzare - Formulario de Cadastro" || contact.source === "WordPress Realizzare") {
+          sourceDetail = "Formulário de Inscrição Oficial";
         }
+
+        const availableCredits = Math.max(0, acquiredCredits - usedCredits);
 
         // Always add contact creation event
         // Subtract 1 minute to ensure it sorts before the webhook event that triggered its creation
@@ -678,11 +697,11 @@ export default function ContactProfilePage({ params }: PageProps) {
           id: `created-${contact.id}`,
           type: "import",
           label: "Contato Cadastrado",
-          details: `Registrado através de ${sourceDetail}`,
+          details: `Registrado através de: ${sourceDetail}`,
           payload: { 
             "Data de Criação": new Date(contact.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
             "Email": contact.email,
-            "Origem": contact.source || "Formulário Padrão",
+            "Origem": sourceDetail,
             "Evento": "contact.created"
           },
           timestamp: contactCreatedAt.toISOString()
@@ -780,6 +799,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           emails_sent: emailsSentCount,
           emails_opened: emailsOpenedCount,
           emails_clicked: emailsClickedCount,
+          availableCredits,
           timeline
         };
 
@@ -983,7 +1003,8 @@ export default function ContactProfilePage({ params }: PageProps) {
           timeline: [
             ...customTimelineEvents,
             { id: "t1", type: "import", label: "Contato Mapeado", details: "Mapeado via Pagar.me V5 Integration", timestamp: created_at }
-          ]
+          ],
+          availableCredits: 0
         };
 
         setProfile(fallbackProfileObj);
@@ -1755,8 +1776,8 @@ export default function ContactProfilePage({ params }: PageProps) {
                  <div className="h-5 w-5 rounded-full border border-amber-500 text-amber-500 flex items-center justify-center font-bold text-[10px]">$</div>
                </div>
                <div className="mt-2">
-                 <div className="text-[40px] font-black text-slate-800 mb-2 leading-none">0</div>
-                 <div className="inline-block bg-amber-50 text-amber-500 border border-amber-200/50 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">0 créditos disponíveis</div>
+                 <div className="text-[40px] font-black text-slate-800 mb-2 leading-none">{profile.availableCredits || 0}</div>
+                 <div className="inline-block bg-amber-50 text-amber-500 border border-amber-200/50 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">{profile.availableCredits || 0} créditos disponíveis</div>
                </div>
              </div>
           </div>
