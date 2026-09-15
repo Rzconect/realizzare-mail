@@ -1000,50 +1000,77 @@ function ConversationsContent() {
                           : "bg-white border border-slate-100 rounded-tl-none"
                       }`}
                     >
-                      {msg.text.startsWith('[MEDIA:image]') ? (
-                        <div className="flex flex-col gap-2">
-                          <div className="w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden relative group">
-                            <ImageIcon className="h-10 w-10 text-slate-400" />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                              <Download className="h-6 w-6 text-white" />
-                            </div>
-                          </div>
-                          <span className="text-xs text-slate-600 truncate w-48 font-medium">{msg.text.replace('[MEDIA:image]', '').trim()}</span>
-                        </div>
-                      ) : msg.text.startsWith('[MEDIA:audio]') ? (
-                        <div className="flex items-center gap-3 bg-black/5 p-2 pr-4 rounded-full min-w-[200px] md:w-64">
-                          <button className="h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm hover:scale-105 transition-transform">
-                            <Play className="h-4 w-4 ml-0.5" />
-                          </button>
-                          <div className="flex-1">
-                            <div className="h-1 bg-slate-300 rounded-full w-full overflow-hidden flex items-center">
-                              <div className="h-full bg-slate-500 w-1/3 rounded-full relative">
-                                <div className="absolute right-0 top-1/2 -translate-y-1/2 h-2.5 w-2.5 bg-emerald-500 rounded-full shadow-sm"></div>
+                      {(() => {
+                        if (msg.text.startsWith('[MEDIA:image]')) {
+                          const mediaStr = msg.text.replace('[MEDIA:image]', '').trim();
+                          const url = mediaStr.split(/[\s\n]+/)[0];
+                          const caption = mediaStr.substring(url.length).trim();
+                          return (
+                            <div className="flex flex-col gap-2">
+                              <div className="w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden relative group">
+                                {url.startsWith('http') ? (
+                                  <img src={url} alt="Media" className="w-full h-full object-cover" />
+                                ) : (
+                                  <ImageIcon className="h-10 w-10 text-slate-400" />
+                                )}
+                                {url.startsWith('http') && (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                    <Download className="h-6 w-6 text-white" />
+                                  </a>
+                                )}
                               </div>
+                              {caption ? (
+                                <span className="text-xs text-slate-800 font-medium whitespace-pre-wrap break-words max-w-48">{caption}</span>
+                              ) : (!url.startsWith('http') && <span className="text-xs text-slate-600 truncate w-48 font-medium">Mídia Indisponível</span>)}
                             </div>
-                            <div className="flex justify-between mt-1">
-                              <span className="text-[10px] font-medium text-slate-500">0:00</span>
-                              <span className="text-[10px] font-medium text-slate-500">0:15</span>
+                          );
+                        } else if (msg.text.startsWith('[MEDIA:audio]')) {
+                          const mediaStr = msg.text.replace('[MEDIA:audio]', '').trim();
+                          const url = mediaStr.split(/[\s\n]+/)[0];
+                          return (
+                            <div className="flex items-center gap-3 bg-black/5 p-2 pr-4 rounded-full min-w-[200px] md:w-64">
+                              <button className="h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm hover:scale-105 transition-transform" onClick={() => url.startsWith('http') && window.open(url, '_blank')}>
+                                <Play className="h-4 w-4 ml-0.5" />
+                              </button>
+                              <div className="flex-1">
+                                <div className="h-1 bg-slate-300 rounded-full w-full overflow-hidden flex items-center">
+                                  <div className="h-full bg-slate-500 w-1/3 rounded-full relative">
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 h-2.5 w-2.5 bg-emerald-500 rounded-full shadow-sm"></div>
+                                  </div>
+                                </div>
+                                <div className="flex justify-between mt-1">
+                                  <span className="text-[10px] font-medium text-slate-500">Áudio</span>
+                                </div>
+                              </div>
+                              {url.startsWith('http') && (
+                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                                  <Download className="h-4 w-4" />
+                                </a>
+                              )}
                             </div>
-                          </div>
-                          <button className="text-slate-400 hover:text-slate-600 p-1">
-                            <Download className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : msg.text.startsWith('[MEDIA:document]') ? (
-                        <div className="flex items-center gap-3 bg-white/50 p-3 rounded-lg min-w-[200px] md:w-64 border border-slate-200 cursor-pointer hover:bg-white transition-colors shadow-sm">
-                          <div className="h-10 w-10 bg-red-100 text-red-600 rounded-lg flex items-center justify-center shrink-0">
-                            <FileText className="h-5 w-5" />
-                          </div>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-sm font-semibold text-slate-700 truncate">{msg.text.replace('[MEDIA:document]', '').trim()}</span>
-                            <span className="text-[10px] font-medium text-slate-500">PDF Document</span>
-                          </div>
-                          <Download className="h-4 w-4 text-slate-400 shrink-0" />
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
-                      )}
+                          );
+                        } else if (msg.text.startsWith('[MEDIA:document]')) {
+                          const mediaStr = msg.text.replace('[MEDIA:document]', '').trim();
+                          const url = mediaStr.split(/[\s\n]+/)[0];
+                          const caption = mediaStr.substring(url.length).trim() || "Documento / Arquivo";
+                          return (
+                            <a href={url.startsWith('http') ? url : '#'} target={url.startsWith('http') ? "_blank" : "_self"} rel="noopener noreferrer" className="flex items-center gap-3 bg-white/50 p-3 rounded-lg min-w-[200px] md:w-64 border border-slate-200 cursor-pointer hover:bg-white transition-colors shadow-sm">
+                              <div className="h-10 w-10 bg-red-100 text-red-600 rounded-lg flex items-center justify-center shrink-0">
+                                <FileText className="h-5 w-5" />
+                              </div>
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="text-sm font-semibold text-slate-700 truncate">{caption}</span>
+                                <span className="text-[10px] font-medium text-slate-500">{url.startsWith('http') ? 'Clique para abrir' : 'Indisponível'}</span>
+                              </div>
+                              {url.startsWith('http') && <Download className="h-4 w-4 text-slate-400 shrink-0" />}
+                            </a>
+                          );
+                        } else {
+                          return (
+                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                          );
+                        }
+                      })()}
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span className={`text-[9px] font-semibold ${isMine ? "text-emerald-700/60" : "text-slate-400"}`}>{msg.time}</span>
                         {isMine && <CheckCheck className="h-3 w-3 text-blue-500" />}
