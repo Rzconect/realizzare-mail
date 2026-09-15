@@ -32,13 +32,39 @@ export async function POST(req: Request) {
 
       const phone = remoteJid.split('@')[0];
       const pushName = msg.pushName || phone;
-      const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
-      const isFromMe = msg.key.fromMe;
-      // Only use pushName if the message is from the contact (not fromMe), 
-      // otherwise we would mistakenly save the account owner's name as the contact's name.
-      const contactName = !isFromMe && msg.pushName ? msg.pushName : phone;
       
-      if (!text) return NextResponse.json({ success: true }); // Ignore non-text for now
+      let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+      let messageType = 'text';
+      let mimetype = '';
+      let base64Media = msg.base64 || body.data?.base64 || body.base64 || "";
+
+      if (msg.message?.imageMessage) {
+        messageType = 'image';
+        mimetype = msg.message.imageMessage.mimetype || 'image/jpeg';
+        text = msg.message.imageMessage.caption || text;
+      } else if (msg.message?.audioMessage) {
+        messageType = 'audio';
+        mimetype = msg.message.audioMessage.mimetype || 'audio/ogg';
+      } else if (msg.message?.documentMessage) {
+        messageType = 'document';
+        mimetype = msg.message.documentMessage.mimetype || 'application/pdf';
+        text = msg.message.documentMessage.fileName || msg.message.documentMessage.caption || text;
+      } else if (msg.message?.videoMessage) {
+        messageType = 'video';
+        mimetype = msg.message.videoMessage.mimetype || 'video/mp4';
+        text = msg.message.videoMessage.caption || text;
+      } else if (msg.message?.stickerMessage) {
+        messageType = 'image';
+        mimetype = msg.message.stickerMessage.mimetype || 'image/webp';
+      }
+
+      if (!text && messageType === 'text') {
+        return NextResponse.json({ success: true }); // Ignore empty non-media
+      }
+
+      const isFromMe = msg.key.fromMe;
+      // Only use pushName if the message is from the contact (not fromMe)
+      const contactName = !isFromMe && msg.pushName ? msg.pushName : phone;
 
       // 1. Check if chat exists
       let { data: chat } = await supabaseAdmin
@@ -88,12 +114,60 @@ export async function POST(req: Request) {
           (msg.messageTimestamp > 10000000000 ? msg.messageTimestamp / 1000 : msg.messageTimestamp) * 1000
         ).toISOString();
 
+        let finalMessageText = text;
+        if (messageType !== 'text') {
+          let publicUrl = '';
+          try {
+            // Se base64 nao veio no webhook, tentamos buscar via endpoint
+            if (!base64Media) {
+              const instanceName = body.instance || 'RealizzareCRM';
+              const mediaReq = await fetch(`https://evolution-api-production-8158.up.railway.app/chat/getBase64FromMediaMessage/${instanceName}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': 'RealizzareSenhaSecreta2026'
+                },
+                body: JSON.stringify({ message: msg })
+              });
+              
+              if (mediaReq.ok) {
+                const mediaRes = await mediaReq.json();
+                base64Media = mediaRes.base64 || mediaRes.data?.base64 || '';
+              }
+            }
+
+            if (base64Media) {
+              const buffer = Buffer.from(base64Media, 'base64');
+              const ext = mimetype.split('/')[1]?.split(';')[0] || 'bin';
+              const fileName = `media_${msg.key.id}.${ext}`;
+              
+              const { error: uploadError } = await supabaseAdmin
+                 .storage
+                 .from('whatsapp_media')
+                 .upload(fileName, buffer, { contentType: mimetype, upsert: true });
+                 
+              if (!uploadError) {
+                 const { data: { publicUrl: url } } = supabaseAdmin
+                    .storage
+                    .from('whatsapp_media')
+                    .getPublicUrl(fileName);
+                 publicUrl = url;
+              }
+            }
+          } catch (e) {
+            console.error("Failed to process media:", e);
+          }
+          
+          const mediaTag = messageType === 'audio' ? '[MEDIA:audio]' : messageType === 'document' ? '[MEDIA:document]' : '[MEDIA:image]';
+          finalMessageText = `${mediaTag} ${publicUrl || 'Mídia_Indisponível'}\n${text}`.trim();
+        }
+
         await supabaseAdmin
           .from('whatsapp_messages')
           .insert({
             chat_id: chat.id,
             message_id: msg.key.id,
-            text: text,
+            text: finalMessageText,
             sender: isFromMe ? 'agent' : 'user',
             created_at: msgTime
           });
