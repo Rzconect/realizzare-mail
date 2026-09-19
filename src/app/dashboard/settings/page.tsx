@@ -472,11 +472,21 @@ export default function SettingsPage() {
     fetchSettings();
   }, []);
 
-  const handleSavePersonalInfo = () => {
+  const handleSavePersonalInfo = async () => {
     const newFullName = `${firstName} ${lastName}`.trim();
     if (!newFullName) {
       alert("O nome não pode ficar vazio.");
       return;
+    }
+
+    // Update in Supabase Auth Profile Metadata
+    try {
+      const supabase = createClient();
+      await supabase.auth.updateUser({
+        data: { name: newFullName }
+      });
+    } catch(e) {
+      console.error("Failed to update name in Supabase", e);
     }
 
     // 1. Update in the users database list
@@ -511,7 +521,7 @@ export default function SettingsPage() {
     alert("Informações pessoais atualizadas com sucesso!");
   };
 
-  const handleSaveEmail = () => {
+  const handleSaveEmail = async () => {
     if (!currentEmailConfirmPass) {
       alert("Por favor, digite sua senha atual para confirmar a alteração do e-mail.");
       return;
@@ -522,6 +532,33 @@ export default function SettingsPage() {
       return;
     }
 
+    // Attempt to update Supabase Auth email first
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: currentEmailConfirmPass
+      });
+
+      if (error) {
+        alert("Senha incorreta. Não foi possível alterar o e-mail no servidor.");
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: email.trim()
+      });
+
+      if (updateError) {
+        alert(`Erro ao alterar o e-mail no servidor: ${updateError.message}`);
+        return;
+      }
+    } catch(e) {
+      console.error(e);
+      alert("Erro de comunicação com o servidor.");
+      return;
+    }
+
     const storedUsers = localStorage.getItem("realizzare_auth_users");
     if (storedUsers) {
       try {
@@ -529,12 +566,11 @@ export default function SettingsPage() {
         const userDb = usersList.find((u: any) => u.email.toLowerCase() === currentUser.email.toLowerCase());
         
         if (!userDb || userDb.password !== currentEmailConfirmPass) {
-          alert("Senha incorreta. Não foi possível alterar o e-mail.");
-          return;
+          // If we reach here, Supabase auth passed but local validation failed. We still proceed since Supabase is the source of truth.
         }
 
         if (usersList.some((u: any) => u.email.toLowerCase() === email.trim().toLowerCase() && u.email.toLowerCase() !== currentUser.email.toLowerCase())) {
-          alert("Este e-mail de login já está em uso por outro usuário.");
+          alert("Este e-mail de login já está em uso localmente por outro usuário.");
           return;
         }
 
@@ -557,14 +593,14 @@ export default function SettingsPage() {
 
         window.dispatchEvent(new Event("storage"));
         setCurrentEmailConfirmPass("");
-        alert("E-mail de login atualizado com sucesso!");
+        alert("E-mail de login atualizado com sucesso no banco de dados. O Supabase pode enviar um e-mail de confirmação dependendo da sua configuração.");
       } catch (e) {
         console.error(e);
       }
     }
   };
 
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
     if (!currentPassword) {
       alert("Por favor, digite sua senha atual.");
       return;
@@ -578,6 +614,33 @@ export default function SettingsPage() {
       return;
     }
 
+    // Attempt to update Supabase Auth password first
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: currentPassword
+      });
+
+      if (error) {
+        alert("Senha atual incorreta. Não foi possível validar suas credenciais no servidor.");
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        alert(`Erro ao atualizar senha no servidor: ${updateError.message}`);
+        return;
+      }
+    } catch(e) {
+      console.error(e);
+      alert("Erro de comunicação com o servidor.");
+      return;
+    }
+
     const storedUsers = localStorage.getItem("realizzare_auth_users");
     if (storedUsers) {
       try {
@@ -585,21 +648,30 @@ export default function SettingsPage() {
         const userIdx = usersList.findIndex((u: any) => u.email.toLowerCase() === currentUser.email.toLowerCase());
 
         if (userIdx === -1 || usersList[userIdx].password !== currentPassword) {
-          alert("Senha atual incorreta.");
-          return;
+          // If we reach here, Supabase auth passed but local validation failed. We proceed anyway.
+          if (userIdx !== -1) {
+            usersList[userIdx].password = newPassword;
+            localStorage.setItem("realizzare_auth_users", JSON.stringify(usersList));
+            setUsers(usersList);
+          }
+        } else {
+          usersList[userIdx].password = newPassword;
+          localStorage.setItem("realizzare_auth_users", JSON.stringify(usersList));
+          setUsers(usersList);
         }
 
-        usersList[userIdx].password = newPassword;
-        localStorage.setItem("realizzare_auth_users", JSON.stringify(usersList));
-        setUsers(usersList);
-
-        alert("Senha de acesso atualizada com sucesso!");
+        alert("Senha de acesso atualizada com sucesso em todos os ambientes!");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmNewPassword("");
       } catch (e) {
         console.error(e);
       }
+    } else {
+      alert("Senha atualizada no banco oficial com sucesso!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
     }
   };
 
