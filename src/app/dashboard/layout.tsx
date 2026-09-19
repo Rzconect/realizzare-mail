@@ -288,9 +288,9 @@ export default function DashboardLayout({
       ]
     : [
         { name: "Início", href: "/dashboard", icon: LayoutDashboard },
+        { name: "Contatos", href: "/dashboard/contacts", icon: Users },
         { name: "CRM", href: "/dashboard/crm", icon: KanbanSquare },
         { name: "Conversas", href: "/dashboard/conversations", icon: MessageCircle },
-        { name: "Contatos", href: "/dashboard/contacts", icon: Users },
         { name: "Campanhas", href: "/dashboard/campaigns", icon: Mail },
         { name: "Automações", href: "/dashboard/automations", icon: GitBranch },
         { name: "Conteúdos", href: "/dashboard/contents", icon: Image },

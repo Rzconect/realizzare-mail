@@ -32,7 +32,7 @@ function ConversationsContent() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatPhone, setNewChatPhone] = useState("");
   
-  const [showContactDetails, setShowContactDetails] = useState(false);
+  const [showContactDetails, setShowContactDetails] = useState(true);
   const [linkedContacts, setLinkedContacts] = useState<Record<string, string>>({}); // chatId -> contact email or ID
   const [searchEmail, setSearchEmail] = useState("");
   const [autocompleteResults, setAutocompleteResults] = useState<any[]>([]);

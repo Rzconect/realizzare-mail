@@ -29,6 +29,7 @@ import {
   CreditCard,
   ShoppingBag,
   Eye,
+  EyeOff,
   GitBranch,
   Play,
   RotateCcw,
@@ -108,6 +109,7 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState<"today" | "7" | "30" | "90" | "current_month" | "custom">("current_month");
   const [customStartDate, setCustomStartDate] = useState("2026-08-01");
   const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [showFinancials, setShowFinancials] = useState(true);
 
   const [activeFlows, setActiveFlows] = useState<any[]>([]);
   const [flows, setFlows] = useState<any[]>([]);
@@ -1133,9 +1135,17 @@ export default function DashboardPage() {
                 />
               </div>
             )}
-            <div className="bg-slate-100 border border-slate-200 rounded-lg p-1 flex items-center gap-1.5 shadow-sm">
-              <button
-                onClick={() => setPeriod("today")}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowFinancials(!showFinancials)} 
+                className="p-1.5 text-slate-500 hover:text-indigo-600 bg-white border border-slate-200 hover:border-indigo-200 rounded-lg transition-colors shadow-sm cursor-pointer"
+                title={showFinancials ? "Ocultar valores financeiros" : "Mostrar valores financeiros"}
+              >
+                {showFinancials ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
+              <div className="bg-slate-100 border border-slate-200 rounded-lg p-1 flex items-center gap-1.5 shadow-sm">
+                <button
+                  onClick={() => setPeriod("today")}
                 className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                   period === "today"
                     ? "bg-indigo-600 text-white shadow"
@@ -1203,6 +1213,7 @@ export default function DashboardPage() {
               >
                 <RotateCcw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
               </button>
+            </div>
             </div>
           </div>
         </div>
@@ -1284,7 +1295,7 @@ export default function DashboardPage() {
                   <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Faturamento Total</span>
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <h4 className="text-lg font-black text-slate-850">
-                      {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.total_paid)}
+                      {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : (showFinancials ? formatCurrency(data.total_paid) : 'R$ •••••')}
                     </h4>
                     <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
                       <TrendingUp className="h-3 w-3" />
@@ -1303,7 +1314,7 @@ export default function DashboardPage() {
                   <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Faturamento do E-mail</span>
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <h4 className="text-lg font-black text-slate-850">
-                      {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatCurrency(data.email_revenue || 0)}
+                      {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : (showFinancials ? formatCurrency(data.email_revenue || 0) : 'R$ •••••')}
                     </h4>
                     <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
                       {(data.email_paid_count || 0)} pagas
