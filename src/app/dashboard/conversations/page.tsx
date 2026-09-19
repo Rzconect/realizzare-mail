@@ -41,6 +41,7 @@ function ConversationsContent() {
   
   const [chats, setChats] = useState<any[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     // Re-link activeChatId if the temp chat was replaced by a real chat
@@ -64,47 +65,58 @@ function ConversationsContent() {
     //   setIsConnected(false);
     // }
 
-    const loadUsers = () => {
+    const loadUsers = async () => {
       // Load linked contacts
       const storedContacts = localStorage.getItem("realizzare_chat_contacts");
       if (storedContacts) {
         try { setLinkedContacts(JSON.parse(storedContacts)); } catch (e) {}
       }
 
-      // Load users
-      const storedUsers = localStorage.getItem("realizzare_auth_users");
-      if (storedUsers) {
+      // Get current user from session
+      let currentSessionUser = null;
+      const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
+      if (sessionStr) {
         try {
-          const parsed = JSON.parse(storedUsers);
-          // Get current user from session
-          const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
-          let currentSessionUser = parsed[0];
-          
-          if (sessionStr) {
-            currentSessionUser = JSON.parse(sessionStr);
-            setCurrentUser(currentSessionUser);
-          } else {
-            setCurrentUser(currentSessionUser);
-          }
-          
-          // Force the users array to use the name from the session for the current user
-          const updatedParsed = parsed.map((u: any) => {
-            if (u.email && currentSessionUser.email && u.email.toLowerCase() === currentSessionUser.email.toLowerCase()) {
-              return { ...u, name: currentSessionUser.name };
-            }
-            return u;
-          });
-          
-          // Remove duplicates based on name to prevent "Leonardo Christian" appearing twice
-          const uniqueUsers = Array.from(new Map(updatedParsed.map((u: any) => [u.name, u])).values());
-          
-          setUsers(uniqueUsers);
-        } catch (e) {}
-      } else {
-        const mockUser = { name: "Leonardo Christian", email: "leonardo@realizzare.com.br" };
-        setUsers([mockUser]);
-        setCurrentUser(mockUser);
+          currentSessionUser = JSON.parse(sessionStr);
+          setCurrentUser(currentSessionUser);
+        } catch(e) {}
       }
+
+      // Fetch users from API
+      try {
+        const res = await fetch("/api/auth/users");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.users && Array.isArray(data.users)) {
+            let parsed = data.users.map((u: any) => ({
+              ...u,
+              role: u.email.toLowerCase() === "contato@realizzarecursos.com.br" ? "Administrador" : u.role
+            }));
+            
+            // Force the users array to use the name from the session for the current user
+            if (currentSessionUser) {
+              parsed = parsed.map((u: any) => {
+                if (u.email && currentSessionUser.email && u.email.toLowerCase() === currentSessionUser.email.toLowerCase()) {
+                  return { ...u, name: currentSessionUser.name };
+                }
+                return u;
+              });
+            }
+            
+            // Remove duplicates based on name
+            const uniqueUsers = Array.from(new Map(parsed.map((u: any) => [u.name || u.email, u])).values());
+            setUsers(uniqueUsers);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao buscar usuarios na API", e);
+      }
+
+      // Fallback if API fails
+      const mockUser = currentSessionUser || { name: "Leonardo Christian", email: "leonardo@realizzare.com.br" };
+      setUsers([mockUser]);
+      if (!currentSessionUser) setCurrentUser(mockUser);
     };
 
     loadUsers();
@@ -721,7 +733,7 @@ function ConversationsContent() {
                       <span>Não Atribuído</span>
                       {filterAssignedTo === "Não Atribuído" && <CheckCheck className="h-4 w-4" />}
                     </button>
-                    {Array.from(new Set([...users.map(u => u.name || u.email?.split("@")[0] || "Desconhecido"), ...chats.map(c => c.assignedTo).filter(Boolean)])).map(name => (
+                    {Array.from(new Set(users.map(u => u.name || u.email?.split("@")[0] || "Desconhecido"))).map(name => (
                       <button 
                         key={name}
                         onClick={() => { setFilterAssignedTo(name as string); setIsFilterDropdownOpen(false); }}
@@ -897,7 +909,7 @@ function ConversationsContent() {
                         >
                           Sem responsável (Voltar para fila)
                         </button>
-                        {Array.from(new Set([...users.map(u => u.name || u.email?.split("@")[0] || "Desconhecido"), ...chats.map(c => c.assignedTo).filter(Boolean)])).map((fullName, i) => {
+                        {Array.from(new Set(users.map(u => u.name || u.email?.split("@")[0] || "Desconhecido"))).map((fullName, i) => {
                           const nameStr = fullName as string;
                           const nameParts = nameStr.split(" ");
                           const initials = nameParts.length > 1 ? `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}` : nameStr.charAt(0);
@@ -1009,14 +1021,27 @@ function ConversationsContent() {
                             <div className="flex flex-col gap-2">
                               <div className="w-48 h-48 bg-slate-200 rounded-lg flex items-center justify-center overflow-hidden relative group">
                                 {url.startsWith('http') ? (
-                                  <img src={url} alt="Media" className="w-full h-full object-cover" />
+                                  <img 
+                                    src={url} 
+                                    alt="Media" 
+                                    className="w-full h-full object-cover cursor-pointer" 
+                                    onClick={() => setSelectedImage(url)}
+                                  />
                                 ) : (
                                   <ImageIcon className="h-10 w-10 text-slate-400" />
                                 )}
                                 {url.startsWith('http') && (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                    <Download className="h-6 w-6 text-white" />
-                                  </a>
+                                  <div 
+                                    className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                    onClick={() => setSelectedImage(url)}
+                                  >
+                                    <div className="bg-white/20 p-2 rounded-full mb-2">
+                                      <Search className="h-5 w-5 text-white" />
+                                    </div>
+                                    <a href={url} target="_blank" rel="noopener noreferrer" className="mt-2 text-white/80 hover:text-white p-1" onClick={(e) => e.stopPropagation()}>
+                                      <Download className="h-4 w-4" />
+                                    </a>
+                                  </div>
                                 )}
                               </div>
                               {caption ? (
@@ -1028,24 +1053,11 @@ function ConversationsContent() {
                           const mediaStr = msg.text.replace('[MEDIA:audio]', '').trim();
                           const url = mediaStr.split(/[\s\n]+/)[0];
                           return (
-                            <div className="flex items-center gap-3 bg-black/5 p-2 pr-4 rounded-full min-w-[200px] md:w-64">
-                              <button className="h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm hover:scale-105 transition-transform" onClick={() => url.startsWith('http') && window.open(url, '_blank')}>
-                                <Play className="h-4 w-4 ml-0.5" />
-                              </button>
-                              <div className="flex-1">
-                                <div className="h-1 bg-slate-300 rounded-full w-full overflow-hidden flex items-center">
-                                  <div className="h-full bg-slate-500 w-1/3 rounded-full relative">
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 h-2.5 w-2.5 bg-emerald-500 rounded-full shadow-sm"></div>
-                                  </div>
-                                </div>
-                                <div className="flex justify-between mt-1">
-                                  <span className="text-[10px] font-medium text-slate-500">Áudio</span>
-                                </div>
-                              </div>
-                              {url.startsWith('http') && (
-                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                                  <Download className="h-4 w-4" />
-                                </a>
+                            <div className="flex items-center bg-black/5 p-1 rounded-full min-w-[200px] md:w-64">
+                              {url.startsWith('http') ? (
+                                <audio controls src={url} className="w-full h-10 bg-transparent outline-none" controlsList="nodownload noplaybackrate" />
+                              ) : (
+                                <div className="p-2 w-full flex items-center justify-center text-xs font-semibold text-slate-500">Áudio Indisponível</div>
                               )}
                             </div>
                           );
@@ -1430,6 +1442,26 @@ function ConversationsContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {selectedImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 md:p-10" onClick={() => setSelectedImage(null)}>
+          <div className="relative max-w-5xl w-full h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors"
+              onClick={() => setSelectedImage(null)}
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="relative flex items-center justify-center w-full h-full p-4">
+              <img 
+                src={selectedImage} 
+                alt="Fullscreen Media" 
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+              />
+            </div>
           </div>
         </div>
       )}
