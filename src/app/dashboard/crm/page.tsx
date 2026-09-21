@@ -307,7 +307,6 @@ export default function CrmPage() {
                           Arquivar Agora
                         </button>
                       )}
-                      </div>
                       
                       <div className="flex items-center gap-2">
                         <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${deal.clientColor}`}>
