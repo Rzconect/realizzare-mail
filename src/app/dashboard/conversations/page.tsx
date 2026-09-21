@@ -216,7 +216,24 @@ function ConversationsContent() {
     
     const phoneToOpen = searchParams.get("phone");
     if (phoneToOpen) {
-      const existingChat = chats.find(c => c.phone === phoneToOpen);
+      const getPhoneVariants = (phone: string) => {
+        const clean = phone.replace(/[^\d]/g, '');
+        if (clean.startsWith('55') && (clean.length === 12 || clean.length === 13)) {
+          const areaCode = clean.substring(2, 4);
+          let number = clean.substring(4);
+          if (number.length === 9 && number.startsWith('9')) {
+            number = number.substring(1);
+          }
+          const without9 = `55${areaCode}${number}`;
+          const with9 = `55${areaCode}9${number}`;
+          return [with9, without9];
+        }
+        return [clean];
+      };
+      
+      const variants = getPhoneVariants(phoneToOpen);
+      const existingChat = chats.find(c => variants.includes(c.phone));
+      
       if (existingChat) {
         setActiveChatId(existingChat.id);
       } else {

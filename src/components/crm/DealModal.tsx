@@ -25,6 +25,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
+  const [activeRemoteJid, setActiveRemoteJid] = useState<string | null>(null);
 
   // Contact Real Data State
   const [contactData, setContactData] = useState<any>(null);
@@ -35,16 +36,32 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
       const fetchAllData = async () => {
          const supabase = createClient();
          
+         const getPhoneVariants = (phone: string) => {
+           const clean = phone.replace(/[^\d]/g, '');
+           if (clean.startsWith('55') && (clean.length === 12 || clean.length === 13)) {
+             const areaCode = clean.substring(2, 4);
+             let number = clean.substring(4);
+             if (number.length === 9 && number.startsWith('9')) {
+               number = number.substring(1);
+             }
+             const without9 = `55${areaCode}${number}`;
+             const with9 = `55${areaCode}9${number}`;
+             return [with9, without9];
+           }
+           return [clean];
+         };
+
          // 1. Fetch Contact Real Data
          if (deal.phone || deal.email) {
             let fetchedContacts: any[] = [];
             
             if (deal.phone) {
-               const cleanPhone = deal.phone.replace(/[^\d]/g, '');
+               const variants = getPhoneVariants(deal.phone);
+               const orQuery = variants.map(v => `phone.ilike.%${v}%`).join(',');
                const { data } = await supabase
                  .from('contacts')
                  .select('*')
-                 .ilike('phone', `%${cleanPhone}%`)
+                 .or(orQuery)
                  .order('created_at', { ascending: false });
                fetchedContacts = data || [];
             }
@@ -66,15 +83,18 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
 
          // 2. Fetch Chat
          if (deal.phone) {
-           const cleanPhone = deal.phone.replace(/[^\d]/g, '');
+           const variants = getPhoneVariants(deal.phone);
+           const orQuery = variants.map(v => `phone.eq.${v}`).join(',');
            const { data: chatData } = await supabase
              .from('whatsapp_chats')
              .select('id, remote_jid, whatsapp_messages(*)')
-             .eq('phone', cleanPhone)
+             .or(orQuery)
+             .limit(1)
              .single();
              
            if (chatData) {
              setChatId(chatData.id);
+             setActiveRemoteJid(chatData.remote_jid);
              const msgs = (chatData.whatsapp_messages || []).sort((a:any, b:any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
              setChatMessages(msgs);
            }
@@ -89,7 +109,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
     setIsSending(true);
     try {
       const cleanPhone = deal?.phone.replace(/[^\d]/g, '');
-      const remoteJid = `${cleanPhone}@s.whatsapp.net`;
+      const remoteJid = activeRemoteJid || `${cleanPhone}@s.whatsapp.net`;
       await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
