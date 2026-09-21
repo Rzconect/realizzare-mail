@@ -1,6 +1,6 @@
 "use client";
 
-import { X, SlidersHorizontal, ExternalLink, MessageCircle, Edit3, Save, ChevronDown, User as UserIcon, Phone as PhoneIcon, Send, Clock } from "lucide-react";
+import { X, SlidersHorizontal, ExternalLink, MessageCircle, Edit3, Save, ChevronDown, Send, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
