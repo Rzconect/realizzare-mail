@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DealModal from "@/components/crm/DealModal";
+import AddDealModal from "@/components/crm/AddDealModal";
 import { Plus } from "lucide-react";
 
 type ColumnId = "novo" | "qualificando" | "proposta" | "negociacao" | "ganho";
@@ -59,19 +60,24 @@ const INITIAL_DEALS: Deal[] = [
 ];
 
 export default function CrmPage() {
+  const [activeBoard, setActiveBoard] = useState<"teste_aprovado" | "pedidos_pendentes">("teste_aprovado");
   const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
   const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<ColumnId | null>(null);
   
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const handleAddDeal = (newDeal: Deal) => {
+    setDeals((prev) => [newDeal, ...prev]);
+  };
 
   // Drag handlers for Cards
   const handleDragStart = (e: React.DragEvent, dealId: string) => {
     setDraggedDealId(dealId);
     e.dataTransfer.effectAllowed = "move";
     
-    // Slight delay to allow the ghost image to render before making original invisible (optional)
     setTimeout(() => {
       const el = document.getElementById(`deal-${dealId}`);
       if (el) el.style.opacity = "0.5";
@@ -87,14 +93,13 @@ export default function CrmPage() {
 
   // Drag handlers for Columns
   const handleDragOver = (e: React.DragEvent, colId: ColumnId) => {
-    e.preventDefault(); // Necessary to allow drop
+    e.preventDefault(); 
     if (dragOverColId !== colId) {
       setDragOverColId(colId);
     }
   };
 
   const handleDragLeave = (e: React.DragEvent, colId: ColumnId) => {
-    // Only clear if we actually left the boundary
     if (dragOverColId === colId) {
       setDragOverColId(null);
     }
@@ -110,7 +115,7 @@ export default function CrmPage() {
     );
   };
 
-  const openDealModal = (deal: Deal) => {
+  const openDealModal = (deal: Deal | null = null) => {
     setSelectedDeal(deal);
     setIsModalOpen(true);
   };
@@ -124,8 +129,29 @@ export default function CrmPage() {
           CRM <span className="mx-2 text-slate-300">•</span> FUNIL DE VENDAS
         </div>
         
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Negócios</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl w-fit">
+            <button
+              onClick={() => setActiveBoard("teste_aprovado")}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                activeBoard === "teste_aprovado"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Teste Aprovado
+            </button>
+            <button
+              onClick={() => setActiveBoard("pedidos_pendentes")}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                activeBoard === "pedidos_pendentes"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Pedidos Pendentes
+            </button>
+          </div>
           
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-slate-700">Vendas</span>
@@ -133,21 +159,13 @@ export default function CrmPage() {
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" x2="9" y1="9" y2="9"/></svg>
               Funis
             </button>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 text-sm font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity">
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 text-sm font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity"
+            >
               <Plus className="h-4 w-4" />
               Negócio
             </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 mt-2">
-          <div className="flex flex-col border border-slate-200 rounded-xl px-4 py-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Em aberto</span>
-            <span className="text-base font-black text-slate-800">R$ 0</span>
-          </div>
-          <div className="flex flex-col border border-indigo-100 bg-indigo-50/30 rounded-xl px-4 py-2">
-            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide">Previsão ponderada</span>
-            <span className="text-base font-black text-indigo-500">R$ 0</span>
           </div>
         </div>
       </div>
@@ -242,6 +260,12 @@ export default function CrmPage() {
         onClose={() => setIsModalOpen(false)} 
         deal={selectedDeal}
         columns={COLUMNS}
+      />
+      
+      <AddDealModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={handleAddDeal}
       />
     </div>
   );

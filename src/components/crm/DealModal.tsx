@@ -1,8 +1,9 @@
 "use client";
 
-import { X, SlidersHorizontal, ExternalLink, MessageCircle, Edit3, Save, ChevronDown } from "lucide-react";
+import { X, SlidersHorizontal, ExternalLink, MessageCircle, Edit3, Save, ChevronDown, User as UserIcon, Phone as PhoneIcon, Send, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 interface DealModalProps {
   isOpen: boolean;
@@ -17,6 +18,65 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("Sem responsável");
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isCustomFieldsOpen, setIsCustomFieldsOpen] = useState(false);
+
+  // WhatsApp Chat State
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [messageText, setMessageText] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && deal?.phone) {
+      const fetchChat = async () => {
+         const supabase = createClient();
+         const cleanPhone = deal.phone.replace(/[^\d]/g, '');
+         const { data: chatData } = await supabase
+           .from('whatsapp_chats')
+           .select('id, remote_jid, whatsapp_messages(*)')
+           .eq('phone', cleanPhone)
+           .single();
+           
+         if (chatData) {
+           setChatId(chatData.id);
+           const msgs = (chatData.whatsapp_messages || []).sort((a:any, b:any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+           setChatMessages(msgs);
+         }
+      };
+      fetchChat();
+    }
+  }, [isOpen, deal]);
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return;
+    setIsSending(true);
+    try {
+      const cleanPhone = deal?.phone.replace(/[^\d]/g, '');
+      const remoteJid = `${cleanPhone}@s.whatsapp.net`;
+      await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: chatId || `temp-${cleanPhone}`,
+          remoteJid: remoteJid,
+          text: messageText
+        })
+      });
+      
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        text: messageText,
+        is_from_me: true,
+        created_at: new Date().toISOString(),
+        status: 'sending'
+      }]);
+      setMessageText("");
+    } catch (e) {
+       console.error("Failed to send message", e);
+    }
+    setIsSending(false);
+  };
+
 
   useEffect(() => {
     if (isOpen) {
@@ -141,13 +201,18 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
 
           {/* Custom Fields Section */}
           <div className="py-3">
-            <div className="flex items-center gap-2 text-slate-500 mb-4">
+            <button 
+              onClick={() => setIsCustomFieldsOpen(!isCustomFieldsOpen)}
+              className="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors w-full mb-4 outline-none"
+            >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Campos Personalizados</span>
-            </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider flex-1 text-left">Campos Personalizados</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${isCustomFieldsOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-            {/* Changed to a 2-column grid to make it more compact */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {isCustomFieldsOpen && (
+              <>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               <div className="col-span-2 sm:col-span-1">
                 <label className="text-[11px] font-semibold text-slate-700 block mb-1">Cidade</label>
                 <input type="text" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
@@ -187,43 +252,62 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
                 {isSaving ? "Salvando..." : "Salvar"}
               </button>
             </div>
+              </>
+            )}
           </div>
           
           <div className="border-b border-slate-200/80 my-2"></div>
 
-          {/* Client Footer */}
-          <div className="py-3">
-            <div className="flex items-center gap-2 text-slate-500 mb-3">
-              <UserIcon className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Cliente</span>
+          {/* WhatsApp Chat Panel */}
+          <div className="py-3 flex flex-col flex-1 min-h-[300px]">
+            <div className="flex items-center justify-between text-slate-500 mb-3">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-3.5 w-3.5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Conversa via WhatsApp</span>
+              </div>
+              <button onClick={handleOpenConversation} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
+                Abrir painel <ExternalLink className="h-3 w-3" />
+              </button>
             </div>
             
-            <div className="flex items-start gap-3">
-              <div className={`h-9 w-9 shrink-0 text-white rounded-full flex items-center justify-center font-bold text-xs ${deal?.clientColor || 'bg-[#0f7650]'}`}>
-                {deal?.clientInitials || 'GC'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h3 className="text-xs font-bold text-slate-800 truncate">{deal?.clientName || 'Gabriela Vitória Miranda da Cruz'}</h3>
-                  <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[8px] font-bold uppercase tracking-wide">Novo</span>
+            {/* Chat Messages */}
+            <div className="flex-1 bg-slate-50 border border-slate-200 rounded-t-xl p-3 overflow-y-auto space-y-3 h-64 custom-scrollbar">
+              {chatMessages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs font-semibold text-slate-400">
+                  Nenhuma mensagem ainda. Envie a primeira!
                 </div>
-                <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium mb-1">
-                  <PhoneIcon className="h-3 w-3" />
-                  <span>{deal?.phone || '5531973301958'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium mb-1.5">
-                  <span className="relative flex items-center gap-1">
-                    <span className="h-1 w-1 bg-slate-300 rounded-full"></span>
-                    há 3 meses
-                  </span>
-                  <span>1 conversa</span>
-                  <span className="flex items-center gap-1 before:content-['·'] before:mr-1">1 msg</span>
-                </div>
-                <a href="#" className="flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 transition-colors">
-                  Ver ficha completa
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
+              ) : (
+                chatMessages.map((msg, idx) => {
+                  const isFromMe = msg.sender === 'agent' || msg.is_from_me;
+                  return (
+                    <div key={msg.id || idx} className={`flex flex-col ${isFromMe ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs shadow-sm relative ${isFromMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none'}`}>
+                        {msg.text}
+                        {msg.status === 'sending' && <Clock className="h-2.5 w-2.5 absolute bottom-1 right-1 opacity-50" />}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            
+            {/* Message Input */}
+            <div className="flex items-center gap-2 p-2 bg-white border border-t-0 border-slate-200 rounded-b-xl">
+              <input 
+                type="text" 
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Digite uma mensagem..."
+                className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
+              />
+              <button 
+                onClick={handleSendMessage}
+                disabled={isSending || !messageText.trim()}
+                className="h-8 w-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center disabled:opacity-50 transition-colors shrink-0"
+              >
+                {isSending ? <Clock className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 -ml-0.5" />}
+              </button>
             </div>
           </div>
           
