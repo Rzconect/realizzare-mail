@@ -3,6 +3,7 @@
 import { X, SlidersHorizontal, ExternalLink, MessageCircle, Edit3, Save, ChevronDown, Send, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 interface DealModalProps {
@@ -99,6 +100,17 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
              setChatMessages(msgs);
            }
          }
+
+         // 3. Fetch Users
+         try {
+           const res = await fetch('/api/auth/users');
+           if (res.ok) {
+             const data = await res.json();
+             if (Array.isArray(data)) {
+               setUsers(data);
+             }
+           }
+         } catch(e) { console.error(e); }
       };
       fetchAllData();
     }
@@ -134,20 +146,6 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
     setIsSending(false);
   };
 
-
-  useEffect(() => {
-    if (isOpen) {
-      const stored = localStorage.getItem("realizzare_auth_users");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setUsers(parsed);
-        } catch (e) {}
-      } else {
-        setUsers([{ name: "Leonardo Christian", email: "leonardo@realizzare.com.br" }]);
-      }
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -301,6 +299,17 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
                     <input readOnly type="text" value={contactData?.id || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
                   </div>
                 </div>
+                {contactData?.id && (
+                  <div className="mt-4 flex justify-end">
+                    <Link 
+                      href={`/dashboard/contacts/${contactData.id}`}
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg"
+                    >
+                      Ver ficha completa
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </div>
+                )}
               </>
             )}
           </div>

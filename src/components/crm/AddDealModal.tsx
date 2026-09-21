@@ -22,23 +22,14 @@ export default function AddDealModal({ isOpen, onClose, onAdd }: AddDealModalPro
 
   useEffect(() => {
     if (isOpen) {
-      const stored = localStorage.getItem("realizzare_auth_users");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setUsers(parsed);
-          
-          const session = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
-          if (session) {
-             const parsedSession = JSON.parse(session);
-             if (parsedSession?.name) {
-               setSelectedUser(parsedSession.name);
-             }
+      fetch('/api/auth/users')
+        .then(res => res.json())
+        .then(data => {
+          if (data && Array.isArray(data)) {
+            setUsers(data);
           }
-        } catch (e) {}
-      } else {
-        setUsers([{ name: "Leonardo Christian", email: "leonardo@realizzare.com.br" }]);
-      }
+        })
+        .catch(e => console.error(e));
       
       // Reset fields
       setTitle("");
