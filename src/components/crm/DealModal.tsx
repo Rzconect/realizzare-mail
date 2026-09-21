@@ -26,24 +26,61 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
   const [isSending, setIsSending] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
 
+  // Contact Real Data State
+  const [contactData, setContactData] = useState<any>(null);
+  const [duplicateProfilesCount, setDuplicateProfilesCount] = useState(0);
+
   useEffect(() => {
-    if (isOpen && deal?.phone) {
-      const fetchChat = async () => {
+    if (isOpen && deal) {
+      const fetchAllData = async () => {
          const supabase = createClient();
-         const cleanPhone = deal.phone.replace(/[^\d]/g, '');
-         const { data: chatData } = await supabase
-           .from('whatsapp_chats')
-           .select('id, remote_jid, whatsapp_messages(*)')
-           .eq('phone', cleanPhone)
-           .single();
-           
-         if (chatData) {
-           setChatId(chatData.id);
-           const msgs = (chatData.whatsapp_messages || []).sort((a:any, b:any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-           setChatMessages(msgs);
+         
+         // 1. Fetch Contact Real Data
+         if (deal.phone || deal.email) {
+            let fetchedContacts: any[] = [];
+            
+            if (deal.phone) {
+               const cleanPhone = deal.phone.replace(/[^\d]/g, '');
+               const { data } = await supabase
+                 .from('contacts')
+                 .select('*')
+                 .ilike('phone', `%${cleanPhone}%`)
+                 .order('created_at', { ascending: false });
+               fetchedContacts = data || [];
+            }
+            
+            if (fetchedContacts.length === 0 && deal.email) {
+               const { data } = await supabase
+                 .from('contacts')
+                 .select('*')
+                 .eq('email', deal.email)
+                 .order('created_at', { ascending: false });
+               fetchedContacts = data || [];
+            }
+            
+            if (fetchedContacts.length > 0) {
+               setContactData(fetchedContacts[0]);
+               setDuplicateProfilesCount(fetchedContacts.length);
+            }
+         }
+
+         // 2. Fetch Chat
+         if (deal.phone) {
+           const cleanPhone = deal.phone.replace(/[^\d]/g, '');
+           const { data: chatData } = await supabase
+             .from('whatsapp_chats')
+             .select('id, remote_jid, whatsapp_messages(*)')
+             .eq('phone', cleanPhone)
+             .single();
+             
+           if (chatData) {
+             setChatId(chatData.id);
+             const msgs = (chatData.whatsapp_messages || []).sort((a:any, b:any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+             setChatMessages(msgs);
+           }
          }
       };
-      fetchChat();
+      fetchAllData();
     }
   }, [isOpen, deal]);
 
@@ -206,52 +243,44 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
               className="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors w-full mb-4 outline-none"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider flex-1 text-left">Campos Personalizados</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider flex-1 text-left">Detalhes do Contato</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${isCustomFieldsOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isCustomFieldsOpen && (
               <>
+                {duplicateProfilesCount > 1 && (
+                  <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-700 p-2.5 rounded-lg text-[10px] font-medium flex items-start gap-2">
+                    <span className="text-amber-500 mt-0.5">⚠️</span>
+                    <span>
+                      O número de telefone deste contato ({deal?.phone}) está vinculado a {duplicateProfilesCount} perfis diferentes na base.
+                      <br/>
+                      Exibindo dados do perfil mais recente.
+                    </span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Cidade</label>
-                <input type="text" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">E-mail</label>
-                <input type="email" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-              </div>
-              <div className="col-span-2">
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Objetivo</label>
-                <input type="text" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Data de matrícula</label>
-                <input type="date" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Data de finalização</label>
-                <input type="date" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Nível de escolaridade</label>
-                <input type="text" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Cursos de interesse</label>
-                <input type="text" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-3">
-              <button 
-                onClick={handleSave}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-blue-400 to-purple-400 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
-              >
-                <Save className="h-3.5 w-3.5" />
-                {isSaving ? "Salvando..." : "Salvar"}
-              </button>
-            </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Cidade</label>
+                    <input readOnly type="text" value={contactData?.city || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Estado</label>
+                    <input readOnly type="text" value={contactData?.state || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">E-mail</label>
+                    <input readOnly type="email" value={contactData?.email || deal?.email || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Data de Cadastro</label>
+                    <input readOnly type="text" value={contactData?.created_at ? new Date(contactData.created_at).toLocaleDateString('pt-BR') : ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">ID do Perfil</label>
+                    <input readOnly type="text" value={contactData?.id || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                  </div>
+                </div>
               </>
             )}
           </div>

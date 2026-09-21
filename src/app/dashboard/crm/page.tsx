@@ -16,6 +16,8 @@ interface Deal {
   clientColor: string;
   columnId: ColumnId;
   phone?: string;
+  email?: string;
+  assignedTo?: string;
 }
 
 const COLUMNS: { id: ColumnId; title: string; color: string }[] = [
@@ -29,34 +31,16 @@ const COLUMNS: { id: ColumnId; title: string; color: string }[] = [
 const INITIAL_DEALS: Deal[] = [
   {
     id: "d1",
-    title: "Prova Concluída - Libras Básico",
+    title: "Prova Concluída - [Usuário Teste]",
     value: 0,
-    clientInitials: "GC",
-    clientName: "Gabriela Vitória Miranda da Cruz",
+    clientInitials: "UT",
+    clientName: "[Usuário Teste]",
     clientColor: "bg-[#0f7650]",
     columnId: "novo",
-    phone: "5531973301958",
-  },
-  {
-    id: "d2",
-    title: "Prova Concluída - NR5 - CIPA",
-    value: 0,
-    clientInitials: "NS",
-    clientName: "Nilton Soares da Silva",
-    clientColor: "bg-blue-600",
-    columnId: "novo",
-    phone: "5531973301958",
-  },
-  {
-    id: "d3",
-    title: "Prova Concluída - Departamento Pessoal",
-    value: 0,
-    clientInitials: "GC",
-    clientName: "Gabriela Vitória Miranda da Cruz",
-    clientColor: "bg-[#0f7650]",
-    columnId: "novo",
-    phone: "5531973301958",
-  },
+    phone: "5531999825395",
+    email: "gabrielateste10@gmail.com",
+    assignedTo: "Sem responsável"
+  }
 ];
 
 export default function CrmPage() {
