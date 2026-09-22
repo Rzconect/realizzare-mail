@@ -406,6 +406,40 @@ export async function POST(request: Request) {
     }
 
     // =========================================================================
+    // EVENT 5: test.approved / teste_aprovado
+    // =========================================================================
+    else if (eventType === "test.approved" || eventType === "teste_aprovado") {
+      const email = (body.student_email || body.email || "").toLowerCase().trim();
+      const courseName = body.course_name || body.course?.title || "Curso Desconhecido";
+      const courseId = body.course_id || body.course?.id?.toString() || null;
+      const testScore = Number(body.test_score || body.score || 100);
+
+      if (!email) {
+        return NextResponse.json({ success: false, message: "E-mail do aluno obrigatório." }, { status: 400 });
+      }
+
+      const contact = await ensureContact(email);
+      const course = await ensureCourse(courseName, 197.00, courseId);
+      const enrollment = await ensureEnrollment(contact.id, course.id);
+
+      // Log Test Approved in Course Events
+      await supabase.from("course_events").insert({
+        org_id: DEFAULT_ORG_ID,
+        contact_id: contact.id,
+        course_id: course.id,
+        enrollment_id: enrollment.id,
+        event_type: "test_approved",
+        metadata: {
+          course_name: course.name,
+          score: testScore,
+          approved_at: body.timestamp || new Date().toISOString()
+        }
+      });
+
+      processedResult = { action: "test_approved", email, courseName: course.name, testScore };
+    }
+
+    // =========================================================================
     // EVENT 5: user.action (e.g. checkout_abandoned)
     // =========================================================================
     else if (eventType === "user.action") {
