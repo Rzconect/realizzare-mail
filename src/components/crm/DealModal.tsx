@@ -106,8 +106,8 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
            const res = await fetch('/api/auth/users');
            if (res.ok) {
              const data = await res.json();
-             if (Array.isArray(data)) {
-               setUsers(data);
+             if (data && Array.isArray(data.users)) {
+               setUsers(data.users);
              }
            }
          } catch(e) { console.error(e); }

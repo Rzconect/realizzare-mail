@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DealModal from "@/components/crm/DealModal";
 import AddDealModal from "@/components/crm/AddDealModal";
-import { Plus, Archive } from "lucide-react";
+import { Plus, Archive, Settings, Eye, EyeOff, ChevronUp, ChevronDown, Clock, AlertCircle } from "lucide-react";
 
 type ColumnId = "novo" | "qualificando" | "proposta" | "negociacao" | "ganho" | "rascunho" | "em_andamento" | "finalizada";
 
@@ -21,6 +21,11 @@ interface Deal {
   boardId?: string;
   archived?: boolean;
   archivedAt?: string;
+  createdAt?: string;
+  dueDate?: string;
+  description?: string;
+  priority?: "Alta" | "Média" | "Baixa";
+  todos?: { id: string; text: string; done: boolean }[];
 }
 
 const CRM_COLUMNS: { id: ColumnId; title: string; color: string }[] = [
@@ -54,6 +59,16 @@ const INITIAL_DEALS: Deal[] = [
   }
 ];
 
+type CardField = "title" | "clientName" | "value" | "assignedTo" | "status";
+
+const initialCardConfig: { id: CardField, label: string, visible: boolean }[] = [
+  { id: "title", label: "Título do card", visible: true },
+  { id: "clientName", label: "Nome do usuário", visible: true },
+  { id: "value", label: "Valor", visible: true },
+  { id: "assignedTo", label: "Responsável", visible: true },
+  { id: "status", label: "Status (Legenda)", visible: true }
+];
+
 export default function CrmPage() {
   const [activeBoard, setActiveBoard] = useState<"teste_aprovado" | "pedidos_pendentes" | "atividades">("teste_aprovado");
   const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
@@ -61,13 +76,27 @@ export default function CrmPage() {
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>("all");
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   
+  const [cardConfig, setCardConfig] = useState(initialCardConfig);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const configRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (configRef.current && !configRef.current.contains(event.target as Node)) {
+        setIsConfigOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
   useEffect(() => {
     // Fetch users for filter
     fetch('/api/auth/users')
       .then(res => res.json())
       .then(data => {
-        if (data && Array.isArray(data)) {
-           setUsers(data);
+        if (data && Array.isArray(data.users)) {
+           setUsers(data.users);
         }
       })
       .catch(e => console.error(e));
@@ -216,6 +245,71 @@ export default function CrmPage() {
                 Negócio
               </button>
             )}
+
+            {/* Gear Icon Config */}
+            {activeBoard !== 'atividades' && (
+              <div className="relative" ref={configRef}>
+                <button
+                  onClick={() => setIsConfigOpen(!isConfigOpen)}
+                  className={`p-2 rounded-lg border transition-colors ${isConfigOpen ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                  title="Configurar visualização dos cards"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+                
+                {isConfigOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-xl z-50 overflow-hidden">
+                    <div className="p-3 border-b border-slate-100 bg-slate-50">
+                      <h4 className="text-xs font-bold text-slate-800">Campos do Card</h4>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Mostre, oculte ou reordene.</p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {cardConfig.map((field, index) => (
+                        <div key={field.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg group">
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setCardConfig(prev => prev.map(f => f.id === field.id ? { ...f, visible: !f.visible } : f))}
+                              className="text-slate-400 hover:text-indigo-600 transition-colors"
+                            >
+                              {field.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
+                            </button>
+                            <span className={`text-xs font-semibold ${field.visible ? 'text-slate-700' : 'text-slate-400'}`}>{field.label}</span>
+                          </div>
+                          <div className="flex items-center flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              disabled={index === 0}
+                              onClick={() => {
+                                setCardConfig(prev => {
+                                  const newArr = [...prev];
+                                  [newArr[index - 1], newArr[index]] = [newArr[index], newArr[index - 1]];
+                                  return newArr;
+                                });
+                              }}
+                              className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </button>
+                            <button 
+                              disabled={index === cardConfig.length - 1}
+                              onClick={() => {
+                                setCardConfig(prev => {
+                                  const newArr = [...prev];
+                                  [newArr[index + 1], newArr[index]] = [newArr[index], newArr[index + 1]];
+                                  return newArr;
+                                });
+                              }}
+                              className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -276,46 +370,117 @@ export default function CrmPage() {
                       }}
                       className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm cursor-pointer hover:border-slate-300 hover:shadow-md transition-all active:cursor-grabbing group relative"
                     >
-                      <div className="flex items-start gap-2 mb-2">
-                        <span className={`h-1.5 w-1.5 rounded-full ${activeBoard === 'atividades' ? 'bg-emerald-400' : 'bg-slate-400'} mt-1.5 shrink-0`} />
-                        <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
-                          {deal.title}
-                        </h4>
-                      </div>
-                      
-                      {activeBoard !== 'atividades' && (
-                        <div className="mb-3">
-                          <span className="text-base font-black text-slate-900">R$ {deal.value}</span>
-                        </div>
-                      )}
-                      
-                      {activeBoard === 'atividades' && (
-                        <div className="mb-3 text-xs text-slate-500 font-medium">
-                          Responsável: <span className="font-bold text-slate-700">{deal.assignedTo || 'Sem responsável'}</span>
-                        </div>
-                      )}
+                      {activeBoard === 'atividades' ? (
+                        // Atividades Card Layout
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2">
+                              <span className={`h-1.5 w-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0`} />
+                              <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
+                                {deal.title}
+                              </h4>
+                            </div>
+                            {deal.priority && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${
+                                deal.priority === 'Alta' ? 'bg-red-100 text-red-600' : 
+                                deal.priority === 'Média' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                              }`}>
+                                {deal.priority}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {(deal.createdAt || deal.dueDate) && (
+                            <div className="flex items-center gap-3 text-[10px] font-semibold text-slate-500">
+                              {deal.createdAt && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(deal.createdAt).toLocaleDateString('pt-BR')}
+                                </span>
+                              )}
+                              {deal.dueDate && (
+                                <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                  Até {new Date(deal.dueDate).toLocaleDateString('pt-BR')}
+                                </span>
+                              )}
+                            </div>
+                          )}
 
-                      {activeBoard === 'atividades' && col.id === 'finalizada' && (
-                        <button 
-                          className="archive-btn mt-2 w-full flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeals(prev => prev.map(d => d.id === deal.id ? { ...d, archived: true, archivedAt: new Date().toISOString() } : d));
-                          }}
-                        >
-                          <Archive className="h-3.5 w-3.5" />
-                          Arquivar Agora
-                        </button>
-                      )}
-                      
-                      <div className="flex items-center gap-2">
-                        <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${deal.clientColor}`}>
-                          {deal.clientInitials}
+                          {deal.description && (
+                            <p className="text-xs text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                              {deal.description}
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-xs font-semibold text-slate-500">
+                              Responsável: <span className="font-bold text-slate-700">{deal.assignedTo || 'Sem responsável'}</span>
+                            </span>
+                          </div>
+
+                          {col.id === 'finalizada' && (
+                            <button 
+                              className="archive-btn mt-2 w-full flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeals(prev => prev.map(d => d.id === deal.id ? { ...d, archived: true, archivedAt: new Date().toISOString() } : d));
+                              }}
+                            >
+                              <Archive className="h-3.5 w-3.5" />
+                              Arquivar Agora
+                            </button>
+                          )}
                         </div>
-                        <span className="text-xs font-semibold text-slate-500 truncate">
-                          {deal.clientName}
-                        </span>
-                      </div>
+                      ) : (
+                        // Teste Aprovado / Pedidos Pendentes Card Layout (Dynamic config)
+                        <div className="space-y-2">
+                          {cardConfig.filter(f => f.visible).map(field => {
+                            switch(field.id) {
+                              case 'title':
+                                return (
+                                  <div key={field.id} className="flex items-start gap-2">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
+                                    <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
+                                      {deal.title}
+                                    </h4>
+                                  </div>
+                                );
+                              case 'clientName':
+                                return (
+                                  <div key={field.id} className="flex items-center gap-2">
+                                    <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${deal.clientColor}`}>
+                                      {deal.clientInitials}
+                                    </div>
+                                    <span className="text-xs font-semibold text-slate-500 truncate">
+                                      {deal.clientName}
+                                    </span>
+                                  </div>
+                                );
+                              case 'value':
+                                return (
+                                  <div key={field.id}>
+                                    <span className="text-base font-black text-slate-900">R$ {deal.value}</span>
+                                  </div>
+                                );
+                              case 'assignedTo':
+                                return (
+                                  <div key={field.id} className="text-[10px] font-semibold text-slate-500">
+                                    Resp: <span className="text-slate-700">{deal.assignedTo || 'Sem responsável'}</span>
+                                  </div>
+                                );
+                              case 'status':
+                                return (
+                                  <div key={field.id} className="pt-1">
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">
+                                      {col.title}
+                                    </span>
+                                  </div>
+                                );
+                              default: return null;
+                            }
+                          })}
+                        </div>
+                      )}
                     </div>
                   ))}
 
@@ -350,6 +515,7 @@ export default function CrmPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddDeal}
+        activeBoard={activeBoard}
       />
 
       {isArchiveModalOpen && (
