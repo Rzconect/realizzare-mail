@@ -65,7 +65,7 @@ type AtividadeCardField = "title" | "dates" | "description" | "todos" | "assigne
 const initialCardConfig: { id: CardField, label: string, visible: boolean }[] = [
   { id: "title", label: "Título do card", visible: true },
   { id: "clientName", label: "Nome do usuário", visible: true },
-  { id: "value", label: "Valor", visible: true },
+  { id: "value", label: "Valor", visible: false },
   { id: "assignedTo", label: "Responsável", visible: true },
   { id: "status", label: "Status (Legenda)", visible: true }
 ];
@@ -580,12 +580,22 @@ export default function CrmPage() {
                           {cardConfig.filter(f => f.visible).map(field => {
                             switch(field.id) {
                               case 'title':
+                                const parts = deal.title.split(': ');
+                                const mainTitle = parts[0];
+                                const subTitle = parts.slice(1).join(': ');
                                 return (
-                                  <div key={field.id} className="flex items-start gap-2">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
-                                    <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
-                                      {deal.title}
-                                    </h4>
+                                  <div key={field.id} className="flex flex-col gap-1">
+                                    <div className="flex items-start gap-2">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
+                                      <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
+                                        {mainTitle}
+                                      </h4>
+                                    </div>
+                                    {subTitle && (
+                                      <span className="text-xs font-semibold text-slate-500 ml-3.5 leading-snug">
+                                        {subTitle}
+                                      </span>
+                                    )}
                                   </div>
                                 );
                               case 'clientName':
