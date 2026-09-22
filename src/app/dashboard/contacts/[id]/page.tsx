@@ -231,7 +231,11 @@ function formatPayloadKeyValues(payload: any): Array<{ key: string; value: strin
     provider: "Provedor",
     status: "Status",
     amount: "Valor",
-    code: "Código do Certificado"
+    code: "Código do Certificado",
+    score: "Nota do Teste",
+    test_score: "Nota do Teste",
+    approved_at: "Data de Aprovação",
+    original_event: "Evento Original"
   };
 
   const result: Array<{ key: string; value: string }> = [];
@@ -250,6 +254,11 @@ function formatPayloadKeyValues(payload: any): Array<{ key: string; value: strin
 
     if (rawKey === "amount" && typeof val === "number") {
       displayVal = `R$ ${val.toFixed(2).replace(".", ",")}`;
+    }
+
+    // Se parecer um formato ISO Date, formata ele bonitinho
+    if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+      displayVal = formatTimelineTimestamp(val).replace("ÀS", "às");
     }
 
     result.push({ key: displayKey, value: displayVal });
@@ -622,7 +631,10 @@ export default function ContactProfilePage({ params }: PageProps) {
           const seenProgress = new Set<string>();
 
           courseEventsData.forEach((ce: any) => {
-            const cName = ce.metadata?.course_name || ce.courses?.name || "Realizzare";
+            const metadataCourseName = ce.metadata?.course_name;
+            const cName = (metadataCourseName && metadataCourseName !== "Curso Desconhecido" && !metadataCourseName.includes("Curso (ID:"))
+              ? metadataCourseName 
+              : (ce.courses?.name || "Realizzare");
             let label = "Evento do Curso";
             let details = `Curso: ${cName}`;
             let type = "enrollment";
@@ -635,7 +647,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             } else if (ce.event_type === "progress_updated") {
               if (ce.metadata?.original_event === "test_approved" || ce.metadata?.score !== undefined) {
                 const score = ce.metadata?.score || 100;
-                label = `Teste Aprovado (${score}%)`;
+                label = `Teste Aprovado (Nota: ${score})`;
                 details = `Teste de '${cName}' concluído com sucesso`;
                 type = "enrollment";
               } else {
