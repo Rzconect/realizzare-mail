@@ -599,7 +599,7 @@ export default function AutomationsPage() {
           <button
             onClick={() => {
               setNewFlowName("");
-              setNewFlowTrigger("Iniciou Curso");
+              setNewFlowTrigger("Defina seu gatilho de entrada");
               setNewFlowDescription("");
               setShowCreateFlowModal(true);
             }}
@@ -737,13 +737,13 @@ export default function AutomationsPage() {
                     className="rounded border-slate-350 text-indigo-650 focus:ring-indigo-500 cursor-pointer h-4 w-4"
                   />
                 </th>
-                <th className="py-4 px-4">Fluxo / Gatilho</th>
+                <th className="py-4 px-4 w-64 md:w-80">Fluxo / Gatilho</th>
                 <th className="py-4 px-4 w-28">Tipo</th>
                 <th className="py-4 px-4 w-24">Status</th>
-                <th className="py-4 px-4 w-36">Última Atualização</th>
+                <th className="py-4 px-4 w-44">Última Atualização</th>
                 <th className="py-4 px-4 w-32 text-center">Contatos Atuais</th>
                 <th className="py-4 px-4 w-28 text-center">Finalizaram</th>
-                <th className="py-4 px-4 w-36 text-center">Pedidos Realizados</th>
+                <th className="py-4 px-4 w-32 text-center">Pedidos Realizados</th>
                 <th className="py-4 px-4 w-32 text-right">Receita Gerada</th>
                 <th className="py-4 px-4 w-12 rounded-tr-3xl"></th>
               </tr>
@@ -776,16 +776,17 @@ export default function AutomationsPage() {
                         />
                       </td>
 
-                      <td className="py-4 px-4">
-                        <div className="flex flex-col">
+                      <td className="py-4 px-4 min-w-0">
+                        <div className="flex flex-col min-w-0">
                           <Link
                             href={`/flows/${flow.id}`}
-                            className="font-bold text-slate-850 hover:text-indigo-655 transition-colors"
+                            className="font-bold text-slate-850 hover:text-indigo-655 transition-colors block truncate max-w-full"
                           >
                             {flow.name}
                           </Link>
-                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                            <span className="text-indigo-500">Gatilho:</span> {flow.triggerDescription}
+                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5 truncate max-w-full">
+                            <span className="text-indigo-500 shrink-0">Gatilho:</span> 
+                            <span className="truncate">{flow.triggerDescription}</span>
                           </span>
                         </div>
                       </td>
@@ -818,7 +819,7 @@ export default function AutomationsPage() {
                         </span>
                       </td>
 
-                      <td className="py-4 px-4 text-slate-500 font-medium">
+                      <td className="py-4 px-4 text-slate-500 font-medium whitespace-nowrap">
                         {flow.updatedAt}
                       </td>
 

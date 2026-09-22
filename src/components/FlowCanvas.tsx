@@ -60,6 +60,7 @@ interface FlowConfig {
   name: string;
   status: "Ativo" | "Pausado" | "Rascunho";
   type: "Automação" | "Transacional";
+  createdAt?: string;
   updatedAt?: string;
   triggerType?: string;
   triggerMetric?: string;
@@ -402,6 +403,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   // Inline rename header trigger
   const [isRenamingHeader, setIsRenamingHeader] = useState(false);
   const [headerRenameValue, setHeaderRenameValue] = useState("");
+  const [currentUser, setCurrentUser] = useState<string>("Administrador");
 
   // Load from Storage if editing
   useEffect(() => {
@@ -409,6 +411,11 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       const loadData = async () => {
         try {
           const supabase = createClient();
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user) {
+            setCurrentUser(authData.user.user_metadata?.full_name || authData.user.email?.split('@')[0] || "Administrador");
+          }
+
           const { data: found, error } = await supabase.from("flows").select("*").eq("id", editId).single();
           if (found && !error) {
             setFlow({
@@ -416,7 +423,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               name: found.name,
               status: found.status === "active" ? "Ativo" : (found.status === "paused" ? "Pausado" : "Rascunho"),
               type: found.flow_type === "automation" ? "Automação" : "Transacional",
-              updatedAt: new Date(found.updated_at).toLocaleString(),
+              createdAt: new Date(found.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" }),
+              updatedAt: new Date(found.updated_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" }),
               triggerType: found.trigger_type || found.trigger_metric || "Disparador não configurado",
               triggerMetric: found.trigger_metric || "Defina seu gatilho de entrada",
               triggerReentryMode: found.re_entry_mode || "no_reentry",
@@ -1975,9 +1983,6 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             <span>{showDetailedMetrics ? "Ocultar Detalhes" : "Exibir Detalhes"}</span>
           </button>
 
-          <button className="p-2 hover:bg-slate-50 text-slate-500 rounded-xl transition-colors cursor-pointer" title="Análises">
-            <Bell className="h-4 w-4" />
-          </button>
 
           {/* Date Range Picker */}
           <div className="relative">
@@ -2154,14 +2159,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
             )}
           </div>
 
-          <button
-            onClick={() => setActivePanel("exit_rules")}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-          >
-            <Settings className="h-4 w-4" />
-            <span>Regras de Saída</span>
-          </button>
-          
+
           <button
             onClick={handleToggleFlowStatus}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer ${
@@ -2195,36 +2193,34 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                   <div>
                     <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Histórico de Criação</h4>
                     <div className="mt-1.5 space-y-0.5">
-                      <p className="text-[11px] font-bold text-slate-700">Criado por: <span className="font-medium text-slate-600">Ana Silva</span></p>
-                      <p className="text-[10px] text-slate-400 font-semibold">Em: 23/07/2026 às 11:30</p>
+                      <p className="text-[11px] font-bold text-slate-700">Criado por: <span className="font-medium text-slate-600">{currentUser}</span></p>
+                      <p className="text-[10px] text-slate-400 font-semibold">Em: {flow.createdAt || "Data desconhecida"}</p>
                     </div>
                   </div>
 
                   <div className="border-t border-slate-100 pt-3">
                     <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Última Atualização</h4>
                     <div className="mt-1.5 space-y-0.5">
-                      <p className="text-[11px] font-bold text-slate-700">Modificado por: <span className="font-medium text-slate-600">Carlos Souza</span></p>
+                      <p className="text-[11px] font-bold text-slate-700">Modificado por: <span className="font-medium text-slate-600">{currentUser}</span></p>
                       <p className="text-[10px] text-slate-400 font-semibold">Em: {flow.updatedAt || new Date().toLocaleString("pt-BR")}</p>
                     </div>
                   </div>
 
                   <div className="border-t border-slate-100 pt-3">
-                    <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Último Lead Inscrito</h4>
-                    <div className="mt-2 p-2 bg-slate-50 border border-slate-150 rounded-xl space-y-1 text-xs">
+                    <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-2">Configurações Avançadas</h4>
+                    <button
+                      onClick={() => {
+                        setShowMetadataMenu(false);
+                        setActivePanel("exit_rules");
+                      }}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                    >
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black uppercase">
-                          MO
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-800 text-[10px] leading-tight">Mariana Oláiveira</span>
-                          <span className="text-[9px] text-slate-450 font-medium">mariana.oli@gmail.com</span>
-                        </div>
+                        <Settings className="h-4 w-4 text-slate-500" />
+                        Regras de Saída
                       </div>
-                      <div className="text-[8px] text-slate-450 mt-1 border-t border-slate-200/40 pt-1 flex justify-between font-semibold">
-                        <span>Entrada:</span>
-                        <span>25/07/2026 às 18:30</span>
-                      </div>
-                    </div>
+                      <span className="text-[9px] font-semibold text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded">Configurar</span>
+                    </button>
                   </div>
 
                   <div className="border-t border-slate-100 pt-3">
