@@ -633,14 +633,21 @@ export default function ContactProfilePage({ params }: PageProps) {
               details = `Matriculado no curso '${cName}'`;
               type = "enrollment";
             } else if (ce.event_type === "progress_updated") {
-              const pct = ce.metadata?.progress_percent || 0;
-              const progressKey = `${cName}-${pct}`;
-              if (seenProgress.has(progressKey)) return; // Skip duplicate progress events
-              seenProgress.add(progressKey);
+              if (ce.metadata?.original_event === "test_approved" || ce.metadata?.score !== undefined) {
+                const score = ce.metadata?.score || 100;
+                label = `Teste Aprovado (${score}%)`;
+                details = `Teste de '${cName}' concluído com sucesso`;
+                type = "enrollment";
+              } else {
+                const pct = ce.metadata?.progress_percent || 0;
+                const progressKey = `${cName}-${pct}`;
+                if (seenProgress.has(progressKey)) return; // Skip duplicate progress events
+                seenProgress.add(progressKey);
 
-              label = `Progresso de Aulas (${pct}%)`;
-              details = `Concluiu ${ce.metadata?.completed_lessons || 0} aulas do curso '${cName}'`;
-              type = "enrollment";
+                label = `Progresso de Aulas (${pct}%)`;
+                details = `Concluiu ${ce.metadata?.completed_lessons || 0} aulas do curso '${cName}'`;
+                type = "enrollment";
+              }
             } else if (ce.event_type === "test_approved") {
               const score = ce.metadata?.score || 100;
               label = `Teste Aprovado (${score}%)`;

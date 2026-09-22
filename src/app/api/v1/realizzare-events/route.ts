@@ -445,14 +445,15 @@ export async function POST(request: Request) {
       const course = await ensureCourse(courseName, 197.00, courseId);
       const enrollment = await ensureEnrollment(contact.id, course.id);
 
-      // Log Test Approved in Course Events
+      // Log Test Approved in Course Events (Using progress_updated to bypass ENUM strictness, adding flag in metadata)
       await supabase.from("course_events").insert({
         org_id: DEFAULT_ORG_ID,
         contact_id: contact.id,
         course_id: course.id,
         enrollment_id: enrollment.id,
-        event_type: "test_approved",
+        event_type: "progress_updated",
         metadata: {
+          original_event: "test_approved",
           course_name: course.name,
           score: testScore,
           approved_at: body.timestamp || new Date().toISOString()
