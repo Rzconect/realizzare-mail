@@ -59,6 +59,19 @@ export async function POST(request: Request) {
 
     let processedResult: any = {};
 
+    // Load Product Mapping to resolve course names by ID
+    let productMapping: Record<string, string> = {};
+    try {
+      const { data: settingsData } = await supabase
+        .from("account_settings")
+        .select("settings")
+        .eq("org_id", DEFAULT_ORG_ID)
+        .maybeSingle();
+      if (settingsData && settingsData.settings && (settingsData.settings as any).pagarme_product_mapping) {
+        productMapping = (settingsData.settings as any).pagarme_product_mapping;
+      }
+    } catch(e) {}
+
     // Helper: Find or Create Contact
     const ensureContact = async (emailStr: string, extraData: any = {}) => {
       const cleanEmail = emailStr.toLowerCase().trim();
@@ -109,13 +122,18 @@ export async function POST(request: Request) {
 
     // Helper: Find or Create Course
     const ensureCourse = async (courseNameStr: string, priceNum = 197.00, skuStr?: string) => {
+      let resolvedName = courseNameStr;
+      if (skuStr && productMapping[skuStr]) {
+        resolvedName = productMapping[skuStr];
+      }
+
       let existing = null;
       if (skuStr) {
         const { data } = await supabase.from("courses").select("*").eq("sku", skuStr).maybeSingle();
         if (data) existing = data;
       }
-      if (!existing && courseNameStr) {
-        const nameClean = courseNameStr.trim();
+      if (!existing && resolvedName) {
+        const nameClean = resolvedName.trim();
         const { data } = await supabase.from("courses").select("*").eq("name", nameClean).maybeSingle();
         if (data) existing = data;
       }
@@ -124,6 +142,11 @@ export async function POST(request: Request) {
         if (skuStr && !existing.sku) {
           await supabase.from("courses").update({ sku: skuStr }).eq("id", existing.id);
         }
+        // Se a gente achou um mapeamento de nome melhor agora, atualiza o nome
+        if (resolvedName && (existing.name.includes("Curso (ID:") || existing.name.includes("Curso Desconhecido")) && resolvedName !== existing.name) {
+          await supabase.from("courses").update({ name: resolvedName }).eq("id", existing.id);
+          existing.name = resolvedName;
+        }
         return existing;
       }
 
@@ -131,7 +154,7 @@ export async function POST(request: Request) {
         .from("courses")
         .insert({
           org_id: DEFAULT_ORG_ID,
-          name: courseNameStr ? courseNameStr.trim() : "Curso sem nome",
+          name: resolvedName ? resolvedName.trim() : "Curso sem nome",
           price: priceNum,
           sku: skuStr || null
         })
