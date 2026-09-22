@@ -82,6 +82,27 @@ const initialAtividadeCardConfig: { id: AtividadeCardField, label: string, visib
 export default function CrmPage() {
   const [activeBoard, setActiveBoard] = useState<"teste_aprovado" | "pedidos_pendentes" | "atividades">("teste_aprovado");
   const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load deals from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('realizzare_mock_crm_deals');
+    if (saved) {
+      try {
+        setDeals(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save deals to localStorage whenever they change
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(deals));
+    }
+  }, [deals, isLoaded]);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>("all");
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
@@ -120,6 +141,25 @@ export default function CrmPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [dealToEdit, setDealToEdit] = useState<Deal | null>(null);
 
+  const dispatchNotification = (deal: Deal) => {
+    if (deal.boardId === 'atividades' && deal.assignedTo && deal.assignedTo !== "Sem responsável") {
+      try {
+        const stored = localStorage.getItem("realizzare_mock_notifications");
+        const list = stored ? JSON.parse(stored) : [];
+        const existing = list.findIndex((n: any) => n.id === deal.id);
+        if (existing !== -1) {
+          list[existing] = deal;
+        } else {
+          list.unshift(deal);
+        }
+        localStorage.setItem("realizzare_mock_notifications", JSON.stringify(list));
+        window.dispatchEvent(new Event("storage"));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   const handleAddDeal = (newDeal: Deal) => {
     const finalDeal = {
       ...newDeal,
@@ -127,10 +167,12 @@ export default function CrmPage() {
       columnId: activeBoard === 'atividades' ? 'rascunho' : 'novo'
     } as Deal;
     setDeals((prev) => [finalDeal, ...prev]);
+    dispatchNotification(finalDeal);
   };
 
   const handleUpdateDeal = (updatedDeal: Deal) => {
     setDeals(prev => prev.map(d => d.id === updatedDeal.id ? { ...d, ...updatedDeal } : d));
+    dispatchNotification(updatedDeal);
   };
 
   // Drag handlers for Cards

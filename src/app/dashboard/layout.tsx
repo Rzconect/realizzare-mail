@@ -176,16 +176,29 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const loadNotifications = () => {
+      let combined: any[] = [];
       const stored = localStorage.getItem("realizzare_mock_campaigns");
       if (stored) {
         try {
           const list = JSON.parse(stored);
           const scheduled = list.filter((c: any) => c.status === "Agendado" || c.status === "Enviando");
-          setScheduledNotifications(scheduled);
+          combined = [...combined, ...scheduled.map((c: any) => ({...c, type: 'campaign'}))];
         } catch (e) {
           console.error(e);
         }
       }
+
+      const storedNots = localStorage.getItem("realizzare_mock_notifications");
+      if (storedNots) {
+        try {
+          const list = JSON.parse(storedNots);
+          combined = [...combined, ...list.map((n: any) => ({...n, type: 'activity'}))];
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      setScheduledNotifications(combined);
     };
 
     loadNotifications();
@@ -481,10 +494,10 @@ export default function DashboardLayout({
                 <div className="fixed inset-0 z-30" onClick={() => setShowNotifications(false)} />
                 <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-202 rounded-2xl shadow-xl p-4 z-40 space-y-3 animate-fadeIn">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2 select-none">
-                    <span className="text-[10px] font-black uppercase text-slate-400">Atividades</span>
+                    <span className="text-[10px] font-black uppercase text-slate-400">Notificações</span>
                     {scheduledNotifications.length > 0 && (
                       <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-                        {scheduledNotifications.length} Ativas
+                        {scheduledNotifications.length} Novas
                       </span>
                     )}
                   </div>
@@ -492,23 +505,40 @@ export default function DashboardLayout({
                   <div className="max-h-60 overflow-y-auto space-y-2.5 pr-1 text-left">
                     {scheduledNotifications.length === 0 ? (
                       <div className="text-xs text-slate-400 py-6 text-center select-none">
-                        Nenhuma campanha agendada ou em envio.
+                        Nenhuma notificação no momento.
                       </div>
                     ) : (
                       scheduledNotifications.map((camp) => (
                         <div key={camp.id} className="flex gap-2.5 items-start p-2 rounded-lg hover:bg-slate-50 transition-colors">
-                          <span className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${
-                            camp.status === "Enviando" ? "bg-amber-500 animate-pulse" : "bg-indigo-650"
-                          }`} />
-                          <div className="text-xs flex-1">
-                            <p className="font-semibold text-slate-700 leading-relaxed">
-                              Campanha <strong className="text-slate-900">"{camp.name}"</strong> foi agendada.
-                            </p>
-                            <span className="text-[10px] text-slate-450 mt-1 block flex items-center gap-1 font-medium">
-                              <Clock className="h-3 w-3" />
-                              {camp.status === "Enviando" ? "Envio em curso" : `Para: ${camp.dateStr}`}
-                            </span>
-                          </div>
+                          {camp.type === 'activity' ? (
+                            <>
+                              <span className="h-2 w-2 rounded-full mt-1.5 shrink-0 bg-blue-500" />
+                              <div className="text-xs flex-1">
+                                <p className="font-semibold text-slate-700 leading-relaxed">
+                                  Nova atividade atribuída: <strong className="text-slate-900">"{camp.title}"</strong>
+                                </p>
+                                <span className="text-[10px] text-slate-400 mt-1 block flex items-center gap-1 font-medium">
+                                  <Clock className="h-3 w-3" />
+                                  Para: {camp.assignedTo || 'Você'}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${
+                                camp.status === "Enviando" ? "bg-amber-500 animate-pulse" : "bg-indigo-650"
+                              }`} />
+                              <div className="text-xs flex-1">
+                                <p className="font-semibold text-slate-700 leading-relaxed">
+                                  Campanha <strong className="text-slate-900">"{camp.name}"</strong> foi agendada.
+                                </p>
+                                <span className="text-[10px] text-slate-400 mt-1 block flex items-center gap-1 font-medium">
+                                  <Clock className="h-3 w-3" />
+                                  {camp.status === "Enviando" ? "Envio em curso" : `Para: ${camp.dateStr}`}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))
                     )}
