@@ -45,7 +45,7 @@ const ATIVIDADES_COLUMNS: { id: ColumnId; title: string; color: string }[] = [
 const INITIAL_DEALS: Deal[] = [
   {
     id: "d1",
-    title: "Prova Concluída - Usuário Teste",
+    title: "Prova Concluída",
     value: 0,
     clientInitials: "UT",
     clientName: "Usuário Teste",
@@ -60,11 +60,21 @@ const INITIAL_DEALS: Deal[] = [
 ];
 
 type CardField = "title" | "clientName" | "value" | "assignedTo" | "status";
+type AtividadeCardField = "title" | "dates" | "description" | "todos" | "assignedTo" | "status";
 
 const initialCardConfig: { id: CardField, label: string, visible: boolean }[] = [
   { id: "title", label: "Título do card", visible: true },
   { id: "clientName", label: "Nome do usuário", visible: true },
   { id: "value", label: "Valor", visible: true },
+  { id: "assignedTo", label: "Responsável", visible: true },
+  { id: "status", label: "Status (Legenda)", visible: true }
+];
+
+const initialAtividadeCardConfig: { id: AtividadeCardField, label: string, visible: boolean }[] = [
+  { id: "title", label: "Título da tarefa", visible: true },
+  { id: "dates", label: "Datas (Início/Término)", visible: true },
+  { id: "description", label: "Observações", visible: true },
+  { id: "todos", label: "Checklist (To-Do)", visible: true },
   { id: "assignedTo", label: "Responsável", visible: true },
   { id: "status", label: "Status (Legenda)", visible: true }
 ];
@@ -77,6 +87,7 @@ export default function CrmPage() {
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   
   const [cardConfig, setCardConfig] = useState(initialCardConfig);
+  const [atividadeCardConfig, setAtividadeCardConfig] = useState(initialAtividadeCardConfig);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const configRef = useRef<HTMLDivElement>(null);
   
@@ -247,28 +258,31 @@ export default function CrmPage() {
             )}
 
             {/* Gear Icon Config */}
-            {activeBoard !== 'atividades' && (
-              <div className="relative" ref={configRef}>
-                <button
-                  onClick={() => setIsConfigOpen(!isConfigOpen)}
-                  className={`p-2 rounded-lg border transition-colors ${isConfigOpen ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                  title="Configurar visualização dos cards"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-                
-                {isConfigOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-xl z-50 overflow-hidden">
-                    <div className="p-3 border-b border-slate-100 bg-slate-50">
-                      <h4 className="text-xs font-bold text-slate-800">Campos do Card</h4>
-                      <p className="text-[10px] text-slate-500 mt-0.5">Mostre, oculte ou reordene.</p>
-                    </div>
-                    <div className="p-2 space-y-1">
-                      {cardConfig.map((field, index) => (
+            <div className="relative" ref={configRef}>
+              <button
+                onClick={() => setIsConfigOpen(!isConfigOpen)}
+                className={`p-2 rounded-lg border transition-colors ${isConfigOpen ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                title="Configurar visualização dos cards"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              
+              {isConfigOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-xl z-50 overflow-hidden">
+                  <div className="p-3 border-b border-slate-100 bg-slate-50">
+                    <h4 className="text-xs font-bold text-slate-800">Campos do Card</h4>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Mostre, oculte ou reordene.</p>
+                  </div>
+                  <div className="p-2 space-y-1">
+                    {(activeBoard === 'atividades' ? atividadeCardConfig : cardConfig).map((field, index) => {
+                      const arr = activeBoard === 'atividades' ? atividadeCardConfig : cardConfig;
+                      const setArr = activeBoard === 'atividades' ? setAtividadeCardConfig : setCardConfig;
+                      
+                      return (
                         <div key={field.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg group">
                           <div className="flex items-center gap-2">
                             <button 
-                              onClick={() => setCardConfig(prev => prev.map(f => f.id === field.id ? { ...f, visible: !f.visible } : f))}
+                              onClick={() => setArr((prev: any[]) => prev.map((f: any) => f.id === field.id ? { ...f, visible: !f.visible } : f) as any)}
                               className="text-slate-400 hover:text-indigo-600 transition-colors"
                             >
                               {field.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
@@ -279,10 +293,10 @@ export default function CrmPage() {
                             <button 
                               disabled={index === 0}
                               onClick={() => {
-                                setCardConfig(prev => {
+                                setArr((prev: any[]) => {
                                   const newArr = [...prev];
                                   [newArr[index - 1], newArr[index]] = [newArr[index], newArr[index - 1]];
-                                  return newArr;
+                                  return newArr as any;
                                 });
                               }}
                               className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
@@ -290,12 +304,12 @@ export default function CrmPage() {
                               <ChevronUp className="h-3 w-3" />
                             </button>
                             <button 
-                              disabled={index === cardConfig.length - 1}
+                              disabled={index === arr.length - 1}
                               onClick={() => {
-                                setCardConfig(prev => {
+                                setArr((prev: any[]) => {
                                   const newArr = [...prev];
                                   [newArr[index + 1], newArr[index]] = [newArr[index], newArr[index + 1]];
-                                  return newArr;
+                                  return newArr as any;
                                 });
                               }}
                               className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
@@ -304,12 +318,12 @@ export default function CrmPage() {
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      )
+                    })}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -373,50 +387,81 @@ export default function CrmPage() {
                       {activeBoard === 'atividades' ? (
                         // Atividades Card Layout
                         <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-start gap-2">
-                              <span className={`h-1.5 w-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0`} />
-                              <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
-                                {deal.title}
-                              </h4>
-                            </div>
-                            {deal.priority && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${
-                                deal.priority === 'Alta' ? 'bg-red-100 text-red-600' : 
-                                deal.priority === 'Média' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
-                              }`}>
-                                {deal.priority}
-                              </span>
-                            )}
-                          </div>
-                          
-                          {(deal.createdAt || deal.dueDate) && (
-                            <div className="flex items-center gap-3 text-[10px] font-semibold text-slate-500">
-                              {deal.createdAt && (
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {new Date(deal.createdAt).toLocaleDateString('pt-BR')}
-                                </span>
-                              )}
-                              {deal.dueDate && (
-                                <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
-                                  Até {new Date(deal.dueDate).toLocaleDateString('pt-BR')}
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {deal.description && (
-                            <p className="text-xs text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                              {deal.description}
-                            </p>
-                          )}
-
-                          <div className="flex items-center gap-2 pt-1">
-                            <span className="text-xs font-semibold text-slate-500">
-                              Responsável: <span className="font-bold text-slate-700">{deal.assignedTo || 'Sem responsável'}</span>
-                            </span>
-                          </div>
+                          {atividadeCardConfig.filter(f => f.visible).map(field => {
+                            switch(field.id) {
+                              case 'title':
+                                return (
+                                  <div key={field.id} className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2">
+                                      <span className={`h-1.5 w-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0`} />
+                                      <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
+                                        {deal.title}
+                                      </h4>
+                                    </div>
+                                    {deal.priority && (
+                                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${
+                                        deal.priority === 'Alta' ? 'bg-red-100 text-red-600' : 
+                                        deal.priority === 'Média' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                                      }`}>
+                                        {deal.priority}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              case 'dates':
+                                if (!deal.createdAt && !deal.dueDate) return null;
+                                return (
+                                  <div key={field.id} className="flex items-center gap-3 text-[10px] font-semibold text-slate-500">
+                                    {deal.createdAt && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {new Date(deal.createdAt).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                    {deal.dueDate && (
+                                      <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                        Até {new Date(deal.dueDate).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              case 'description':
+                                if (!deal.description) return null;
+                                return (
+                                  <p key={field.id} className="text-xs text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    {deal.description}
+                                  </p>
+                                );
+                              case 'todos':
+                                if (!deal.todos || deal.todos.length === 0) return null;
+                                const completed = deal.todos.filter(t => t.done).length;
+                                return (
+                                  <div key={field.id} className="flex items-center gap-1.5 pt-1">
+                                    <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                      <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${(completed / deal.todos.length) * 100}%` }} />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-500">{completed}/{deal.todos.length}</span>
+                                  </div>
+                                );
+                              case 'assignedTo':
+                                return (
+                                  <div key={field.id} className="flex items-center gap-2 pt-1">
+                                    <span className="text-[10px] font-semibold text-slate-500">
+                                      Resp: <span className="font-bold text-slate-700">{deal.assignedTo || 'Sem responsável'}</span>
+                                    </span>
+                                  </div>
+                                );
+                              case 'status':
+                                return (
+                                  <div key={field.id} className="pt-1">
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">
+                                      {col.title}
+                                    </span>
+                                  </div>
+                                );
+                              default: return null;
+                            }
+                          })}
 
                           {col.id === 'finalizada' && (
                             <button 

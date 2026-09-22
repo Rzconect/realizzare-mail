@@ -190,9 +190,114 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
 
         {/* Content Scrollable */}
         <div className="flex-1 overflow-y-auto px-5 pb-6 custom-scrollbar">
-          
-          {/* Main Info Grid */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-3">
+          {deal?.boardId === 'atividades' ? (
+            <div className="py-4 space-y-6">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div className="relative">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Responsável</span>
+                  <button 
+                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                    className="flex items-center justify-between w-full text-left focus:outline-none group"
+                  >
+                    <span className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                      {selectedUser}
+                    </span>
+                    <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {isUserDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsUserDropdownOpen(false)}></div>
+                      <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 overflow-hidden">
+                        <button 
+                          onClick={() => assignUser("Sem responsável")}
+                          className="w-full text-left px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Sem responsável
+                        </button>
+                        {users.map((u, i) => {
+                          const nameParts = u.name ? u.name.split(" ") : u.email.split("@")[0].split(" ");
+                          const shortName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
+                          return (
+                            <button 
+                              key={i}
+                              onClick={() => assignUser(shortName)}
+                              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+                            >
+                              {shortName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Prioridade</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider inline-block ${
+                    deal?.priority === 'Alta' ? 'bg-red-100 text-red-600' : 
+                    deal?.priority === 'Média' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                  }`}>
+                    {deal?.priority || 'Normal'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1 flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Data de Criação
+                  </span>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {deal?.createdAt ? new Date(deal.createdAt).toLocaleDateString('pt-BR') : '—'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1 text-orange-600">
+                    Previsão / Prazo
+                  </span>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {deal?.dueDate ? new Date(deal.dueDate).toLocaleDateString('pt-BR') : '—'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Observações e Detalhes</span>
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-sm text-slate-700 min-h-[80px] whitespace-pre-wrap">
+                  {deal?.description || <span className="text-slate-400 italic">Nenhuma observação adicionada.</span>}
+                </div>
+              </div>
+
+              {deal?.todos && deal.todos.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Checklist da Tarefa</span>
+                    <span className="text-xs font-bold text-indigo-600">
+                      {deal.todos.filter((t: any) => t.done).length}/{deal.todos.length} Concluídos
+                    </span>
+                  </div>
+                  <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-100 divide-y divide-slate-50">
+                    {deal.todos.map((todo: any, idx: number) => (
+                      <div key={idx} className="flex items-start gap-3 p-3 hover:bg-slate-50 transition-colors group">
+                        <input 
+                          type="checkbox"
+                          defaultChecked={todo.done}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <span className={`text-sm flex-1 cursor-pointer ${todo.done ? 'text-slate-400 line-through' : 'text-slate-700 font-medium'}`}>
+                          {todo.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Main Info Grid */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-3">
             <div>
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Valor</span>
               <p className="text-base font-bold text-slate-900">R$ {deal?.value || 0}</p>
@@ -368,6 +473,8 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
               </button>
             </div>
           </div>
+            </>
+          )}
           
         </div>
 
