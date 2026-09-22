@@ -178,6 +178,9 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
   const assignUser = (userName: string) => {
     setSelectedUser(userName);
     setIsUserDropdownOpen(false);
+    if (onUpdate && deal) {
+      onUpdate({ ...deal, assignedTo: userName });
+    }
   };
 
   return (
