@@ -278,7 +278,7 @@ export async function POST(request: Request) {
     // =========================================================================
     else if (eventType === "course.enrollment") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
-      const courseName = body.course?.title || body.course_name || "Curso Desconhecido";
+      const courseName = body.course?.title || body.course_name || (body.course_id || body.course?.id ? `Curso (ID: ${body.course_id || body.course?.id})` : "Curso Desconhecido");
       const coursePrice = Number(body.course?.price || body.price || 197.00);
       const courseId = body.course_id || body.course?.id?.toString() || null;
 
@@ -311,7 +311,7 @@ export async function POST(request: Request) {
     // =========================================================================
     else if (eventType === "course.progress") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
-      const courseName = body.course_name || body.course?.title || "Curso Desconhecido";
+      const courseName = body.course_name || body.course?.title || (body.course_id ? `Curso (ID: ${body.course_id})` : "Curso Desconhecido");
       const courseId = body.course_id || body.course?.id?.toString() || null;
       const progressPercent = Number(body.progress_percent || body.progress_percentage || 0);
 
@@ -359,7 +359,7 @@ export async function POST(request: Request) {
     // =========================================================================
     else if (eventType === "certificate.issued") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
-      const courseName = body.certificate?.course_name || body.course_name || "Curso Desconhecido";
+      const courseName = body.certificate?.course_name || body.course_name || (body.certificate?.course_id || body.course_id || body.course?.id ? `Curso (ID: ${body.certificate?.course_id || body.course_id || body.course?.id})` : "Curso Desconhecido");
       const courseId = body.certificate?.course_id || body.course_id || body.course?.id?.toString() || null;
       const certCode = body.certificate?.code || `CERT-${Math.floor(Math.random() * 90000 + 10000)}`;
 
@@ -410,7 +410,7 @@ export async function POST(request: Request) {
     // =========================================================================
     else if (eventType === "test.approved" || eventType === "teste_aprovado") {
       const email = (body.student_email || body.email || "").toLowerCase().trim();
-      const courseName = body.course_name || body.course?.title || "Curso Desconhecido";
+      const courseName = body.course_name || body.course?.title || (body.course_id ? `Curso (ID: ${body.course_id})` : "Curso Desconhecido");
       const courseId = body.course_id || body.course?.id?.toString() || null;
       const testScore = Number(body.test_score || body.score || 100);
 
