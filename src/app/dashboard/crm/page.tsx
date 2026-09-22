@@ -84,17 +84,51 @@ export default function CrmPage() {
   const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load deals from localStorage on mount
+  // Load deals from localStorage on mount and sync with DB
   useEffect(() => {
+    let localDeals: Deal[] = INITIAL_DEALS;
     const saved = localStorage.getItem('realizzare_mock_crm_deals');
     if (saved) {
       try {
-        setDeals(JSON.parse(saved));
+        localDeals = JSON.parse(saved);
+        setDeals(localDeals);
       } catch (e) {
         console.error(e);
       }
     }
     setIsLoaded(true);
+
+    // Sync from database
+    fetch("/api/crm/sync")
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success && data.items) {
+          setDeals(prevDeals => {
+            const newDeals = [...prevDeals];
+            let changed = false;
+            
+            for (const item of data.items) {
+              // Only add if it doesn't already exist
+              if (!newDeals.some(d => d.id === item.id)) {
+                // To avoid duplicate courses for the same email in teste_aprovado, we can check title and email
+                if (item.boardId === "teste_aprovado") {
+                   const exists = newDeals.some(d => d.boardId === "teste_aprovado" && d.email === item.email && d.title === item.title);
+                   if (exists) continue;
+                }
+                newDeals.push(item);
+                changed = true;
+              }
+            }
+            
+            if (changed) {
+              localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(newDeals));
+              return newDeals;
+            }
+            return prevDeals;
+          });
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Save deals to localStorage whenever they change

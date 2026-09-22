@@ -21,11 +21,18 @@ export async function POST(req: Request) {
     const eventType = body?.type || body?.event || "order.paid";
     const data = body?.data || body;
 
-    const validEvents = ["order.paid", "charge.paid", "subscription.activated", "subscription.created"];
+    const validEvents = [
+      "order.paid", "charge.paid", "subscription.activated", "subscription.created",
+      "order.created", "order.pending", "charge.pending"
+    ];
     if (!validEvents.includes(eventType)) {
-      return NextResponse.json({ message: `Webhook ignorado: evento ${eventType} nǜo processado.` }, { status: 200 });
+      return NextResponse.json({ message: `Webhook ignorado: evento ${eventType} não processado.` }, { status: 200 });
     }
 
+    let purchaseStatus = "paid";
+    if (eventType.includes("pending") || eventType === "order.created") {
+      purchaseStatus = "pending";
+    }
 
     // Extract customer details & address
     const customer = data?.customer || {};
@@ -213,25 +220,26 @@ export async function POST(req: Request) {
         // Primary dedup: by Pagar.me SKU
         const { data: existingBySku } = await supabase
           .from("purchases")
-          .select("id")
+          .select("id, status")
           .eq("sku", pagarmeId)
           .maybeSingle();
 
         // Secondary dedup: by contact + timestamp window + amount
-        // Prevents duplicate if the same purchase was previously inserted via migration with a different SKU
         const nowMs = Date.now();
         const windowStart = new Date(nowMs - 60000).toISOString();
         const windowEnd = new Date(nowMs + 60000).toISOString();
         const { data: existingByTime } = await supabase
           .from("purchases")
-          .select("id")
+          .select("id, status")
           .eq("contact_id", contactId)
           .eq("amount", parseFloat(amountInReais))
-          .gte("paid_at", windowStart)
-          .lt("paid_at", windowEnd)
+          .gte("created_at", windowStart)
+          .lt("created_at", windowEnd)
           .maybeSingle();
 
-        if (!existingBySku && !existingByTime) {
+        const existingRecord = existingBySku || existingByTime;
+
+        if (!existingRecord) {
           const prodType = category === "assinatura" ? "subscription" : 
                            category === "curso" ? "course" : "certificate";
           const finalItemTitle = quantity > 1 ? `${itemTitle} (x${quantity})` : itemTitle;
@@ -242,10 +250,16 @@ export async function POST(req: Request) {
             product_name: finalItemTitle,
             amount: parseFloat(amountInReais),
             sku: pagarmeId,
-            status: "paid",
-            paid_at: new Date().toISOString(),
+            status: purchaseStatus,
+            paid_at: purchaseStatus === "paid" ? new Date().toISOString() : null,
             created_at: new Date().toISOString()
           });
+        } else if (existingRecord && existingRecord.status === "pending" && purchaseStatus === "paid") {
+          // Update to paid
+          await supabase.from("purchases").update({
+            status: "paid",
+            paid_at: new Date().toISOString()
+          }).eq("id", existingRecord.id);
         }
       }
 
