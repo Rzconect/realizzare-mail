@@ -418,7 +418,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               type: found.flow_type === "automation" ? "Automação" : "Transacional",
               updatedAt: new Date(found.updated_at).toLocaleString(),
               triggerType: found.trigger_type || found.trigger_metric || "Disparador não configurado",
-              triggerMetric: found.trigger_metric || "Iniciou Curso",
+              triggerMetric: found.trigger_metric || "Defina seu gatilho de entrada",
               triggerReentryMode: found.re_entry_mode || "no_reentry",
               reentryPeriodValue: found.re_entry_period_value || 7,
               reentryPeriodUnit: found.re_entry_period_unit || "days",
@@ -467,7 +467,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                    {
                      id: "trigger",
                      type: "trigger",
-                     name: found.trigger_metric && found.trigger_metric !== "Disparador" ? found.trigger_metric : "Iniciou Curso",
+                     name: found.trigger_metric && found.trigger_metric !== "Disparador" ? found.trigger_metric : "Defina seu gatilho de entrada",
                      config: { triggerDescription: found.trigger_type }
                    }
                  ]);
@@ -1064,7 +1064,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
   const handleSaveFlow = async () => {
     const triggerNode = nodes.find(n => n.type === "trigger" || n.id === "trigger");
     const currentTriggerDesc = flow.triggerType || triggerNode?.config?.triggerDescription || (triggerNode?.name !== "Disparador" ? triggerNode?.name : undefined) || "Disparador não configurado";
-    const currentTriggerMetric = flow.triggerMetric || (triggerNode?.name !== "Disparador" ? triggerNode?.name : undefined) || "Iniciou Curso";
+    const currentTriggerMetric = flow.triggerMetric || (triggerNode?.name !== "Disparador" ? triggerNode?.name : undefined) || "Defina seu gatilho de entrada";
 
     const supabase = createClient();
     try {
@@ -1473,7 +1473,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       </div>
 
                       <div className="overflow-hidden flex-1 text-left">
-                        <h4 className="text-xs font-black text-slate-800 truncate">
+                        <h4 className="text-[11px] font-black text-slate-800 whitespace-normal leading-tight">
                           {isTrigger ? (
                             node.name !== "Disparador" ? node.name : (flow.triggerMetric || "Disparador")
                           ) : (
