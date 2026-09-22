@@ -118,6 +118,7 @@ export default function CrmPage() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [dealToEdit, setDealToEdit] = useState<Deal | null>(null);
 
   const handleAddDeal = (newDeal: Deal) => {
     const finalDeal = {
@@ -126,6 +127,10 @@ export default function CrmPage() {
       columnId: activeBoard === 'atividades' ? 'rascunho' : 'novo'
     } as Deal;
     setDeals((prev) => [finalDeal, ...prev]);
+  };
+
+  const handleUpdateDeal = (updatedDeal: Deal) => {
+    setDeals(prev => prev.map(d => d.id === updatedDeal.id ? { ...d, ...updatedDeal } : d));
   };
 
   // Drag handlers for Cards
@@ -415,12 +420,12 @@ export default function CrmPage() {
                                     {deal.createdAt && (
                                       <span className="flex items-center gap-1">
                                         <Clock className="h-3 w-3" />
-                                        {new Date(deal.createdAt).toLocaleDateString('pt-BR')}
+                                        {new Date(deal.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                       </span>
                                     )}
                                     {deal.dueDate && (
                                       <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
-                                        Até {new Date(deal.dueDate).toLocaleDateString('pt-BR')}
+                                        Até {new Date(deal.dueDate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                       </span>
                                     )}
                                   </div>
@@ -538,7 +543,7 @@ export default function CrmPage() {
 
                   <button className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-slate-500 bg-slate-100/80 hover:bg-slate-200/80 rounded-xl transition-colors">
                     <Plus className="h-3.5 w-3.5" />
-                    Negócio
+                    {activeBoard === 'atividades' ? 'Nova Atividade' : 'Negócio'}
                   </button>
 
                 </div>
@@ -554,13 +559,22 @@ export default function CrmPage() {
         onClose={() => setIsModalOpen(false)} 
         deal={selectedDeal}
         columns={activeBoard === 'atividades' ? ATIVIDADES_COLUMNS : CRM_COLUMNS}
+        onEdit={() => {
+          setDealToEdit(selectedDeal);
+          setIsModalOpen(false);
+          setIsAddModalOpen(true);
+        }}
       />
       
       <AddDealModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddDeal}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setTimeout(() => setDealToEdit(null), 300);
+        }}
+        onAdd={dealToEdit ? handleUpdateDeal : handleAddDeal}
         activeBoard={activeBoard}
+        dealToEdit={dealToEdit}
       />
 
       {isArchiveModalOpen && (

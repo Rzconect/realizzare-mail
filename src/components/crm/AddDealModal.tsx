@@ -8,9 +8,10 @@ interface AddDealModalProps {
   onClose: () => void;
   onAdd: (dealData: any) => void;
   activeBoard?: "teste_aprovado" | "pedidos_pendentes" | "atividades";
+  dealToEdit?: any;
 }
 
-export default function AddDealModal({ isOpen, onClose, onAdd, activeBoard = "teste_aprovado" }: AddDealModalProps) {
+export default function AddDealModal({ isOpen, onClose, onAdd, activeBoard = "teste_aprovado", dealToEdit }: AddDealModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
@@ -38,18 +39,32 @@ export default function AddDealModal({ isOpen, onClose, onAdd, activeBoard = "te
         })
         .catch(e => console.error(e));
       
-      // Reset fields
-      setTitle("");
-      setValue("");
-      setClientName("");
-      setClientEmail("");
-      setClientPhone("");
-      setDescription("");
-      setDueDate("");
-      setPriority("Média");
-      setTodos([]);
+      if (dealToEdit) {
+        setTitle(dealToEdit.title || "");
+        setValue(dealToEdit.value?.toString() || "");
+        setClientName(dealToEdit.clientName || "");
+        setClientEmail(dealToEdit.email || "");
+        setClientPhone(dealToEdit.phone || "");
+        setDescription(dealToEdit.description || "");
+        setDueDate(dealToEdit.dueDate ? new Date(dealToEdit.dueDate).toISOString().split('T')[0] : "");
+        setPriority(dealToEdit.priority || "Média");
+        setTodos(dealToEdit.todos || []);
+        setSelectedUser(dealToEdit.assignedTo || "Sem responsável");
+      } else {
+        // Reset fields
+        setTitle("");
+        setValue("");
+        setClientName("");
+        setClientEmail("");
+        setClientPhone("");
+        setDescription("");
+        setDueDate("");
+        setPriority("Média");
+        setTodos([]);
+        setSelectedUser("Sem responsável");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, dealToEdit]);
 
   if (!isOpen) return null;
 
@@ -63,17 +78,17 @@ export default function AddDealModal({ isOpen, onClose, onAdd, activeBoard = "te
       const tempInitials = initialsMatch ? initialsMatch.join('').substring(0, 2).toUpperCase() : "NO";
       
       onAdd({
-        id: `d-${Date.now()}`,
+        id: dealToEdit ? dealToEdit.id : `d-${Date.now()}`,
         title,
         value: activeBoard === 'atividades' ? 0 : parseFloat(value || "0"),
-        clientInitials: tempInitials,
+        clientInitials: dealToEdit?.clientInitials || tempInitials,
         clientName: actualClientName,
-        clientColor: "bg-blue-600",
-        columnId: "novo",
+        clientColor: dealToEdit?.clientColor || "bg-blue-600",
+        columnId: dealToEdit ? dealToEdit.columnId : "novo",
         phone: clientPhone,
         email: clientEmail,
         assignedTo: selectedUser,
-        createdAt: new Date().toISOString(),
+        createdAt: dealToEdit ? dealToEdit.createdAt : new Date().toISOString(),
         dueDate,
         description,
         priority,

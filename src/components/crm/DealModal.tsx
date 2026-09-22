@@ -11,9 +11,10 @@ interface DealModalProps {
   onClose: () => void;
   deal?: any;
   columns?: any[];
+  onEdit?: () => void;
 }
 
-export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealModalProps) {
+export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit }: DealModalProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -31,6 +32,12 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
   // Contact Real Data State
   const [contactData, setContactData] = useState<any>(null);
   const [duplicateProfilesCount, setDuplicateProfilesCount] = useState(0);
+
+  useEffect(() => {
+    if (deal) {
+      setSelectedUser(deal.assignedTo || "Sem responsável");
+    }
+  }, [deal]);
 
   useEffect(() => {
     if (isOpen && deal) {
@@ -248,7 +255,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
                     <Clock className="h-3 w-3" /> Data de Criação
                   </span>
                   <p className="text-sm font-semibold text-slate-700">
-                    {deal?.createdAt ? new Date(deal.createdAt).toLocaleDateString('pt-BR') : '—'}
+                    {deal?.createdAt ? new Date(deal.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                   </p>
                 </div>
 
@@ -257,7 +264,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
                     Previsão / Prazo
                   </span>
                   <p className="text-sm font-semibold text-slate-700">
-                    {deal?.dueDate ? new Date(deal.dueDate).toLocaleDateString('pt-BR') : '—'}
+                    {deal?.dueDate ? new Date(deal.dueDate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                   </p>
                 </div>
               </div>
@@ -487,7 +494,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [] }: DealM
             <MessageCircle className="h-3.5 w-3.5" />
             Abrir conversa
           </button>
-          <button className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 text-xs font-bold rounded-lg transition-all shadow-sm">
+          <button onClick={onEdit} className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 text-xs font-bold rounded-lg transition-all shadow-sm">
             <Edit3 className="h-3.5 w-3.5" />
             Editar
           </button>
