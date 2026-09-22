@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import DealModal from "@/components/crm/DealModal";
 import AddDealModal from "@/components/crm/AddDealModal";
+import ItemTitleWithCoupon from "@/components/ui/ItemTitleWithCoupon";
 import { Plus, Archive, Settings, Eye, EyeOff, ChevronUp, ChevronDown, Clock, AlertCircle, Trash2 } from "lucide-react";
 
 type ColumnId = "novo" | "qualificando" | "proposta" | "negociacao" | "ganho" | "rascunho" | "em_andamento" | "finalizada";
@@ -592,9 +593,11 @@ export default function CrmPage() {
                                       </h4>
                                     </div>
                                     {subTitle && (
-                                      <span className="text-xs font-semibold text-slate-500 ml-3.5 leading-snug">
-                                        {subTitle}
-                                      </span>
+                                      <ItemTitleWithCoupon 
+                                        rawTitle={subTitle}
+                                        titleClassName="text-xs font-semibold text-slate-500 ml-3.5 leading-snug block"
+                                        containerClassName="flex flex-col gap-1 items-start"
+                                      />
                                     )}
                                   </div>
                                 );

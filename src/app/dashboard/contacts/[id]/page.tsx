@@ -4,6 +4,7 @@ import { use, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ItemTitleWithCoupon from "@/components/ui/ItemTitleWithCoupon";
 import {
   User,
   Mail,
@@ -2069,7 +2070,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                     <tr key={idx} className="group hover:bg-slate-50/40 transition-colors">
                       <td className="py-3 px-1">
                         <div className="font-bold text-slate-850 text-xs leading-relaxed break-words">
-                          {purchase.product_name}
+                          <ItemTitleWithCoupon rawTitle={purchase.product_name} />
                         </div>
                       </td>
                       <td className="py-3 px-3">
@@ -2141,7 +2142,10 @@ export default function ContactProfilePage({ params }: PageProps) {
                         </div>
                       </div>
 
-                      <p className="text-xs text-slate-600 font-medium leading-relaxed pt-0.5">{event.details}</p>
+                      <ItemTitleWithCoupon 
+                        rawTitle={event.details} 
+                        titleClassName="text-xs text-slate-600 font-medium leading-relaxed pt-0.5" 
+                      />
 
                       {event.note && (
                         <div className="pt-1">

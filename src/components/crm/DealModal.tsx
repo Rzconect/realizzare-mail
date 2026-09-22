@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import ItemTitleWithCoupon from "@/components/ui/ItemTitleWithCoupon";
 
 interface DealModalProps {
   isOpen: boolean;
@@ -191,7 +192,11 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
         {/* Header */}
         <div className="flex items-center justify-between p-5 pb-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-slate-800">{deal?.title || "Negócio"}</h2>
+            <ItemTitleWithCoupon 
+              rawTitle={deal?.title || "Negócio"}
+              titleClassName="text-xl font-bold text-slate-800"
+              containerClassName="flex items-center gap-2"
+            />
             <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700 text-[10px] font-bold border border-cyan-200 uppercase tracking-wider">{currentColumn.title}</span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import ItemTitleWithCoupon from "@/components/ui/ItemTitleWithCoupon";
 import {
   Users,
   Mail,
@@ -1565,16 +1566,18 @@ export default function DashboardPage() {
                       </span>
 
                       {/* Item Description line */}
-                      <span className={`text-[11px] font-bold block w-full pl-9 leading-snug line-clamp-2 ${
-                        isPurchase ? "text-emerald-700" : isOpen ? "text-purple-700" : "text-teal-700"
-                      }`}>
-                        {evt.eventLabel || evt.itemTitle}
+                      <div className="w-full pl-9 leading-snug">
+                        <ItemTitleWithCoupon 
+                          rawTitle={evt.eventLabel || evt.itemTitle || ""} 
+                          titleClassName={`text-[11px] font-bold line-clamp-2 ${isPurchase ? "text-emerald-700" : isOpen ? "text-purple-700" : "text-teal-700"}`}
+                          containerClassName="flex flex-col gap-1 items-start"
+                        />
                         {evt.quantity && evt.quantity > 1 ? (
-                          <span className="inline-flex items-center justify-center bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 ml-1.5 rounded-full border border-emerald-200 align-middle">
+                          <span className="inline-flex items-center justify-center bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 mt-1 rounded-full border border-emerald-200">
                             x{evt.quantity}
                           </span>
                         ) : null}
-                      </span>
+                      </div>
 
                       {/* Bottom row: Timestamp */}
                       <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-100/80 w-full">
@@ -1751,9 +1754,11 @@ export default function DashboardPage() {
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block border-b border-slate-100 pb-2">
                   {selectedEventModal.type === "purchase" ? "Resumo do Item Adquirido" : "Detalhes da Campanha"}
                 </span>
-                <strong className="block text-slate-850 font-extrabold text-sm pb-1">
-                  {selectedEventModal.itemTitle || selectedEventModal.eventLabel}
-                </strong>
+                <ItemTitleWithCoupon 
+                  rawTitle={selectedEventModal.itemTitle || selectedEventModal.eventLabel || ""}
+                  titleClassName="block text-slate-850 font-extrabold text-sm"
+                  containerClassName="flex flex-col gap-1 pb-1 items-start"
+                />
                 
                 {selectedEventModal.type === "purchase" ? (
                   <>
