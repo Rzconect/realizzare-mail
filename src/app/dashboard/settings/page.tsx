@@ -4606,7 +4606,7 @@ export default function SettingsPage() {
 
 function WordPressPayloadSimulator() {
   const [selectedEventType, setSelectedEventType] = useState<
-    "contact.created" | "course.enrollment" | "course.progress" | "certificate.issued" | "user.action"
+    "contact.created" | "course.enrollment" | "course.progress" | "certificate.issued" | "test.approved" | "user.action"
   >("contact.created");
   const [testLogs, setTestLogs] = useState<Array<{ id: string; timestamp: string; event: string; status: number; payload: any }>>([]);
 
@@ -4687,6 +4687,14 @@ function WordPressPayloadSimulator() {
         issued_at: new Date().toISOString()
       }
     },
+    "test.approved": {
+      event: "test.approved",
+      timestamp: new Date().toISOString(),
+      student_email: "mariana.siqueira@realizzare.com.br",
+      course_name: "Introdução à Programação Web",
+      course_id: "course-web-101",
+      test_score: 95
+    },
     "user.action": {
       event: "user.action",
       timestamp: new Date().toISOString(),
@@ -4744,7 +4752,8 @@ function WordPressPayloadSimulator() {
             { id: "course.enrollment", label: "2. Matrícula em Curso" },
             { id: "course.progress", label: "3. Progresso de Aulas" },
             { id: "certificate.issued", label: "4. Emissão de Certificado" },
-            { id: "user.action", label: "5. Ações / Carrinho / Checkin" }
+            { id: "test.approved", label: "5. Teste Aprovado" },
+            { id: "user.action", label: "6. Ações / Carrinho / Checkin" }
           ] as const
         ).map((item) => (
           <button
