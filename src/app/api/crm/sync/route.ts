@@ -43,7 +43,8 @@ export async function GET() {
 
     // Process Teste Aprovado
     for (const evt of allTestEvents) {
-      const contact = evt.contacts || {};
+      const contactData: any = evt.contacts;
+      const contact = (Array.isArray(contactData) ? contactData[0] : contactData) || {};
       const cName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : "Aluno Realizzare";
       items.push({
         id: `test-${evt.id}`,
@@ -65,7 +66,8 @@ export async function GET() {
 
     // Process Pedidos Pendentes
     for (const p of (pendingPurchases || [])) {
-      const contact = p.contacts || {};
+      const contactData: any = p.contacts;
+      const contact = (Array.isArray(contactData) ? contactData[0] : contactData) || {};
       const cName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : "Aluno Realizzare";
       items.push({
         id: `pend-${p.id}`,
