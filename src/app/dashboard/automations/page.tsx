@@ -193,22 +193,10 @@ export default function AutomationsPage() {
 
   // KPIs
   const kpis = useMemo(() => {
-    // Flows Transacionais Ativos
-    const activeTrans = flows.filter(f => f.status === "Ativo" && f.type === "Transacional");
-    const transActiveCount = activeTrans.length;
-    const transLeadsCount = activeTrans.reduce((sum, f) => sum + (f.activeContacts || 0), 0);
-
-    // Flows de Automação Ativos
-    const activeAuto = flows.filter(f => f.status === "Ativo" && f.type === "Automação");
-    const autoActiveCount = activeAuto.length;
-    const autoLeadsCount = activeAuto.reduce((sum, f) => sum + (f.activeContacts || 0), 0);
+    const autoActiveCount = flows.filter(f => f.status === "Ativo").length;
+    const autoDraftCount = flows.filter(f => f.status === "Rascunho").length;
     
-    return { 
-      transActiveCount, 
-      transLeadsCount, 
-      autoActiveCount, 
-      autoLeadsCount 
-    };
+    return { autoActiveCount, autoDraftCount };
   }, [flows]);
 
   // Filtering
@@ -583,7 +571,7 @@ export default function AutomationsPage() {
 
   return (
     <div className="space-y-6 pb-12 font-sans text-slate-800 animate-fadeIn">
-      {/* Header */}
+      {/* Header and KPIs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
@@ -595,60 +583,31 @@ export default function AutomationsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setNewFlowName("");
-            setNewFlowTrigger("Iniciou Curso");
-            setNewFlowDescription("");
-            setShowCreateFlowModal(true);
-          }}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] transition-all cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Criar Flow</span>
-        </button>
-      </div>
-
-      {/* KPIs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Card 1: Flows Transacionais */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Flows Transacionais Ativos</span>
-          <div className="flex items-center justify-between mt-3">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-800">{kpis.transActiveCount}</span>
-              <span className="text-xs font-semibold text-slate-400">fluxos ativos</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm text-xs font-bold text-slate-600">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span className="text-slate-800">{kpis.autoActiveCount}</span> Flows Ativos
             </div>
-            <div className="h-6 w-[1px] bg-slate-200 mx-2" />
-            <div className="flex items-baseline gap-1.5 flex-1 justify-end">
-              <span className="text-xl font-bold text-slate-850">{kpis.transLeadsCount}</span>
-              <span className="text-xs font-semibold text-slate-400">leads em progresso</span>
-            </div>
-            <div className="p-2.5 bg-blue-50/60 rounded-xl text-blue-600 ml-4 shrink-0">
-              <Mail className="h-5 w-5" />
+            <div className="w-[1px] h-4 bg-slate-200"></div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-slate-300"></span>
+              <span className="text-slate-800">{kpis.autoDraftCount}</span> Flows em Rascunho
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500" />
-        </div>
-
-        {/* Card 2: Flows de Automação */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Flows de Automação Ativos</span>
-          <div className="flex items-center justify-between mt-3">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-800">{kpis.autoActiveCount}</span>
-              <span className="text-xs font-semibold text-slate-400">fluxos ativos</span>
-            </div>
-            <div className="h-6 w-[1px] bg-slate-200 mx-2" />
-            <div className="flex items-baseline gap-1.5 flex-1 justify-end">
-              <span className="text-xl font-bold text-slate-850">{kpis.autoLeadsCount}</span>
-              <span className="text-xs font-semibold text-slate-400">leads em progresso</span>
-            </div>
-            <div className="p-2.5 bg-indigo-50/60 rounded-xl text-indigo-600 ml-4 shrink-0">
-              <GitBranch className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500" />
+          
+          <button
+            onClick={() => {
+              setNewFlowName("");
+              setNewFlowTrigger("Iniciou Curso");
+              setNewFlowDescription("");
+              setShowCreateFlowModal(true);
+            }}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 hover:scale-[1.01] transition-all cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Criar Flow</span>
+          </button>
         </div>
       </div>
 
@@ -1094,19 +1053,19 @@ export default function AutomationsPage() {
                 <GitBranch className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Criar Nãova Automação</h3>
+                <h3 className="text-base font-bold text-slate-900">Criar Nova Automação</h3>
                 <p className="text-[11px] text-slate-500 font-medium">Configure as informações básicas da sua nova automação</p>
               </div>
             </div>
             
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nãome do Fluxo</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nome do Fluxo</label>
                 <input
                   type="text"
                   value={newFlowName}
                   onChange={(e) => setNewFlowName(e.target.value)}
-                  placeholder="Ex: Boas-vindas - Nãovos Leads"
+                  placeholder="Ex: Boas-vindas - Novos Leads"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
@@ -1119,61 +1078,7 @@ export default function AutomationsPage() {
                   </div>
               </div>
 
-              {newFlowTrigger === "Iniciou Curso" && (
-                <div className="space-y-1.5 relative animate-fadeIn">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Selecione o Curso</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCourseDropdown(!showCourseDropdown)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-left focus:border-indigo-500 outline-none transition-all cursor-pointer bg-white flex items-center justify-between shadow-sm"
-                  >
-                    <span>{selectedCourse}</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                  </button>
 
-                  {showCourseDropdown && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowCourseDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-scaleIn text-left">
-                        <input
-                          type="text"
-                          placeholder="Buscar curso..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full px-3 py-2 border-b border-slate-100 text-xs font-semibold focus:outline-none placeholder:text-slate-400 bg-slate-50/50"
-                          autoFocus
-                        />
-                        <div className="max-h-48 overflow-y-auto py-1">
-                          {mockCoursesList
-                            .filter((c) => c.toLowerCase().includes(searchTerm.toLowerCase()))
-                            .map((c) => (
-                              <button
-                                key={c}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedCourse(c);
-                                  setNewFlowName(c);
-                                  setShowCourseDropdown(false);
-                                  setSearchTerm("");
-                                }}
-                                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-indigo-50/50 hover:text-indigo-700 block ${
-                                  selectedCourse === c ? "text-indigo-600 bg-indigo-50/40 font-black" : "text-slate-600"
-                                }`}
-                              >
-                                {c}
-                              </button>
-                            ))}
-                          {mockCoursesList.filter((c) => c.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
-                            <div className="px-3 py-4 text-center text-xs text-slate-400 font-medium">
-                              Nenhum curso encontrado
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Tipo de Envio</label>
@@ -1256,7 +1161,7 @@ export default function AutomationsPage() {
             
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Nãome do Nãovo Fluxo</label>
+                <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Nome do Novo Fluxo</label>
                 <input
                   type="text"
                   value={cloneFlowName}
