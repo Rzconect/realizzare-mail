@@ -12,9 +12,10 @@ interface DealModalProps {
   deal?: any;
   columns?: any[];
   onEdit?: () => void;
+  onUpdate?: (updatedDeal: any) => void;
 }
 
-export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit }: DealModalProps) {
+export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit, onUpdate }: DealModalProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -289,7 +290,14 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit 
                       <div key={idx} className="flex items-start gap-3 p-3 hover:bg-slate-50 transition-colors group">
                         <input 
                           type="checkbox"
-                          defaultChecked={todo.done}
+                          checked={todo.done}
+                          onChange={(e) => {
+                            if (onUpdate && deal) {
+                              const newTodos = [...deal.todos];
+                              newTodos[idx] = { ...newTodos[idx], done: e.target.checked };
+                              onUpdate({ ...deal, todos: newTodos });
+                            }
+                          }}
                           className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                         />
                         <span className={`text-sm flex-1 cursor-pointer ${todo.done ? 'text-slate-400 line-through' : 'text-slate-700 font-medium'}`}>

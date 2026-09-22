@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import DealModal from "@/components/crm/DealModal";
 import AddDealModal from "@/components/crm/AddDealModal";
-import { Plus, Archive, Settings, Eye, EyeOff, ChevronUp, ChevronDown, Clock, AlertCircle } from "lucide-react";
+import { Plus, Archive, Settings, Eye, EyeOff, ChevronUp, ChevronDown, Clock, AlertCircle, Trash2 } from "lucide-react";
 
 type ColumnId = "novo" | "qualificando" | "proposta" | "negociacao" | "ganho" | "rascunho" | "em_andamento" | "finalizada";
 
@@ -173,6 +173,12 @@ export default function CrmPage() {
   const handleUpdateDeal = (updatedDeal: Deal) => {
     setDeals(prev => prev.map(d => d.id === updatedDeal.id ? { ...d, ...updatedDeal } : d));
     dispatchNotification(updatedDeal);
+  };
+
+  const handleDeleteDeal = (dealId: string) => {
+    if (confirm('Tem certeza que deseja excluir este card? Esta ação não pode ser desfeita.')) {
+      setDeals(prev => prev.filter(d => d.id !== dealId));
+    }
   };
 
   // Drag handlers for Cards
@@ -431,6 +437,17 @@ export default function CrmPage() {
                       }}
                       className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm cursor-pointer hover:border-slate-300 hover:shadow-md transition-all active:cursor-grabbing group relative"
                     >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDeal(deal.id);
+                        }}
+                        className="archive-btn absolute top-2 right-2 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+                        title="Excluir card"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+
                       {activeBoard === 'atividades' ? (
                         // Atividades Card Layout
                         <div className="space-y-2">
@@ -608,6 +625,10 @@ export default function CrmPage() {
           setDealToEdit(selectedDeal);
           setIsModalOpen(false);
           setIsAddModalOpen(true);
+        }}
+        onUpdate={(updatedDeal) => {
+          setSelectedDeal(updatedDeal);
+          handleUpdateDeal(updatedDeal);
         }}
       />
       
