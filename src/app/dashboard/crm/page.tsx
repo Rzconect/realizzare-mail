@@ -583,7 +583,10 @@ export default function CrmPage() {
                     </div>
                   )}
 
-                  <button className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-slate-500 bg-slate-100/80 hover:bg-slate-200/80 rounded-xl transition-colors">
+                  <button 
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-slate-500 bg-slate-100/80 hover:bg-slate-200/80 rounded-xl transition-colors"
+                  >
                     <Plus className="h-3.5 w-3.5" />
                     {activeBoard === 'atividades' ? 'Nova Atividade' : 'Negócio'}
                   </button>
