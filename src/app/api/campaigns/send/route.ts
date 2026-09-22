@@ -105,9 +105,11 @@ export async function POST(req: Request) {
             const listIds = rawIds.filter((id: string) => !id.startsWith("contact-") && !id.startsWith("seg-"));
 
             if (contactIds.length > 0) {
-              const { data: directContacts } = await supabase.from("contacts").select("email, status").in("id", contactIds);
+              const { data: directContacts } = await supabase.from("contacts").select("id, email, status").in("id", contactIds);
+              const { data: activeSubs } = await supabase.from("list_subscriptions").select("contact_id").in("contact_id", contactIds).eq("status", "subscribed");
+              const activeContactIds = new Set((activeSubs || []).map(s => s.contact_id));
               (directContacts || []).forEach((c: any) => {
-                if (c.email && c.status !== "unsubscribed") outputArray.push(c.email.trim().toLowerCase());
+                if (c.email && c.status !== "unsubscribed" && activeContactIds.has(c.id)) outputArray.push(c.email.trim().toLowerCase());
               });
             }
             if (listIds.length > 0) {
@@ -164,6 +166,31 @@ export async function POST(req: Request) {
         if (allActive && allActive.length > 0) {
           recipients = allActive.map((c: any) => c.email).filter(Boolean);
         }
+      }
+    }
+
+    // UNIVERSAL RULE: Contato só recebe se estiver numa lista ativa
+    if (recipients.length > 0) {
+      const { data: validContacts } = await supabase
+        .from("contacts")
+        .select("email, id")
+        .in("email", recipients)
+        .neq("status", "unsubscribed");
+        
+      if (validContacts && validContacts.length > 0) {
+        const validContactIds = validContacts.map(c => c.id);
+        const { data: activeSubs } = await supabase
+          .from("list_subscriptions")
+          .select("contact_id")
+          .in("contact_id", validContactIds)
+          .eq("status", "subscribed");
+          
+        const activeContactIds = new Set((activeSubs || []).map(s => s.contact_id));
+        recipients = validContacts
+          .filter(c => activeContactIds.has(c.id))
+          .map(c => c.email);
+      } else {
+        recipients = [];
       }
     }
 

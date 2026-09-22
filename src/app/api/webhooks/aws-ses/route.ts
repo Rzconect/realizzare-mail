@@ -128,6 +128,10 @@ export async function POST(req: NextRequest) {
 
           for (const recipient of bouncedRecipients) {
             const email = recipient.emailAddress;
+            if (bounce.bounceType === "Permanent") {
+              const { data: contact } = await supabase.from("contacts").update({ status: "unsubscribed" }).ilike("email", email).select("id").maybeSingle();
+              if (contact?.id) await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+            }
             await supabase.from("inbound_webhook_events").insert({
               org_id: "00000000-0000-0000-0000-000000000001",
               source: "aws_ses",
@@ -159,6 +163,9 @@ export async function POST(req: NextRequest) {
 
           for (const recipient of complainedRecipients) {
             const email = recipient.emailAddress;
+            const { data: contact } = await supabase.from("contacts").update({ status: "unsubscribed" }).ilike("email", email).select("id").maybeSingle();
+            if (contact?.id) await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+            
             await supabase.from("inbound_webhook_events").insert({
               org_id: "00000000-0000-0000-0000-000000000001",
               source: "aws_ses",

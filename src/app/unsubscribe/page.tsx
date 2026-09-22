@@ -51,10 +51,16 @@ function UnsubscribeContent() {
       setIsLoading(true);
       try {
         const supabase = createClient();
-        await supabase
+        const { data: contact } = await supabase
           .from("contacts")
           .update({ status: "unsubscribed" })
-          .eq("email", rawEmail);
+          .eq("email", rawEmail)
+          .select("id")
+          .maybeSingle();
+
+        if (contact?.id) {
+          await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+        }
       } catch (err) {
         console.error("Erro ao cancelar inscricao:", err);
       } finally {

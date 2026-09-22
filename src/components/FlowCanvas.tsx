@@ -413,7 +413,8 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           const supabase = createClient();
           const { data: authData } = await supabase.auth.getUser();
           if (authData?.user) {
-            setCurrentUser(authData.user.user_metadata?.full_name || authData.user.email?.split('@')[0] || "Administrador");
+            const metadata = authData.user.user_metadata;
+            setCurrentUser(metadata?.name || metadata?.full_name || authData.user.email?.split('@')[0] || "Administrador");
           }
 
           const { data: found, error } = await supabase.from("flows").select("*").eq("id", editId).single();
