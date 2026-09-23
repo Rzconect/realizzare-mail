@@ -96,10 +96,10 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
              .order('created_at', { ascending: false });
            
            if (events) {
-             const uniqueEvents = [];
+             const uniqueEvents: any[] = [];
              const seen = new Set();
              
-             events.forEach((evt) => {
+             events.forEach((evt: any) => {
                 const isPaid = evt.metadata?.status === 'paid' || evt.event === 'order.paid' || evt.metadata?.event === 'order.paid' || evt.metadata?.event === 'charge.paid';
                 const pId = evt.metadata?.pagarme_id || evt.id;
                 const title = evt.metadata?.item_title || evt.metadata?.course_name;
