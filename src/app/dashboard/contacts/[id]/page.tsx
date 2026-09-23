@@ -469,14 +469,36 @@ export default function ContactProfilePage({ params }: PageProps) {
           completed_at: e.completed_at ? new Date(e.completed_at).toISOString() : null
         })) || [];
 
-        const purchases = contact.purchases?.map((p: any) => ({
+        // Deduplicate legacy split webhooks for purchases (ch_ vs or_ with same amount/date)
+        const purchaseDedupeMap = new Map();
+        (contact.purchases || []).forEach((p: any) => {
+           const dateStr = p.paid_at ? new Date(p.paid_at).toISOString().split("T")[0] : (p.created_at || "").split("T")[0];
+           const amt = Number(p.amount || 0).toFixed(2);
+           const key = `${amt}_${dateStr}`;
+           
+           if (!purchaseDedupeMap.has(key)) {
+              purchaseDedupeMap.set(key, p);
+           } else {
+              const existing = purchaseDedupeMap.get(key);
+              if (existing.product_name === "Certificado / Curso Realizzare" && p.product_name !== "Certificado / Curso Realizzare") {
+                 purchaseDedupeMap.set(key, p); // overwrite fallback with real title
+              } else if (existing.product_name !== "Certificado / Curso Realizzare" && p.product_name === "Certificado / Curso Realizzare") {
+                 // ignore fallback, keep real title
+              } else {
+                 // both are real (genuine duplicate purchase) or both fallback. Keep both!
+                 purchaseDedupeMap.set(key + "_" + p.id, p);
+              }
+           }
+        });
+
+        const purchases = Array.from(purchaseDedupeMap.values()).map((p: any) => ({
           product_type: p.product_type,
           product_name: p.product_name,
           amount: parseFloat(p.amount || 0),
           paid_at: p.paid_at,
           status: p.status,
           sku: p.sku || ""
-        })) || [];
+        }));
 
         const flows = contact.flow_enrollments?.map((fe: any) => ({
           name: fe.flows?.name,
