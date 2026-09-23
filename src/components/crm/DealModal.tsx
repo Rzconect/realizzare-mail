@@ -101,11 +101,12 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
              
              events.forEach((evt: any) => {
                 const isPaid = evt.metadata?.status === 'paid' || evt.event === 'order.paid' || evt.metadata?.event === 'order.paid' || evt.metadata?.event === 'charge.paid';
-                const pId = evt.metadata?.pagarme_id || evt.id;
-                const title = evt.metadata?.item_title || evt.metadata?.course_name;
-                const amt = evt.metadata?.amount;
+                const title = evt.metadata?.item_title || evt.metadata?.course_name || "Produto";
+                const amt = evt.metadata?.amount || "0";
+                const timeStr = new Date(evt.created_at).toISOString().slice(0, 16); // Up to minutes
                 
-                const key = evt.metadata?.pagarme_id ? `${pId}-${isPaid}` : `${title}-${amt}-${isPaid}`;
+                // Group by title + amount + isPaid + minute
+                const key = `${title}-${amt}-${isPaid}-${timeStr}`;
                 
                 if (!seen.has(key)) {
                   seen.add(key);
@@ -441,7 +442,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
                     </div>
                   ) : (
                     timelineEvents.map((evt, idx) => {
-                      const isPaid = evt.metadata?.status === 'paid' || evt.event === 'order.paid';
+                      const isPaid = evt.metadata?.status === 'paid' || evt.event === 'order.paid' || evt.metadata?.event === 'order.paid' || evt.metadata?.event === 'charge.paid';
                       return (
                         <div key={evt.id || idx} className="flex gap-3">
                           <div className="flex flex-col items-center">
