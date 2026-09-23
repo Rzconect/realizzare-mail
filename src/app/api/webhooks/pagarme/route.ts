@@ -136,6 +136,28 @@ export async function POST(req: Request) {
     }
 
     const quantity = items[0]?.quantity || 1;
+    let finalItemTitle = quantity > 1 ? `${itemTitle} (x${quantity})` : itemTitle;
+
+    // Helper to recursively find coupon code in payload
+    const findCoupon = (obj: any, depth = 0): string | null => {
+      if (!obj || typeof obj !== 'object' || depth > 5) return null;
+      for (const key of Object.keys(obj)) {
+        const lowerKey = key.toLowerCase();
+        if ((lowerKey === 'coupon' || lowerKey === 'cupom' || lowerKey === 'discount_code') && typeof obj[key] === 'string' && obj[key].trim()) {
+          return obj[key];
+        }
+        if (typeof obj[key] === 'object') {
+          const res = findCoupon(obj[key], depth + 1);
+          if (res) return res;
+        }
+      }
+      return null;
+    };
+    
+    const couponCode = findCoupon(body);
+    if (couponCode) {
+      finalItemTitle += ` (Cupom: ${couponCode.toUpperCase()})`;
+    }
     
     // Log transaction event & register contact to "Clientes" list
     try {
@@ -162,7 +184,7 @@ export async function POST(req: Request) {
           metadata: {
             provider: "pagarme",
             event: eventType,
-            item_title: itemTitle,
+            item_title: finalItemTitle,
             quantity: quantity,
             amount: parseFloat(amountInReais),
             category: category,
@@ -242,28 +264,6 @@ export async function POST(req: Request) {
         if (!existingRecord) {
           const prodType = category === "assinatura" ? "subscription" : 
                            category === "curso" ? "course" : "certificate";
-          let finalItemTitle = quantity > 1 ? `${itemTitle} (x${quantity})` : itemTitle;
-          
-          // Helper to recursively find coupon code in payload
-          const findCoupon = (obj: any, depth = 0): string | null => {
-            if (!obj || typeof obj !== 'object' || depth > 5) return null;
-            for (const key of Object.keys(obj)) {
-              const lowerKey = key.toLowerCase();
-              if ((lowerKey === 'coupon' || lowerKey === 'cupom' || lowerKey === 'discount_code') && typeof obj[key] === 'string' && obj[key].trim()) {
-                return obj[key];
-              }
-              if (typeof obj[key] === 'object') {
-                const res = findCoupon(obj[key], depth + 1);
-                if (res) return res;
-              }
-            }
-            return null;
-          };
-          
-          const couponCode = findCoupon(body);
-          if (couponCode) {
-            finalItemTitle += ` (Cupom: ${couponCode.toUpperCase()})`;
-          }
           
           await supabase.from("purchases").insert({
             org_id: "00000000-0000-0000-0000-000000000001",

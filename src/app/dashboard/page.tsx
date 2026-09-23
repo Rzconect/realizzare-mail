@@ -491,7 +491,7 @@ export default function DashboardPage() {
       }
 
       // Deduplicate purchase events in allEventsPool by email + amount + date (YYYY-MM-DD)
-      const seenPurchaseKeys = new Set<string>();
+      const purchaseEventsMap = new Map<string, any>();
       const deduplicatedEventsPool: any[] = [];
 
       allEventsPool.forEach(evt => {
@@ -500,11 +500,23 @@ export default function DashboardPage() {
           const amt = Number(evt.amount || 0).toFixed(2);
           const dateStr = new Date(evt.timestampMs).toISOString().split("T")[0];
           const key = `${email}_${amt}_${dateStr}`;
-          if (seenPurchaseKeys.has(key)) return; // Skip duplicate transaction!
-          seenPurchaseKeys.add(key);
+          
+          if (!purchaseEventsMap.has(key)) {
+            purchaseEventsMap.set(key, evt);
+          } else {
+            const existing = purchaseEventsMap.get(key);
+            if (existing.itemTitle === "Certificado / Curso Realizzare" && evt.itemTitle !== "Certificado / Curso Realizzare") {
+              purchaseEventsMap.set(key, evt);
+            } else if (existing.itemTitle === evt.itemTitle && evt.timestampMs > existing.timestampMs) {
+              purchaseEventsMap.set(key, evt);
+            }
+          }
+        } else {
+          deduplicatedEventsPool.push(evt);
         }
-        deduplicatedEventsPool.push(evt);
       });
+
+      deduplicatedEventsPool.push(...Array.from(purchaseEventsMap.values()));
 
       // Filter events by period date bounds and sort descending (newest first)
       const filteredPeriodEvents = deduplicatedEventsPool
