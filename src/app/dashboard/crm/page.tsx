@@ -101,7 +101,7 @@ export default function CrmPage() {
     setIsLoaded(true);
 
     // Sync from database
-    fetch("/api/crm/sync")
+    fetch(`/api/crm/sync?t=\${Date.now()}`)
       .then(r => r.json())
       .then(data => {
         if (data && data.success && data.items) {
