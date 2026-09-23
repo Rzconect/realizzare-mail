@@ -4653,6 +4653,7 @@ function WordPressPayloadSimulator() {
         city: "Recife",
         state: "PE",
         origin: "WordPress Realizzare - Formulario de Contato",
+        tag: "Blog de Tecnologia",
         tags: ["Novo Lead", "Interessado em Web"]
       }
     },

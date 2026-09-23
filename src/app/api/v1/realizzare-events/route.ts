@@ -81,6 +81,8 @@ export async function POST(request: Request) {
         .eq("email", cleanEmail)
         .maybeSingle();
 
+      let contactRecord = existing;
+
       if (existing) {
         if (extraData.first_name || extraData.phone || extraData.city) {
           await supabase
@@ -95,29 +97,67 @@ export async function POST(request: Request) {
             })
             .eq("id", existing.id);
         }
-        return existing;
+      } else {
+        const firstName = extraData.first_name || cleanEmail.split("@")[0];
+        const lastName = extraData.last_name || "";
+        const { data: inserted, error } = await supabase
+          .from("contacts")
+          .insert({
+            org_id: DEFAULT_ORG_ID,
+            email: cleanEmail,
+            first_name: firstName,
+            last_name: lastName,
+            phone: extraData.phone || null,
+            city: extraData.city || null,
+            state: extraData.state || null,
+            source: extraData.origin || "WordPress Realizzare",
+            status: "active"
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        contactRecord = inserted;
       }
 
-      const firstName = extraData.first_name || cleanEmail.split("@")[0];
-      const lastName = extraData.last_name || "";
-      const { data: inserted, error } = await supabase
-        .from("contacts")
-        .insert({
-          org_id: DEFAULT_ORG_ID,
-          email: cleanEmail,
-          first_name: firstName,
-          last_name: lastName,
-          phone: extraData.phone || null,
-          city: extraData.city || null,
-          state: extraData.state || null,
-          source: extraData.origin || "WordPress Realizzare",
-          status: "active"
-        })
-        .select()
-        .single();
+      // Handle tags synchronization
+      const incomingTags = Array.isArray(extraData.tags) ? extraData.tags : (extraData.tag ? [extraData.tag] : []);
+      if (incomingTags.length > 0 && contactRecord) {
+        try {
+          const { data: globalTags } = await supabase.from("tags").select("id, name");
+          const tagIds: string[] = [];
+          for (const tName of incomingTags) {
+            const cleanTName = String(tName).trim();
+            if (!cleanTName) continue;
+            
+            const found = (globalTags as any[])?.find(gt => gt.name.toLowerCase() === cleanTName.toLowerCase());
+            if (found) {
+              tagIds.push(found.id);
+            } else {
+              const { data: newTag } = await supabase
+                .from("tags")
+                .insert({ name: cleanTName, org_id: DEFAULT_ORG_ID })
+                .select("id")
+                .maybeSingle();
+              if (newTag) tagIds.push(newTag.id);
+            }
+          }
+          
+          if (tagIds.length > 0) {
+            const { data: currentContactTags } = await supabase.from("contact_tags").select("tag_id").eq("contact_id", contactRecord.id);
+            const existingTagIds = new Set((currentContactTags || []).map((ct: any) => ct.tag_id));
+            
+            const relationsToInsert = tagIds.filter(tId => !existingTagIds.has(tId)).map((tId: any) => ({ contact_id: contactRecord.id, tag_id: tId }));
+            if (relationsToInsert.length > 0) {
+              await supabase.from("contact_tags").insert(relationsToInsert);
+            }
+          }
+        } catch (tagErr) {
+          console.error("Error syncing tags for contact:", tagErr);
+        }
+      }
 
-      if (error) throw error;
-      return inserted;
+      return contactRecord;
     };
 
     // Helper: Find or Create Course
