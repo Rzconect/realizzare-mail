@@ -739,29 +739,11 @@ export default function ContactProfilePage({ params }: PageProps) {
           .order("created_at", { ascending: true });
 
         if (reportingEventsData && reportingEventsData.length > 0) {
-          const reportingEventsMap = new Map();
           reportingEventsData.forEach((evt: any) => {
             const meta = evt.metadata || {};
-            const amt = Number(meta.amount || 0).toFixed(2);
-            const isPaid = meta.event?.includes("paid");
+            // Ignore redundant Pagar.me charge webhooks
+            if (meta.event && String(meta.event).startsWith("charge.")) return;
             
-            // Group by amount and status (paid vs pending)
-            // This ensures we merge order.created and charge.pending, but keep order.paid separate!
-            const key = `${amt}_${isPaid ? 'paid' : 'pending'}`;
-            
-            // Prefer real titles
-            if (!reportingEventsMap.has(key)) {
-              reportingEventsMap.set(key, evt);
-            } else {
-              const existing = reportingEventsMap.get(key);
-              if (existing.metadata?.item_title === "Certificado / Curso Realizzare" && meta.item_title !== "Certificado / Curso Realizzare") {
-                reportingEventsMap.set(key, evt);
-              }
-            }
-          });
-
-          reportingEventsMap.forEach((evt: any, key: string) => {
-            const meta = evt.metadata || {};
             const amtStr = Number(meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const isPaid = meta.event?.includes("paid");
             const prodName = meta.item_title || "Certificado de Conclusão - Realizzare Cursos";

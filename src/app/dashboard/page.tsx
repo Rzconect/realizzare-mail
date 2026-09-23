@@ -333,7 +333,8 @@ export default function DashboardPage() {
             type: "purchase",
             status: meta.event?.includes("paid") ? "paid" : "pending",
             provider: meta.provider || "pagarme",
-            pagarmeId: meta.pagarme_id
+            pagarmeId: meta.pagarme_id,
+            rawEvent: meta.event
           });
         });
       }
@@ -498,6 +499,11 @@ export default function DashboardPage() {
 
       allEventsPool.forEach(evt => {
         if (evt.type === "purchase") {
+          // Ignore Pagar.me 'charge' webhooks to prevent double counting, since 'order' webhooks carry the same data
+          if (evt.provider === "pagarme" && evt.rawEvent && String(evt.rawEvent).startsWith("charge.")) {
+            return;
+          }
+
           const email = (evt.email || "").toLowerCase().trim();
           const amt = Number(evt.amount || 0).toFixed(2);
           
