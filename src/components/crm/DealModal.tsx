@@ -87,7 +87,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
             }
          }
 
-         // 2. Fetch Timeline Events
+                  // 2. Fetch Timeline Events
          if (deal.email) {
            const { data: events } = await supabase
              .from('reporting_events')
@@ -96,7 +96,23 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
              .order('created_at', { ascending: false });
            
            if (events) {
-             setTimelineEvents(events);
+             const uniqueEvents = [];
+             const seen = new Set();
+             
+             events.forEach((evt) => {
+                const isPaid = evt.metadata?.status === 'paid' || evt.event === 'order.paid' || evt.metadata?.event === 'order.paid' || evt.metadata?.event === 'charge.paid';
+                const pId = evt.metadata?.pagarme_id || evt.id;
+                const title = evt.metadata?.item_title || evt.metadata?.course_name;
+                const amt = evt.metadata?.amount;
+                
+                const key = evt.metadata?.pagarme_id ? `${pId}-${isPaid}` : `${title}-${amt}-${isPaid}`;
+                
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  uniqueEvents.push(evt);
+                }
+             });
+             setTimelineEvents(uniqueEvents);
            }
          }
 
