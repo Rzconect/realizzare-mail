@@ -452,7 +452,9 @@ export default function CrmPage() {
                     </span>
                   </div>
                   {activeBoard !== 'atividades' && (
-                    <span className="text-xs font-bold text-slate-400">R$ {totalValue}</span>
+                    <span className="text-xs font-bold text-slate-400">
+                      R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
                   )}
                 </div>
 
@@ -623,7 +625,9 @@ export default function CrmPage() {
                               case 'value':
                                 return (
                                   <div key={field.id}>
-                                    <span className="text-base font-black text-slate-900">R$ {deal.value}</span>
+                                    <span className="text-base font-black text-slate-900">
+                                      R$ {Number(deal.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
                                   </div>
                                 );
                               case 'assignedTo':
