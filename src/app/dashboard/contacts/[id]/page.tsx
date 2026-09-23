@@ -725,20 +725,57 @@ export default function ContactProfilePage({ params }: PageProps) {
 
             const prodName = p.product_name || "Certificado de Conclusão - Realizzare Cursos";
             const amtStr = (p.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const isPaid = p.status === "paid" || p.status === "approved";
+            // Reporting events are now used for the timeline to allow pending -> paid progression
 
-            rawEvents.push({
-              id: `purchase-${p.id}`,
-              type: isPaid ? "purchase" : "purchase_pending",
-              label: isPaid ? "Compra Aprovada (Pagar.me)" : "Compra Pendente (Pagar.me)",
-              details: `Adquiriu '${prodName}' - R$ ${amtStr}`,
-              payload: p,
-              timestamp: p.paid_at || p.created_at
-            });
           });
         }
 
-        // Reporting Events fetch removed to prevent timeline duplication with Purchases
+        // Reporting Events fetch restored to allow pending -> paid visual progression
+        const { data: reportingEventsData } = await supabase
+          .from("reporting_events")
+          .select("*")
+          .eq("contact_email", String(contact.email).toLowerCase())
+          .eq("event_type", "purchase")
+          .order("created_at", { ascending: true });
+
+        if (reportingEventsData && reportingEventsData.length > 0) {
+          const reportingEventsMap = new Map();
+          reportingEventsData.forEach(evt => {
+            const meta = evt.metadata || {};
+            const amt = Number(meta.amount || 0).toFixed(2);
+            const isPaid = meta.event?.includes("paid");
+            
+            // Group by amount and status (paid vs pending)
+            // This ensures we merge order.created and charge.pending, but keep order.paid separate!
+            const key = `${amt}_${isPaid ? 'paid' : 'pending'}`;
+            
+            // Prefer real titles
+            if (!reportingEventsMap.has(key)) {
+              reportingEventsMap.set(key, evt);
+            } else {
+              const existing = reportingEventsMap.get(key);
+              if (existing.metadata?.item_title === "Certificado / Curso Realizzare" && meta.item_title !== "Certificado / Curso Realizzare") {
+                reportingEventsMap.set(key, evt);
+              }
+            }
+          });
+
+          reportingEventsMap.forEach((evt, key) => {
+            const meta = evt.metadata || {};
+            const amtStr = Number(meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const isPaid = meta.event?.includes("paid");
+            const prodName = meta.item_title || "Certificado de Conclusão - Realizzare Cursos";
+            
+            rawEvents.push({
+              id: `rep-evt-${evt.id}`,
+              type: isPaid ? "purchase" : "purchase_pending",
+              label: isPaid ? "Compra Aprovada (Pagar.me)" : "Compra Pendente (Pagar.me)",
+              details: `Adquiriu '${prodName}' - R$ ${amtStr}`,
+              payload: meta,
+              timestamp: evt.created_at
+            });
+          });
+        }
 
         let sourceDetail = contact.source || "Formulário Padrão";
         

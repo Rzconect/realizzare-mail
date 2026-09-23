@@ -499,8 +499,8 @@ export default function DashboardPage() {
         if (evt.type === "purchase") {
           const email = (evt.email || "").toLowerCase().trim();
           const amt = Number(evt.amount || 0).toFixed(2);
-          const dateStr = new Date(evt.timestampMs).toISOString().split("T")[0];
-          const key = `${email}_${amt}_${dateStr}`;
+          // Group by email and amount to merge pending and paid events across days
+          const key = `${email}_${amt}`;
           
           if (!purchaseEventsMap.has(key)) {
             purchaseEventsMap.set(key, evt);
@@ -540,7 +540,7 @@ export default function DashboardPage() {
       let emailPaidCount = 0;
 
       filteredPeriodEvents.forEach(evt => {
-        if (evt.type === "purchase") {
+        if (evt.type === "purchase" && evt.status === "paid") {
           finalRevenue += evt.amount || 0;
           if (evt.category === "certificado") finalCerts += 1;
           if (evt.category === "assinatura") finalSubs += 1;
@@ -1754,7 +1754,12 @@ export default function DashboardPage() {
                 </span>
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-slate-800 text-sm">{selectedEventModal.name}</span>
-                  {selectedEventModal.type === "purchase" && (
+                  {selectedEventModal.type === "purchase" && selectedEventModal.status === "pending" && (
+                    <span className="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-orange-200">
+                      Compra Pendente
+                    </span>
+                  )}
+                  {selectedEventModal.type === "purchase" && selectedEventModal.status !== "pending" && (
                     <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
                       Compra Aprovada
                     </span>
