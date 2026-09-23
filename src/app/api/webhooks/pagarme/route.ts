@@ -263,21 +263,25 @@ export async function POST(req: Request) {
         const existingRecord = existingBySku || existingByTime;
 
         if (!existingRecord) {
-          const prodType = category === "assinatura" ? "subscription" : 
-                           category === "curso" ? "course" : "certificate";
-          
-          await supabase.from("purchases").insert({
-            org_id: "00000000-0000-0000-0000-000000000001",
-            contact_id: contactId,
-            product_type: prodType,
-            product_name: finalItemTitle,
-            amount: parseFloat(amountInReais),
-            sku: pagarmeId,
-            status: purchaseStatus,
-            paid_at: purchaseStatus === "paid" ? new Date().toISOString() : null,
-            created_at: new Date().toISOString()
-          });
-        } else if (existingRecord && existingRecord.status === "pending" && purchaseStatus === "paid") {
+          // DB enum purchase_status only supports 'paid', 'refunded', 'failed'. 
+          // Do not insert 'pending' into purchases table to prevent crashing the webhook.
+          if (purchaseStatus !== "pending") {
+            const prodType = category === "assinatura" ? "subscription" : 
+                             category === "curso" ? "course" : "certificate";
+            
+            await supabase.from("purchases").insert({
+              org_id: "00000000-0000-0000-0000-000000000001",
+              contact_id: contactId,
+              product_type: prodType,
+              product_name: finalItemTitle,
+              amount: parseFloat(amountInReais),
+              sku: pagarmeId,
+              status: purchaseStatus,
+              paid_at: purchaseStatus === "paid" ? new Date().toISOString() : null,
+              created_at: new Date().toISOString()
+            });
+          }
+        } else if (existingRecord && existingRecord.status !== "paid" && purchaseStatus === "paid") {
           // Update to paid
           await supabase.from("purchases").update({
             status: "paid",

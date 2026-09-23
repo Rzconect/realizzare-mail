@@ -27,6 +27,7 @@ interface Deal {
   description?: string;
   priority?: "Alta" | "Média" | "Baixa";
   todos?: { id: string; text: string; done: boolean }[];
+  statusBadge?: { label: string; colorClass: string };
 }
 
 const CRM_COLUMNS: { id: ColumnId; title: string; color: string }[] = [
@@ -586,6 +587,19 @@ export default function CrmPage() {
                                 const subTitle = parts.slice(1).join(': ');
                                 return (
                                   <div key={field.id} className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-1.5 mb-1 ml-3.5">
+                                      {deal.statusBadge && (
+                                        <div className={`text-[10px] px-2 py-0.5 rounded font-medium w-max ${deal.statusBadge.colorClass}`}>
+                                          {deal.statusBadge.label}
+                                        </div>
+                                      )}
+                                      {deal.createdAt && (
+                                        <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                          <Clock className="w-3 h-3" />
+                                          {new Date(deal.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                                        </div>
+                                      )}
+                                    </div>
                                     <div className="flex items-start gap-2">
                                       <span className="h-1.5 w-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
                                       <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">

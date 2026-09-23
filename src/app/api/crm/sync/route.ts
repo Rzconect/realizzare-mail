@@ -32,14 +32,40 @@ export async function GET() {
     );
 
     // 2. Fetch Pedidos Pendentes
-    const { data: pendingPurchases, error: err2 } = await supabase
-      .from("purchases")
-      .select("id, created_at, product_name, amount, contacts(first_name, last_name, email, phone)")
-      .eq("status", "pending")
+    // We fetch from reporting_events because purchases table enum only supports paid/refunded/failed
+    const { data: pendingEvents } = await supabase
+      .from("reporting_events")
+      .select("id, created_at, metadata, contact_email")
+      .eq("event_type", "purchase")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(300);
 
-    const items = [];
+    // Group by pagarme_id to find orders that are ONLY pending (no 'paid' event)
+    const orderMap = new Map();
+    (pendingEvents || []).forEach(evt => {
+       if (evt.metadata?.event?.startsWith("charge.")) return; // Ignore legacy duplicate charge webhooks
+       const key = evt.metadata?.pagarme_id || Math.random().toString();
+       if (!orderMap.has(key)) {
+         orderMap.set(key, { ...evt, isPaid: evt.metadata?.event?.includes("paid") });
+       } else {
+         if (evt.metadata?.event?.includes("paid")) {
+           orderMap.get(key).isPaid = true;
+         }
+       }
+    });
+
+    const activePending = Array.from(orderMap.values()).filter(o => !o.isPaid).slice(0, 50);
+
+    // Fetch contact details for these emails
+    const emails = [...new Set(activePending.map(o => o.contact_email).filter(Boolean))];
+    const { data: contactsData } = await supabase
+      .from("contacts")
+      .select("first_name, last_name, email, phone")
+      .in("email", emails);
+      
+    const contactMap = new Map((contactsData || []).map((c: any) => [c.email, c]));
+
+    const items: any[] = [];
 
     // Process Teste Aprovado
     for (const evt of allTestEvents) {
@@ -65,25 +91,32 @@ export async function GET() {
     }
 
     // Process Pedidos Pendentes
-    for (const p of (pendingPurchases || [])) {
-      const contactData: any = p.contacts;
-      const contact = (Array.isArray(contactData) ? contactData[0] : contactData) || {};
-      const cName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : "Aluno Realizzare";
+    for (const p of activePending) {
+      const contact = contactMap.get(p.contact_email) || { email: p.contact_email };
+      const customerName = p.metadata?.customer_name || "Aluno Realizzare";
+      const cName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : customerName;
+      
+      const amt = Number(p.metadata?.amount || 0);
+      
       items.push({
         id: `pend-${p.id}`,
-        title: `Pagamento Pendente: ${p.product_name || "Produto"}`,
-        value: p.amount || 0,
+        title: `Aguardando Pagamento: ${p.metadata?.item_title || "Produto"}`,
+        value: amt,
         clientInitials: cName.substring(0, 2).toUpperCase(),
         clientName: cName,
         clientColor: "bg-orange-500",
         columnId: "novo",
-        phone: contact.phone || "",
-        email: contact.email || "",
+        phone: contact.phone || p.metadata?.phone || "",
+        email: contact.email || p.contact_email || "",
         assignedTo: "Sem responsável",
         boardId: "pedidos_pendentes",
         archived: false,
         createdAt: p.created_at,
-        description: `Aguardando pagamento de R$ ${p.amount?.toFixed(2).replace('.', ',')}`
+        description: `Boleto ou PIX no valor de R$ ${amt.toFixed(2).replace('.', ',')}`,
+        statusBadge: {
+           label: "Pendente",
+           colorClass: "bg-orange-100 text-orange-700"
+        }
       });
     }
 
