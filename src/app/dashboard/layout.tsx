@@ -48,6 +48,7 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showSidebarSettingsDropdown, setShowSidebarSettingsDropdown] = useState(false);
@@ -198,13 +199,56 @@ export default function DashboardLayout({
         }
       }
 
-      setScheduledNotifications(combined);
+      const viewedStorage = localStorage.getItem("realizzare_viewed_notifications");
+      let viewedMap: Record<string, number> = {};
+      if (viewedStorage) {
+        try { viewedMap = JSON.parse(viewedStorage); } catch(e){}
+      }
+
+      const now = Date.now();
+      const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+      const finalNotifications = combined.filter(n => {
+        const viewedAt = viewedMap[n.id];
+        if (viewedAt && (now - viewedAt > THREE_DAYS_MS)) {
+          return false;
+        }
+        return true;
+      });
+
+      const unread = finalNotifications.filter(n => !viewedMap[n.id]).length;
+
+      setScheduledNotifications(finalNotifications);
+      setUnreadCount(unread);
     };
 
     loadNotifications();
     window.addEventListener("storage", loadNotifications);
     return () => window.removeEventListener("storage", loadNotifications);
   }, [pathname]);
+
+  const handleToggleNotifications = () => {
+    const nextState = !showNotifications;
+    setShowNotifications(nextState);
+
+    if (nextState && scheduledNotifications.length > 0) {
+      const viewedStorage = localStorage.getItem("realizzare_viewed_notifications");
+      let viewedMap: Record<string, number> = {};
+      if (viewedStorage) {
+        try { viewedMap = JSON.parse(viewedStorage); } catch(e){}
+      }
+      
+      const now = Date.now();
+      scheduledNotifications.forEach(n => {
+        if (!viewedMap[n.id]) {
+          viewedMap[n.id] = now;
+        }
+      });
+      
+      localStorage.setItem("realizzare_viewed_notifications", JSON.stringify(viewedMap));
+      setUnreadCount(0);
+    }
+  };
 
   // Reset dropdowns on route changes
   useEffect(() => {
@@ -478,13 +522,13 @@ export default function DashboardLayout({
           {/* Notifications Bell Dropdown */}
           <div className="relative notifications-dropdown-container">
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={handleToggleNotifications}
               className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-50 border border-slate-200 relative hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
             >
               <Bell className="h-4 w-4" />
-              {scheduledNotifications.length > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-indigo-600 text-white text-[8px] font-black flex items-center justify-center animate-pulse">
-                  {scheduledNotifications.length}
+                  {unreadCount}
                 </span>
               )}
             </button>
@@ -495,9 +539,9 @@ export default function DashboardLayout({
                 <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-202 rounded-2xl shadow-xl p-4 z-40 space-y-3 animate-fadeIn">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2 select-none">
                     <span className="text-[10px] font-black uppercase text-slate-400">Notificações</span>
-                    {scheduledNotifications.length > 0 && (
+                    {unreadCount > 0 && (
                       <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-                        {scheduledNotifications.length} Novas
+                        {unreadCount} Novas
                       </span>
                     )}
                   </div>
@@ -784,13 +828,13 @@ export default function DashboardLayout({
             {/* Notifications Bell Dropdown */}
             <div className="relative notifications-dropdown-container">
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
+                onClick={handleToggleNotifications}
                 className="p-2 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-50 border border-slate-200 relative hover:scale-105 transition-all cursor-pointer flex items-center justify-center"
               >
                 <Bell className="h-4.5 w-4.5" />
-                {scheduledNotifications.length > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 h-4.5 w-4.5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-                    {scheduledNotifications.length}
+                    {unreadCount}
                   </span>
                 )}
               </button>
@@ -801,9 +845,9 @@ export default function DashboardLayout({
                   <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-202 rounded-2xl shadow-xl p-4 z-40 space-y-3 animate-fadeIn">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2 select-none">
                       <span className="text-[10px] font-black uppercase text-slate-400">Notificações</span>
-                      {scheduledNotifications.length > 0 && (
+                      {unreadCount > 0 && (
                         <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-                          {scheduledNotifications.length} Novas
+                          {unreadCount} Novas
                         </span>
                       )}
                     </div>
