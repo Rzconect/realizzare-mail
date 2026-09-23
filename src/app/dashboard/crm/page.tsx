@@ -552,13 +552,7 @@ export default function CrmPage() {
                                   </div>
                                 );
                               case 'status':
-                                return (
-                                  <div key={field.id} className="pt-1">
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">
-                                      {col.title}
-                                    </span>
-                                  </div>
-                                );
+                                return null;
                               default: return null;
                             }
                           })}
@@ -639,13 +633,7 @@ export default function CrmPage() {
                                   </div>
                                 );
                               case 'status':
-                                return (
-                                  <div key={field.id} className="pt-1">
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">
-                                      {col.title}
-                                    </span>
-                                  </div>
-                                );
+                                return null;
                               default: return null;
                             }
                           })}

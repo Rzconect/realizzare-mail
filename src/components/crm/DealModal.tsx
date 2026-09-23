@@ -190,16 +190,25 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
       <div className="fixed right-0 top-0 h-full w-full max-w-[500px] bg-slate-100 shadow-2xl z-50 flex flex-col animate-slideInRight border-l border-slate-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 pb-3">
-          <div className="flex items-center gap-3">
-            <ItemTitleWithCoupon 
-              rawTitle={deal?.title || "Negócio"}
-              titleClassName="text-xl font-bold text-slate-800"
-              containerClassName="flex items-center gap-2"
-            />
-            <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700 text-[10px] font-bold border border-cyan-200 uppercase tracking-wider">{currentColumn.title}</span>
+        <div className="flex items-center justify-between p-5 pb-3 border-b border-slate-100 bg-white">
+          <div className="flex flex-col gap-1 w-[85%]">
+            <div className="flex items-center gap-3">
+              <ItemTitleWithCoupon 
+                rawTitle={deal?.title?.includes("Pagamento:") ? "Aguardando Pagamento" : (deal?.title || "Negócio")}
+                titleClassName="text-xl font-black text-slate-800 tracking-tight"
+                containerClassName="flex items-center gap-2"
+              />
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                deal?.boardId === 'pedidos_pendentes' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-cyan-50 text-cyan-600 border-cyan-200'
+              }`}>{currentColumn.title}</span>
+            </div>
+            {deal?.title?.includes("Pagamento:") && (
+              <span className="text-sm font-semibold text-slate-500 line-clamp-1">
+                {deal.title.split(":").slice(1).join(":").trim()}
+              </span>
+            )}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors self-start mt-1">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -320,67 +329,68 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
           ) : (
             <>
               {/* Main Info Grid */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-3">
-            <div>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Valor</span>
-              <p className="text-base font-bold text-slate-900">R$ {deal?.value || 0}</p>
-            </div>
-            <div>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Etapa</span>
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${currentColumn.color.replace('bg-', 'bg-').replace('-500', '-400')}`}></span>
-                <span className="text-sm font-semibold text-slate-700">{currentColumn.title}</span>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Responsável</span>
-              <button 
-                onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                className="flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
-              >
-                {selectedUser} <ChevronDown className="h-3 w-3" />
-              </button>
-              
-              {isUserDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setIsUserDropdownOpen(false)}></div>
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
-                    <button 
-                      onClick={() => assignUser("Sem responsável")}
-                      className="w-full text-left px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
-                    >
-                      Sem responsável
-                    </button>
-                    {users.map((u, i) => {
-                      const nameParts = u.name ? u.name.split(" ") : u.email.split("@")[0].split(" ");
-                      const shortName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
-                      return (
-                        <button 
-                          key={i}
-                          onClick={() => assignUser(shortName)}
-                          className="w-full text-left px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
-                        >
-                          {shortName}
-                        </button>
-                      );
-                    })}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white p-5 rounded-xl shadow-sm border border-slate-100 mt-4 mb-4">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Valor da Oportunidade</span>
+                  <p className="text-lg font-black text-slate-900 leading-none">R$ {Number(deal?.value || 0).toFixed(2).replace('.', ',')}</p>
+                </div>
+                
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Etapa Atual</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${currentColumn.color.replace('bg-', 'bg-').replace('-500', '-400')} shadow-sm`}></span>
+                    <span className="text-sm font-bold text-slate-800">{currentColumn.title}</span>
                   </div>
-                </>
-              )}
-            </div>
-            
-            <div>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Previsão de fecho</span>
-              <p className="text-sm font-semibold text-slate-700">—</p>
-            </div>
-            <div className="col-span-2">
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Criado em</span>
-              <p className="text-sm font-semibold text-slate-700">18 de ago.</p>
-            </div>
-          </div>
+                </div>
+                
+                <div className="relative border-t border-slate-100 pt-3">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Responsável</span>
+                  <button 
+                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                    className="flex items-center justify-between w-[90%] text-left text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer group"
+                  >
+                    {selectedUser} <ChevronDown className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                  
+                  {isUserDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsUserDropdownOpen(false)}></div>
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+                        <button 
+                          onClick={() => assignUser("Sem responsável")}
+                          className="w-full text-left px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Sem responsável
+                        </button>
+                        {users.map((u, i) => {
+                          const nameParts = u.name ? u.name.split(" ") : u.email.split("@")[0].split(" ");
+                          const shortName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
+                          return (
+                            <button 
+                              key={i}
+                              onClick={() => assignUser(shortName)}
+                              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+                            >
+                              {shortName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                <div className="border-t border-slate-100 pt-3">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Criado em
+                  </span>
+                  <p className="text-sm font-bold text-slate-700">
+                    {deal?.createdAt ? new Date(deal.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </p>
+                </div>
+              </div>
 
-          <div className="border-b border-slate-200/80 my-2"></div>
+              <div className="border-b border-slate-200/80 my-2"></div>
 
           {/* Custom Fields Section */}
           <div className="py-3">
