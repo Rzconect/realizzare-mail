@@ -22,14 +22,10 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("Sem responsável");
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const [isCustomFieldsOpen, setIsCustomFieldsOpen] = useState(false);
+  const [isCustomFieldsOpen, setIsCustomFieldsOpen] = useState(true);
 
-  // WhatsApp Chat State
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [messageText, setMessageText] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [chatId, setChatId] = useState<string | null>(null);
-  const [activeRemoteJid, setActiveRemoteJid] = useState<string | null>(null);
+  // Timeline State
+  const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
 
   // Contact Real Data State
   const [contactData, setContactData] = useState<any>(null);
@@ -91,22 +87,16 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
             }
          }
 
-         // 2. Fetch Chat
-         if (deal.phone) {
-           const variants = getPhoneVariants(deal.phone);
-           const orQuery = variants.map(v => `phone.eq.${v}`).join(',');
-           const { data: chatData } = await supabase
-             .from('whatsapp_chats')
-             .select('id, remote_jid, whatsapp_messages(*)')
-             .or(orQuery)
-             .limit(1)
-             .single();
-             
-           if (chatData) {
-             setChatId(chatData.id);
-             setActiveRemoteJid(chatData.remote_jid);
-             const msgs = (chatData.whatsapp_messages || []).sort((a:any, b:any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-             setChatMessages(msgs);
+         // 2. Fetch Timeline Events
+         if (deal.email) {
+           const { data: events } = await supabase
+             .from('reporting_events')
+             .select('*')
+             .eq('contact_email', deal.email)
+             .order('created_at', { ascending: false });
+           
+           if (events) {
+             setTimelineEvents(events);
            }
          }
 
@@ -124,37 +114,6 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
       fetchAllData();
     }
   }, [isOpen, deal]);
-
-  const handleSendMessage = async () => {
-    if (!messageText.trim()) return;
-    setIsSending(true);
-    try {
-      const cleanPhone = deal?.phone.replace(/[^\d]/g, '');
-      const remoteJid = activeRemoteJid || `${cleanPhone}@s.whatsapp.net`;
-      await fetch('/api/whatsapp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: chatId || `temp-${cleanPhone}`,
-          remoteJid: remoteJid,
-          text: messageText
-        })
-      });
-      
-      setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        text: messageText,
-        is_from_me: true,
-        created_at: new Date().toISOString(),
-        status: 'sending'
-      }]);
-      setMessageText("");
-    } catch (e) {
-       console.error("Failed to send message", e);
-    }
-    setIsSending(false);
-  };
-
 
   if (!isOpen) return null;
 
@@ -328,8 +287,68 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
             </div>
           ) : (
             <>
+              {/* Custom Fields Section */}
+              <div className="py-2 mt-2">
+                <button 
+                  onClick={() => setIsCustomFieldsOpen(!isCustomFieldsOpen)}
+                  className="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors w-full mb-3 outline-none"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider flex-1 text-left">Detalhes do Contato</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isCustomFieldsOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isCustomFieldsOpen && (
+                  <div className="animate-fadeIn">
+                    {duplicateProfilesCount > 1 && (
+                      <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-700 p-2.5 rounded-lg text-[10px] font-medium flex items-start gap-2">
+                        <span className="text-amber-500 mt-0.5">⚠️</span>
+                        <span>
+                          O número de telefone deste contato ({deal?.phone}) está vinculado a {duplicateProfilesCount} perfis diferentes na base.
+                          <br/>
+                          Exibindo dados do perfil mais recente.
+                        </span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      <div className="col-span-2">
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">Nome Completo</label>
+                        <input readOnly type="text" value={deal?.clientName || ''} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">Telefone / WhatsApp</label>
+                        <input readOnly type="text" value={deal?.phone || contactData?.phone || ''} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">E-mail</label>
+                        <input readOnly type="email" value={contactData?.email || deal?.email || ''} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">Data de Cadastro</label>
+                        <input readOnly type="text" value={contactData?.created_at ? new Date(contactData.created_at).toLocaleDateString('pt-BR') : ''} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">ID do Perfil</label>
+                        <input readOnly type="text" value={contactData?.id || ''} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
+                      </div>
+                    </div>
+                    {contactData?.id && (
+                      <div className="mt-3 flex justify-end">
+                        <Link 
+                          href={`/dashboard/contacts/${contactData.id}`}
+                          className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 bg-indigo-50 px-2.5 py-1.5 rounded-lg"
+                        >
+                          Ver ficha completa
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Main Info Grid */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white p-5 rounded-xl shadow-sm border border-slate-100 mt-4 mb-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white p-5 rounded-xl shadow-sm border border-slate-100 mt-2 mb-4">
                 <div>
                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Valor da Oportunidade</span>
                   <p className="text-lg font-black text-slate-900 leading-none">R$ {Number(deal?.value || 0).toFixed(2).replace('.', ',')}</p>
@@ -363,7 +382,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
                           Sem responsável
                         </button>
                         {users.map((u, i) => {
-                          const nameParts = u.name ? u.name.split(" ") : u.email.split("@")[0].split(" ");
+                          const nameParts = u.name ? u.name.split(' ') : u.email.split('@')[0].split(' ');
                           const shortName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
                           return (
                             <button 
@@ -392,120 +411,54 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
 
               <div className="border-b border-slate-200/80 my-2"></div>
 
-          {/* Custom Fields Section */}
-          <div className="py-3">
-            <button 
-              onClick={() => setIsCustomFieldsOpen(!isCustomFieldsOpen)}
-              className="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors w-full mb-4 outline-none"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider flex-1 text-left">Detalhes do Contato</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${isCustomFieldsOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {isCustomFieldsOpen && (
-              <>
-                {duplicateProfilesCount > 1 && (
-                  <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-700 p-2.5 rounded-lg text-[10px] font-medium flex items-start gap-2">
-                    <span className="text-amber-500 mt-0.5">⚠️</span>
-                    <span>
-                      O número de telefone deste contato ({deal?.phone}) está vinculado a {duplicateProfilesCount} perfis diferentes na base.
-                      <br/>
-                      Exibindo dados do perfil mais recente.
-                    </span>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Cidade</label>
-                    <input readOnly type="text" value={contactData?.city || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Estado</label>
-                    <input readOnly type="text" value={contactData?.state || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">E-mail</label>
-                    <input readOnly type="email" value={contactData?.email || deal?.email || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Data de Cadastro</label>
-                    <input readOnly type="text" value={contactData?.created_at ? new Date(contactData.created_at).toLocaleDateString('pt-BR') : ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">ID do Perfil</label>
-                    <input readOnly type="text" value={contactData?.id || ''} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none" />
-                  </div>
+              {/* Timeline Panel */}
+              <div className="py-3 flex flex-col flex-1 min-h-[250px]">
+                <div className="flex items-center gap-2 text-slate-500 mb-4">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Linha do Tempo de Transações</span>
                 </div>
-                {contactData?.id && (
-                  <div className="mt-4 flex justify-end">
-                    <Link 
-                      href={`/dashboard/contacts/${contactData.id}`}
-                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg"
-                    >
-                      Ver ficha completa
-                      <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          
-          <div className="border-b border-slate-200/80 my-2"></div>
-
-          {/* WhatsApp Chat Panel */}
-          <div className="py-3 flex flex-col flex-1 min-h-[300px]">
-            <div className="flex items-center justify-between text-slate-500 mb-3">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-3.5 w-3.5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Conversa via WhatsApp</span>
-              </div>
-              <button onClick={handleOpenConversation} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
-                Abrir painel <ExternalLink className="h-3 w-3" />
-              </button>
-            </div>
-            
-            {/* Chat Messages */}
-            <div className="flex-1 bg-slate-50 border border-slate-200 rounded-t-xl p-3 overflow-y-auto space-y-3 h-64 custom-scrollbar">
-              {chatMessages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs font-semibold text-slate-400">
-                  Nenhuma mensagem ainda. Envie a primeira!
-                </div>
-              ) : (
-                chatMessages.map((msg, idx) => {
-                  const isFromMe = msg.sender === 'agent' || msg.is_from_me;
-                  return (
-                    <div key={msg.id || idx} className={`flex flex-col ${isFromMe ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs shadow-sm relative ${isFromMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none'}`}>
-                        {msg.text}
-                        {msg.status === 'sending' && <Clock className="h-2.5 w-2.5 absolute bottom-1 right-1 opacity-50" />}
-                      </div>
+                
+                <div className="flex-1 space-y-4">
+                  {timelineEvents.length === 0 ? (
+                    <div className="h-20 flex items-center justify-center text-xs font-semibold text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                      Nenhuma transação encontrada.
                     </div>
-                  );
-                })
-              )}
-            </div>
-            
-            {/* Message Input */}
-            <div className="flex items-center gap-2 p-2 bg-white border border-t-0 border-slate-200 rounded-b-xl">
-              <input 
-                type="text" 
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Digite uma mensagem..."
-                className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
-              />
-              <button 
-                onClick={handleSendMessage}
-                disabled={isSending || !messageText.trim()}
-                className="h-8 w-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center disabled:opacity-50 transition-colors shrink-0"
-              >
-                {isSending ? <Clock className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 -ml-0.5" />}
-              </button>
-            </div>
-          </div>
+                  ) : (
+                    timelineEvents.map((evt, idx) => {
+                      const isPaid = evt.metadata?.status === 'paid' || evt.event === 'order.paid';
+                      return (
+                        <div key={evt.id || idx} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border-2 border-white shadow-sm ${isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'}`}>
+                              <span className="text-[10px] font-bold">{isPaid ? 'R$' : '⏳'}</span>
+                            </div>
+                            {idx < timelineEvents.length - 1 && <div className="w-0.5 h-full bg-slate-200 my-1"></div>}
+                          </div>
+                          <div className="bg-white border border-slate-200 rounded-xl p-3 flex-1 mb-2 shadow-sm">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider ${isPaid ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                {isPaid ? 'Compra Aprovada' : 'Pedido Gerado'}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-400">
+                                {new Date(evt.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                              </span>
+                            </div>
+                            <p className="text-xs font-semibold text-slate-800 leading-snug">
+                              {evt.metadata?.item_title || evt.metadata?.course_name || "Produto Realizzare"}
+                            </p>
+                            {evt.metadata?.amount && (
+                              <p className="text-xs font-bold text-slate-500 mt-1.5">
+                                R$ {Number(evt.metadata.amount).toFixed(2).replace('.', ',')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
             </>
           )}
           

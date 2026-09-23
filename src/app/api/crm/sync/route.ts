@@ -67,11 +67,20 @@ export async function GET() {
 
     const items: any[] = [];
 
+    const formatName = (str: string) => {
+      if (!str) return "";
+      return str.split(" ").map(w => {
+        if (w.length < 3 && w.toLowerCase() !== "da" && w.toLowerCase() !== "de" && w.toLowerCase() !== "do") return w.toLowerCase();
+        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      }).join(" ");
+    };
+
     // Process Teste Aprovado
     for (const evt of allTestEvents) {
       const contactData: any = evt.contacts;
       const contact = (Array.isArray(contactData) ? contactData[0] : contactData) || {};
-      const cName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : "Aluno Realizzare";
+      const rawName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : "Aluno Realizzare";
+      const cName = formatName(rawName);
       items.push({
         id: `test-${evt.id}`,
         title: `Teste Aprovado: ${evt.metadata?.course_name || "Curso"}`,
@@ -94,7 +103,8 @@ export async function GET() {
     for (const p of activePending) {
       const contact = contactMap.get(p.contact_email) || { email: p.contact_email };
       const customerName = p.metadata?.customer_name || "Aluno Realizzare";
-      const cName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : customerName;
+      const rawName = contact.first_name ? `${contact.first_name} ${contact.last_name || ""}`.trim() : customerName;
+      const cName = formatName(rawName);
       
       const amt = Number(p.metadata?.amount || 0);
       

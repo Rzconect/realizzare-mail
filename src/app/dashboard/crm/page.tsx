@@ -581,7 +581,7 @@ export default function CrmPage() {
                                 const subTitle = parts.slice(1).join(': ');
                                 return (
                                   <div key={field.id} className="flex flex-col gap-1">
-                                    <div className="flex flex-col gap-1.5 mb-1 ml-3.5">
+                                    <div className="flex items-center gap-2 mb-1.5 ml-3.5">
                                       {deal.statusBadge && (
                                         <div className={`text-[10px] px-2 py-0.5 rounded font-medium w-max ${deal.statusBadge.colorClass}`}>
                                           {deal.statusBadge.label}
