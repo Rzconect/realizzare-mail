@@ -740,7 +740,7 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         if (reportingEventsData && reportingEventsData.length > 0) {
           const reportingEventsMap = new Map();
-          reportingEventsData.forEach(evt => {
+          reportingEventsData.forEach((evt: any) => {
             const meta = evt.metadata || {};
             const amt = Number(meta.amount || 0).toFixed(2);
             const isPaid = meta.event?.includes("paid");
@@ -760,7 +760,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             }
           });
 
-          reportingEventsMap.forEach((evt, key) => {
+          reportingEventsMap.forEach((evt: any, key: string) => {
             const meta = evt.metadata || {};
             const amtStr = Number(meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const isPaid = meta.event?.includes("paid");

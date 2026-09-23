@@ -332,7 +332,8 @@ export default function DashboardPage() {
             timestampMs: dateObj.getTime(),
             type: "purchase",
             status: meta.event?.includes("paid") ? "paid" : "pending",
-            provider: meta.provider || "pagarme"
+            provider: meta.provider || "pagarme",
+            pagarmeId: meta.pagarme_id
           });
         });
       }
@@ -499,8 +500,15 @@ export default function DashboardPage() {
         if (evt.type === "purchase") {
           const email = (evt.email || "").toLowerCase().trim();
           const amt = Number(evt.amount || 0).toFixed(2);
-          // Group by email and amount to merge pending and paid events across days
-          const key = `${email}_${amt}`;
+          
+          let key;
+          if (evt.pagarmeId && String(evt.pagarmeId).startsWith("or_")) {
+            key = evt.pagarmeId;
+          } else {
+            // Legacy fallback for old events without proper or_ IDs
+            const dateStr = new Date(evt.timestampMs).toISOString().split("T")[0];
+            key = `${email}_${amt}_${dateStr}`;
+          }
           
           if (!purchaseEventsMap.has(key)) {
             purchaseEventsMap.set(key, evt);

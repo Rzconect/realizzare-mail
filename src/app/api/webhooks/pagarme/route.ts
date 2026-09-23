@@ -166,7 +166,7 @@ export async function POST(req: Request) {
       const supabase = createClient(supabaseUrl, supabaseKey);
       
       // 1. Log the purchase event
-      const pagarmeId = data?.id || `pagarme-webhook-${Date.now()}`;
+      const pagarmeId = data?.order?.id || data?.id || `pagarme-webhook-${Date.now()}`;
       
       const { data: existingEvent } = await supabase
         .from("reporting_events")
