@@ -729,8 +729,8 @@ export default function ContactProfilePage({ params }: PageProps) {
 
             rawEvents.push({
               id: `purchase-${p.id}`,
-              type: "purchase",
-              label: isPaid ? "Compra Aprovada (Pagar.me)" : "Transação Registrada",
+              type: isPaid ? "purchase" : "purchase_pending",
+              label: isPaid ? "Compra Aprovada (Pagar.me)" : "Compra Pendente (Pagar.me)",
               details: `Adquiriu '${prodName}' - R$ ${amtStr}`,
               payload: p,
               timestamp: p.paid_at || p.created_at
@@ -1359,7 +1359,9 @@ export default function ContactProfilePage({ params }: PageProps) {
       case "enrollment":
         return <BookOpen className="h-3.5 w-3.5 text-violet-600" />;
       case "purchase":
-        return <DollarSign className="h-3.5 w-3.5 text-amber-600" />;
+        return <DollarSign className="h-3.5 w-3.5 text-emerald-600" />;
+      case "purchase_pending":
+        return <Clock className="h-3.5 w-3.5 text-orange-500" />;
       default:
         return <Clock className="h-3.5 w-3.5 text-slate-500" />;
     }
@@ -1379,7 +1381,9 @@ export default function ContactProfilePage({ params }: PageProps) {
       case "enrollment":
         return "bg-violet-50 border border-violet-200";
       case "purchase":
-        return "bg-amber-50 border border-amber-200";
+        return "bg-emerald-50 border border-emerald-200";
+      case "purchase_pending":
+        return "bg-orange-50 border border-orange-200";
       default:
         return "bg-slate-100 border border-slate-200";
     }

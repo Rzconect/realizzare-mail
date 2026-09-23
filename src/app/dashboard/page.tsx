@@ -331,6 +331,7 @@ export default function DashboardPage() {
             paymentMethod: "Cartão / PIX",
             timestampMs: dateObj.getTime(),
             type: "purchase",
+            status: meta.event?.includes("paid") ? "paid" : "pending",
             provider: meta.provider || "pagarme"
           });
         });
@@ -505,10 +506,17 @@ export default function DashboardPage() {
             purchaseEventsMap.set(key, evt);
           } else {
             const existing = purchaseEventsMap.get(key);
-            if (existing.itemTitle === "Certificado / Curso Realizzare" && evt.itemTitle !== "Certificado / Curso Realizzare") {
+            // Priority 1: Paid status always wins over pending status
+            if (existing.status !== "paid" && evt.status === "paid") {
               purchaseEventsMap.set(key, evt);
-            } else if (existing.itemTitle === evt.itemTitle && evt.timestampMs > existing.timestampMs) {
-              purchaseEventsMap.set(key, evt);
+            } 
+            // Priority 2: If statuses are the same (both paid or both pending), prefer real titles
+            else if (existing.status === evt.status) {
+              if (existing.itemTitle === "Certificado / Curso Realizzare" && evt.itemTitle !== "Certificado / Curso Realizzare") {
+                purchaseEventsMap.set(key, evt);
+              } else if (existing.itemTitle === evt.itemTitle && evt.timestampMs > existing.timestampMs) {
+                purchaseEventsMap.set(key, evt);
+              }
             }
           }
         } else {
@@ -1562,13 +1570,15 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border shrink-0 ${
-                          isPurchase
+                          isPurchase && evt.status === "pending"
+                            ? "bg-orange-50 text-orange-600 border-orange-200"
+                            : isPurchase
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : isOpen
                             ? "bg-purple-50 text-purple-700 border-purple-200"
                             : "bg-teal-50 text-teal-700 border-teal-200"
                         }`}>
-                          {isPurchase ? "Pagar.me" : isOpen ? "Abertura" : "Clique"}
+                          {isPurchase && evt.status === "pending" ? "Pendente" : isPurchase ? "Pagar.me" : isOpen ? "Abertura" : "Clique"}
                         </span>
                       </div>
 
@@ -1581,7 +1591,7 @@ export default function DashboardPage() {
                       <div className="w-full pl-9 leading-snug">
                         <ItemTitleWithCoupon 
                           rawTitle={evt.eventLabel || evt.itemTitle || ""} 
-                          titleClassName={`text-[11px] font-bold line-clamp-2 ${isPurchase ? "text-emerald-700" : isOpen ? "text-purple-700" : "text-teal-700"}`}
+                          titleClassName={`text-[11px] font-bold line-clamp-2 ${isPurchase && evt.status === "pending" ? "text-orange-600" : isPurchase ? "text-emerald-700" : isOpen ? "text-purple-700" : "text-teal-700"}`}
                           containerClassName="flex flex-col gap-1 items-start"
                         />
                         {evt.quantity && evt.quantity > 1 ? (
