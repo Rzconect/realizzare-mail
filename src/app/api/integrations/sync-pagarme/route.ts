@@ -240,10 +240,25 @@ export async function POST(req: Request) {
               
               if (existingEvent) {
                 const currentMeta = existingEvent.metadata || {};
+                let needsUpdate = false;
+                
                 if (currentMeta.item_title !== evt.itemTitle) {
                   currentMeta.item_title = evt.itemTitle;
                   currentMeta.category = evt.category;
+                  needsUpdate = true;
+                }
+                
+                if (currentMeta.event !== "order.paid") {
+                  currentMeta.event = "order.paid";
+                  needsUpdate = true;
+                }
+                
+                if (!currentMeta.pagarme_id) {
                   currentMeta.pagarme_id = evt.id;
+                  needsUpdate = true;
+                }
+
+                if (needsUpdate) {
                   await supabaseAdmin.from("reporting_events")
                     .update({ metadata: currentMeta })
                     .eq("id", existingEvent.id);

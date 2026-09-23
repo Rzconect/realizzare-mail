@@ -174,6 +174,7 @@ export async function POST(req: Request) {
         .eq("contact_email", email)
         .eq("event_type", "purchase")
         .eq("metadata->>pagarme_id", pagarmeId)
+        .eq("metadata->>event", eventType)
         .maybeSingle();
 
       if (!existingEvent) {
