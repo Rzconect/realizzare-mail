@@ -286,7 +286,6 @@ export default function CrmPage() {
   }, []);
   
   // Track modal and drag
-  const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
 
   useEffect(() => {
     const w = window as any;
