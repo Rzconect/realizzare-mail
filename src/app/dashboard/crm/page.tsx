@@ -217,11 +217,14 @@ export default function CrmPage() {
             const presences = state[userId];
             if (presences && presences.length > 0) {
               for (const presence of presences) {
-                usersInPageMap[presence.client_id] = presence;
+                usersInPageMap[presence.user_id] = presence;
                 
                 if (presence.viewing_deal_id && presence.client_id !== myClientId) {
                   if (!newActiveUsers[presence.viewing_deal_id]) newActiveUsers[presence.viewing_deal_id] = [];
-                  newActiveUsers[presence.viewing_deal_id].push(presence);
+                  // Deduplicate by user_id so one user doesn't show multiple times on the same card if they use multiple tabs
+                  if (!newActiveUsers[presence.viewing_deal_id].find(u => u.user_id === presence.user_id)) {
+                    newActiveUsers[presence.viewing_deal_id].push(presence);
+                  }
                 }
               }
             }
