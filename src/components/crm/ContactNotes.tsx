@@ -14,13 +14,13 @@ interface Note {
 
 const NOTES_FIELD_ID = "09145055-2d08-4d41-b21f-0a9d338044c8";
 
-export default function ContactNotes({ contactId }: { contactId: string }) {
+export default function ContactNotes({ contactId, currentUser }: { contactId: string, currentUser?: { initials: string, name: string } }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [newNote, setNewNote] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [userInitials, setUserInitials] = useState("UX");
-  const [userName, setUserName] = useState("Usuário");
+  const [userInitials, setUserInitials] = useState(currentUser?.initials || "UX");
+  const [userName, setUserName] = useState(currentUser?.name || "Usuário");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
 
@@ -29,21 +29,26 @@ export default function ContactNotes({ contactId }: { contactId: string }) {
       const supabase = createClient();
       
       // Get current user for initials
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const meta = user.user_metadata || {};
-        const name = meta.full_name || meta.name || (meta.first_name ? `${meta.first_name} ${meta.last_name || ""}` : "");
-        if (name) {
-          const parts = name.trim().split(" ");
-          if (parts.length > 1) {
-            setUserInitials((parts[0].charAt(0) + parts[parts.length-1].charAt(0)).toUpperCase());
-          } else {
-            setUserInitials(parts[0].substring(0, 2).toUpperCase());
+      if (currentUser) {
+        setUserInitials(currentUser.initials);
+        setUserName(currentUser.name);
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const meta = user.user_metadata || {};
+          const name = meta.full_name || meta.name || (meta.first_name ? `${meta.first_name} ${meta.last_name || ""}` : "");
+          if (name) {
+            const parts = name.trim().split(" ");
+            if (parts.length > 1) {
+              setUserInitials((parts[0].charAt(0) + parts[parts.length-1].charAt(0)).toUpperCase());
+            } else {
+              setUserInitials(parts[0].substring(0, 2).toUpperCase());
+            }
+            setUserName(name);
+          } else if (user.email) {
+            setUserInitials(user.email.substring(0, 2).toUpperCase());
+            setUserName(user.email.split("@")[0]);
           }
-          setUserName(name);
-        } else if (user.email) {
-          setUserInitials(user.email.substring(0, 2).toUpperCase());
-          setUserName(user.email.split("@")[0]);
         }
       }
 

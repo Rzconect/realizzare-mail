@@ -977,7 +977,7 @@ function ConversationsContent() {
                   >
                     <MoreVertical className="h-4 w-4" />
                   </button>
-                  <div id="chat-options-dropdown" className="hidden absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+                  <div id="chat-options-dropdown" className="hidden absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
                     <button 
                       onClick={async () => {
                         if (confirm("Tem certeza que deseja apagar esta conversa?")) {
@@ -1032,9 +1032,17 @@ function ConversationsContent() {
   {activeMessageMenu === msg.id && (
     <>
       <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
-      <div className="absolute right-2 top-8 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 overflow-hidden">
+      <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
         <button onClick={() => { setActiveMessageMenu(null); alert("Responder ainda não implementado na API local."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
-        <button onClick={() => { setActiveMessageMenu(null); alert("Apagar mensagem ainda não implementado na API local."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">Apagar mensagem</button>
+        <button onClick={() => {
+                                setActiveMessageMenu(null);
+                                setChats(prev => prev.map(c => {
+                                  if (c.id === activeChat.id) {
+                                    return { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) };
+                                  }
+                                  return c;
+                                }));
+                              }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">Apagar para mim</button>
         <button onClick={() => { setActiveMessageMenu(null); alert('Encaminhar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Encaminhar</button>
         <button onClick={() => { setActiveMessageMenu(null); alert('Editar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>
       </div>
@@ -1162,7 +1170,7 @@ function ConversationsContent() {
                   </div>
                 );
               })}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="pb-40" />
             </div>
 
             {/* Input Area */}
@@ -1321,6 +1329,19 @@ function ConversationsContent() {
                                 <span className="font-medium text-slate-700 text-right text-xs">{profile.location?.state || "-"}</span>
                              </div>
                           </div>
+                        </div>
+
+                        {/* Observações */}
+                        <div>
+                          <button onClick={() => toggleSection('notes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                            <div className="flex items-center gap-1"><FileText className="h-4 w-4 text-slate-400" /> Observações</div>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.notes ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openSections.notes && (
+                            <div className="mt-3 h-[300px] overflow-hidden flex flex-col">
+                              <ContactNotes contactId={linkedContacts[activeChat.id]} currentUser={currentUser ? { name: currentUser.name, initials: currentUser.name.split(" ").length > 1 ? (currentUser.name.split(" ")[0][0] + currentUser.name.split(" ")[currentUser.name.split(" ").length-1][0]).toUpperCase() : currentUser.name.substring(0,2).toUpperCase() } : undefined} />
+                            </div>
+                          )}
                         </div>
 
                         {/* Cursos */}

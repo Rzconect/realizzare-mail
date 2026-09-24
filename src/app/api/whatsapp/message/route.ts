@@ -10,9 +10,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: "Faltam parâmetros" }, { status: 400 });
     }
 
-    const instanceName = process.env.EVOLUTION_API_INSTANCE || "Realizzare";
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    const baseUrl = process.env.EVOLUTION_API_URL || "https://api.realizzareconect.com.br";
+    const instanceName = "RealizzareCRM";
+    const apiKey = "RealizzareSenhaSecreta2026";
+    const baseUrl = "https://evolution-api-production-8158.up.railway.app";
 
     const response = await fetch(`${baseUrl}/chat/deleteMessage/${instanceName}`, {
       method: "DELETE",

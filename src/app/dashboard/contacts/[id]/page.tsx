@@ -277,6 +277,10 @@ export default function ContactProfilePage({ params }: PageProps) {
   const router = useRouter();
   const [showAllFields, setShowAllFields] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(() => {
+    createClient().auth.getUser().then(({data:{user}}: any) => { if(user) setCurrentUser({ id: user.id, name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] }) });
+  }, []);
   const [rightPanelTab, setRightPanelTab] = useState<"timeline" | "notes">("timeline");
   const [openDrawerInfo, setOpenDrawerInfo] = useState(false);
   const [openDrawerTags, setOpenDrawerTags] = useState(false);
@@ -2171,7 +2175,7 @@ export default function ContactProfilePage({ params }: PageProps) {
               </div>
               {rightPanelTab === 'notes' && (
                 <div className="h-[400px] lg:h-[calc(100vh-250px)]">
-                  {draft?.id && <ContactNotes contactId={draft.id} />}
+                  {draft?.id && <ContactNotes contactId={draft.id} currentUser={currentUser ? { name: currentUser.name, initials: currentUser.name.split(" ").length > 1 ? (currentUser.name.split(" ")[0][0] + currentUser.name.split(" ")[currentUser.name.split(" ").length-1][0]).toUpperCase() : currentUser.name.substring(0,2).toUpperCase() } : undefined} />}
                 </div>
               )}
               {rightPanelTab === 'timeline' && (
