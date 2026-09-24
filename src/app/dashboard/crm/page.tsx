@@ -166,7 +166,7 @@ export default function CrmPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [dealToEdit, setDealToEdit] = useState<Deal | null>(null);
-  const [activeUsersByDeal, setActiveUsersByDeal] = useState<Record<string, any[]>>({});
+  
   const [activeUsersInPage, setActiveUsersInPage] = useState<any[]>([]);
 
   // Setup Supabase Presence and Realtime sync
@@ -215,7 +215,6 @@ export default function CrmPage() {
         channel.on('presence', { event: 'sync' }, () => {
           if (!isMounted) return;
           const state = channel.presenceState();
-          const newActiveUsers: Record<string, any[]> = {};
           const usersInPageMap: Record<string, any> = {};
           
           for (const userId in state) {
@@ -223,18 +222,9 @@ export default function CrmPage() {
             if (presences && presences.length > 0) {
               for (const presence of presences) {
                 usersInPageMap[presence.user_id] = presence;
-                
-                if (presence.viewing_deal_id && presence.client_id !== myClientId) {
-                  if (!newActiveUsers[presence.viewing_deal_id]) newActiveUsers[presence.viewing_deal_id] = [];
-                  // Deduplicate by user_id so one user doesn't show multiple times on the same card if they use multiple tabs
-                  if (!newActiveUsers[presence.viewing_deal_id].find(u => u.user_id === presence.user_id)) {
-                    newActiveUsers[presence.viewing_deal_id].push(presence);
-                  }
-                }
               }
             }
           }
-          setActiveUsersByDeal(newActiveUsers);
           setActiveUsersInPage(Object.values(usersInPageMap));
         });
 
@@ -261,7 +251,7 @@ export default function CrmPage() {
           }
           if (status === 'SUBSCRIBED') {
             try {
-              await channel.track({ client_id: myClientId, user_id: me.id, name: me.name, viewing_deal_id: null });
+              await channel.track({ client_id: myClientId, user_id: me.id, name: me.name });
             } catch(e) { console.warn("Initial presence track failed", e); }
             
             const w = window as any;
@@ -287,19 +277,7 @@ export default function CrmPage() {
   
   // Track modal and drag
 
-  useEffect(() => {
-    const w = window as any;
-    if (w.__crm_channel && w.__crm_me && w.__crm_client_id) {
-      const activeDealId = (isModalOpen && selectedDeal) ? selectedDeal.id : draggedDealId;
-      
-      w.__crm_channel.track({ 
-        client_id: w.__crm_client_id, 
-        user_id: w.__crm_me.id, 
-        name: w.__crm_me.name, 
-        viewing_deal_id: activeDealId 
-      }).catch((err: any) => console.warn('Presence track error:', err));
-    }
-  }, [isModalOpen, selectedDeal, draggedDealId]);
+
 
   const dispatchNotification = (deal: Deal) => {
     if (deal.boardId === 'atividades' && deal.assignedTo && deal.assignedTo !== "Sem responsável") {
