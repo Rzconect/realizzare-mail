@@ -1250,34 +1250,11 @@ function ConversationsContent() {
                       <div className="space-y-6">
                         {/* Dados do Aluno */}
                         <div>
-                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1 border-b border-slate-200 pb-2">
-                            <UserIcon className="h-4 w-4 text-slate-400" /> Informações Pessoais
-                          </h5>
-                          <div className="space-y-2.5 text-sm">
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">Telefone:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs">{profile.phone || "Não informado"}</span>
-                             </div>
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">E-mail:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs break-all" title={profile.email}>{profile.email || "Não informado"}</span>
-                             </div>
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">Cidade:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs">{profile.location?.city || "Não informada"}</span>
-                             </div>
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">Estado:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs">{profile.location?.state || "-"}</span>
-                             </div>
-                          </div>
-                        </div>
-
-                        {/* Cursos */}
-                        <div>
-                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1 border-b border-slate-200 pb-2">
-                            <BookOpen className="h-4 w-4 text-slate-400" /> Cursos Matriculados
-                          </h5>
+                          <button onClick={() => toggleSection('cursos')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                            <div className="flex items-center gap-1"><BookOpen className="h-4 w-4 text-slate-400" /> Cursos Matriculados</div>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.cursos ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openSections.cursos && (
                           {profile.enrollments && profile.enrollments.length > 0 ? (
                             <div className="space-y-2">
                               {profile.enrollments.slice(0, 3).map((e: any, i: number) => (
@@ -1340,9 +1317,21 @@ function ConversationsContent() {
                             </div>
                           ) : (
                             <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhum evento registrado.</p>
+                            )}
                           )}
                         </div>
-                      </div>
+                        
+                        <div className="mt-4">
+                          <button onClick={() => toggleSection('notes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                            <div className="flex items-center gap-1"><FileText className="h-4 w-4 text-slate-400" /> Observações</div>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.notes ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openSections.notes && (
+                            <div className="h-[300px]">
+                              <ContactNotes contactId={profile.id} />
+                            </div>
+                          )}
+                        </div>
 
                       
                     </>
