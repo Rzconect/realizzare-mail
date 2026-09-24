@@ -23,7 +23,7 @@ import {
   TrendingUp,
   Inbox,
   AlertCircle,
-  FileCheck2,
+  FileCheck2, FileText,
   ListFilter,
   CheckCircle2,
   MousePointerClick,
@@ -277,6 +277,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   const router = useRouter();
   const [showAllFields, setShowAllFields] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
+  const [rightPanelTab, setRightPanelTab] = useState<"timeline" | "notes">("timeline");
   const [openDrawerInfo, setOpenDrawerInfo] = useState(false);
   const [openDrawerTags, setOpenDrawerTags] = useState(false);
   const [openDrawerCustom, setOpenDrawerCustom] = useState(false);
@@ -2157,10 +2158,24 @@ export default function ContactProfilePage({ params }: PageProps) {
         <section className="lg:col-span-4 lg:h-full lg:overflow-y-auto scrollbar-none p-1">
           <div className="bg-white border border-slate-200 rounded-3xl px-4 py-6 shadow-sm flex flex-col justify-between my-0.5">
             <div className="space-y-6">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
-                <Clock className="h-4.5 w-4.5 text-indigo-650" />
-                <span>Linha do Tempo</span>
-              </h3>
+              {/* Tabs for Right Panel */}
+              <div className="flex items-center gap-4 border-b border-slate-200 pb-2">
+                <button type="button" onClick={() => setRightPanelTab('timeline')} className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 pb-2 -mb-2.5 ${rightPanelTab === 'timeline' ? 'text-indigo-650 border-b-2 border-indigo-650' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <Clock className="h-4 w-4" />
+                  <span>Linha do Tempo</span>
+                </button>
+                <button type="button" onClick={() => setRightPanelTab('notes')} className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 pb-2 -mb-2.5 ${rightPanelTab === 'notes' ? 'text-indigo-650 border-b-2 border-indigo-650' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <FileText className="h-4 w-4" />
+                  <span>Observações</span>
+                </button>
+              </div>
+              {rightPanelTab === 'notes' && (
+                <div className="h-[400px] lg:h-[calc(100vh-250px)]">
+                  {draft?.id && <ContactNotes contactId={draft.id} />}
+                </div>
+              )}
+              {rightPanelTab === 'timeline' && (
+                <div className="space-y-6">
 
               {/* Clean minimal vertical timeline with infinite scroll */}
               <div 
@@ -2251,6 +2266,8 @@ export default function ContactProfilePage({ params }: PageProps) {
                   </div>
                 )}
               </div>
+              </div>
+              )}
             </div>
           </div>
         </section>

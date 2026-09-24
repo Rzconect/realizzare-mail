@@ -26,6 +26,7 @@ function ConversationsContent() {
   const [editNameValue, setEditNameValue] = useState("");
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1136,8 +1137,22 @@ function ConversationsContent() {
                         <>
                           <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
                           <div className="absolute right-2 top-8 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 overflow-hidden">
-                            <button onClick={() => { setActiveMessageMenu(null); alert("Responder ainda não implementado."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
-                            <button onClick={() => { setActiveMessageMenu(null); alert("Apagar mensagem ainda não implementado."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">Apagar mensagem</button>
+                            <button onClick={() => { setActiveMessageMenu(null); setReplyingTo(msg); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
+                            <button onClick={async () => { 
+                              setActiveMessageMenu(null);
+                              try {
+                                await fetch(`/api/whatsapp/message?messageId=${msg.id}&remoteJid=${activeChat.phone}@s.whatsapp.net`, { method: 'DELETE' });
+                                // Optimistically remove from UI
+                                setChats(prev => prev.map(c => {
+                                  if (c.id === activeChat.id) {
+                                    return { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) };
+                                  }
+                                  return c;
+                                }));
+                              } catch (e) {
+                                alert("Erro ao apagar mensagem.");
+                              }
+                            }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">Apagar mensagem</button>
                             <button onClick={() => { setActiveMessageMenu(null); alert("Encaminhar ainda não implementado."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Encaminhar</button>
                             <button onClick={() => { setActiveMessageMenu(null); alert("Editar ainda não implementado."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>
                           </div>

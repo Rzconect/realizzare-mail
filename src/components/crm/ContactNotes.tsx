@@ -29,9 +29,9 @@ export default function ContactNotes({ contactId }: { contactId: string }) {
       const supabase = createClient();
       
       // Get current user for initials
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const meta = session.user.user_metadata || {};
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const meta = user.user_metadata || {};
         const name = meta.full_name || meta.name || (meta.first_name ? `${meta.first_name} ${meta.last_name || ""}` : "");
         if (name) {
           const parts = name.trim().split(" ");
@@ -41,9 +41,9 @@ export default function ContactNotes({ contactId }: { contactId: string }) {
             setUserInitials(parts[0].substring(0, 2).toUpperCase());
           }
           setUserName(name);
-        } else if (session.user.email) {
-          setUserInitials(session.user.email.substring(0, 2).toUpperCase());
-          setUserName(session.user.email.split("@")[0]);
+        } else if (user.email) {
+          setUserInitials(user.email.substring(0, 2).toUpperCase());
+          setUserName(user.email.split("@")[0]);
         }
       }
 

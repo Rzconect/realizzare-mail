@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { chatId, remoteJid, text } = await req.json();
+    const { chatId, remoteJid, text, options } = await req.json();
 
     if (!chatId || !remoteJid || !text) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -25,9 +25,10 @@ export async function POST(req: Request) {
         'apikey': apiKey
       },
       body: JSON.stringify({
-        number: remoteJid,
-        text: text
-      })
+          number: remoteJid,
+          text: text,
+          options: options
+        })
     });
 
     if (!response.ok) {
