@@ -206,6 +206,11 @@ export default function CrmPage() {
         channel = supabase.channel('crm_presence', {
           config: { presence: { key: myClientId } },
         });
+
+        if (!isMounted) {
+          try { channel.unsubscribe(); } catch(e) {}
+          return;
+        }
         
         channel.on('presence', { event: 'sync' }, () => {
           if (!isMounted) return;
@@ -250,11 +255,19 @@ export default function CrmPage() {
         });
         
         channel.subscribe(async (status: string) => {
+          if (!isMounted) {
+             try { channel.unsubscribe(); } catch(e) {}
+             return;
+          }
           if (status === 'SUBSCRIBED') {
             await channel.track({ client_id: myClientId, user_id: me.id, name: me.name, viewing_deal_id: null });
-            (window as any).__crm_me = me;
-            (window as any).__crm_client_id = myClientId;
-            (window as any).__crm_channel = channel;
+            const w = window as any;
+            if (w.__crm_channel && w.__crm_channel !== channel) {
+               try { w.__crm_channel.unsubscribe(); } catch(e) {}
+            }
+            w.__crm_me = me;
+            w.__crm_client_id = myClientId;
+            w.__crm_channel = channel;
           }
         });
     };
@@ -263,7 +276,10 @@ export default function CrmPage() {
     
     return () => {
       isMounted = false;
-      if (channel) channel.unsubscribe();
+      if (channel) {
+        try { channel.unsubscribe(); } catch(e) {}
+        try { supabase.removeChannel(channel); } catch(e) {}
+      }
     };
   }, []);
   
