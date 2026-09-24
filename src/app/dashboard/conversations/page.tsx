@@ -267,7 +267,7 @@ function ConversationsContent() {
           messages: []
         };
         setChats(prev => {
-          if (!prev.some(c => c.id === tempId)) {
+          if (!prev.some(c => c.id === newTempChat.id)) {
             return [newTempChat, ...prev];
           }
           return prev;
