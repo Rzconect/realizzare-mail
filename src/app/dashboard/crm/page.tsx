@@ -106,27 +106,17 @@ export default function CrmPage() {
       .then(data => {
         if (data && data.success && data.items) {
           setDeals(prevDeals => {
-            const newDeals = [...prevDeals];
-            let changed = false;
+            // Keep only manually created deals (which don't start with test- or pend-)
+            // or deals from other boards not synced by this API
+            const newDeals = prevDeals.filter(d => !d.id.startsWith("test-") && !d.id.startsWith("pend-"));
             
+            // Add all fresh active deals from the API
             for (const item of data.items) {
-              // Only add if it doesn't already exist
-              if (!newDeals.some(d => d.id === item.id)) {
-                // To avoid duplicate courses for the same email in teste_aprovado, we can check title and email
-                if (item.boardId === "teste_aprovado") {
-                   const exists = newDeals.some(d => d.boardId === "teste_aprovado" && d.email === item.email && d.title === item.title);
-                   if (exists) continue;
-                }
-                newDeals.push(item);
-                changed = true;
-              }
+              newDeals.push(item);
             }
             
-            if (changed) {
-              localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(newDeals));
-              return newDeals;
-            }
-            return prevDeals;
+            localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(newDeals));
+            return newDeals;
           });
         }
       })
