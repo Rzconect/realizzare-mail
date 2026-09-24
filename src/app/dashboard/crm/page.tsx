@@ -267,6 +267,19 @@ export default function CrmPage() {
   // Track modal and hover
   const [hoveredDealId, setHoveredDealId] = useState<string | null>(null);
   const trackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverAutoClearRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleCardHover = (dealId: string | null) => {
+    setHoveredDealId(dealId);
+    if (hoverAutoClearRef.current) clearTimeout(hoverAutoClearRef.current);
+    
+    // Auto-clear hover after 3 seconds of inactivity (if not in modal)
+    if (dealId) {
+      hoverAutoClearRef.current = setTimeout(() => {
+        setHoveredDealId(null);
+      }, 3000);
+    }
+  };
 
   useEffect(() => {
     const w = window as any;
@@ -287,6 +300,7 @@ export default function CrmPage() {
     
     return () => {
       if (trackTimeoutRef.current) clearTimeout(trackTimeoutRef.current);
+      if (hoverAutoClearRef.current) clearTimeout(hoverAutoClearRef.current);
     };
   }, [isModalOpen, selectedDeal, hoveredDealId]);
 
@@ -634,8 +648,9 @@ export default function CrmPage() {
                       draggable
                       onDragStart={(e) => handleDragStart(e, deal.id)}
                       onDragEnd={(e) => handleDragEnd(e, deal.id)}
-                      onMouseEnter={() => setHoveredDealId(deal.id)}
-                      onMouseLeave={() => setHoveredDealId(null)}
+                      onMouseEnter={() => handleCardHover(deal.id)}
+                      onMouseMove={() => handleCardHover(deal.id)}
+                      onMouseLeave={() => handleCardHover(null)}
                       onClick={(e) => {
                         // Prevent opening modal if clicking archive button
                         if ((e.target as HTMLElement).closest('.archive-btn')) return;
