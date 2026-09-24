@@ -266,7 +266,12 @@ function ConversationsContent() {
           lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           messages: []
         };
-        setChats(prev => [newTempChat, ...prev]);
+        setChats(prev => {
+          if (!prev.some(c => c.id === tempId)) {
+            return [newTempChat, ...prev];
+          }
+          return prev;
+        });
         setActiveChatId(newTempChat.id);
       }
       
