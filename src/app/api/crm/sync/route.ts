@@ -42,20 +42,36 @@ export async function GET() {
       .limit(300);
 
     // Group by pagarme_id to find orders that are ONLY pending (no 'paid' event)
-    const orderMap = new Map();
-    (pendingEvents || []).forEach(evt => {
-       if (evt.metadata?.event?.startsWith("charge.")) return; // Ignore legacy duplicate charge webhooks
-       const key = evt.metadata?.pagarme_id || Math.random().toString();
+        const orderMap = new Map();
+    [...(pendingEvents || [])].forEach(evt => {
+       const amt = evt.metadata?.amount || "0";
+       const timeStr = new Date(evt.created_at).toISOString().slice(0, 16); // up to minute
+       const key = `${amt}-${timeStr}`;
+       
+       const isPaidEvent = evt.metadata?.event?.includes("paid") || evt.event?.includes("paid") || evt.metadata?.status === "paid";
+       const isArchived = evt.metadata?.crm_archived === true;
+       
        if (!orderMap.has(key)) {
-         orderMap.set(key, { ...evt, isPaid: evt.metadata?.event?.includes("paid") });
+         orderMap.set(key, { ...evt, isPaid: isPaidEvent, _isArchived: isArchived });
        } else {
-         if (evt.metadata?.event?.includes("paid")) {
-           orderMap.get(key).isPaid = true;
+         const existing = orderMap.get(key);
+         if (isPaidEvent) existing.isPaid = true;
+         if (isArchived) existing._isArchived = true;
+         
+         // Keep the best metadata (e.g. non-fallback title)
+         const title = evt.metadata?.item_title || evt.metadata?.course_name || "";
+         const existingTitle = existing.metadata?.item_title || existing.metadata?.course_name || "";
+         if (title && !title.includes("Certificado / Curso") && existingTitle.includes("Certificado / Curso")) {
+           existing.metadata = { ...existing.metadata, item_title: title };
          }
+         
+         // Merge CRM states
+         if (evt.metadata?.crm_column) existing.metadata.crm_column = evt.metadata.crm_column;
+         if (evt.metadata?.crm_assigned) existing.metadata.crm_assigned = evt.metadata.crm_assigned;
        }
     });
 
-    const activePending = Array.from(orderMap.values()).filter(o => !o.isPaid).slice(0, 50);
+    const activePending = Array.from(orderMap.values()).filter(o => !o.isPaid && !o._isArchived).slice(0, 50);
 
     // Fetch contact details for these emails
     const emails = [...new Set(activePending.map(o => o.contact_email).filter(Boolean))];
