@@ -36,6 +36,7 @@ function ConversationsContent() {
   
   const [showContactDetails, setShowContactDetails] = useState(true);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ notes: true });
+  const toggleSection = (sec: string) => setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
   const [linkedContacts, setLinkedContacts] = useState<Record<string, string>>({}); // chatId -> contact email or ID
   const [searchEmail, setSearchEmail] = useState("");
   const [autocompleteResults, setAutocompleteResults] = useState<any[]>([]);
@@ -1372,7 +1373,7 @@ function ConversationsContent() {
                           </button>
                           {openSections.notes && (
                             <div className="h-[300px]">
-                              <ContactNotes contactId={profile.id} />
+                              <ContactNotes contactId={(profile as any).id || linkedContacts[activeChat.id]} />
                             </div>
                           )}
                         </div>
