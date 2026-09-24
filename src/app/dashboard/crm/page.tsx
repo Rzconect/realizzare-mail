@@ -135,6 +135,23 @@ export default function CrmPage() {
   
   const [cardConfig, setCardConfig] = useState(initialCardConfig);
   const [atividadeCardConfig, setAtividadeCardConfig] = useState(initialAtividadeCardConfig);
+
+  useEffect(() => {
+    try {
+      const savedCardConfig = localStorage.getItem("crm_card_config");
+      if (savedCardConfig) setCardConfig(JSON.parse(savedCardConfig));
+      const savedAtividadeConfig = localStorage.getItem("crm_atividade_card_config");
+      if (savedAtividadeConfig) setAtividadeCardConfig(JSON.parse(savedAtividadeConfig));
+    } catch(e){}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("crm_card_config", JSON.stringify(cardConfig));
+  }, [cardConfig]);
+
+  useEffect(() => {
+    localStorage.setItem("crm_atividade_card_config", JSON.stringify(atividadeCardConfig));
+  }, [atividadeCardConfig]);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const configRef = useRef<HTMLDivElement>(null);
   
@@ -704,10 +721,17 @@ export default function CrmPage() {
                                   </div>
                                 );
                               case 'assignedTo':
+                                const assigneeName = deal.assignedTo || 'Sem responsável';
+                                const assigneeInitials = assigneeName === 'Sem responsável' 
+                                  ? 'SR' 
+                                  : assigneeName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
                                 return (
-                                  <div key={field.id} className="flex items-center gap-2 pt-1">
-                                    <span className="text-[10px] font-semibold text-slate-500">
-                                      Resp: <span className="font-bold text-slate-700">{deal.assignedTo || 'Sem responsável'}</span>
+                                  <div key={field.id} className="flex items-center gap-1.5 pt-0.5 mt-1">
+                                    <div className="h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-slate-500 bg-slate-100 shrink-0 border border-slate-200">
+                                      {assigneeInitials}
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-600 truncate">
+                                      {assigneeName}
                                     </span>
                                   </div>
                                 );
@@ -789,9 +813,18 @@ export default function CrmPage() {
                                   </div>
                                 );
                               case 'assignedTo':
+                                const assigneeName = deal.assignedTo || 'Sem responsável';
+                                const assigneeInitials = assigneeName === 'Sem responsável' 
+                                  ? 'SR' 
+                                  : assigneeName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
                                 return (
-                                  <div key={field.id} className="text-[10px] font-semibold text-slate-500">
-                                    Resp: <span className="text-slate-700">{deal.assignedTo || 'Sem responsável'}</span>
+                                  <div key={field.id} className="flex items-center gap-1.5 pt-0.5 mt-1">
+                                    <div className="h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-slate-500 bg-slate-100 shrink-0 border border-slate-200">
+                                      {assigneeInitials}
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-600 truncate">
+                                      {assigneeName}
+                                    </span>
                                   </div>
                                 );
                               case 'status':
