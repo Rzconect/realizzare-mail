@@ -32,9 +32,15 @@ export default function ContactNotes({ contactId }: { contactId: string }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const meta = session.user.user_metadata || {};
-        if (meta.first_name) {
-          setUserInitials((meta.first_name.charAt(0) + (meta.last_name || "").charAt(0)).toUpperCase());
-          setUserName(`${meta.first_name} ${meta.last_name || ""}`.trim());
+        const name = meta.full_name || meta.name || (meta.first_name ? `${meta.first_name} ${meta.last_name || ""}` : "");
+        if (name) {
+          const parts = name.trim().split(" ");
+          if (parts.length > 1) {
+            setUserInitials((parts[0].charAt(0) + parts[parts.length-1].charAt(0)).toUpperCase());
+          } else {
+            setUserInitials(parts[0].substring(0, 2).toUpperCase());
+          }
+          setUserName(name);
         } else if (session.user.email) {
           setUserInitials(session.user.email.substring(0, 2).toUpperCase());
           setUserName(session.user.email.split("@")[0]);

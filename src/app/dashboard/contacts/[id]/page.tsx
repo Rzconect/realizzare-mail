@@ -4,6 +4,7 @@ import { use, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ContactNotes from "@/components/crm/ContactNotes";
 import ItemTitleWithCoupon from "@/components/ui/ItemTitleWithCoupon";
 import {
   User,
@@ -2154,7 +2155,7 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         {/* Column 3: Timeline (4 Cols) - Independently Scrollable */}
         <section className="lg:col-span-4 lg:h-full lg:overflow-y-auto scrollbar-none p-1">
-          <div className="bg-white border border-slate-200 rounded-3xl px-4 py-6 shadow-sm flex flex-col justify-between min-h-full my-0.5">
+          <div className="bg-white border border-slate-200 rounded-3xl px-4 py-6 shadow-sm flex flex-col justify-between my-0.5">
             <div className="space-y-6">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
                 <Clock className="h-4.5 w-4.5 text-indigo-650" />
