@@ -204,7 +204,7 @@ export default function CrmPage() {
         if (!me) me = { id: Math.random().toString(), name: "Colaborador", email: "guest@example.com" };
         
         channel = supabase.channel('crm_presence', {
-          config: { presence: { key: me.id } },
+          config: { presence: { key: myClientId } },
         });
         
         channel.on('presence', { event: 'sync' }, () => {
@@ -266,18 +266,28 @@ export default function CrmPage() {
   
   // Track modal and hover
   const [hoveredDealId, setHoveredDealId] = useState<string | null>(null);
+  const trackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const w = window as any;
     if (w.__crm_channel && w.__crm_me && w.__crm_client_id) {
       const activeDealId = (isModalOpen && selectedDeal) ? selectedDeal.id : hoveredDealId;
-      w.__crm_channel.track({ 
-        client_id: w.__crm_client_id, 
-        user_id: w.__crm_me.id, 
-        name: w.__crm_me.name, 
-        viewing_deal_id: activeDealId 
-      });
+      
+      if (trackTimeoutRef.current) clearTimeout(trackTimeoutRef.current);
+      
+      trackTimeoutRef.current = setTimeout(() => {
+        w.__crm_channel.track({ 
+          client_id: w.__crm_client_id, 
+          user_id: w.__crm_me.id, 
+          name: w.__crm_me.name, 
+          viewing_deal_id: activeDealId 
+        }).catch((err: any) => console.warn('Presence track error:', err));
+      }, 300);
     }
+    
+    return () => {
+      if (trackTimeoutRef.current) clearTimeout(trackTimeoutRef.current);
+    };
   }, [isModalOpen, selectedDeal, hoveredDealId]);
 
   const dispatchNotification = (deal: Deal) => {
