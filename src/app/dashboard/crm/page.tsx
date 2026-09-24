@@ -216,13 +216,13 @@ export default function CrmPage() {
           for (const userId in state) {
             const presences = state[userId];
             if (presences && presences.length > 0) {
-              const presence = presences[0];
-              
-              usersInPageMap[presence.client_id] = presence;
-              
-              if (presence.viewing_deal_id && presence.client_id !== myClientId) {
-                if (!newActiveUsers[presence.viewing_deal_id]) newActiveUsers[presence.viewing_deal_id] = [];
-                newActiveUsers[presence.viewing_deal_id].push(presence);
+              for (const presence of presences) {
+                usersInPageMap[presence.client_id] = presence;
+                
+                if (presence.viewing_deal_id && presence.client_id !== myClientId) {
+                  if (!newActiveUsers[presence.viewing_deal_id]) newActiveUsers[presence.viewing_deal_id] = [];
+                  newActiveUsers[presence.viewing_deal_id].push(presence);
+                }
               }
             }
           }
