@@ -182,10 +182,22 @@ export default function CrmPage() {
         
         const myClientId = Math.random().toString(36).substring(2, 15);
         let me: any = null;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-          if (profile) me = profile;
+        
+        // Try getting user from layout session first
+        const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
+        if (sessionStr) {
+          try {
+             const parsed = JSON.parse(sessionStr);
+             me = { id: parsed.id || Math.random().toString(), name: parsed.name || "Vendedor", email: parsed.email };
+          } catch(e) {}
+        }
+        
+        if (!me) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+            if (profile) me = profile;
+          }
         }
         
         if (!me) me = { id: Math.random().toString(), name: "Colaborador", email: "guest@example.com" };
