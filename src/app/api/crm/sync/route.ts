@@ -15,7 +15,7 @@ export async function GET() {
     // We used progress_updated with original_event = test_approved in metadata
     const { data: testEvents, error: err1 } = await supabase
       .from("course_events")
-      .select("id, created_at, metadata, contacts(first_name, last_name, email, phone)")
+      .select("id, created_at, metadata, contacts(id, first_name, last_name, email, phone)")
       .eq("event_type", "progress_updated")
       .order("created_at", { ascending: false })
       .limit(50);
@@ -23,7 +23,7 @@ export async function GET() {
     // Also fetch legacy test_approved if any exist
     const { data: testEventsLegacy } = await supabase
       .from("course_events")
-      .select("id, created_at, metadata, contacts(first_name, last_name, email, phone)")
+      .select("id, created_at, metadata, contacts(id, first_name, last_name, email, phone)")
       .eq("event_type", "test_approved" as any)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -108,7 +108,7 @@ export async function GET() {
     const emails = [...new Set(activePending.map(o => o.contact_email).filter(Boolean))];
     const { data: contactsData } = await supabase
       .from("contacts")
-      .select("first_name, last_name, email, phone")
+      .select("id, first_name, last_name, email, phone")
       .in("email", emails);
       
     const contactMap = new Map((contactsData || []).map((c: any) => [c.email, c]));

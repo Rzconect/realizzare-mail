@@ -71,11 +71,14 @@ export default function ContactNotes({ contactId }: { contactId: string }) {
     const updatedNotes = notes.filter(n => n.id !== noteId);
     setNotes(updatedNotes);
     const supabase = createClient();
-    await supabase.from("contact_custom_values").upsert({
-      contact_id: contactId,
-      field_id: NOTES_FIELD_ID,
-      value_text: JSON.stringify(updatedNotes)
-    }, { onConflict: "contact_id,field_id" });
+    
+    const { data: ex } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
+    if (ex) {
+      await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", ex.id);
+    } else {
+      await supabase.from("contact_custom_values").insert({ contact_id: contactId, field_id: NOTES_FIELD_ID, value_text: JSON.stringify(updatedNotes) });
+    }
+
   };
 
   const handleUpdateNote = async (noteId: string) => {
@@ -84,15 +87,19 @@ export default function ContactNotes({ contactId }: { contactId: string }) {
     setNotes(updatedNotes);
     setEditingNoteId(null);
     const supabase = createClient();
-    await supabase.from("contact_custom_values").upsert({
-      contact_id: contactId,
-      field_id: NOTES_FIELD_ID,
-      value_text: JSON.stringify(updatedNotes)
-    }, { onConflict: "contact_id,field_id" });
+    
+    const { data: ex } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
+    if (ex) {
+      await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", ex.id);
+    } else {
+      await supabase.from("contact_custom_values").insert({ contact_id: contactId, field_id: NOTES_FIELD_ID, value_text: JSON.stringify(updatedNotes) });
+    }
+
   };
 
   const handleSaveNote = async () => {
-    if (!newNote.trim() || !contactId) return;
+    if (!contactId) { alert("Este card não possui um contato vinculado. (ID Ausente)"); return; }
+    if (!newNote.trim()) return;
     setIsSaving(true);
     const supabase = createClient();
     
@@ -106,11 +113,22 @@ export default function ContactNotes({ contactId }: { contactId: string }) {
     
     const updatedNotes = [newNoteObj, ...notes];
     
-    const { error } = await supabase.from("contact_custom_values").upsert({
-      contact_id: contactId,
-      field_id: NOTES_FIELD_ID,
-      value_text: JSON.stringify(updatedNotes)
-    }, { onConflict: "contact_id,field_id" });
+    
+      const { data: existingData } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
+      
+      let error;
+      if (existingData) {
+        const { error: updateErr } = await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", existingData.id);
+        error = updateErr;
+      } else {
+        const { error: insertErr } = await supabase.from("contact_custom_values").insert({
+          contact_id: contactId,
+          field_id: NOTES_FIELD_ID,
+          value_text: JSON.stringify(updatedNotes)
+        });
+        error = insertErr;
+      }
+
     
     if (!error) {
       setNotes(updatedNotes);
