@@ -25,6 +25,7 @@ function ConversationsContent() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+    const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1015,15 +1016,29 @@ function ConversationsContent() {
                 if (isBot) {
                   return (
                     <div key={msg.id} className="flex justify-start mb-4">
-                      <div className="max-w-[75%] lg:max-w-[60%] rounded-2xl rounded-tl-none px-4 py-2.5 shadow-sm relative group bg-indigo-50 border border-indigo-100">
+                      <div onContextMenu={(e) => { e.preventDefault(); setActiveMessageMenu(msg.id); }} className="max-w-[75%] lg:max-w-[60%] rounded-2xl rounded-tl-none px-4 py-2.5 shadow-sm relative group bg-indigo-50 border border-indigo-100">
                         <div className="flex items-center gap-1 mb-1">
                           <Bot className="h-3 w-3 text-indigo-500" />
                           <span className="text-[10px] font-bold text-indigo-500">Bot Realizzare</span>
                         </div>
                         <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                         <div className="flex items-center justify-end gap-1 mt-1">
-                          <span className="text-[9px] font-semibold text-slate-400">{msg.time}</span>
-                        </div>
+    <span className="text-[9px] font-semibold text-slate-400">{msg.time}</span>
+  </div>
+  <button onClick={() => setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id)} className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 p-0.5 rounded-full shadow-sm text-slate-500 hover:text-slate-800">
+    <ChevronDown className="h-3.5 w-3.5" />
+  </button>
+  {activeMessageMenu === msg.id && (
+    <>
+      <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
+      <div className="absolute right-2 top-8 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 overflow-hidden">
+        <button onClick={() => { setActiveMessageMenu(null); alert("Responder ainda não implementado na API local."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
+        <button onClick={() => { setActiveMessageMenu(null); alert("Apagar mensagem ainda não implementado na API local."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">Apagar mensagem</button>
+        <button onClick={() => { setActiveMessageMenu(null); alert('Encaminhar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Encaminhar</button>
+        <button onClick={() => { setActiveMessageMenu(null); alert('Editar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>
+      </div>
+    </>
+  )}
                       </div>
                     </div>
                   );
@@ -1032,6 +1047,7 @@ function ConversationsContent() {
                 return (
                   <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} mb-4`}>
                     <div 
+                      onContextMenu={(e) => { e.preventDefault(); setActiveMessageMenu(msg.id); }}
                       className={`max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2.5 shadow-sm relative group ${
                         isMine 
                           ? "bg-[#d9fdd3] border border-[#c3f2bc] rounded-tr-none" 
@@ -1255,11 +1271,9 @@ function ConversationsContent() {
                             <UserIcon className="h-4 w-4 text-slate-400" /> Informações Pessoais
                           </h5>
                           <div className="space-y-2.5 text-sm">
-                             <div className="flex items-center gap-3 mb-4 mt-2">
-                               <div className="h-10 w-10 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
-                                 {profile.first_name?.charAt(0) || ""}{profile.last_name?.charAt(0) || ""}
-                               </div>
-                               <h4 className="font-bold text-slate-800 text-sm truncate">{profile.first_name} {profile.last_name}</h4>
+                             <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-xs">Nome:</span>
+                                <span className="font-medium text-slate-700 text-right text-xs truncate max-w-[180px]" title={`${profile.first_name} ${profile.last_name}`}>{profile.first_name} {profile.last_name}</span>
                              </div>
                              <div className="flex justify-between items-center">
                                 <span className="text-slate-500 text-xs">Telefone:</span>
