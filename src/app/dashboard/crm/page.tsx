@@ -625,7 +625,7 @@ export default function CrmPage() {
                 </div>
 
                 {/* Column Cards Area */}
-                <div className="flex-1 overflow-y-auto px-1 space-y-3 pb-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto px-3 pt-3 space-y-3 pb-6 custom-scrollbar">
                   
                   {colDeals.map((deal) => (
                     <div
