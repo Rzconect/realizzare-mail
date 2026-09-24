@@ -504,76 +504,33 @@ export default function CampaignsPage() {
       </div>
 
       {/* KPI Line Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="flex flex-wrap items-center gap-3">
         {/* KPI 1 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">E-mails Enviados</span>
-            <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
-              <Mail className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-black text-slate-800">{kpis.sent.toLocaleString("pt-BR")}</h3>
-            <span className="text-[10px] text-slate-400 mt-1 block">Volume total no período selecionado</span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-600" />
+        <div className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl shadow-sm text-sm">
+          <Mail className="h-5 w-5 text-indigo-600" />
+          <span className="text-slate-600 font-medium">E-mails enviados:</span>
+          <span className="font-bold text-slate-800">{kpis.sent.toLocaleString("pt-BR")}</span>
         </div>
 
         {/* KPI 2 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">E-mails Abertos</span>
-            <span className="p-1.5 bg-violet-50 rounded-lg text-violet-600 font-bold">
-              <Eye className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-black text-slate-800">{kpis.opened.toLocaleString("pt-BR")}</h3>
-            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1.5 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {kpis.openRate.toFixed(1)}% <span className="text-slate-500 text-[10px] font-normal">taxa de abertura</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-violet-600" />
+        <div className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl shadow-sm text-sm">
+          <Eye className="h-5 w-5 text-violet-600" />
+          <span className="text-slate-600 font-medium">E-mails abertos:</span>
+          <span className="font-bold text-slate-800">{kpis.opened.toLocaleString("pt-BR")}</span>
         </div>
 
         {/* KPI 3 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">E-mails Clicados</span>
-            <span className="p-1.5 bg-teal-50 rounded-lg text-teal-650">
-              <Percent className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-black text-slate-800">{kpis.clicked.toLocaleString("pt-BR")}</h3>
-            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1.5 w-fit">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {kpis.clickRate.toFixed(1)}% <span className="text-slate-500 text-[10px] font-normal">taxa de clique</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-550 to-teal-600" />
+        <div className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl shadow-sm text-sm">
+          <Percent className="h-5 w-5 text-teal-600" />
+          <span className="text-slate-600 font-medium">E-mails clicados:</span>
+          <span className="font-bold text-slate-800">{kpis.clicked.toLocaleString("pt-BR")}</span>
         </div>
 
         {/* KPI 4 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pedidos Realizados</span>
-            <span className="p-1.5 bg-emerald-50 rounded-lg text-emerald-705">
-              <ShoppingCart className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-black text-slate-800">
-              {kpis.orders} <span className="text-xs font-normal text-slate-500">vendas</span>
-            </h3>
-            <span className="text-xs text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 mt-1.5 w-fit">
-              <DollarSign className="h-3.5 w-3.5" />
-              {kpis.revenue.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })} <span className="text-slate-500 text-[10px] font-normal">receita gerada</span>
-            </span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600" />
+        <div className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl shadow-sm text-sm">
+          <ShoppingCart className="h-5 w-5 text-emerald-600" />
+          <span className="text-slate-600 font-medium">Pedidos:</span>
+          <span className="font-bold text-slate-800">{kpis.orders}</span>
         </div>
       </div>
 
