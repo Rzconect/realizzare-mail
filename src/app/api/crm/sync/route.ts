@@ -48,7 +48,7 @@ export async function GET() {
        const timeStr = new Date(evt.created_at).toISOString().slice(0, 16); // up to minute
        const key = `${amt}-${timeStr}`;
        
-       const isPaidEvent = evt.metadata?.event?.includes("paid") || evt.event?.includes("paid") || evt.metadata?.status === "paid";
+       const isPaidEvent = evt.metadata?.event?.includes("paid") || evt.metadata?.status === "paid";
        const isArchived = evt.metadata?.crm_archived === true;
        
        if (!orderMap.has(key)) {
