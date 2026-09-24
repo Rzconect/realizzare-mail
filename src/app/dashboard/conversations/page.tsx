@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Filter, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2 } from "lucide-react";
+import { Search, Filter, Unlink, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2 } from "lucide-react";
 import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
 import { createClient } from "@/lib/supabase/client";
 
@@ -1219,7 +1219,20 @@ function ConversationsContent() {
         {showContactDetails && activeChat && (
           <div className="w-80 bg-slate-50 border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
             <div className="h-[68px] flex items-center justify-between px-4 border-b border-slate-200 shrink-0 sticky top-0 bg-slate-50 z-10">
-              <h3 className="font-bold text-slate-800 text-sm">Detalhes do Contato</h3>
+              <div className="flex items-center gap-2"><h3 className="font-bold text-slate-800 text-sm">Detalhes do Contato</h3>
+                <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} title="Ver perfil completo">
+                  <ExternalLink className="h-4 w-4 text-indigo-500 hover:text-indigo-700 cursor-pointer transition-colors" />
+                </Link>
+                <button title="Desvincular contato" onClick={() => {
+                  setLinkedContacts(prev => {
+                    const next = { ...prev };
+                    delete next[activeChat.id];
+                    localStorage.setItem("realizzare_chat_contacts", JSON.stringify(next));
+                    return next;
+                  });
+                }}>
+                  <Unlink className="h-4 w-4 text-red-400 hover:text-red-600 cursor-pointer transition-colors" />
+                </button></div>
               <button onClick={() => setShowContactDetails(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
                 <X className="h-4 w-4" />
               </button>
@@ -1238,7 +1251,7 @@ function ConversationsContent() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="font-bold text-slate-800 text-sm truncate">{profile.first_name} {profile.last_name}</h4>
-                          <p className="text-[10px] text-slate-500 truncate">{profile.email}</p>
+                          
                         </div>
                       </div>
                       
@@ -1255,7 +1268,7 @@ function ConversationsContent() {
                              </div>
                              <div className="flex justify-between items-center">
                                 <span className="text-slate-500 text-xs">E-mail:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs truncate max-w-[150px]" title={profile.email}>{profile.email || "Não informado"}</span>
+                                <span className="font-medium text-slate-700 text-right text-xs break-all" title={profile.email}>{profile.email || "Não informado"}</span>
                              </div>
                              <div className="flex justify-between items-center">
                                 <span className="text-slate-500 text-xs">Cidade:</span>
@@ -1299,7 +1312,7 @@ function ConversationsContent() {
                           </h5>
                           {profile.purchases && profile.purchases.length > 0 ? (
                             <div className="space-y-2">
-                              {profile.purchases.slice(0, 3).map((p: any, i: number) => (
+                              {[...(profile.purchases || [])].sort((a, b) => new Date(b.paid_at || 0).getTime() - new Date(a.paid_at || 0).getTime()).slice(0, 3).map((p: any, i: number) => (
                                 <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex justify-between items-center gap-2">
                                   <div className="min-w-0 flex-1">
                                     <span className="text-xs font-bold text-slate-700 block truncate">{p.product_name}</span>
@@ -1339,23 +1352,7 @@ function ConversationsContent() {
                         </div>
                       </div>
 
-                      <Link href={`/dashboard/contacts/${linkedContacts[activeChat.id]}`} className="block text-center mt-6 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
-                        Ver histórico completo do CRM <ExternalLink className="h-4 w-4 inline-block ml-1 -mt-0.5" />
-                      </Link>
                       
-                      <button 
-                        onClick={() => {
-                          setLinkedContacts(prev => {
-                            const next = { ...prev };
-                            delete next[activeChat.id];
-                            localStorage.setItem("realizzare_chat_contacts", JSON.stringify(next));
-                            return next;
-                          });
-                        }}
-                        className="w-full text-sm font-bold text-slate-500 hover:text-red-600 py-3 transition-colors mt-2 cursor-pointer"
-                      >
-                        Desvincular Contato
-                      </button>
                     </>
                   );
                 })()

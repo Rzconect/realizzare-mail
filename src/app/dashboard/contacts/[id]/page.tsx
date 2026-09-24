@@ -501,7 +501,7 @@ export default function ContactProfilePage({ params }: PageProps) {
            }
         });
 
-        const purchases = Array.from(purchaseDedupeMap.values()).map((p: any) => ({
+        const purchases = Array.from(purchaseDedupeMap.values()).sort((a: any, b: any) => new Date(b.paid_at || b.created_at || 0).getTime() - new Date(a.paid_at || a.created_at || 0).getTime()).map((p: any) => ({
           product_type: p.product_type,
           product_name: p.product_name,
           amount: parseFloat(p.amount || 0),
