@@ -630,17 +630,8 @@ export default function CrmPage() {
                         if ((e.target as HTMLElement).closest('.archive-btn')) return;
                         openDealModal(deal);
                       }}
-                      className={`p-4 rounded-2xl shadow-sm cursor-pointer transition-all active:cursor-grabbing group relative border ${
-                        activeUsersByDeal[deal.id] && activeUsersByDeal[deal.id].length > 0
-                          ? 'border-blue-400 ring-2 ring-blue-100 bg-blue-50/40'
-                          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
-                      }`}
+                      className="p-4 rounded-2xl shadow-sm cursor-pointer transition-all active:cursor-grabbing group relative border bg-white border-slate-200 hover:border-slate-300 hover:shadow-md"
                     >
-                      {activeUsersByDeal[deal.id] && activeUsersByDeal[deal.id].map((user, idx) => (
-                        <div key={user.user_id} className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-md ring-2 ring-blue-300 animate-pulse z-20" title={`${user.name} está visualizando`} style={{ right: `${idx * -10 - 8}px` }}>
-                          {user.name ? (user.name.split(" ").length > 1 ? user.name.split(" ")[0][0] + user.name.split(" ")[user.name.split(" ").length - 1][0] : user.name.substring(0, 2)).toUpperCase() : "CO"}
-                        </div>
-                      ))}
                       
                       <button
                         onClick={(e) => {
