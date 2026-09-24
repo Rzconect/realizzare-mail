@@ -326,8 +326,8 @@ function ConversationsContent() {
         const match = list.find((c: any) => c.id === cId);
         if (match) {
           localProfile = {
-            first_name: match.first_name || "",
-            last_name: match.last_name || "",
+            first_name: formatContactFullName(match.first_name || "", match.last_name || "").split(" ")[0] || "",
+            last_name: formatContactFullName(match.first_name || "", match.last_name || "").split(" ").slice(1).join(" ") || "",
             email: match.email || "",
             phone: match.phone || "",
             location: { city: match.city || "", state: match.state || "" },
@@ -366,8 +366,8 @@ function ConversationsContent() {
           
           localProfile = {
             id: data.id,
-            first_name: data.first_name || "",
-            last_name: data.last_name || "",
+            first_name: formatContactFullName(data.first_name || "", data.last_name || "").split(" ")[0] || "",
+            last_name: formatContactFullName(data.first_name || "", data.last_name || "").split(" ").slice(1).join(" ") || "",
             email: data.email || "",
             phone: data.phone || "",
             location: { city: data.city || "", state: data.state || "" },
@@ -1502,3 +1502,14 @@ export default function ConversationsPage() {
     </Suspense>
   );
 }
+function formatContactFullName(firstStr: string, lastStr: string): string {
+  let combined = `${firstStr || ""} ${lastStr || ""}`.trim();
+  if (!combined) return "Contato Sem Nome";
+  combined = combined.replace(/[._-]/g, " ");
+  return combined.split(/\s+/).filter(Boolean).map(word => {
+    const lower = word.toLowerCase();
+    if (["da", "de", "do", "das", "dos", "e"].includes(lower)) return lower;
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }).join(" ");
+}
+

@@ -887,8 +887,8 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         const profileObj = {
           id: contact.id,
-          first_name: contact.first_name || "",
-          last_name: contact.last_name || "",
+          first_name: formatContactFullName(contact.first_name || "", contact.last_name || "").split(" ")[0] || "",
+          last_name: formatContactFullName(contact.first_name || "", contact.last_name || "").split(" ").slice(1).join(" ") || "",
           email: contact.email,
           phone: contact.phone || "",
           birth_date: contact.birth_date || "",
@@ -1081,8 +1081,8 @@ export default function ContactProfilePage({ params }: PageProps) {
         }
 
         const fallbackProfileObj = {
-          first_name,
-          last_name,
+          first_name: formatContactFullName(first_name, last_name).split(" ")[0] || "",
+          last_name: formatContactFullName(first_name, last_name).split(" ").slice(1).join(" ") || "",
           email,
           phone,
           birth_date: "",
@@ -2336,4 +2336,15 @@ export default function ContactProfilePage({ params }: PageProps) {
   );
 }
 
+
+function formatContactFullName(firstStr: string, lastStr: string): string {
+  let combined = `${firstStr || ""} ${lastStr || ""}`.trim();
+  if (!combined) return "Contato Sem Nome";
+  combined = combined.replace(/[._-]/g, " ");
+  return combined.split(/\s+/).filter(Boolean).map(word => {
+    const lower = word.toLowerCase();
+    if (["da", "de", "do", "das", "dos", "e"].includes(lower)) return lower;
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }).join(" ");
+}
 
