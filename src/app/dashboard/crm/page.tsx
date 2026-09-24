@@ -296,13 +296,37 @@ export default function CrmPage() {
   };
 
   const handleUpdateDeal = (updatedDeal: Deal) => {
+    const w = window as any;
+    if (w.__crm_channel) {
+      w.__crm_channel.send({ type: 'broadcast', event: 'card_updated', payload: { deal: updatedDeal } });
+    }
+    
     setDeals(prev => prev.map(d => d.id === updatedDeal.id ? { ...d, ...updatedDeal } : d));
     dispatchNotification(updatedDeal);
+    
+    // Save state
+    fetch("/api/crm/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: updatedDeal.id, action: "update", payload: { columnId: updatedDeal.columnId, assignedTo: updatedDeal.assignedTo } })
+    });
   };
 
   const handleDeleteDeal = (dealId: string) => {
     if (confirm('Tem certeza que deseja excluir este card? Esta ação não pode ser desfeita.')) {
+      const w = window as any;
+      if (w.__crm_channel) {
+        w.__crm_channel.send({ type: 'broadcast', event: 'card_deleted', payload: { dealId } });
+      }
+      
       setDeals(prev => prev.filter(d => d.id !== dealId));
+      
+      // Save state
+      fetch("/api/crm/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: dealId, action: "archive" })
+      });
     }
   };
 
@@ -343,9 +367,21 @@ export default function CrmPage() {
     setDragOverColId(null);
     if (!draggedDealId) return;
 
+    const w = window as any;
+    if (w.__crm_channel) {
+      w.__crm_channel.send({ type: 'broadcast', event: 'card_moved', payload: { dealId: draggedDealId, colId } });
+    }
+
     setDeals((prev) =>
       prev.map((d) => (d.id === draggedDealId ? { ...d, columnId: colId } : d))
     );
+    
+    // Save state
+    fetch("/api/crm/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: draggedDealId, action: "update", payload: { columnId: colId } })
+    });
   };
 
   const openDealModal = (deal: Deal | null = null) => {
