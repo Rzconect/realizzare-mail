@@ -260,7 +260,10 @@ export default function CrmPage() {
              return;
           }
           if (status === 'SUBSCRIBED') {
-            await channel.track({ client_id: myClientId, user_id: me.id, name: me.name, viewing_deal_id: null });
+            try {
+              await channel.track({ client_id: myClientId, user_id: me.id, name: me.name, viewing_deal_id: null });
+            } catch(e) { console.warn("Initial presence track failed", e); }
+            
             const w = window as any;
             if (w.__crm_channel && w.__crm_channel !== channel) {
                try { w.__crm_channel.unsubscribe(); } catch(e) {}
@@ -282,45 +285,22 @@ export default function CrmPage() {
     };
   }, []);
   
-  // Track modal and hover
-  const [hoveredDealId, setHoveredDealId] = useState<string | null>(null);
-  const trackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hoverAutoClearRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleCardHover = (dealId: string | null) => {
-    setHoveredDealId(dealId);
-    if (hoverAutoClearRef.current) clearTimeout(hoverAutoClearRef.current);
-    
-    // Auto-clear hover after 3 seconds of inactivity (if not in modal)
-    if (dealId) {
-      hoverAutoClearRef.current = setTimeout(() => {
-        setHoveredDealId(null);
-      }, 3000);
-    }
-  };
+  // Track modal and drag
+  const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
 
   useEffect(() => {
     const w = window as any;
     if (w.__crm_channel && w.__crm_me && w.__crm_client_id) {
-      const activeDealId = (isModalOpen && selectedDeal) ? selectedDeal.id : hoveredDealId;
+      const activeDealId = (isModalOpen && selectedDeal) ? selectedDeal.id : draggedDealId;
       
-      if (trackTimeoutRef.current) clearTimeout(trackTimeoutRef.current);
-      
-      trackTimeoutRef.current = setTimeout(() => {
-        w.__crm_channel.track({ 
-          client_id: w.__crm_client_id, 
-          user_id: w.__crm_me.id, 
-          name: w.__crm_me.name, 
-          viewing_deal_id: activeDealId 
-        }).catch((err: any) => console.warn('Presence track error:', err));
-      }, 300);
+      w.__crm_channel.track({ 
+        client_id: w.__crm_client_id, 
+        user_id: w.__crm_me.id, 
+        name: w.__crm_me.name, 
+        viewing_deal_id: activeDealId 
+      }).catch((err: any) => console.warn('Presence track error:', err));
     }
-    
-    return () => {
-      if (trackTimeoutRef.current) clearTimeout(trackTimeoutRef.current);
-      if (hoverAutoClearRef.current) clearTimeout(hoverAutoClearRef.current);
-    };
-  }, [isModalOpen, selectedDeal, hoveredDealId]);
+  }, [isModalOpen, selectedDeal, draggedDealId]);
 
   const dispatchNotification = (deal: Deal) => {
     if (deal.boardId === 'atividades' && deal.assignedTo && deal.assignedTo !== "Sem responsável") {
@@ -389,6 +369,7 @@ export default function CrmPage() {
   // Drag handlers for Cards
   const handleDragStart = (e: React.DragEvent, dealId: string) => {
     setDraggedDealId(dealId);
+    setDraggedDealId(dealId);
     e.dataTransfer.effectAllowed = "move";
     
     setTimeout(() => {
@@ -398,6 +379,7 @@ export default function CrmPage() {
   };
 
   const handleDragEnd = (e: React.DragEvent, dealId: string) => {
+    setDraggedDealId(null);
     setDraggedDealId(null);
     setDragOverColId(null);
     const el = document.getElementById(`deal-${dealId}`);
@@ -666,9 +648,6 @@ export default function CrmPage() {
                       draggable
                       onDragStart={(e) => handleDragStart(e, deal.id)}
                       onDragEnd={(e) => handleDragEnd(e, deal.id)}
-                      onMouseEnter={() => handleCardHover(deal.id)}
-                      onMouseMove={() => handleCardHover(deal.id)}
-                      onMouseLeave={() => handleCardHover(null)}
                       onClick={(e) => {
                         // Prevent opening modal if clicking archive button
                         if ((e.target as HTMLElement).closest('.archive-btn')) return;
