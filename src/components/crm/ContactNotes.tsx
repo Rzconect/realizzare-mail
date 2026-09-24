@@ -75,7 +75,7 @@ export default function ContactNotes({ contactId, currentUser }: { contactId: st
       setIsLoading(false);
     };
     init();
-  }, [contactId]);
+  }, [contactId, currentUser]);
 
   const handleDeleteNote = async (noteId: string) => {
     if (!confirm("Tem certeza que deseja apagar esta observação?")) return;

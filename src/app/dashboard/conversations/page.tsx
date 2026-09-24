@@ -1144,7 +1144,7 @@ function ConversationsContent() {
                       {activeMessageMenu === msg.id && (
                         <>
                           <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
-                          <div className="absolute right-2 top-8 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 overflow-hidden">
+                          <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
                             <button onClick={() => { setActiveMessageMenu(null); setReplyingTo(msg); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
                             <button onClick={async () => { 
                               setActiveMessageMenu(null);
