@@ -180,6 +180,7 @@ export default function CrmPage() {
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
         
+        const myClientId = Math.random().toString(36).substring(2, 15);
         let me: any = null;
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -202,7 +203,7 @@ export default function CrmPage() {
             const presences = state[userId];
             if (presences && presences.length > 0) {
               const presence = presences[0];
-              if (presence.viewing_deal_id && presence.user_id !== me.id) {
+              if (presence.viewing_deal_id && presence.client_id !== myClientId) {
                 if (!newActiveUsers[presence.viewing_deal_id]) newActiveUsers[presence.viewing_deal_id] = [];
                 newActiveUsers[presence.viewing_deal_id].push(presence);
               }
@@ -229,8 +230,9 @@ export default function CrmPage() {
         
         channel.subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {
-            await channel.track({ user_id: me.id, name: me.name, viewing_deal_id: null });
+            await channel.track({ client_id: myClientId, user_id: me.id, name: me.name, viewing_deal_id: null });
             (window as any).__crm_me = me;
+            (window as any).__crm_client_id = myClientId;
             (window as any).__crm_channel = channel;
           }
         });
@@ -244,17 +246,21 @@ export default function CrmPage() {
     };
   }, []);
   
-  // Track modal open/close
+  // Track modal and hover
+  const [hoveredDealId, setHoveredDealId] = useState<string | null>(null);
+
   useEffect(() => {
     const w = window as any;
-    if (w.__crm_channel && w.__crm_me) {
-      if (isModalOpen && selectedDeal) {
-        w.__crm_channel.track({ user_id: w.__crm_me.id, name: w.__crm_me.name, viewing_deal_id: selectedDeal.id });
-      } else {
-        w.__crm_channel.track({ user_id: w.__crm_me.id, name: w.__crm_me.name, viewing_deal_id: null });
-      }
+    if (w.__crm_channel && w.__crm_me && w.__crm_client_id) {
+      const activeDealId = (isModalOpen && selectedDeal) ? selectedDeal.id : hoveredDealId;
+      w.__crm_channel.track({ 
+        client_id: w.__crm_client_id, 
+        user_id: w.__crm_me.id, 
+        name: w.__crm_me.name, 
+        viewing_deal_id: activeDealId 
+      });
     }
-  }, [isModalOpen, selectedDeal]);
+  }, [isModalOpen, selectedDeal, hoveredDealId]);
 
   const dispatchNotification = (deal: Deal) => {
     if (deal.boardId === 'atividades' && deal.assignedTo && deal.assignedTo !== "Sem responsável") {
@@ -583,12 +589,18 @@ export default function CrmPage() {
                       draggable
                       onDragStart={(e) => handleDragStart(e, deal.id)}
                       onDragEnd={(e) => handleDragEnd(e, deal.id)}
+                      onMouseEnter={() => setHoveredDealId(deal.id)}
+                      onMouseLeave={() => setHoveredDealId(null)}
                       onClick={(e) => {
                         // Prevent opening modal if clicking archive button
                         if ((e.target as HTMLElement).closest('.archive-btn')) return;
                         openDealModal(deal);
                       }}
-                      className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm cursor-pointer hover:border-slate-300 hover:shadow-md transition-all active:cursor-grabbing group relative"
+                      className={`p-4 rounded-2xl shadow-sm cursor-pointer transition-all active:cursor-grabbing group relative border ${
+                        activeUsersByDeal[deal.id] && activeUsersByDeal[deal.id].length > 0
+                          ? 'border-blue-400 ring-2 ring-blue-100 bg-blue-50/40'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
+                      }`}
                     >
                       {activeUsersByDeal[deal.id] && activeUsersByDeal[deal.id].map((user, idx) => (
                         <div key={user.user_id} className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-md ring-2 ring-blue-300 animate-pulse z-20" title={`${user.name} está visualizando`} style={{ right: `${idx * -10 - 8}px` }}>
