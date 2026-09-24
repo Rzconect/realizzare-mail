@@ -41,12 +41,16 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(300);
 
-    // Group by pagarme_id to find orders that are ONLY pending (no 'paid' event)
-        const orderMap = new Map();
+    // Group by pagarme_id to correctly identify matching pending and paid events for the exact same order
+    const orderMap = new Map();
     [...(pendingEvents || [])].forEach(evt => {
-       const amt = evt.metadata?.amount || "0";
-       const timeStr = new Date(evt.created_at).toISOString().slice(0, 16); // up to minute
-       const key = `${amt}-${timeStr}`;
+       // Primary key is pagarme_id. Fallback to amount-time(10min window)-email if legacy/missing
+       let key = evt.metadata?.pagarme_id;
+       if (!key) {
+           const amt = evt.metadata?.amount || "0";
+           const timeStr = new Date(evt.created_at).toISOString().slice(0, 15); // up to 10 minutes
+           key = `${evt.contact_email}-${amt}-${timeStr}`;
+       }
        
        const isPaidEvent = evt.metadata?.event?.includes("paid") || evt.metadata?.status === "paid";
        const isArchived = evt.metadata?.crm_archived === true;
