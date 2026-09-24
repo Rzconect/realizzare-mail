@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Search, Filter, Unlink, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2 } from "lucide-react";
 import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
 import { createClient } from "@/lib/supabase/client";
+import ContactNotes from "@/components/crm/ContactNotes";
+
 
 function ConversationsContent() {
   const searchParams = useSearchParams();
@@ -33,6 +35,7 @@ function ConversationsContent() {
   const [newChatPhone, setNewChatPhone] = useState("");
   
   const [showContactDetails, setShowContactDetails] = useState(true);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ notes: true });
   const [linkedContacts, setLinkedContacts] = useState<Record<string, string>>({}); // chatId -> contact email or ID
   const [searchEmail, setSearchEmail] = useState("");
   const [autocompleteResults, setAutocompleteResults] = useState<any[]>([]);
@@ -1244,17 +1247,6 @@ function ConversationsContent() {
                   const profile = mockProfileData[linkedContacts[activeChat.id]] || cachedProfiles[linkedContacts[activeChat.id]];
                   return (
                     <>
-                      {/* Profile Header */}
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
-                          {profile.first_name?.charAt(0) || ""}{profile.last_name?.charAt(0) || ""}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-slate-800 text-sm truncate">{profile.first_name} {profile.last_name}</h4>
-                          
-                        </div>
-                      </div>
-                      
                       <div className="space-y-6">
                         {/* Dados do Aluno */}
                         <div>
