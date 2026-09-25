@@ -92,7 +92,7 @@ export async function PUT(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
     await supabaseAdmin.from('whatsapp_messages')
-      .update({ content_text: newText })
+      .update({ text: newText })
       .eq('message_id', messageId);
 
     return NextResponse.json({ success: true, data });

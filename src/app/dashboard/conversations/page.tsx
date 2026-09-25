@@ -201,12 +201,31 @@ function ConversationsContent() {
               assignedTo: c.assigned_to,
               status: c.status,
               lastMessageTime: new Date(c.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              messages: sortedMessages.map((m: any) => ({
-                id: m.id,
-                sender: m.sender === 'user' ? 'client' : m.sender,
-                text: m.text,
-                time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              }))
+              messages: sortedMessages.map((m: any) => {
+                let isQuoted = false;
+                let quotedId = '', quotedParticipant = '', quotedText = '';
+                let displayText = m.text || '';
+                const quoteMatch = displayText.match(/^\[QUOTE:(.*?)\|(.*?)\|(.*?)\]\n/);
+                if (quoteMatch) {
+                  isQuoted = true;
+                  quotedId = quoteMatch[1];
+                  quotedParticipant = quoteMatch[2];
+                  quotedText = quoteMatch[3];
+                  displayText = displayText.replace(/^\[QUOTE:(.*?)\|(.*?)\|(.*?)\]\n/, '');
+                }
+                
+                return {
+                  id: m.id,
+                  messageId: m.message_id,
+                  sender: m.sender === 'user' ? 'client' : m.sender,
+                  text: displayText,
+                  isQuoted,
+                  quotedId,
+                  quotedParticipant,
+                  quotedText,
+                  time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+              })
             };
           });
 
@@ -573,9 +592,8 @@ function ConversationsContent() {
 
     // Optimistic UI update + Auto Assign
     let textToSend = messageText;
+    const currentReplyingTo = replyingTo;
     if (replyingTo) {
-      const shortReply = replyingTo.text.substring(0, 30) + (replyingTo.text.length > 30 ? "..." : "");
-      textToSend = `[Respondendo a: ${shortReply}]\n\n` + textToSend;
       setReplyingTo(null);
     }
     const newAssignedTo = currentUser?.name || chat.assignedTo;
@@ -602,11 +620,7 @@ function ConversationsContent() {
       await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: chat.id,
-          remoteJid: chat.remoteJid,
-          text: textToSend
-        })
+        body: JSON.stringify({ chatId: chat.id, remoteJid: chat.remoteJid, text: textToSend, options: currentReplyingTo ? { quoted: { key: { id: currentReplyingTo.messageId || currentReplyingTo.id, remoteJid: chat.remoteJid, fromMe: currentReplyingTo.sender === 'agent' } } } : undefined })
       });
       
       // Update assigned_to in Supabase

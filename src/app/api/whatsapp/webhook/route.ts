@@ -58,6 +58,17 @@ export async function POST(req: Request) {
         mimetype = msg.message.stickerMessage.mimetype || 'image/webp';
       }
 
+      let quotedContext = '';
+      if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
+        const quotedMsg = msg.message.extendedTextMessage.contextInfo;
+        const quotedId = quotedMsg.stanzaId || '';
+        const quotedParticipant = quotedMsg.participant || '';
+        let quotedText = quotedMsg.quotedMessage?.conversation || quotedMsg.quotedMessage?.extendedTextMessage?.text || 'Mensagem';
+        quotedText = quotedText.replace(/\n/g, ' ').substring(0, 60);
+        quotedContext = `[QUOTE:${quotedId}|${quotedParticipant}|${quotedText}]\n`;
+      }
+      text = quotedContext + text;
+
       if (!text && messageType === 'text') {
         return NextResponse.json({ success: true }); // Ignore empty non-media
       }
