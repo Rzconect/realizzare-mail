@@ -620,7 +620,7 @@ function ConversationsContent() {
       await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: chat.id, remoteJid: chat.remoteJid, text: textToSend, options: currentReplyingTo ? { quoted: { key: { id: currentReplyingTo.messageId || currentReplyingTo.id, remoteJid: chat.remoteJid, fromMe: currentReplyingTo.sender === 'agent' } } } : undefined })
+        body: JSON.stringify({ chatId: chat.id, remoteJid: chat.remoteJid, text: textToSend, options: currentReplyingTo ? { quoted: { messageId: currentReplyingTo.messageId || currentReplyingTo.id, key: { id: currentReplyingTo.messageId || currentReplyingTo.id, remoteJid: chat.remoteJid, fromMe: currentReplyingTo.sender === 'agent' } } } : undefined })
       });
       
       // Update assigned_to in Supabase
