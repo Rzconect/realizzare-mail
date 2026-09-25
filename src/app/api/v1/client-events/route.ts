@@ -129,11 +129,11 @@ export async function POST(request: Request) {
         // Log course event in course_events
         
           if (progressPercent === 0) {
-            await triggerFlowsForEvent(supabase, "Curso Iniciado (course.progress - Inicio)", contactId);
+            await triggerFlowsForEvent(supabase, "Curso Iniciado (course.progress - Inicio)", contactId, { course_name: courseName || "" });
           } else if (progressPercent === 50) {
-            await triggerFlowsForEvent(supabase, "Curso em Andamento 50% (course.progress - Meio)", contactId);
+            await triggerFlowsForEvent(supabase, "Curso em Andamento 50% (course.progress - Meio)", contactId, { course_name: courseName || "" });
           } else if (progressPercent === 100) {
-            await triggerFlowsForEvent(supabase, "Curso Concluído 100% (course.progress - Fim)", contactId);
+            await triggerFlowsForEvent(supabase, "Curso Concluído 100% (course.progress - Fim)", contactId, { course_name: courseName || "" });
           }
           
           await supabase.from("course_events").insert({
