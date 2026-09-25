@@ -104,7 +104,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "en
       setSelectedCourses([]);
       setTimeWindow("");
     }
-  }, [customTriggerSource, isOpen, initialConfig]);
+  }, [isOpen]); // Only run on open to avoid infinite loops with object literals
 
   const isCourseEvent = selectedEvent.includes("course") || selectedEvent.includes("Matrícula") || selectedEvent.includes("Certificado") || selectedEvent.includes("Reprovação") || selectedEvent.includes("Teste");
   const isPagarmeEvent = customTriggerSource === "pagarme";
