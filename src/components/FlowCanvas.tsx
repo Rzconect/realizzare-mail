@@ -461,12 +461,13 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                      id: "trigger",
                      node_type: "trigger",
                      parent_node_id: null,
+                     branch_label: null,
                      config: { triggerDescription: found.trigger_type, name: found.trigger_metric && found.trigger_metric !== "Disparador" ? found.trigger_metric : "Defina seu gatilho de entrada" }
                   });
                }
                const resolveSequence = (parentId: string | null, branchLabel: string | null): FlowNode[] => {
                   const sequence: FlowNode[] = [];
-                  let current = nodesData.find((n: any) => n.parent_node_id === parentId && n.branch_label === branchLabel);
+                  let current = nodesData.find((n: any) => n.parent_node_id === parentId && (n.branch_label || null) === (branchLabel || null));
                   
                   while(current) {
                     const node: FlowNode = {
