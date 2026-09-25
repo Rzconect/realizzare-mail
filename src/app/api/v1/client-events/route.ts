@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { triggerFlowsForEvent } from "@/lib/flows/trigger";
 
 function getAdminSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -126,7 +127,16 @@ export async function POST(request: Request) {
         }
 
         // Log course event in course_events
-        await supabase.from("course_events").insert({
+        
+          if (progressPercent === 0) {
+            await triggerFlowsForEvent(supabase, "Curso Iniciado (course.progress - Inicio)", contactId);
+          } else if (progressPercent === 50) {
+            await triggerFlowsForEvent(supabase, "Curso em Andamento 50% (course.progress - Meio)", contactId);
+          } else if (progressPercent === 100) {
+            await triggerFlowsForEvent(supabase, "Curso Concluído 100% (course.progress - Fim)", contactId);
+          }
+          
+          await supabase.from("course_events").insert({
           org_id: DEFAULT_ORG_ID,
           contact_id: contactId,
           course_id: courseDbId,

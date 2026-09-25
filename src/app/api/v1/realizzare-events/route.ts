@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { triggerFlowsForEvent } from "@/lib/flows/trigger";
 
 function getAdminSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -333,6 +334,7 @@ export async function POST(request: Request) {
         processed_at: new Date().toISOString()
       });
 
+      await triggerFlowsForEvent(supabase, "Contato Criado / Atualizado", contact.id);
       processedResult = { action: "contact_upserted", contact_id: contact.id, email, list: count && count > 0 ? "Alunos" : "Leads" };
     }
 
@@ -366,6 +368,7 @@ export async function POST(request: Request) {
         metadata: { course_name: courseName, enrolled_at: new Date().toISOString() }
       });
 
+      await triggerFlowsForEvent(supabase, "Matrícula Realizada", contact.id);
       processedResult = { action: "enrollment_created", email, courseName, enrollment_id: enrollment.id, listTransition: "Leads -> Alunos" };
     }
 
