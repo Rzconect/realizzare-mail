@@ -1428,7 +1428,7 @@ function ConversationsContent() {
                                               <p className="text-xs font-bold text-slate-700">{t.product_name}</p>
                                               <p className="text-[10px] text-slate-500">{formatTransactionDate(t.paid_at, t.product_type)}</p>
                                             </div>
-                                            <span className={`text-xs font-bold ${t.status === 'Pago' ? 'text-emerald-600' : 'text-orange-500'}`}>{(t.amount / 100).toFixed(2).replace('.', ',')}</span>
+                                            <span className={`text-xs font-bold ${t.status === 'Pago' ? 'text-emerald-600' : 'text-orange-500'}`}>{Number(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                           </div>
                                         ))}
                                       </div>
