@@ -335,6 +335,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           city,
           contact_tags (
             tags (
+              id,
               name
             )
           ),
@@ -353,6 +354,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             status,
             updated_at,
             lists (
+              id,
               name
             )
           ),
@@ -574,7 +576,21 @@ export default function ContactProfilePage({ params }: PageProps) {
           dbCampaignsData.forEach((c: any) => {
             if (c.status === "sent") {
               const targetStr = (c.target_list || "").toLowerCase();
-              const isTargeted = targetStr.includes(contactEmailLower);
+              let isTargeted = targetStr.includes(contactEmailLower);
+              if (!isTargeted && contact.contact_tags) {
+                contact.contact_tags.forEach((ct: any) => {
+                  if (ct.tags?.id && targetStr.includes(ct.tags.id.toLowerCase())) isTargeted = true;
+                  if (ct.tags?.name && targetStr.includes(ct.tags.name.toLowerCase())) isTargeted = true;
+                });
+              }
+              if (!isTargeted && contact.list_subscriptions) {
+                contact.list_subscriptions.forEach((ls: any) => {
+                  if (ls.status === "subscribed") {
+                    if (ls.lists?.id && targetStr.includes(ls.lists.id.toLowerCase())) isTargeted = true;
+                    if (ls.lists?.name && targetStr.includes(ls.lists.name.toLowerCase())) isTargeted = true;
+                  }
+                });
+              }
 
               if (isTargeted) {
                 const flowName = c.flow_name || c.flowName || "";
