@@ -320,10 +320,8 @@ export default function AutomationsPage() {
         .insert({
           org_id: "00000000-0000-0000-0000-000000000001",
           name: trimmedName,
-          description: triggerDesc,
           status: "draft",
-          trigger_type: "event",
-          metrics_json: { active_contacts: 0, revenue: 0 }
+          trigger_type: triggerDesc || "event"
         } as any)
         .select()
         .single();
