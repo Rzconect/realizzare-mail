@@ -1396,7 +1396,7 @@ function ConversationsContent() {
                                 </button>
                                 {panelConfig.openState.cursos && (
                                   <div className="mt-3">
-                                    {(profile as any).enrollments && (profile as any).cursos.length > 0 ? (
+                                    {(profile as any).enrollments && (profile as any).enrollments.length > 0 ? (
                                       <div className="space-y-2">
                                         {(profile as any).enrollments.map((c: any, i: number) => (
                                           <div key={i} className="bg-slate-100 p-2 rounded-lg border border-slate-200/60">
@@ -1420,7 +1420,7 @@ function ConversationsContent() {
                                 </button>
                                 {panelConfig.openState.transacoes && (
                                   <div className="mt-3">
-                                    {(profile as any).purchases && (profile as any).transacoes.length > 0 ? (
+                                    {(profile as any).purchases && (profile as any).purchases.length > 0 ? (
                                       <div className="space-y-2">
                                         {(profile as any).purchases.map((t: any, i: number) => (
                                           <div key={i} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg border border-slate-200/60">
