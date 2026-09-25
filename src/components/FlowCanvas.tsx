@@ -4257,6 +4257,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         isOpen={showTriggerModal} 
         onClose={() => setShowTriggerModal(false)}
         mode="entry"
+        initialConfig={nodes.find(n => n.id === 'trigger')?.config}
         onSave={(config) => {
           const nodeName = config.event || "Gatilho Personalizado";
           

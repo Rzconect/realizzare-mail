@@ -9,7 +9,7 @@ interface TriggerConfigModalProps {
   mode?: "entry" | "exit" | "split";
 }
 
-export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "entry" }: TriggerConfigModalProps) {
+export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "entry", initialConfig }: TriggerConfigModalProps & { initialConfig?: any }) {
   const [customTriggerSource, setCustomTriggerSource] = useState("pagarme");
   const [selectedEvent, setSelectedEvent] = useState("");
   const [selectedRule, setSelectedRule] = useState("Nenhuma regra extra");
@@ -35,12 +35,26 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "en
   }, [isOpen]);
 
   useEffect(() => {
-    setSelectedEvent("");
-    setSelectedRule("Nenhuma regra extra");
-    setCondValue("");
-    setSelectedCourses([]);
-    setTimeWindow("");
-  }, [customTriggerSource]);
+    if (initialConfig && isOpen) {
+      if (initialConfig.source) setCustomTriggerSource(initialConfig.source);
+      if (initialConfig.event) setSelectedEvent(initialConfig.event);
+      if (initialConfig.rule) setSelectedRule(initialConfig.rule);
+      if (initialConfig.value) {
+        setCondValue(initialConfig.value);
+        if (Array.isArray(initialConfig.value)) {
+          setSelectedCourses(initialConfig.value);
+        }
+      }
+      if (initialConfig.timeWindow) setTimeWindow(initialConfig.timeWindow);
+      if (initialConfig.timeUnit) setTimeUnit(initialConfig.timeUnit);
+    } else if (isOpen) {
+      setSelectedEvent("");
+      setSelectedRule("Nenhuma regra extra");
+      setCondValue("");
+      setSelectedCourses([]);
+      setTimeWindow("");
+    }
+  }, [customTriggerSource, isOpen, initialConfig]);
 
   const isCourseEvent = selectedEvent.includes("course") || selectedEvent.includes("Matrícula") || selectedEvent.includes("Certificado") || selectedEvent.includes("Reprovação") || selectedEvent.includes("Teste");
   const isPagarmeEvent = customTriggerSource === "pagarme";
