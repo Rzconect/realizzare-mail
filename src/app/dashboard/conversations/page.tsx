@@ -1422,7 +1422,7 @@ function ConversationsContent() {
                                   <div className="mt-3">
                                     {(profile as any).purchases && (profile as any).purchases.length > 0 ? (
                                       <div className="space-y-2">
-                                        {(profile as any).purchases.map((t: any, i: number) => (
+                                        {[...(profile as any).purchases].sort((a: any, b: any) => new Date(b.paid_at || 0).getTime() - new Date(a.paid_at || 0).getTime()).map((t: any, i: number) => (
                                           <div key={i} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg border border-slate-200/60">
                                             <div>
                                               <p className="text-xs font-bold text-slate-700">{t.product_name}</p>
