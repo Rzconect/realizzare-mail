@@ -1129,7 +1129,7 @@ function ConversationsContent() {
   {activeMessageMenu === msg.id && (
     <>
       <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
-      <div className={`absolute right-2 ${msgIndex >= activeChat.messages.length - 2 ? 'bottom-8' : 'top-8'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden`}>
+      <div className={`absolute left-0 ${msgIndex >= activeChat.messages.length - 2 ? 'bottom-8' : 'top-8'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden`}>
         <button onClick={() => { setActiveMessageMenu(null); setReplyingTo(msg); document.querySelector('textarea')?.focus(); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
         <button onClick={() => { setActiveMessageMenu(null); alert('Encaminhar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Encaminhar</button>
         {isMine && <button onClick={() => { setActiveMessageMenu(null); setEditingMessage(msg); setMessageText(msg.text); document.querySelector('textarea')?.focus(); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>}
