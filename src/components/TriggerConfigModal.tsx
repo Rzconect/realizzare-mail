@@ -13,6 +13,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "en
   const [customTriggerSource, setCustomTriggerSource] = useState("pagarme");
   const [selectedEvent, setSelectedEvent] = useState("");
   const [selectedRule, setSelectedRule] = useState("Nenhuma regra extra");
+  const [selectedOperator, setSelectedOperator] = useState("É igual a");
   const [condValue, setCondValue] = useState("");
   
   const [timeWindow, setTimeWindow] = useState("");
@@ -161,23 +162,26 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "en
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Regra Adicional (Opcional)</label>
-                <select value={selectedRule} onChange={(e) => setSelectedRule(e.target.value)} className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none">
-                  <option>Nenhuma regra extra</option>
-                  <option>Nome do Curso específico</option>
-                  {isPagarmeEvent && <option>SKU do Produto específico</option>}
-                  <option>Igual a</option>
-                  <option>Não é igual a</option>
-                  <option>Contém</option>
-                  <option>Não contém</option>
-                  <option>Maior que (Valor/Data)</option>
-                  <option>Menor que (Valor/Data)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor Condicional</label>
+            <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Regra Adicional (Opcional)</label>
+                  <select value={selectedRule} onChange={(e) => setSelectedRule(e.target.value)} className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none">
+                    <option>Nenhuma regra extra</option>
+                    <option>Nome do Curso específico</option>
+                    {isPagarmeEvent && <option>SKU do Produto específico</option>}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Operador</label>
+                  <select value={selectedOperator} onChange={(e) => setSelectedOperator(e.target.value)} disabled={selectedRule === "Nenhuma regra extra"} className="w-full mt-1.5 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 font-medium focus:border-indigo-500 outline-none disabled:opacity-50 disabled:bg-slate-50">
+                    <option>É igual a</option>
+                    <option>Diferente de</option>
+                    <option>Contém</option>
+                    <option>Não contém</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor Condicional</label>
                 
                 {selectedRule === "Nome do Curso específico" ? (
                   <div className="relative mt-1.5">
@@ -276,7 +280,7 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "en
                 timeWindow: timeWindow ? parseInt(timeWindow) : null,
                 timeUnit,
                 summary: `${selectedEvent} ${ruleText}`
-              });
+              , operator: selectedOperator});
               onClose();
             }}
             className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm"

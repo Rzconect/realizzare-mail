@@ -3829,7 +3829,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             <td className="px-4 py-3.5 text-slate-500 font-medium">{lead.timeElapsed}</td>
                             <td className="px-4 py-3.5 text-right">
                               <Link 
-                                href={`/dashboard/contacts`}
+                                href={`/dashboard/contacts/${lead.id}`}
                                 className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 hover:underline"
                               >
                                 Ver perfil
@@ -4319,7 +4319,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         onSave={(config) => {
           const newRule = {
              field: config.event,
-             operator: config.rule,
+             operator: config.operator || config.rule,
              value: config.value,
              timeWindow: config.timeWindow,
              timeUnit: config.timeUnit,
@@ -4338,7 +4338,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         onSave={(config) => {
           const newRule = {
              field: config.event,
-             operator: config.rule,
+             operator: config.operator || config.rule,
              value: config.value,
              timeWindow: config.timeWindow,
              timeUnit: config.timeUnit,
