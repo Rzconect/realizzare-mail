@@ -64,7 +64,7 @@ export async function PUT(request: Request) {
     
     const formattedJid = remoteJid.includes('@') ? remoteJid : `${remoteJid}@s.whatsapp.net`;
 
-    const response = await fetch(`${baseUrl}/message/sendText/${instanceName}`, {
+    const response = await fetch(`${baseUrl}/chat/updateMessage/${instanceName}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -72,16 +72,12 @@ export async function PUT(request: Request) {
       },
       body: JSON.stringify({
         number: remoteJid.replace("@s.whatsapp.net", ""),
-        text: newText,
-        options: {
-          delay: 0,
-          editMessageId: messageId
-        },
-        edit: {
+        key: {
           id: messageId,
           fromMe: true,
           remoteJid: formattedJid
-        }
+        },
+        text: newText
       })
     });
     
