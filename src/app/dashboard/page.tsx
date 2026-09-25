@@ -276,6 +276,19 @@ export default function DashboardPage() {
         dbCampaigns.forEach((c: any) => campaignMap.set(c.id, c.name));
       }
 
+      const { data: flowNodesData } = await supabase.from("flow_nodes").select("id, config");
+      const flowNodeMap = new Map<string, any>();
+      if (flowNodesData) {
+        flowNodesData.forEach((n: any) => {
+          if (n.config && n.config.campaignName) {
+            flowNodeMap.set(n.id, { name: n.config.campaignName });
+            if (n.config.emailCampaignId) {
+              flowNodeMap.set(n.config.emailCampaignId, { name: n.config.campaignName });
+            }
+          }
+        });
+      }
+
       // Map last email interaction per recipient for last-touch attribution (5-day window)
       const emailLastInteractionMap = new Map<string, { type: "click" | "open"; timestampMs: number }>();
       if (trackingEvents) {
@@ -349,7 +362,7 @@ export default function DashboardPage() {
           let cName = "";
 
           const campaignObj = dbCampaigns?.find((c: any) => c.id === payload.campaign_id);
-          const campTitle = campaignObj?.name || "Campanha Realizzare";
+          const campTitle = campaignObj?.name || (payload.campaign_id && flowNodeMap.get(payload.campaign_id)?.name) || (payload.node_id && flowNodeMap.get(payload.node_id)?.name) || "Campanha Automática";
 
           // Fallback: resolve recipient email from campaign target_list if missing in tracking payload
           if (!cEmail && campaignObj?.target_list) {

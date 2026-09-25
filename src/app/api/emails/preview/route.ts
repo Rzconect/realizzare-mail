@@ -21,8 +21,7 @@ export async function GET(req: NextRequest) {
       // Find the flow node that contains this emailCampaignId in its config
       const { data, error } = await supabase
         .from("flow_nodes")
-        .select("config")
-        .eq("type", "send_email");
+        .select("config");
 
       if (data) {
         const node = data.find(n => n.config && n.config.emailCampaignId === id);
