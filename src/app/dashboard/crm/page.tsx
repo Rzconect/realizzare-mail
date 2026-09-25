@@ -84,6 +84,7 @@ const initialAtividadeCardConfig: { id: AtividadeCardField, label: string, visib
 export default function CrmPage() {
   const [activeBoard, setActiveBoard] = useState<"teste_aprovado" | "pedidos_pendentes" | "atividades">("teste_aprovado");
   const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load deals from localStorage on mount and sync with DB
@@ -216,6 +217,18 @@ export default function CrmPage() {
             const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).single();
             if (profile) me = profile;
           }
+        }
+        if (me) {
+           let n = me.name || me.full_name || me.first_name || "";
+           let i = "UX";
+           if (n) {
+             const pts = n.trim().split(" ");
+             if(pts.length > 1) i = (pts[0].charAt(0) + pts[pts.length-1].charAt(0)).toUpperCase();
+             else i = pts[0].substring(0, 2).toUpperCase();
+           } else if (me.email) {
+             i = me.email.substring(0, 2).toUpperCase();
+           }
+           setCurrentUser({ name: n, initials: i });
         }
         
         if (!me) me = { id: Math.random().toString(), name: "Colaborador", email: "guest@example.com" };
@@ -861,6 +874,7 @@ export default function CrmPage() {
       </div>
 
       <DealModal 
+        currentUser={currentUser}
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         deal={selectedDeal}

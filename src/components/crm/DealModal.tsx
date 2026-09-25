@@ -16,9 +16,10 @@ interface DealModalProps {
   columns?: any[];
   onEdit?: () => void;
   onUpdate?: (updatedDeal: any) => void;
+  currentUser?: any;
 }
 
-export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit, onUpdate }: DealModalProps) {
+export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit, onUpdate, currentUser }: DealModalProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -505,7 +506,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
                     <span className="text-[10px] font-bold uppercase tracking-wider">Observações</span>
                   </div>
                   <div className="bg-slate-100/50 rounded-xl border border-slate-200 p-3 h-[300px]">
-                    <ContactNotes contactId={deal.contactId} />
+                    <ContactNotes contactId={deal.contactId} currentUser={currentUser} />
                   </div>
                 </div>
 </>
