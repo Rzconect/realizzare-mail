@@ -35,15 +35,15 @@ export async function GET(req: NextRequest) {
       const entryStr = entryDate.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
       
       const hoursAgo = Math.floor((new Date().getTime() - entryDate.getTime()) / (1000 * 60 * 60));
-      const timeInStep = hoursAgo > 24 ? "Há " + Math.floor(hoursAgo / 24) + " dias" : "Há " + hoursAgo + " horas";
+      const timeElapsed = hoursAgo > 24 ? "Há " + Math.floor(hoursAgo / 24) + " dias" : "Há " + hoursAgo + " horas";
       
       return {
         id: c.id,
         name,
         email: c.email,
         initials: name.substring(0, 2).toUpperCase(),
-        entryDate: entryStr,
-        timeInStep
+        enteredAt: entryStr,
+        timeElapsed
       };
     }) || [];
 

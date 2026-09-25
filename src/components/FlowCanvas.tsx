@@ -390,12 +390,23 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     setShowEmailGalleryModal(false);
   };
 
-  const handleOpenQueueModal = (node: FlowNode, statusName: string, count: number) => {
+  const handleOpenQueueModal = async (node: FlowNode, statusName: string, count: number) => {
     setQueueModalNode(node);
     setQueueModalStatusName(statusName);
     setQueueModalCount(count);
     setQueueSearchQuery("");
+    setQueueLeads([]); // clear previous
     setShowQueueModal(true);
+    
+    try {
+      const res = await fetch(`/api/flows/queue?nodeId=${node.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setQueueLeads(data.leads || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
   const [showInsertionPopover, setShowInsertionPopover] = useState(false);
   const [popoverCoords, setPopoverCoords] = useState({ x: 0, y: 0 });

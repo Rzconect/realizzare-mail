@@ -261,6 +261,17 @@ export async function POST(request: Request) {
     };
 
     const subscribeToList = async (contactId: string, listId: string) => {
+      const { data: existing } = await supabase
+        .from("list_subscriptions")
+        .select("status")
+        .eq("contact_id", contactId)
+        .eq("list_id", listId)
+        .maybeSingle();
+
+      if (existing && existing.status === "subscribed") {
+        return; // Already in list, do not update timestamp
+      }
+
       await supabase
         .from("list_subscriptions")
         .upsert(
@@ -275,6 +286,17 @@ export async function POST(request: Request) {
     };
 
     const unsubscribeFromList = async (contactId: string, listId: string) => {
+      const { data: existing } = await supabase
+        .from("list_subscriptions")
+        .select("status")
+        .eq("contact_id", contactId)
+        .eq("list_id", listId)
+        .maybeSingle();
+
+      if (!existing || existing.status === "unsubscribed") {
+        return; // If not in list, or already unsubscribed, do nothing
+      }
+
       await supabase
         .from("list_subscriptions")
         .update({
