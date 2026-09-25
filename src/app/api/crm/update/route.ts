@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     let rawId = "";
     
     if (id.startsWith("test-")) {
-      table = "reporting_events";
+      table = "course_events";
       rawId = id.replace("test-", "");
     } else if (id.startsWith("pend-")) {
       table = "reporting_events";
@@ -32,9 +32,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Unknown deal ID format" }, { status: 400 });
     }
 
-    if (table === "reporting_events") {
+    if (table === "reporting_events" || table === "course_events") {
       // Fetch current metadata
-      const { data: evt } = await supabase.from("reporting_events").select("metadata").eq("id", rawId).single();
+      const { data: evt } = await supabase.from(table).select("metadata").eq("id", rawId).single();
       if (!evt) return NextResponse.json({ success: false, error: "Event not found" }, { status: 404 });
 
       let newMetadata = { ...(evt.metadata || {}) };
@@ -44,9 +44,10 @@ export async function POST(req: Request) {
       } else if (action === "update") {
         if (payload.columnId) newMetadata.crm_column = payload.columnId;
         if (payload.assignedTo) newMetadata.crm_assigned = payload.assignedTo;
+        if (payload.notes) newMetadata.crm_notes = payload.notes;
       }
 
-      const { error } = await supabase.from("reporting_events").update({ metadata: newMetadata }).eq("id", rawId);
+      const { error } = await supabase.from(table).update({ metadata: newMetadata }).eq("id", rawId);
       if (error) throw error;
     }
 

@@ -14,7 +14,7 @@ interface Note {
 
 const NOTES_FIELD_ID = "09145055-2d08-4d41-b21f-0a9d338044c8";
 
-export default function ContactNotes({ contactId, currentUser }: { contactId: string, currentUser?: { initials: string, name: string } }) {
+export default function ContactNotes({ contactId, currentUser, localNotes, onChangeLocalNotes }: { contactId?: string, currentUser?: { initials: string, name: string }, localNotes?: any[], onChangeLocalNotes?: (n: any[]) => void }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [newNote, setNewNote] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +71,8 @@ export default function ContactNotes({ contactId, currentUser }: { contactId: st
             console.error(e);
           }
         }
+      } else if (localNotes) {
+        setNotes([...localNotes].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       }
       setIsLoading(false);
     };
@@ -81,15 +83,17 @@ export default function ContactNotes({ contactId, currentUser }: { contactId: st
     if (!confirm("Tem certeza que deseja apagar esta observação?")) return;
     const updatedNotes = notes.filter(n => n.id !== noteId);
     setNotes(updatedNotes);
-    const supabase = createClient();
+    if (onChangeLocalNotes) onChangeLocalNotes(updatedNotes);
     
-    const { data: ex } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
-    if (ex) {
-      await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", ex.id);
-    } else {
-      await supabase.from("contact_custom_values").insert({ contact_id: contactId, field_id: NOTES_FIELD_ID, value_text: JSON.stringify(updatedNotes) });
+    if (contactId) {
+      const supabase = createClient();
+      const { data: ex } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
+      if (ex) {
+        await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", ex.id);
+      } else {
+        await supabase.from("contact_custom_values").insert({ contact_id: contactId, field_id: NOTES_FIELD_ID, value_text: JSON.stringify(updatedNotes) });
+      }
     }
-
   };
 
   const handleUpdateNote = async (noteId: string) => {
@@ -97,19 +101,20 @@ export default function ContactNotes({ contactId, currentUser }: { contactId: st
     const updatedNotes = notes.map(n => n.id === noteId ? { ...n, content: editContent } : n);
     setNotes(updatedNotes);
     setEditingNoteId(null);
-    const supabase = createClient();
+    if (onChangeLocalNotes) onChangeLocalNotes(updatedNotes);
     
-    const { data: ex } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
-    if (ex) {
-      await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", ex.id);
-    } else {
-      await supabase.from("contact_custom_values").insert({ contact_id: contactId, field_id: NOTES_FIELD_ID, value_text: JSON.stringify(updatedNotes) });
+    if (contactId) {
+      const supabase = createClient();
+      const { data: ex } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
+      if (ex) {
+        await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", ex.id);
+      } else {
+        await supabase.from("contact_custom_values").insert({ contact_id: contactId, field_id: NOTES_FIELD_ID, value_text: JSON.stringify(updatedNotes) });
+      }
     }
-
   };
 
   const handleSaveNote = async () => {
-    if (!contactId) { alert("Este card não possui um contato vinculado. (ID Ausente)"); return; }
     if (!newNote.trim()) return;
     setIsSaving(true);
     const supabase = createClient();
@@ -118,15 +123,19 @@ export default function ContactNotes({ contactId, currentUser }: { contactId: st
       id: Math.random().toString(36).substring(7),
       content: newNote.trim(),
       author_initials: userInitials,
-        author_name: userName,
+      author_name: userName,
       created_at: new Date().toISOString()
     };
     
     const updatedNotes = [newNoteObj, ...notes];
     
+    // Optimistic UI Update
+    setNotes(updatedNotes);
+    setNewNote("");
+    if (onChangeLocalNotes) onChangeLocalNotes(updatedNotes);
     
+    if (contactId) {
       const { data: existingData } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();
-      
       let error;
       if (existingData) {
         const { error: updateErr } = await supabase.from("contact_custom_values").update({ value_text: JSON.stringify(updatedNotes) }).eq("id", existingData.id);
@@ -139,12 +148,12 @@ export default function ContactNotes({ contactId, currentUser }: { contactId: st
         });
         error = insertErr;
       }
-
-    
-    if (!error) {
-      setNotes(updatedNotes);
-      setNewNote("");
+      
+      if (error) {
+        setNotes(notes); // Revert UI
+      }
     }
+    
     setIsSaving(false);
   };
 

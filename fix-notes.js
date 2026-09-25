@@ -1,18 +1,31 @@
 const fs = require('fs');
+let c = fs.readFileSync('src/app/dashboard/conversations/page.tsx', 'utf8');
 
-const path = 'src/components/crm/ContactNotes.tsx';
-let c = fs.readFileSync(path, 'utf8');
+c = c.replace('<div className="p-4 space-y-4">', '<div className="p-4 pb-32 space-y-4">');
+c = c.replace('<div className="p-4 space-y-2">', '<div className="p-4 pb-32 space-y-2">');
 
-const target = `<div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-bold text-slate-700 block">{note.author_name || "Observação"}</span>
-                      <span className="text-[9px] text-slate-400">{new Date(note.created_at).toLocaleDateString('pt-BR')} às {new Date(note.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
-                    </div>`;
+fs.writeFileSync('src/app/dashboard/conversations/page.tsx', c);
 
-const replacement = `<div className="mb-1">
-                      <span className="text-[10px] text-slate-400 whitespace-nowrap">{new Date(note.created_at).toLocaleDateString('pt-BR')} às {new Date(note.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
-                    </div>`;
+// Also modify ContactNotes.tsx to be optimistic update!
+let notesCode = fs.readFileSync('src/components/crm/ContactNotes.tsx', 'utf8');
 
-c = c.replace(target, replacement);
+notesCode = notesCode.replace(`    const updatedNotes = [newNoteObj, ...notes];
+    
+    
+      const { data: existingData } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();`,
+`    const updatedNotes = [newNoteObj, ...notes];
+    setNotes(updatedNotes);
+    setNewNote("");
+    
+      const { data: existingData } = await supabase.from("contact_custom_values").select("id").eq("contact_id", contactId).eq("field_id", NOTES_FIELD_ID).single();`);
 
-fs.writeFileSync(path, c);
-console.log('Fixed ContactNotes UI');
+notesCode = notesCode.replace(`    if (!error) {
+      setNotes(updatedNotes);
+      setNewNote("");
+    }`, `    if (error) {
+      setNotes(notes); // revert on error
+    }`);
+
+fs.writeFileSync('src/components/crm/ContactNotes.tsx', notesCode);
+
+console.log('Fixed panel padding and optimistic update');

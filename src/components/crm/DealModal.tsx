@@ -506,7 +506,7 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
                     <span className="text-[10px] font-bold uppercase tracking-wider">Observações</span>
                   </div>
                   <div className="bg-slate-100/50 rounded-xl border border-slate-200 p-3 h-[300px]">
-                    <ContactNotes contactId={deal.contactId} currentUser={currentUser} />
+                    <ContactNotes contactId={deal.contactId} currentUser={currentUser} localNotes={deal.notes} onChangeLocalNotes={(n) => onUpdate && onUpdate({...deal, notes: n})} />
                   </div>
                 </div>
 </>

@@ -143,6 +143,7 @@ export async function GET() {
         assignedTo: evt.metadata?.crm_assigned || "Sem responsável",
         boardId: "teste_aprovado",
         archived: evt.metadata?.crm_archived || false,
+        notes: evt.metadata?.crm_notes || [],
         createdAt: evt.created_at,
         description: `Nota do teste: ${evt.metadata?.score || 100}`
       });
@@ -171,6 +172,7 @@ export async function GET() {
         assignedTo: p.metadata?.crm_assigned || "Sem responsável",
         boardId: "pedidos_pendentes",
         archived: p.metadata?.crm_archived || false,
+        notes: p.metadata?.crm_notes || [],
         createdAt: p.created_at,
         description: `Boleto ou PIX no valor de R$ ${amt.toFixed(2).replace('.', ',')}`,
         statusBadge: {

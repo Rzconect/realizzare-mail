@@ -1551,7 +1551,7 @@ function ConversationsContent() {
               </button>
             </div>
             
-            <div className="p-4 space-y-2">
+            <div className="p-4 pb-32 space-y-2">
               {panelConfig.order.map((sec: string, i: number) => (
                 <div key={sec} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sec === 'personal' ? 'Info Pessoais' : sec === 'cursos' ? 'Cursos' : sec === 'transacoes' ? 'Transações' : sec === 'timeline' ? 'Linha do Tempo' : 'Observações'}</span>

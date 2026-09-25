@@ -19,6 +19,7 @@ interface Deal {
   phone?: string;
   email?: string;
   assignedTo?: string;
+  notes?: any[];
   boardId?: string;
   archived?: boolean;
   archivedAt?: string;
@@ -351,7 +352,7 @@ export default function CrmPage() {
     fetch("/api/crm/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: updatedDeal.id, action: "update", payload: { columnId: updatedDeal.columnId, assignedTo: updatedDeal.assignedTo } })
+      body: JSON.stringify({ id: updatedDeal.id, action: "update", payload: { columnId: updatedDeal.columnId, assignedTo: updatedDeal.assignedTo, notes: updatedDeal.notes } })
     });
   };
 
