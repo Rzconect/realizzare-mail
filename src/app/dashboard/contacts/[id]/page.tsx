@@ -205,7 +205,7 @@ export function formatTimelineTimestamp(ts: string): string {
   return ts;
 }
 
-function formatPayloadKeyValues(payload: any): Array<{ key: string; value: string }> {
+function formatPayloadKeyValues(payload: any, eventType?: string): Array<{ key: string; value: string }> {
   if (!payload || typeof payload !== "object") return [];
 
   const data = payload.payload ? { ...payload, ...payload.payload } : { ...payload };
@@ -244,6 +244,9 @@ function formatPayloadKeyValues(payload: any): Array<{ key: string; value: strin
 
   Object.entries(data).forEach(([rawKey, val]) => {
     if (val === null || val === undefined || rawKey === "org_id" || rawKey === "contact_id") return;
+      if (eventType === "open" || eventType === "email_click") {
+        if (rawKey === "flow_id" || rawKey === "node_id" || rawKey === "campaign_id") return;
+      }
 
     const displayKey = labelMap[rawKey] || rawKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
     let displayVal = String(val);
@@ -315,6 +318,7 @@ export default function ContactProfilePage({ params }: PageProps) {
   // Sync with Supabase Database
   useEffect(() => {
     const loadProfileData = async () => {
+      let contactFlows: any[] = [];
       try {
         const supabase = createClient();
 
@@ -528,7 +532,7 @@ export default function ContactProfilePage({ params }: PageProps) {
         // 3. Fetch Timeline, Tracking Events, Campaigns & Course Events for this Contact
         const { data: dbCampaignsData } = await supabase
           .from("campaigns")
-          .select("id, name, target_list, status, sent_at, created_at");
+          .select("id, name, subject, target_list, status, sent_at, created_at");
 
         const campaignMap = new Map<string, string>();
         if (dbCampaignsData) {
@@ -540,7 +544,12 @@ export default function ContactProfilePage({ params }: PageProps) {
         if (flowNodesData) {
           flowNodesData.forEach((n: any) => {
             if (n.config && n.config.campaignName) {
-              flowNodeMap.set(n.id, { name: n.config.campaignName, flowName: n.flows?.name || "Automação" });
+              flowNodeMap.set(n.id, { 
+                name: n.config.campaignName, 
+                flowName: n.flows?.name || "Automação",
+                campaignId: n.config.emailCampaignId || "N/A",
+                subject: n.config.subject || "(Sem assunto)"
+              });
             }
           });
         }
@@ -558,7 +567,7 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         const { data: flowRunsData } = await supabase
           .from("flow_runs")
-          .select("*, flows(name)")
+          .select("*, flows(name, trigger_type, trigger_metric)")
           .eq("contact_id", contact.id);
 
         const { data: flowRunLogsData } = await supabase
@@ -857,7 +866,8 @@ export default function ContactProfilePage({ params }: PageProps) {
               type: "signup",
               label: "Iniciou Automação",
               details: `${flowName}`,
-              timestamp: r.created_at
+              timestamp: r.created_at,
+              payload: { "Gatilho": r.flows?.trigger_metric || r.flows?.trigger_type || "N/A" }
             });
             
             if (r.status === "completed") {
@@ -878,8 +888,13 @@ export default function ContactProfilePage({ params }: PageProps) {
                 id: `list-sub-${contact.id}-${idx}`,
                 type: ls.status === 'subscribed' ? 'check' : 'x',
                 label: statusText,
-                details: ls.lists.name,
-                timestamp: ls.updated_at || contact.created_at
+                details: ls.lists?.name || "Lista Desconhecida",
+                timestamp: ls.updated_at || contact.created_at,
+                payload: {
+                  "Motivo": ls.status === 'subscribed' 
+                    ? "Inscrição manual, atualização de perfil ou fluxo de automação" 
+                    : "Cancelamento de inscrição, atualização de perfil ou fluxo de automação"
+                }
               });
             }
           });
@@ -892,17 +907,22 @@ export default function ContactProfilePage({ params }: PageProps) {
             if (log.action_taken && log.action_taken.startsWith("E-mail enviado")) {
               let campTitle = "E-mail";
               let flowName = "Automação";
+              let campId = "N/A";
+              let campSubj = "(Sem assunto)";
               if (log.node_id && flowNodeMap.has(log.node_id)) {
                  const nd = flowNodeMap.get(log.node_id);
                  campTitle = nd.name;
                  flowName = nd.flowName;
+                 campId = nd.campaignId;
+                 campSubj = nd.subject;
               }
               rawEvents.push({
                 id: "log-" + log.id,
                 type: "send",
                 label: `Foi enviado o ${campTitle}`,
                 details: `Automação: ${flowName}`,
-                timestamp: log.created_at
+                timestamp: log.created_at,
+                payload: { "Assunto": campSubj, "Campaign ID": campId }
               });
             }
           });
@@ -923,7 +943,21 @@ export default function ContactProfilePage({ params }: PageProps) {
             seenEvtKeys.add(key);
             return true;
           })
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .sort((a, b) => {
+            const tA = new Date(a.timestamp).getTime();
+            const tB = new Date(b.timestamp).getTime();
+            if (tA !== tB) return tB - tA;
+            const weight = (label: string) => {
+              if (label.includes("Finalizou")) return 6;
+              if (label.includes("Aberto") || label.includes("Clicado")) return 5;
+              if (label.includes("Foi enviado")) return 4;
+              if (label.includes("Iniciou")) return 3;
+              if (label.includes("Inscrito") || label.includes("Removido")) return 2;
+              if (label.includes("Cadastrado")) return 1;
+              return 0;
+            };
+            return weight(b.label || "") - weight(a.label || "");
+          })
           .map((e, idx) => ({
             id: e.id || `evt-${idx}`,
             type: e.type || "import",
@@ -935,7 +969,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           }));
 
         
-          let contactFlows: any[] = [];
+          
           if (flowRunsData) {
             const flowTotalNodes = new Map<string, number>();
             if (flowNodesData) {
@@ -1184,7 +1218,7 @@ export default function ContactProfilePage({ params }: PageProps) {
             }
           ],
           purchases: customPurchases,
-          flows: [],
+          flows: contactFlows,
           timeline: [
             ...customTimelineEvents,
             { id: "t1", type: "import", label: "Contato Mapeado", details: "Mapeado via Pagar.me V5 Integration", timestamp: created_at }
@@ -2293,8 +2327,8 @@ export default function ContactProfilePage({ params }: PageProps) {
                             <span className="text-emerald-600 font-bold">● Processado</span>
                           </div>
                           <div className="space-y-2 pt-0.5">
-                            {formatPayloadKeyValues(event.payload).length > 0 ? (
-                              formatPayloadKeyValues(event.payload).map((item, i) => (
+                            {formatPayloadKeyValues(event.payload, event.type).length > 0 ? (
+                              formatPayloadKeyValues(event.payload, event.type).map((item, i) => (
                                 <div key={i} className="flex flex-col text-xs leading-tight space-y-0.5">
                                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.key}:</span>
                                   <span className="font-semibold text-slate-800 break-all select-all">{item.value}</span>
