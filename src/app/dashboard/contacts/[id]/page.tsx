@@ -990,15 +990,15 @@ export default function ContactProfilePage({ params }: PageProps) {
               // Timezone fix for entered_at
               const dateObj = new Date(r.created_at);
               // Shift by timezone offset so formatting it as local returns the correct calendar day
-              const userTimezoneOffset = dateObj.getTimezoneOffset() * 60000;
-              const localDate = new Date(dateObj.getTime() - userTimezoneOffset);
-              
+              const options: Intl.DateTimeFormatOptions = { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' };
+              const brtDate = dateObj.toLocaleDateString('pt-BR', options).split('/').reverse().join('-');
+
               return {
                 name: r.flows?.name || "Fluxo Desconhecido",
                 status: r.status === 'completed' ? 'completed' : 'active',
                 progress,
                 total_emails: totalNodes,
-                entered_at: localDate.toISOString().split('T')[0]
+                entered_at: brtDate
               };
             });
           }
@@ -2182,7 +2182,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                               {flow.name}
                             </div>
                             <div className="text-[10px] text-slate-400 mt-0.5">
-                              Entrou em: {new Date(flow.entered_at).toLocaleDateString("pt-BR")}
+                              Entrou em: {flow.entered_at.split("-").reverse().join("/")}
                             </div>
                           </td>
                           <td className="py-3.5">

@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
 
       if (data) {
         const node = data.find(n => n.config && n.config.emailCampaignId === id);
-        if (node && node.config.htmlBody) {
-          htmlContent = node.config.htmlBody;
+        if (node && node.config.htmlContent) {
+          htmlContent = node.config.htmlContent;
         }
       }
     } else {

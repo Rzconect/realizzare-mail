@@ -974,6 +974,25 @@ export default function DashboardPage() {
           });
         }
 
+        const { data: dbFlowSends } = await supabase
+          .from("flow_run_logs")
+          .select("created_at")
+          .like("action_taken", "E-mail enviado%");
+
+        if (dbFlowSends && dbFlowSends.length > 0) {
+          dbFlowSends.forEach((c: any) => {
+            const dateObj = new Date(c.created_at);
+            const eventTime = dateObj.getTime();
+            if (eventTime >= start.getTime() && eventTime <= end.getTime()) {
+              const label = `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+              const entry = slotMap.get(label);
+              if (entry) {
+                entry.envios += 1;
+              }
+            }
+          });
+        }
+        
         // 2. Fetch real tracking events (open and click) with Unique Email Deduplication
         const { data: trackingEvents } = await supabase
           .from("inbound_webhook_events")
