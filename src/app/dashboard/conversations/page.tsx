@@ -1365,11 +1365,11 @@ function ConversationsContent() {
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-500 text-xs">Cidade:</span>
-                                        <span className="font-medium text-slate-700 text-right text-xs">{(profile as any).city || "-"}</span>
+                                        <span className="font-medium text-slate-700 text-right text-xs">{(profile as any).location?.city || "-"}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-500 text-xs">Estado:</span>
-                                        <span className="font-medium text-slate-700 text-right text-xs">{(profile as any).state || "-"}</span>
+                                        <span className="font-medium text-slate-700 text-right text-xs">{(profile as any).location?.state || "-"}</span>
                                     </div>
                                   </div>
                                 )}
@@ -1428,7 +1428,20 @@ function ConversationsContent() {
                                               <p className="text-xs font-bold text-slate-700">{t.product_name}</p>
                                               <p className="text-[10px] text-slate-500">{formatTransactionDate(t.paid_at, t.product_type)}</p>
                                             </div>
-                                            <span className={`text-xs font-bold ${t.status === 'Pago' ? 'text-emerald-600' : 'text-orange-500'}`}>{Number(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            
+<div className="text-right">
+  <p className={`text-xs font-bold ${t.status === 'Pago' || t.status === 'paid' ? 'text-emerald-600' : 'text-orange-500'}`}>
+    R$ {Number(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </p>
+  <span className={`inline-flex items-center px-1.5 py-0.5 mt-0.5 rounded text-[8px] font-bold ${
+    t.status === 'Pago' || t.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 
+    t.status === 'Pendente' || t.status === 'pending' ? 'bg-orange-100 text-orange-700' : 
+    'bg-red-100 text-red-700'
+  }`}>
+    {t.status === 'paid' ? 'PAGO' : t.status === 'pending' ? 'PENDENTE' : (t.status || '').toUpperCase()}
+  </span>
+</div>
+
                                           </div>
                                         ))}
                                       </div>
