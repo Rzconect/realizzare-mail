@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Filter, Unlink, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2 } from "lucide-react";
+import { Search, ChevronUp, Settings, Filter, Unlink, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2 } from "lucide-react";
 import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
 import { createClient } from "@/lib/supabase/client";
 import ContactNotes from "@/components/crm/ContactNotes";
@@ -37,8 +37,39 @@ function ConversationsContent() {
   const [newChatPhone, setNewChatPhone] = useState("");
   
   const [showContactDetails, setShowContactDetails] = useState(true);
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ notes: true });
-  const toggleSection = (sec: string) => setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
+    const [panelConfig, setPanelConfig] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('realizzare_contact_panel_config');
+      if (saved) return JSON.parse(saved);
+    }
+    return {
+      order: ["personal", "cursos", "transacoes", "timeline", "notes"],
+      openState: { personal: true, cursos: false, transacoes: false, timeline: false, notes: false }
+    };
+  });
+  const [isPanelConfigOpen, setIsPanelConfigOpen] = useState(false);
+
+  const toggleSection = (sec: string) => {
+    setPanelConfig((prev: any) => {
+      const next = { ...prev, openState: { ...prev.openState, [sec]: !prev.openState[sec] } };
+      if (typeof window !== 'undefined') localStorage.setItem('realizzare_contact_panel_config', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const movePanelSection = (index: number, direction: number) => {
+    setPanelConfig((prev: any) => {
+      const newOrder = [...prev.order];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= newOrder.length) return prev;
+      const temp = newOrder[index];
+      newOrder[index] = newOrder[targetIndex];
+      newOrder[targetIndex] = temp;
+      const next = { ...prev, order: newOrder };
+      if (typeof window !== 'undefined') localStorage.setItem('realizzare_contact_panel_config', JSON.stringify(next));
+      return next;
+    });
+  };
   const [linkedContacts, setLinkedContacts] = useState<Record<string, string>>({}); // chatId -> contact email or ID
   const [searchEmail, setSearchEmail] = useState("");
   const [autocompleteResults, setAutocompleteResults] = useState<any[]>([]);
@@ -148,7 +179,9 @@ function ConversationsContent() {
         const { data: chatsData } = await supabase
           .from('whatsapp_chats')
           .select('*, whatsapp_messages(*)')
-          .order('last_message_time', { ascending: false });
+          .order('last_message_time', { ascending: false })
+          .order('created_at', { foreignTable: 'whatsapp_messages', ascending: false })
+          .limit(50, { foreignTable: 'whatsapp_messages' });
 
         if (chatsData && isMounted) {
           const mappedChats = chatsData.map(c => {
@@ -1010,7 +1043,7 @@ function ConversationsContent() {
                 </span>
               </div>
 
-              {activeChat.messages.map((msg: any) => {
+              {activeChat.messages.map((msg: any, msgIndex: number) => {
                 const isMine = msg.sender === "agent";
                 const isBot = msg.sender === "bot";
                 
@@ -1032,7 +1065,7 @@ function ConversationsContent() {
   {activeMessageMenu === msg.id && (
     <>
       <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
-      <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+      <div className={`absolute right-2 ${msgIndex >= activeChat.messages.length - 2 ? 'bottom-8' : 'top-8'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden`}>
         <button onClick={() => { setActiveMessageMenu(null); alert("Responder ainda não implementado na API local."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
         <button onClick={() => {
                                 setActiveMessageMenu(null);
@@ -1144,7 +1177,7 @@ function ConversationsContent() {
                       {activeMessageMenu === msg.id && (
                         <>
                           <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
-                          <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                          <div className={`absolute right-2 ${msgIndex >= activeChat.messages.length - 2 ? 'bottom-8' : 'top-8'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden`}>
                             <button onClick={() => { setActiveMessageMenu(null); setReplyingTo(msg); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
                             <button onClick={async () => { 
                               setActiveMessageMenu(null);
@@ -1170,7 +1203,7 @@ function ConversationsContent() {
                   </div>
                 );
               })}
-              <div ref={messagesEndRef} className="pb-40" />
+              <div ref={messagesEndRef} className="pb-4" />
             </div>
 
             {/* Input Area */}
@@ -1302,134 +1335,136 @@ function ConversationsContent() {
                   return (
                     <>
                       <div className="space-y-6">
-                        {/* Dados do Aluno */}
-                        <div>
-                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1 border-b border-slate-200 pb-2">
-                            <UserIcon className="h-4 w-4 text-slate-400" /> Informações Pessoais
-                          </h5>
-                          <div className="space-y-2.5 text-sm">
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">Nome:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs truncate max-w-[180px]" title={`${profile.first_name} ${profile.last_name}`}>{profile.first_name} {profile.last_name}</span>
-                             </div>
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">Telefone:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs">{profile.phone || "Não informado"}</span>
-                             </div>
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">E-mail:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs break-all" title={profile.email}>{profile.email || "Não informado"}</span>
-                             </div>
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">Cidade:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs">{profile.location?.city || "Não informada"}</span>
-                             </div>
-                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-xs">Estado:</span>
-                                <span className="font-medium text-slate-700 text-right text-xs">{profile.location?.state || "-"}</span>
-                             </div>
-                          </div>
-                        </div>
-
-                        {/* Observações */}
-                        <div>
-                          <button onClick={() => toggleSection('notes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
-                            <div className="flex items-center gap-1"><FileText className="h-4 w-4 text-slate-400" /> Observações</div>
-                            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.notes ? 'rotate-180' : ''}`} />
-                          </button>
-                          {openSections.notes && (
-                            <div className="mt-3 h-[300px] overflow-hidden flex flex-col">
-                              <ContactNotes contactId={linkedContacts[activeChat.id]} currentUser={currentUser ? { name: currentUser.name, initials: currentUser.name.split(" ").length > 1 ? (currentUser.name.split(" ")[0][0] + currentUser.name.split(" ")[currentUser.name.split(" ").length-1][0]).toUpperCase() : currentUser.name.substring(0,2).toUpperCase() } : undefined} />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Cursos */}
-                        <div>
-                          <button onClick={() => toggleSection('cursos')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
-                            <div className="flex items-center gap-1"><BookOpen className="h-4 w-4 text-slate-400" /> Cursos Matriculados</div>
-                            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.cursos ? 'rotate-180' : ''}`} />
-                          </button>
-                          {openSections.cursos && (
-                            <div className="mt-3">
-                              {profile.enrollments && profile.enrollments.length > 0 ? (
-                                <div className="space-y-2">
-                                  {profile.enrollments.slice(0, 3).map((e: any, i: number) => (
-                                    <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex flex-col gap-1.5">
-                                       <span className="text-xs font-bold text-slate-700 leading-tight truncate">{e.course_name}</span>
-                                       <div className="flex items-center justify-between">
-                                         <span className="text-slate-500 text-[10px]">Progresso: <strong className="text-slate-700">{e.progress}%</strong></span>
-                                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${e.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                                           {e.status === 'completed' ? 'Concluído' : 'Ativo'}
-                                         </span>
-                                       </div>
+                        {(() => {
+                          const blocks: Record<string, React.ReactNode> = {
+                            personal: (
+                              <div key="personal">
+                                <button onClick={() => toggleSection('personal')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                                  <div className="flex items-center gap-1"><UserIcon className="h-4 w-4 text-slate-400" /> Informações Pessoais</div>
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${panelConfig.openState.personal ? 'rotate-180' : ''}`} />
+                                </button>
+                                {panelConfig.openState.personal && (
+                                  <div className="space-y-2.5 text-sm">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 text-xs shrink-0">Nome:</span>
+                                        <span className="font-medium text-slate-700 text-right text-xs ml-2" title={`${profile.first_name} ${profile.last_name || ''}`.trim() || 'Sem Nome'}>
+                                          {`${profile.first_name} ${profile.last_name || ''}`.trim().length > 38 ? `${profile.first_name} ${profile.last_name || ''}`.trim().substring(0, 38) + '...' : `${profile.first_name} ${profile.last_name || ''}`.trim() || 'Sem Nome'}
+                                        </span>
                                     </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhuma matrícula encontrada.</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Transações */}
-                        <div>
-                          <button onClick={() => toggleSection('transacoes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
-                            <div className="flex items-center gap-1"><DollarSign className="h-4 w-4 text-slate-400" /> Últimas Transações</div>
-                            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.transacoes ? 'rotate-180' : ''}`} />
-                          </button>
-                          {openSections.transacoes && (
-                            <div className="mt-3">
-                              {profile.purchases && profile.purchases.length > 0 ? (
-                                <div className="space-y-2">
-                                  {[...(profile.purchases || [])].sort((a, b) => new Date(b.paid_at || 0).getTime() - new Date(a.paid_at || 0).getTime()).slice(0, 3).map((p: any, i: number) => (
-                                    <div key={i} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm flex justify-between items-center gap-2">
-                                      <div className="min-w-0 flex-1">
-                                        <span className="text-xs font-bold text-slate-700 block truncate">{p.product_name}</span>
-                                        <span className="text-[10px] text-slate-400">{formatTransactionDate(p.paid_at, p.product_type)}</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 text-xs">Telefone:</span>
+                                        <span className="font-medium text-slate-700 text-right text-xs">{profile.phone || "Não informado"}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 text-xs">E-mail:</span>
+                                        <span className="font-medium text-slate-700 text-right text-xs break-all" title={profile.email}>{profile.email || "Não informado"}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 text-xs">Cidade:</span>
+                                        <span className="font-medium text-slate-700 text-right text-xs">{(profile as any).city || "-"}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 text-xs">Estado:</span>
+                                        <span className="font-medium text-slate-700 text-right text-xs">{(profile as any).state || "-"}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                            notes: (
+                              <div key="notes" className="flex flex-col">
+                                <button onClick={() => toggleSection('notes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                                  <div className="flex items-center gap-1"><FileText className="h-4 w-4 text-slate-400" /> Observações</div>
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${panelConfig.openState.notes ? 'rotate-180' : ''}`} />
+                                </button>
+                                {panelConfig.openState.notes && (
+                                  <div className="mt-3 h-[300px] flex flex-col relative overflow-hidden bg-white/50 rounded-xl border border-slate-100 p-2">
+                                    <ContactNotes contactId={(profile as any).id || linkedContacts[activeChat.id]} currentUser={currentUser ? { name: currentUser.name, initials: currentUser.name.split(" ").length > 1 ? (currentUser.name.split(" ")[0][0] + currentUser.name.split(" ")[currentUser.name.split(" ").length-1][0]).toUpperCase() : currentUser.name.substring(0,2).toUpperCase() } : undefined} />
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                            cursos: (
+                              <div key="cursos">
+                                <button onClick={() => toggleSection('cursos')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                                  <div className="flex items-center gap-1"><BookOpen className="h-4 w-4 text-slate-400" /> Cursos Matriculados</div>
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${panelConfig.openState.cursos ? 'rotate-180' : ''}`} />
+                                </button>
+                                {panelConfig.openState.cursos && (
+                                  <div className="mt-3">
+                                    {(profile as any).cursos && (profile as any).cursos.length > 0 ? (
+                                      <div className="space-y-2">
+                                        {(profile as any).cursos.map((c: any, i: number) => (
+                                          <div key={i} className="bg-slate-100 p-2 rounded-lg border border-slate-200/60">
+                                            <p className="text-xs font-bold text-slate-700">{c.nome}</p>
+                                            <p className="text-[10px] text-slate-500 mt-1">Concluído: {c.progresso || '0'}%</p>
+                                          </div>
+                                        ))}
                                       </div>
-                                      <div className="text-right shrink-0">
-                                         <span className="text-xs font-bold text-emerald-600 block">R$ {p.amount.toFixed(2).replace('.', ',')}</span>
-                                         <span className="text-[9px] font-semibold text-emerald-500 uppercase">Pago</span>
+                                    ) : (
+                                      <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhum curso matriculado.</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                            transacoes: (
+                              <div key="transacoes">
+                                <button onClick={() => toggleSection('transacoes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                                  <div className="flex items-center gap-1"><DollarSign className="h-4 w-4 text-slate-400" /> Últimas Transações</div>
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${panelConfig.openState.transacoes ? 'rotate-180' : ''}`} />
+                                </button>
+                                {panelConfig.openState.transacoes && (
+                                  <div className="mt-3">
+                                    {(profile as any).transacoes && (profile as any).transacoes.length > 0 ? (
+                                      <div className="space-y-2">
+                                        {(profile as any).transacoes.map((t: any, i: number) => (
+                                          <div key={i} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg border border-slate-200/60">
+                                            <div>
+                                              <p className="text-xs font-bold text-slate-700">{t.produto}</p>
+                                              <p className="text-[10px] text-slate-500">{t.data}</p>
+                                            </div>
+                                            <span className={`text-xs font-bold ${t.status === 'Pago' ? 'text-emerald-600' : 'text-orange-500'}`}>{t.valor}</span>
+                                          </div>
+                                        ))}
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhuma transação encontrada.</p>
-                              )}
-                            </div>
-                          )}
+                                    ) : (
+                                      <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhuma transação encontrada.</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                            timeline: (
+                              <div key="timeline">
+                                <button onClick={() => toggleSection('timeline')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                                  <div className="flex items-center gap-1"><Clock className="h-4 w-4 text-slate-400" /> Linha do Tempo</div>
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${panelConfig.openState.timeline ? 'rotate-180' : ''}`} />
+                                </button>
+                                {panelConfig.openState.timeline && (
+                                  <div className="mt-3">
+                                    {(profile as any).timeline && (profile as any).timeline.length > 0 ? (
+                                      <div className="relative border-l-2 border-slate-200 ml-2 pl-4 py-2 space-y-4">
+                                        {(profile as any).timeline.map((t: any, i: number) => (
+                                          <div key={i} className="relative">
+                                            <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-indigo-500 border-2 border-slate-50"></div>
+                                            <p className="text-xs font-medium text-slate-700">{t.action}</p>
+                                            <span className="text-[9px] text-slate-400 block mt-1">{formatTimelineTimestamp(t.timestamp)}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhum evento registrado.</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          };
+                          
+                          return panelConfig.order.map((key: string) => blocks[key]);
+                        })()}
                         </div>
-
-                        {/* Timeline */}
-                        <div>
-                          <button onClick={() => toggleSection('timeline')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
-                            <div className="flex items-center gap-1"><Clock className="h-4 w-4 text-slate-400" /> Linha do Tempo</div>
-                            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.timeline ? 'rotate-180' : ''}`} />
-                          </button>
-                          {openSections.timeline && (
-                            <div className="mt-3">
-                              {profile.timeline && profile.timeline.length > 0 ? (
-                                <div className="relative border-l-2 border-slate-200 ml-2 space-y-4 pb-2 mt-3">
-                                  {profile.timeline.slice(0, 3).map((t: any, i: number) => (
-                                    <div key={i} className="relative pl-4">
-                                      <div className="absolute -left-[5.5px] top-1.5 h-2.5 w-2.5 rounded-full bg-white border-2 border-indigo-500" />
-                                      <span className="text-xs font-bold text-slate-700 block leading-tight">{t.label}</span>
-                                      <span className="text-[10px] text-slate-500 block leading-tight mt-1">{t.details}</span>
-                                      <span className="text-[9px] text-slate-400 block mt-1">{formatTimelineTimestamp(t.timestamp)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-slate-400 italic text-center py-2 bg-slate-100/50 rounded-lg border border-slate-200/50">Nenhum evento registrado.</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                      </div>
                     </>
                   );
                 })()
@@ -1487,6 +1522,34 @@ function ConversationsContent() {
           </div>
         )}
       </div>
+
+      {isPanelConfigOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800">Configurar Painel</h3>
+              <button onClick={() => setIsPanelConfigOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-2">
+              {panelConfig.order.map((sec: string, i: number) => (
+                <div key={sec} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sec === 'personal' ? 'Info Pessoais' : sec === 'cursos' ? 'Cursos' : sec === 'transacoes' ? 'Transações' : sec === 'timeline' ? 'Linha do Tempo' : 'Observações'}</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => toggleSection(sec)} className={`text-[10px] px-2 py-1 font-bold rounded ${panelConfig.openState[sec] ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>{panelConfig.openState[sec] ? 'ABERTO' : 'FECHADO'}</button>
+                    <div className="flex flex-col gap-1">
+                      <button onClick={() => movePanelSection(i, -1)} disabled={i === 0} className="p-1 bg-white border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-50"><ChevronUp className="h-3 w-3 text-slate-600"/></button>
+                      <button onClick={() => movePanelSection(i, 1)} disabled={i === panelConfig.order.length - 1} className="p-1 bg-white border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-50"><ChevronDown className="h-3 w-3 text-slate-600"/></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showNewChatModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">

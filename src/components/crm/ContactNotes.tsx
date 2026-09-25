@@ -153,7 +153,7 @@ export default function ContactNotes({ contactId, currentUser }: { contactId: st
       {isLoading ? (
         <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar" style={{ minHeight: "150px" }}>
           {notes.length === 0 ? (
             <p className="text-xs text-slate-400 italic text-center py-4 bg-slate-50/50 rounded-xl border border-slate-100">Nenhuma observação ainda.</p>
           ) : (
