@@ -147,7 +147,7 @@ export default function AutomationsPage() {
           const { data, error } = await supabase
             .from("flows")
             .select("*")
-            .eq("is_deleted", false)
+            
             .order("created_at", { ascending: false });
   
           if (error) throw error;
