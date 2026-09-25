@@ -20,13 +20,14 @@ function ConversationsContent() {
   const [activeFilter, setActiveFilter] = useState<"minhas" | "fila" | "todos">("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [editingMessage, setEditingMessage] = useState<any>(null);
   const [isChatsLoaded, setIsChatsLoaded] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
-  const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -547,8 +548,38 @@ function ConversationsContent() {
     const chat = chats.find(c => c.id === activeChatId);
     if (!chat) return;
 
+    if (editingMessage) {
+      // Handle Edit
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+      );
+      
+      setChats(prev => prev.map(c => {
+        if (c.id === activeChatId) {
+          return {
+            ...c,
+            messages: c.messages.map((m: any) => m.id === editingMessage.id ? { ...m, text: messageText } : m)
+          };
+        }
+        return c;
+      }));
+      
+      supabase.from('whatsapp_messages').update({ content_text: messageText }).eq('id', editingMessage.id).then();
+      
+      setMessageText("");
+      setEditingMessage(null);
+      return;
+    }
+
     // Optimistic UI update + Auto Assign
-    const textToSend = messageText;
+    let textToSend = messageText;
+    if (replyingTo) {
+      const shortReply = replyingTo.text.substring(0, 30) + (replyingTo.text.length > 30 ? "..." : "");
+      textToSend = `[Respondendo a: ${shortReply}]\n\n` + textToSend;
+      setReplyingTo(null);
+    }
     const newAssignedTo = currentUser?.name || chat.assignedTo;
     setMessageText("");
     
@@ -1066,18 +1097,22 @@ function ConversationsContent() {
     <>
       <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
       <div className={`absolute right-2 ${msgIndex >= activeChat.messages.length - 2 ? 'bottom-8' : 'top-8'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden`}>
-        <button onClick={() => { setActiveMessageMenu(null); alert("Responder ainda não implementado na API local."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
-        <button onClick={() => {
-                                setActiveMessageMenu(null);
-                                setChats(prev => prev.map(c => {
-                                  if (c.id === activeChat.id) {
-                                    return { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) };
-                                  }
-                                  return c;
-                                }));
-                              }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">Apagar para mim</button>
+        <button onClick={() => { setActiveMessageMenu(null); setReplyingTo(msg); document.querySelector('textarea')?.focus(); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
         <button onClick={() => { setActiveMessageMenu(null); alert('Encaminhar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Encaminhar</button>
-        <button onClick={() => { setActiveMessageMenu(null); alert('Editar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>
+        {isMine && <button onClick={() => { setActiveMessageMenu(null); setEditingMessage(msg); setMessageText(msg.text); document.querySelector('textarea')?.focus(); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>}
+        
+        <button onClick={() => {
+          setActiveMessageMenu(null);
+          setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) } : c));
+        }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">Apagar para mim</button>
+        
+        {isMine && <button onClick={async () => {
+          setActiveMessageMenu(null);
+          setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) } : c));
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
+          supabase.from('whatsapp_messages').delete().eq('id', msg.id).then();
+        }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors border-t border-slate-100">Apagar para todos</button>}
       </div>
     </>
   )}
@@ -1178,25 +1213,23 @@ function ConversationsContent() {
                         <>
                           <div className="fixed inset-0 z-20" onClick={() => setActiveMessageMenu(null)}></div>
                           <div className={`absolute right-2 ${msgIndex >= activeChat.messages.length - 2 ? 'bottom-8' : 'top-8'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden`}>
-                            <button onClick={() => { setActiveMessageMenu(null); setReplyingTo(msg); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
-                            <button onClick={async () => { 
-                              setActiveMessageMenu(null);
-                              try {
-                                await fetch(`/api/whatsapp/message?messageId=${msg.id}&remoteJid=${activeChat.phone}@s.whatsapp.net`, { method: 'DELETE' });
-                                // Optimistically remove from UI
-                                setChats(prev => prev.map(c => {
-                                  if (c.id === activeChat.id) {
-                                    return { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) };
-                                  }
-                                  return c;
-                                }));
-                              } catch (e) {
-                                alert("Erro ao apagar mensagem.");
-                              }
-                            }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">Apagar mensagem</button>
-                            <button onClick={() => { setActiveMessageMenu(null); alert("Encaminhar ainda não implementado."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Encaminhar</button>
-                            <button onClick={() => { setActiveMessageMenu(null); alert("Editar ainda não implementado."); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>
-                          </div>
+        <button onClick={() => { setActiveMessageMenu(null); setReplyingTo(msg); document.querySelector('textarea')?.focus(); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Responder</button>
+        <button onClick={() => { setActiveMessageMenu(null); alert('Encaminhar ainda não implementado.'); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Encaminhar</button>
+        {isMine && <button onClick={() => { setActiveMessageMenu(null); setEditingMessage(msg); setMessageText(msg.text); document.querySelector('textarea')?.focus(); }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">Editar</button>}
+        
+        <button onClick={() => {
+          setActiveMessageMenu(null);
+          setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) } : c));
+        }} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">Apagar para mim</button>
+        
+        {isMine && <button onClick={async () => {
+          setActiveMessageMenu(null);
+          setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) } : c));
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
+          supabase.from('whatsapp_messages').delete().eq('id', msg.id).then();
+        }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors border-t border-slate-100">Apagar para todos</button>}
+      </div>
                         </>
                       )}
                     </div>
@@ -1222,6 +1255,25 @@ function ConversationsContent() {
                   </button>
                 </div>
               ) : (
+                <div className="w-full flex flex-col">
+                  {replyingTo && (
+                  <div className="flex items-center justify-between bg-slate-100 rounded-xl p-2 mb-2 border-l-4 border-indigo-500">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-indigo-600">Respondendo a {replyingTo.sender === 'agent' ? 'Você' : replyingTo.sender === 'bot' ? 'Bot' : activeChat.name}</span>
+                      <span className="text-xs text-slate-600 truncate">{replyingTo.text}</span>
+                    </div>
+                    <button type="button" onClick={() => setReplyingTo(null)} className="p-1 text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+                  </div>
+                )}
+                {editingMessage && (
+                  <div className="flex items-center justify-between bg-emerald-50 rounded-xl p-2 mb-2 border-l-4 border-emerald-500">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-emerald-600">Editando mensagem</span>
+                      <span className="text-xs text-slate-600 truncate">{editingMessage.text}</span>
+                    </div>
+                    <button type="button" onClick={() => { setEditingMessage(null); setMessageText(""); }} className="p-1 text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+                  </div>
+                )}
                 <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-white rounded-2xl border border-slate-200 p-2 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
                   
                   <div className="relative">
@@ -1289,6 +1341,7 @@ function ConversationsContent() {
                     <Send className="h-4 w-4 ml-0.5" />
                   </button>
                 </form>
+                </div>
               )}
             </div>
           </>

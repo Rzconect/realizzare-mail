@@ -346,6 +346,7 @@ export default function CrmPage() {
     }
     
     setDeals(prev => prev.map(d => d.id === updatedDeal.id ? { ...d, ...updatedDeal } : d));
+    if (selectedDeal && selectedDeal.id === updatedDeal.id) setSelectedDeal({ ...selectedDeal, ...updatedDeal });
     dispatchNotification(updatedDeal);
     
     // Save state

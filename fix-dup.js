@@ -1,15 +1,18 @@
 const fs = require('fs');
-const path = 'src/app/dashboard/conversations/page.tsx';
-const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
+let c = fs.readFileSync('src/app/dashboard/conversations/page.tsx', 'utf8');
 
-let startIdx = 1431;
-let count = 13; // We know it's exactly 1431 to 1443 based on previous inspection!
+let lines = c.split('\n');
+let replyingToDeclCount = 0;
+let newLines = [];
+for (let line of lines) {
+  if (line.includes('const [replyingTo, setReplyingTo] =')) {
+    replyingToDeclCount++;
+    if (replyingToDeclCount > 1) {
+      continue; // skip duplicate
+    }
+  }
+  newLines.push(line);
+}
 
-// Verify first
-console.log("Removing:");
-console.log(lines.slice(startIdx, startIdx + count).join('\n'));
-
-lines.splice(startIdx, count);
-
-fs.writeFileSync(path, lines.join('\n'));
-console.log('Removed duplicate block');
+fs.writeFileSync('src/app/dashboard/conversations/page.tsx', newLines.join('\n'));
+console.log('Fixed duplicates');
