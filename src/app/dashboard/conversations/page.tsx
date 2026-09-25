@@ -1322,7 +1322,11 @@ function ConversationsContent() {
                   });
                 }}>
                   <Unlink className="h-4 w-4 text-red-400 hover:text-red-600 cursor-pointer transition-colors" />
-                </button></div>
+                </button>
+                <button title="Configurar Painel" onClick={() => setIsPanelConfigOpen(true)}>
+                  <Settings className="h-4 w-4 text-slate-400 hover:text-indigo-600 transition-colors" />
+                </button>
+              </div>
               <button onClick={() => setShowContactDetails(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
                 <X className="h-4 w-4" />
               </button>
@@ -1392,12 +1396,12 @@ function ConversationsContent() {
                                 </button>
                                 {panelConfig.openState.cursos && (
                                   <div className="mt-3">
-                                    {(profile as any).cursos && (profile as any).cursos.length > 0 ? (
+                                    {(profile as any).enrollments && (profile as any).cursos.length > 0 ? (
                                       <div className="space-y-2">
-                                        {(profile as any).cursos.map((c: any, i: number) => (
+                                        {(profile as any).enrollments.map((c: any, i: number) => (
                                           <div key={i} className="bg-slate-100 p-2 rounded-lg border border-slate-200/60">
-                                            <p className="text-xs font-bold text-slate-700">{c.nome}</p>
-                                            <p className="text-[10px] text-slate-500 mt-1">Concluído: {c.progresso || '0'}%</p>
+                                            <p className="text-xs font-bold text-slate-700">{c.course_name}</p>
+                                            <p className="text-[10px] text-slate-500 mt-1">Concluído: {c.progress || '0'}%</p>
                                           </div>
                                         ))}
                                       </div>
@@ -1416,15 +1420,15 @@ function ConversationsContent() {
                                 </button>
                                 {panelConfig.openState.transacoes && (
                                   <div className="mt-3">
-                                    {(profile as any).transacoes && (profile as any).transacoes.length > 0 ? (
+                                    {(profile as any).purchases && (profile as any).transacoes.length > 0 ? (
                                       <div className="space-y-2">
-                                        {(profile as any).transacoes.map((t: any, i: number) => (
+                                        {(profile as any).purchases.map((t: any, i: number) => (
                                           <div key={i} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg border border-slate-200/60">
                                             <div>
-                                              <p className="text-xs font-bold text-slate-700">{t.produto}</p>
-                                              <p className="text-[10px] text-slate-500">{t.data}</p>
+                                              <p className="text-xs font-bold text-slate-700">{t.product_name}</p>
+                                              <p className="text-[10px] text-slate-500">{formatTransactionDate(t.paid_at, t.product_type)}</p>
                                             </div>
-                                            <span className={`text-xs font-bold ${t.status === 'Pago' ? 'text-emerald-600' : 'text-orange-500'}`}>{t.valor}</span>
+                                            <span className={`text-xs font-bold ${t.status === 'Pago' ? 'text-emerald-600' : 'text-orange-500'}`}>{(t.amount / 100).toFixed(2).replace('.', ',')}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -1448,7 +1452,8 @@ function ConversationsContent() {
                                         {(profile as any).timeline.map((t: any, i: number) => (
                                           <div key={i} className="relative">
                                             <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-indigo-500 border-2 border-slate-50"></div>
-                                            <p className="text-xs font-medium text-slate-700">{t.action}</p>
+                                            <span className="text-xs font-bold text-slate-700 block leading-tight">{t.label}</span>
+                                            <span className="text-[10px] text-slate-500 block leading-tight mt-1">{t.details}</span>
                                             <span className="text-[9px] text-slate-400 block mt-1">{formatTimelineTimestamp(t.timestamp)}</span>
                                           </div>
                                         ))}
