@@ -102,6 +102,7 @@ const mockCoursesList = [
 export default function AutomationsPage() {
   const router = useRouter();
   const [flows, setFlows] = useState<Flow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -740,7 +741,14 @@ export default function AutomationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-              {filteredFlows.length > 0 ? (
+              {isLoading ? (
+                <tr><td colSpan={7} className="py-12 text-center text-slate-500">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p>Carregando automações...</p>
+                  </div>
+                </td></tr>
+              ) : filteredFlows.length > 0 ? (
                 filteredFlows.map((flow, index) => {
                   const isChecked = selectedIds.includes(flow.id);
                   const isMenuOpen = activeMenuId === flow.id;

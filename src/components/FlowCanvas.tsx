@@ -455,6 +455,15 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                 .eq("is_deleted", false);
                 
             if (nodesData && !nodesError && nodesData.length > 0) {
+               const hasTriggerNode = nodesData.some((n: any) => n.node_type === 'trigger' || n.id === 'trigger');
+               if (!hasTriggerNode) {
+                  nodesData.push({
+                     id: "trigger",
+                     node_type: "trigger",
+                     parent_node_id: null,
+                     config: { triggerDescription: found.trigger_type, name: found.trigger_metric && found.trigger_metric !== "Disparador" ? found.trigger_metric : "Defina seu gatilho de entrada" }
+                  });
+               }
                const resolveSequence = (parentId: string | null, branchLabel: string | null): FlowNode[] => {
                   const sequence: FlowNode[] = [];
                   let current = nodesData.find((n: any) => n.parent_node_id === parentId && n.branch_label === branchLabel);
