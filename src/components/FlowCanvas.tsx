@@ -1073,7 +1073,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     updated[0] = {
       ...updated[0],
       name: metric,
-      config: { triggerDescription: description }
+      config: { ...(updated[0].config || {}), triggerDescription: description }
     };
     setNodes(updated);
     
@@ -4268,7 +4268,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         isOpen={showTriggerModal} 
         onClose={() => setShowTriggerModal(false)}
         mode="entry"
-        initialConfig={nodes.find(n => n.id === 'trigger')?.config}
+        initialConfig={{...nodes.find(n => n.id === "trigger")?.config, fallbackEvent: flow.triggerMetric}}
         onSave={(config) => {
           const nodeName = config.event || "Gatilho Personalizado";
           
@@ -4301,7 +4301,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
               updated[triggerNodeIndex] = {
                 ...updated[triggerNodeIndex],
                 name: nodeName,
-                config: { triggerDescription: description }
+                config: { ...config, triggerDescription: description }
               };
             }
             return updated;

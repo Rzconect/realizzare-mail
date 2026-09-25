@@ -39,7 +39,16 @@ export default function TriggerConfigModal({ isOpen, onClose, onSave, mode = "en
     if (initialConfig && isOpen) {
       if (initialConfig.source) setCustomTriggerSource(initialConfig.source);
       if (initialConfig.event) setSelectedEvent(initialConfig.event);
+      else if (initialConfig.fallbackEvent) setSelectedEvent(initialConfig.fallbackEvent);
+      
+      if (!initialConfig.source && initialConfig.triggerDescription) {
+          const desc = initialConfig.triggerDescription.toLowerCase();
+          if (desc.includes('pagarme')) setCustomTriggerSource('pagarme');
+          else if (desc.includes('datalayer')) setCustomTriggerSource('datalayer');
+          else setCustomTriggerSource('api');
+      }
       if (initialConfig.rule) setSelectedRule(initialConfig.rule);
+      if (initialConfig.operator) setSelectedOperator(initialConfig.operator);
       if (initialConfig.value) {
         setCondValue(initialConfig.value);
         if (Array.isArray(initialConfig.value)) {
