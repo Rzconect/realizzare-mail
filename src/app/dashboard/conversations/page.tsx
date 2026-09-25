@@ -549,12 +549,12 @@ function ConversationsContent() {
     if (!chat) return;
 
     if (editingMessage) {
-      // Handle Edit
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-      );
+      // Handle Edit via API
+      fetch('/api/whatsapp/message', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: editingMessage.messageId || editingMessage.id, remoteJid: chat.phone, newText: messageText })
+      }).catch(console.error);
       
       setChats(prev => prev.map(c => {
         if (c.id === activeChatId) {
@@ -565,8 +565,6 @@ function ConversationsContent() {
         }
         return c;
       }));
-      
-      supabase.from('whatsapp_messages').update({ content_text: messageText }).eq('id', editingMessage.id).then();
       
       setMessageText("");
       setEditingMessage(null);
@@ -1109,9 +1107,7 @@ function ConversationsContent() {
         {isMine && <button onClick={async () => {
           setActiveMessageMenu(null);
           setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) } : c));
-          const { createClient } = await import('@supabase/supabase-js');
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
-          supabase.from('whatsapp_messages').delete().eq('id', msg.id).then();
+          fetch(`/api/whatsapp/message?messageId=${msg.messageId || msg.id}&remoteJid=${activeChat.phone}&type=everyone`, { method: 'DELETE' }).catch(console.error);
         }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors border-t border-slate-100">Apagar para todos</button>}
       </div>
     </>
@@ -1225,9 +1221,7 @@ function ConversationsContent() {
         {isMine && <button onClick={async () => {
           setActiveMessageMenu(null);
           setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, messages: c.messages.filter((m: any) => m.id !== msg.id) } : c));
-          const { createClient } = await import('@supabase/supabase-js');
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
-          supabase.from('whatsapp_messages').delete().eq('id', msg.id).then();
+          fetch(`/api/whatsapp/message?messageId=${msg.messageId || msg.id}&remoteJid=${activeChat.phone}&type=everyone`, { method: 'DELETE' }).catch(console.error);
         }} className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors border-t border-slate-100">Apagar para todos</button>}
       </div>
                         </>
