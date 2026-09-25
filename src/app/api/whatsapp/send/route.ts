@@ -48,13 +48,22 @@ export async function POST(req: Request) {
     // since the message_id will already be in the database.
 
     const msgId = evoData.key?.id || `local-${Date.now()}`;
+    
+    let finalText = text;
+    if (options?.quoted?.key?.id) {
+       const quotedId = options.quoted.key.id;
+       const quotedParticipant = options.quoted.key.remoteJid || '';
+       const quotedText = options.quoted.message?.conversation || 'Mensagem';
+       finalText = `[QUOTE:${quotedId}|${quotedParticipant}|${quotedText.replace(/\n/g, ' ').substring(0, 50)}]
+` + text;
+    }
 
     await supabaseAdmin
       .from('whatsapp_messages')
       .insert({
         chat_id: chatId,
         message_id: msgId,
-        text: text,
+        text: finalText,
         sender: 'agent', // from the system
       });
 

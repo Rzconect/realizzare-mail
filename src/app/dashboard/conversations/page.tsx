@@ -214,6 +214,12 @@ function ConversationsContent() {
                   displayText = displayText.replace(/^\[QUOTE:(.*?)\|(.*?)\|(.*?)\]\n/, '');
                 }
                 
+                let isEdited = false;
+                if (displayText.endsWith('[EDITADA]')) {
+                  isEdited = true;
+                  displayText = displayText.substring(0, displayText.length - 9);
+                }
+                
                 return {
                   id: m.id,
                   messageId: m.message_id,
@@ -223,6 +229,7 @@ function ConversationsContent() {
                   quotedId,
                   quotedParticipant,
                   quotedText,
+                  isEdited,
                   time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 };
               })

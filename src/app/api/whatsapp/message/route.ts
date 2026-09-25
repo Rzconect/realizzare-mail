@@ -89,8 +89,25 @@ export async function PUT(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+    
+    // Check if the original message had a quote prefix
+    const { data: existingMsg } = await supabaseAdmin.from('whatsapp_messages').select('text').eq('message_id', messageId).single();
+    let prefix = '';
+    if (existingMsg && existingMsg.text) {
+      const quoteMatch = existingMsg.text.match(/^\[QUOTE:(.*?)\|(.*?)\|(.*?)\]\n/);
+      if (quoteMatch) {
+        prefix = quoteMatch[0];
+      }
+    }
+    
+    // Append [EDITADA] if not already present in newText (just in case)
+    let finalNewText = newText;
+    if (!finalNewText.endsWith('[EDITADA]')) {
+      finalNewText = finalNewText + '[EDITADA]';
+    }
+    
     await supabaseAdmin.from('whatsapp_messages')
-      .update({ text: newText })
+      .update({ text: prefix + finalNewText })
       .eq('message_id', messageId);
 
     return NextResponse.json({ success: true, data });
