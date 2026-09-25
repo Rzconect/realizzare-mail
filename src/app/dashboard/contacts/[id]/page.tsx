@@ -830,6 +830,74 @@ export default function ContactProfilePage({ params }: PageProps) {
           timestamp: contactCreatedAt.toISOString()
         });
 
+        
+
+        // D. Flow Runs and Flow Emails
+        if (flowRunsData) {
+          flowRunsData.forEach((r: any) => {
+            const flowName = r.flows?.name || "Automação";
+            rawEvents.push({
+              id: "run-start-" + r.id,
+              type: "signup",
+              label: "Iniciou Automação",
+              details: `${flowName}`,
+              timestamp: r.created_at
+            });
+            
+            if (r.status === "completed") {
+               rawEvents.push({
+                  id: "run-end-" + r.id,
+                  type: "check",
+                  label: "Finalizou 100% Automação",
+                  details: `${flowName}`,
+                  timestamp: r.updated_at
+               });
+            }
+          });
+        if (contact.list_subscriptions && contact.list_subscriptions.length > 0) {
+          contact.list_subscriptions.forEach((ls: any, idx: number) => {
+            if (ls.lists?.name) {
+              const statusText = ls.status === 'subscribed' ? 'Inscrito na Lista' : 'Removido da Lista';
+              rawEvents.push({
+                id: `list-sub-${contact.id}-${idx}`,
+                type: ls.status === 'subscribed' ? 'check' : 'x',
+                label: statusText,
+                details: ls.lists.name,
+                timestamp: ls.updated_at || contact.created_at
+              });
+            }
+          });
+        }
+
+        }
+
+        if (flowRunLogsData) {
+          flowRunLogsData.forEach((log: any) => {
+            if (log.action_taken && log.action_taken.startsWith("E-mail enviado")) {
+              let campTitle = "E-mail";
+              let flowName = "Automação";
+              if (log.node_id && flowNodeMap.has(log.node_id)) {
+                 const nd = flowNodeMap.get(log.node_id);
+                 campTitle = nd.name;
+                 flowName = nd.flowName;
+              }
+              rawEvents.push({
+                id: "log-" + log.id,
+                type: "send",
+                label: `Foi enviado o ${campTitle}`,
+                details: `Automação: ${flowName}`,
+                timestamp: log.created_at
+              });
+            }
+          });
+        }
+
+        const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
+        const emailsOpenedCount = new Set(rawEvents.filter((e) => e.type === "open").map(e => e.payload?.campaign_id)).size;
+        const emailsClickedCount = new Set(rawEvents.filter((e) => e.type === "email_click").map(e => e.payload?.campaign_id)).size;
+
+        creditsHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
         // Deduplicate and sort
         const seenEvtKeys = new Set();
         const timeline = rawEvents
@@ -850,58 +918,28 @@ export default function ContactProfilePage({ params }: PageProps) {
             timestamp: e.timestamp
           }));
 
-        // D. Flow Runs and Flow Emails
-        if (flowRunsData) {
-          flowRunsData.forEach((r: any) => {
-            const flowName = r.flows?.name || "Automação";
-            rawEvents.push({
-              id: "run-start-" + r.id,
-              type: "signup",
-              label: "Entrou na Automação",
-              details: `O lead entrou no fluxo de automação '${flowName}'`,
-              timestamp: r.created_at
-            });
-            
-            if (r.status === "completed") {
-               rawEvents.push({
-                  id: "run-end-" + r.id,
-                  type: "check",
-                  label: "Finalizou a Automação",
-                  details: `O lead completou todas as etapas do fluxo '${flowName}'`,
-                  timestamp: r.updated_at
-               });
-            }
-          });
-        }
-
-        if (flowRunLogsData) {
-          flowRunLogsData.forEach((log: any) => {
-            if (log.action_taken && log.action_taken.startsWith("E-mail enviado")) {
-              let campTitle = "E-mail";
-              let flowName = "Automação";
-              if (log.node_id && flowNodeMap.has(log.node_id)) {
-                 const nd = flowNodeMap.get(log.node_id);
-                 campTitle = nd.name;
-                 flowName = nd.flowName;
-              }
-              rawEvents.push({
-                id: "log-" + log.id,
-                type: "send",
-                label: "E-mail Enviado (Automação)",
-                details: `Fluxo: ${flowName} • Campanha: '${campTitle}'`,
-                timestamp: log.created_at
+        
+          let contactFlows: any[] = [];
+          if (flowRunsData) {
+            const flowTotalNodes = new Map<string, number>();
+            if (flowNodesData) {
+              flowNodesData.forEach((n: any) => {
+                flowTotalNodes.set(n.flow_id, (flowTotalNodes.get(n.flow_id) || 0) + 1);
               });
             }
-          });
-        }
+            contactFlows = flowRunsData.map((r: any) => {
+              const totalNodes = flowTotalNodes.get(r.flow_id) || 5; // guess 5 if unknown
+              const progress = r.status === 'completed' ? 100 : Math.min(95, Math.max(10, Math.round((1 / totalNodes) * 100))); // simplistic progress
+              return {
+                name: r.flows?.name || "Fluxo Desconhecido",
+                status: r.status === 'completed' ? 'completed' : 'active',
+                progress,
+                entered_at: new Date(r.created_at).toISOString().split('T')[0]
+              };
+            });
+          }
 
-        const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
-        const emailsOpenedCount = new Set(rawEvents.filter((e) => e.type === "open").map(e => e.payload?.campaign_id)).size;
-        const emailsClickedCount = new Set(rawEvents.filter((e) => e.type === "email_click").map(e => e.payload?.campaign_id)).size;
-
-        creditsHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        const profileObj = {
+          const profileObj = {
           id: contact.id,
           first_name: formatContactFullName(contact.first_name || "", contact.last_name || "").split(" ")[0] || "",
           last_name: formatContactFullName(contact.first_name || "", contact.last_name || "").split(" ").slice(1).join(" ") || "",
