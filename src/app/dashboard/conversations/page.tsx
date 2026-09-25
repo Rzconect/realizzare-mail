@@ -1111,7 +1111,7 @@ function ConversationsContent() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }} className="mb-2 p-2 rounded-lg text-xs border-l-4 cursor-pointer transition-colors bg-slate-200 border-slate-400 hover:bg-slate-300">
     <div className="font-bold mb-1 text-indigo-600">
-      {msg.quotedParticipant?.includes(currentUser?.phone) || msg.quotedParticipant === '' ? 'Você' : 'Contato'}
+      {msg.quotedParticipant?.includes(currentUser?.phone) || msg.quotedParticipant === '' ? 'Você' : activeChat.name}
     </div>
     <div className="text-slate-600 line-clamp-3 break-words">{msg.quotedText}</div>
   </div>
@@ -1236,7 +1236,7 @@ function ConversationsContent() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }} className="mb-2 p-2 rounded-lg text-xs border-l-4 cursor-pointer transition-colors bg-emerald-700/20 border-emerald-900/50 hover:bg-emerald-700/30">
     <div className="font-bold mb-1 text-emerald-900">
-      {msg.quotedParticipant?.includes(currentUser?.phone) || msg.quotedParticipant === '' ? 'Você' : 'Contato'}
+      {msg.quotedParticipant?.includes(currentUser?.phone) || msg.quotedParticipant === '' ? 'Você' : activeChat.name}
     </div>
     <div className="text-slate-600 line-clamp-3 break-words">{msg.quotedText}</div>
   </div>
