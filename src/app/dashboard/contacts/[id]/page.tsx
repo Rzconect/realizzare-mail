@@ -876,7 +876,8 @@ export default function ContactProfilePage({ params }: PageProps) {
                   type: "check",
                   label: "Finalizou 100% Automação",
                   details: `${flowName}`,
-                  timestamp: r.updated_at
+                  timestamp: r.updated_at,
+                  payload: { "Status": `Usuário concluiu todas as etapas do fluxo (${flowName})` }
                });
             }
           });
@@ -946,7 +947,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           .sort((a, b) => {
             const tA = new Date(a.timestamp).getTime();
             const tB = new Date(b.timestamp).getTime();
-            if (tA !== tB) return tB - tA;
+            if (Math.abs(tB - tA) > 2000) return tB - tA; // Standard sort if events are more than 2 seconds apart
             const weight = (label: string) => {
               if (label.includes("Finalizou")) return 6;
               if (label.includes("Aberto") || label.includes("Clicado")) return 5;
@@ -1011,7 +1012,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           lists,
           enrollments,
           purchases,
-          flows,
+          flows: contactFlows,
           emails_sent: emailsSentCount,
           emails_opened: emailsOpenedCount,
           emails_clicked: emailsClickedCount,
@@ -2330,9 +2331,15 @@ export default function ContactProfilePage({ params }: PageProps) {
                             {formatPayloadKeyValues(event.payload, event.type).length > 0 ? (
                               formatPayloadKeyValues(event.payload, event.type).map((item, i) => (
                                 <div key={i} className="flex flex-col text-xs leading-tight space-y-0.5">
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.key}:</span>
-                                  <span className="font-semibold text-slate-800 break-all select-all">{item.value}</span>
-                                </div>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.key}:</span>
+                                    {item.key === "Campaign ID" && item.value !== "N/A" ? (
+                                      <a href={`/api/emails/preview?id=${item.value}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 w-fit hover:underline">
+                                        <Eye className="h-3.5 w-3.5" /> Visualizar E-mail
+                                      </a>
+                                    ) : (
+                                      <span className="font-semibold text-slate-800 break-all select-all">{item.value}</span>
+                                    )}
+                                  </div>
                               ))
                             ) : (
                               <div className="text-xs text-slate-500 italic">Nenhum dado adicional recebido.</div>
