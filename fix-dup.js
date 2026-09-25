@@ -1,18 +1,15 @@
 const fs = require('fs');
-let c = fs.readFileSync('src/app/dashboard/conversations/page.tsx', 'utf8');
+let c = fs.readFileSync('src/app/dashboard/automations/page.tsx', 'utf8');
 
-let lines = c.split('\n');
-let replyingToDeclCount = 0;
-let newLines = [];
-for (let line of lines) {
-  if (line.includes('const [replyingTo, setReplyingTo] =')) {
-    replyingToDeclCount++;
-    if (replyingToDeclCount > 1) {
-      continue; // skip duplicate
-    }
-  }
-  newLines.push(line);
+const regex = /\{cloneFlowTrigger === "Iniciou Curso" && \([\s\S]*?\}\)}\s*(?=<div className="space-y-1.5">\s*<label className="text-\[10px\] font-bold text-slate-550 uppercase tracking-wider block">Tipo de Envio<\/label>)/;
+
+const match = c.match(regex);
+if (match) {
+    console.log("Found match:");
+    console.log(match[0]);
+    c = c.replace(regex, '');
+    fs.writeFileSync('src/app/dashboard/automations/page.tsx', c);
+    console.log('Removed course selector block');
+} else {
+    console.log("No match found");
 }
-
-fs.writeFileSync('src/app/dashboard/conversations/page.tsx', newLines.join('\n'));
-console.log('Fixed duplicates');

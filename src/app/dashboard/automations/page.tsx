@@ -137,12 +137,8 @@ export default function AutomationsPage() {
   const [flowToClone, setFlowToClone] = useState<Flow | null>(null);
   const [cloneFlowName, setCloneFlowName] = useState("");
   const [cloneFlowTrigger, setCloneFlowTrigger] = useState("Personalizado");
-  const [cloneSelectedCourse, setCloneSelectedCourse] = useState("Todos os Cursos");
   const [cloneFlowDescription, setCloneFlowDescription] = useState("");
   const [cloneFlowType, setCloneFlowType] = useState<"Automação" | "Transacional" | "Sistema">("Automação");
-  const [showCloneCourseDropdown, setShowCloneCourseDropdown] = useState(false);
-  const [cloneSearchTerm, setCloneSearchTerm] = useState("");
-
   useEffect(() => {
     const fetchFlows = async () => {
       try {
@@ -297,8 +293,7 @@ export default function AutomationsPage() {
     }
 
     setCloneFlowTrigger(baseTrigger);
-    setCloneSelectedCourse(courseName);
-    setCloneFlowType(source.type || "Automação");
+        setCloneFlowType(source.type || "Automação");
     setCloneFlowDescription(source.triggerType || "");
     
     setShowCloneFlowModal(true);
@@ -317,9 +312,7 @@ export default function AutomationsPage() {
 
     try {
       const supabase = createClient();
-      const triggerDesc = cloneFlowTrigger === "Iniciou Curso"
-        ? `Iniciou curso: ${cloneSelectedCourse}`
-        : cloneFlowTrigger;
+      const triggerDesc = cloneFlowTrigger;
 
       const { data, error } = await supabase
         .from("flows")
@@ -1180,63 +1173,7 @@ export default function AutomationsPage() {
                   </div>
               </div>
 
-              {cloneFlowTrigger === "Iniciou Curso" && (
-                <div className="space-y-1.5 relative animate-fadeIn">
-                  <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Selecione o Curso</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCloneCourseDropdown(!showCloneCourseDropdown)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-left focus:border-indigo-500 outline-none transition-all cursor-pointer bg-white flex items-center justify-between shadow-2xs"
-                  >
-                    <span>{cloneSelectedCourse}</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                  </button>
-
-                  {showCloneCourseDropdown && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowCloneCourseDropdown(false)} />
-                      <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-scaleIn text-left">
-                        <input
-                          type="text"
-                          placeholder="Buscar curso..."
-                          value={cloneSearchTerm}
-                          onChange={(e) => setCloneSearchTerm(e.target.value)}
-                          className="w-full px-3 py-2 border-b border-slate-100 text-xs font-semibold focus:outline-none placeholder:text-slate-400 bg-slate-50/50"
-                          autoFocus
-                        />
-                        <div className="max-h-48 overflow-y-auto py-1">
-                          {mockCoursesList
-                            .filter((c) => c.toLowerCase().includes(cloneSearchTerm.toLowerCase()))
-                            .map((c) => (
-                              <button
-                                key={c}
-                                type="button"
-                                onClick={() => {
-                                  setCloneSelectedCourse(c);
-                                  setCloneFlowName(c);
-                                  setShowCloneCourseDropdown(false);
-                                  setCloneSearchTerm("");
-                                }}
-                                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-indigo-50/50 hover:text-indigo-700 block ${
-                                  cloneSelectedCourse === c ? "text-indigo-600 bg-indigo-50/40 font-black" : "text-slate-650"
-                                }`}
-                              >
-                                {c}
-                              </button>
-                            ))}
-                          {mockCoursesList.filter((c) => c.toLowerCase().includes(cloneSearchTerm.toLowerCase())).length === 0 && (
-                            <div className="px-3 py-4 text-center text-xs text-slate-400 font-medium">
-                              Nenhum curso encontrado
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-1.5">
+                            <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-550 uppercase tracking-wider block">Tipo de Envio</label>
                 <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-1 text-[10px] font-bold">
                   <button
