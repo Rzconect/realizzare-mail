@@ -140,7 +140,8 @@ export async function triggerFlowsForEvent(supabase: any, eventName: string, con
           contact_id: contactId,
           status: "running",
           current_node_id: startNodeId,
-          next_execution_at: new Date().toISOString()
+          next_execution_at: new Date().toISOString(),
+          metadata: payload || {}
         });
     }
   } catch (e) {

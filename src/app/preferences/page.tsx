@@ -2,212 +2,228 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Settings2, CheckCircle2, Mail, Bell, Sparkles, BookOpen, Tag } from "lucide-react";
+import { Sliders, CheckCircle2, XCircle, Mail, Loader2, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 function PreferencesContent() {
   const searchParams = useSearchParams();
-  const rawEmail = searchParams.get("email") || "aluno@realizzarecursos.com.br";
+  const rawEmail = searchParams.get("email") || "";
 
-  const [email, setEmail] = useState(rawEmail);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Preference Categories States
-  const [prefCursos, setPrefCursos] = useState(true);
-  const [prefPromos, setPrefPromos] = useState(true);
-  const [prefDicas, setPrefDicas] = useState(true);
-  const [prefAvisos, setPrefAvisos] = useState(true);
-
-  // Load custom branding from localStorage
-  const [config, setConfig] = useState<any>({
-    title: "Preferências de Comunicação",
-    text: "Gerencie sua inscrição e escolha quais categorias de conteúdo deseja continuar recebendo.",
-    btnText: "Salvar Preferências",
-    color: "#4f46e5"
-  });
+  const [email] = useState(rawEmail);
+  const [lists, setLists] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Record<string, boolean>>({});
+  const [contactId, setContactId] = useState<string | null>(null);
+  const [contactStatus, setContactStatus] = useState<string>("active");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    async function loadData() {
+      if (!rawEmail) {
+        setIsLoading(false);
+        return;
+      }
       try {
-        const stored = localStorage.getItem("realizzare_consent_pages_config");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.preferencias) {
-            setConfig({
-              title: parsed.preferencias.title || "Preferências de Comunicação",
-              text: parsed.preferencias.text || "Gerencie sua inscrição e escolha quais categorias de conteúdo deseja continuar recebendo.",
-              btnText: parsed.preferencias.btnText || "Salvar Preferências",
-              color: parsed.color || "#4f46e5"
-            });
-          }
+        const supabase = createClient();
+        
+        // Find contact
+        const { data: contact } = await supabase
+          .from("contacts")
+          .select("id, status")
+          .eq("email", rawEmail)
+          .maybeSingle();
+
+        if (contact) {
+          setContactId(contact.id);
+          setContactStatus(contact.status);
+
+          // Get all lists
+          const { data: allLists } = await supabase.from("lists").select("id, name");
+          setLists(allLists || []);
+
+          // Get contact subscriptions
+          const { data: subs } = await supabase
+            .from("list_subscriptions")
+            .select("list_id, status")
+            .eq("contact_id", contact.id);
+
+          const subsMap: Record<string, boolean> = {};
+          (subs || []).forEach(s => {
+            subsMap[s.list_id] = s.status === 'subscribed';
+          });
+          setSubscriptions(subsMap);
         }
       } catch (e) {
         console.error(e);
+      } finally {
+        setIsLoading(false);
       }
     }
-  }, []);
+    loadData();
+  }, [rawEmail]);
 
-  const handleSavePreferences = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const toggleList = (listId: string) => {
+    setSubscriptions(prev => ({ ...prev, [listId]: !prev[listId] }));
+  };
+
+  const handleSave = async () => {
+    if (!contactId) return;
+    setIsSaving(true);
+    setMessage(null);
     try {
       const supabase = createClient();
-      // If user turned all OFF, set status to unsubscribed, else active
-      const allOff = !prefCursos && !prefPromos && !prefDicas && !prefAvisos;
-      await supabase
-        .from("contacts")
-        .update({ status: allOff ? "unsubscribed" : "active" })
-        .eq("email", email);
+      
+      const isCompletelyUnsubscribed = Object.values(subscriptions).every(v => !v);
 
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 4000);
-    } catch (err) {
-      console.error("Erro ao salvar preferencias:", err);
+      if (isCompletelyUnsubscribed) {
+        // If they disabled all lists, mark contact as unsubscribed
+        await supabase.from("contacts").update({ status: "unsubscribed" }).eq("id", contactId);
+        await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contactId);
+        setContactStatus("unsubscribed");
+      } else {
+        // Re-activate contact if they were unsubscribed
+        if (contactStatus === "unsubscribed") {
+           await supabase.from("contacts").update({ status: "active" }).eq("id", contactId);
+           setContactStatus("active");
+        }
+        
+        // Update each list subscription
+        for (const list of lists) {
+          const isSubscribed = subscriptions[list.id];
+          
+          // Check if exists
+          const { data: existing } = await supabase
+            .from("list_subscriptions")
+            .select("id")
+            .eq("contact_id", contactId)
+            .eq("list_id", list.id)
+            .maybeSingle();
+
+          if (existing) {
+             await supabase
+               .from("list_subscriptions")
+               .update({ status: isSubscribed ? "subscribed" : "unsubscribed" })
+               .eq("id", existing.id);
+          } else if (isSubscribed) {
+             await supabase
+               .from("list_subscriptions")
+               .insert({ contact_id: contactId, list_id: list.id, status: "subscribed" });
+          }
+        }
+      }
+
+      setMessage({ type: 'success', text: 'Preferências salvas com sucesso!' });
+    } catch (e) {
+      console.error(e);
+      setMessage({ type: 'error', text: 'Ocorreu um erro ao salvar preferências.' });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!email || !contactId) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm text-center border border-slate-200">
+          <XCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-slate-800">Contato não encontrado</h2>
+          <p className="text-sm text-slate-500 mt-2">O e-mail informado não foi localizado na base.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 font-sans text-slate-800">
-      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
-        {/* Header Bar */}
-        <div
-          className="p-6 text-white text-center space-y-2 transition-colors"
-          style={{ backgroundColor: config.color || "#4f46e5" }}
-        >
-          <div className="inline-flex p-3 bg-white/10 rounded-full backdrop-blur-md mb-1">
-            <Settings2 className="h-8 w-8 text-white" />
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="p-6 bg-indigo-600 text-white text-center space-y-2">
+          <div className="inline-flex p-3 bg-white/10 rounded-full mb-1">
+            <Sliders className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">{config.title}</h1>
-          <p className="text-xs text-white/80 max-w-sm mx-auto font-medium leading-relaxed">
-            {config.text}
+          <h1 className="text-xl font-bold tracking-tight">Gerenciar Preferências</h1>
+          <p className="text-xs text-indigo-100 max-w-sm mx-auto font-medium">
+            Selecione o tipo de conteúdo que deseja receber.
           </p>
         </div>
 
-        {/* Content Body */}
-        <form onSubmit={handleSavePreferences} className="p-6 space-y-6">
-          {/* Target Email Badge */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">Configurando preferências para:</span>
-            <span className="text-xs font-bold text-slate-800 font-mono">{email}</span>
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="h-10 w-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-lg">
+              {email[0].toUpperCase()}
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-medium">E-mail atual</p>
+              <p className="text-sm font-bold text-slate-800 truncate">{email}</p>
+            </div>
           </div>
 
-          {isSaved && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span>Suas preferências foram salvas com sucesso!</span>
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">Suas Inscrições</h3>
+            
+            {lists.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">Nenhuma lista disponível no momento.</p>
+            ) : (
+              <div className="space-y-3">
+                {lists.map(list => (
+                  <label key={list.id} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <div className="mt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={!!subscriptions[list.id]}
+                        onChange={() => toggleList(list.id)}
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-slate-800">{list.name}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {message && (
+            <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              {message.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+              {message.text}
             </div>
           )}
 
-          {/* Preferences Checklist */}
-          <div className="space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorias de Conteúdo</h2>
-
-            {/* Category 1 */}
-            <label className="flex items-start gap-3 p-3.5 border border-slate-200 hover:border-slate-300 rounded-2xl cursor-pointer transition-all bg-white hover:bg-slate-50/50">
-              <input
-                type="checkbox"
-                checked={prefCursos}
-                onChange={(e) => setPrefCursos(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-              />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <BookOpen className="h-3.5 w-3.5 text-indigo-600" />
-                  <span>Novos Cursos & Lançamentos</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Avisos sobre novos treinamentos, matrículas abertas e novos módulos na plataforma.
-                </p>
-              </div>
-            </label>
-
-            {/* Category 2 */}
-            <label className="flex items-start gap-3 p-3.5 border border-slate-200 hover:border-slate-300 rounded-2xl cursor-pointer transition-all bg-white hover:bg-slate-50/50">
-              <input
-                type="checkbox"
-                checked={prefPromos}
-                onChange={(e) => setPrefPromos(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-              />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  <span>Ofertas & Promoções Exclusivas</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Cupons de desconto, campanhas especiais de Black Friday e bolsas de estudo.
-                </p>
-              </div>
-            </label>
-
-            {/* Category 3 */}
-            <label className="flex items-start gap-3 p-3.5 border border-slate-200 hover:border-slate-300 rounded-2xl cursor-pointer transition-all bg-white hover:bg-slate-50/50">
-              <input
-                type="checkbox"
-                checked={prefDicas}
-                onChange={(e) => setPrefDicas(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-              />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <Tag className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Conteúdos & Dicas Acadêmicas</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Artigos, orientações de estudos e materiais gratuitos para alavancar sua carreira.
-                </p>
-              </div>
-            </label>
-
-            {/* Category 4 */}
-            <label className="flex items-start gap-3 p-3.5 border border-slate-200 hover:border-slate-300 rounded-2xl cursor-pointer transition-all bg-white hover:bg-slate-50/50">
-              <input
-                type="checkbox"
-                checked={prefAvisos}
-                onChange={(e) => setPrefAvisos(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-              />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <Bell className="h-3.5 w-3.5 text-indigo-600" />
-                  <span>Avisos Transacionais & Certificados</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Confirmação de matrícula, notas, liberação e emissão de certificados digitais.
-                </p>
-              </div>
-            </label>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-3 pt-2">
+          <div className="pt-4 border-t border-slate-100">
             <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-              style={{ backgroundColor: config.color || "#4f46e5" }}
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70 text-white font-bold rounded-xl transition-all"
             >
-              {isLoading ? "Salvando..." : config.btnText || "Salvar Preferências"}
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Salvar Preferências
             </button>
-
-            <div className="text-center pt-2">
-              <Link
-                href={`/unsubscribe?email=${encodeURIComponent(email)}`}
-                className="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline"
-              >
-                Deseja cancelar todas as inscrições? Clique para descadastrar-se de tudo
-              </Link>
-            </div>
           </div>
-        </form>
-
-        {/* Footer Branding */}
-        <div className="bg-slate-100/70 border-t border-slate-200 p-4 text-center text-[11px] text-slate-400 font-medium">
-          Realizzare Cursos • Plataforma de Ensino a Distância
+          
+          <div className="text-center pt-2">
+            <button 
+              onClick={() => {
+                const unsubAll: Record<string, boolean> = {};
+                lists.forEach(l => unsubAll[l.id] = false);
+                setSubscriptions(unsubAll);
+              }}
+              className="text-xs text-slate-500 hover:text-red-500 underline transition-colors"
+            >
+              Cancelar inscrição de todos os e-mails
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -216,11 +232,7 @@ function PreferencesContent() {
 
 export default function PreferencesPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="text-xs text-slate-500 font-bold animate-pulse">Carregando preferências...</div>
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="h-8 w-8 text-indigo-500 animate-spin" /></div>}>
       <PreferencesContent />
     </Suspense>
   );

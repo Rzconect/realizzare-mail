@@ -22,13 +22,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Campanha não encontrada no banco." }, { status: 404 });
     }
 
-    // Fetch account settings for SMTP credentials
+    // Fetch account settings for SMTP credentials and company info
     const { data: accountSet } = await supabase
       .from("account_settings")
       .select("settings")
       .maybeSingle();
 
     const settings = accountSet?.settings || {};
+    const companyName = settings.company_name || settings.razao_social || "Realizzare Cursos";
+    const companyAddress = settings.address || settings.endereco || settings.company_address || "";
+    const companyCnpj = settings.cnpj || "";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://realizzareconect.com.br";
     const smtpHost = settings.smtp_host || process.env.AWS_SMTP_HOST || "4bzm7fef7nbj.fips.wmjb.mail-manager-smtp.amazonaws.com";
     const smtpPort = Number(settings.smtp_port || process.env.AWS_SMTP_PORT || 587);
     const smtpUser = settings.smtp_user || process.env.AWS_SMTP_USER || "inp-llwbbrq5s6pwk5jzmxdfzia5";
@@ -51,8 +55,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // Tracking domain / pixel URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://realizzareconect.com.br";
+    // Tracking domain / pixel URL (already defined above as appUrl)
     const openTrackingPixel = `<img src="${appUrl}/api/tracking/open?cid=${campaign.id}" width="1" height="1" style="display:none" alt="" />`;
 
     let processedHtml = campaign.html_content || "";
@@ -67,6 +70,32 @@ export async function POST(req: Request) {
         const trackingUrl = `${appUrl}/api/tracking/click?cid=${campaign.id}&url=${encodeURIComponent(p1)}`;
         return `href="${trackingUrl}"`;
       });
+    }
+
+    function injectFooter(html: string, contactEmail: string): string {
+      const unsubLink = `${appUrl}/unsubscribe?email=${encodeURIComponent(contactEmail)}`;
+      const prefsLink = `${appUrl}/preferences?email=${encodeURIComponent(contactEmail)}`;
+      const footer = `
+<div style="text-align:center;padding:20px 0 8px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:32px;line-height:1.6;font-family:Arial,sans-serif">
+  <p style="margin:0 0 4px">${companyName}${companyCnpj ? ` · CNPJ: ${companyCnpj}` : ''}</p>
+  ${companyAddress ? `<p style="margin:0 0 8px">${companyAddress}</p>` : ''}
+  <p style="margin:0">
+    <a href="${prefsLink}" style="color:#6366f1;text-decoration:none">Gerenciar Preferências</a>
+    <span style="margin:0 6px;color:#cbd5e1">·</span>
+    <a href="${unsubLink}" style="color:#94a3b8;text-decoration:none">Descadastrar</a>
+  </p>
+</div>`;
+      // Replace tag-based links first
+      let result = html
+        .replace(/{{link_descadastro}}/g, unsubLink)
+        .replace(/{{link_preferencias}}/g, prefsLink);
+      // Inject footer before closing body or at end
+      if (result.includes('</body>')) {
+        result = result.replace('</body>', footer + '</body>');
+      } else if (!result.toLowerCase().includes('descadastrar') && !result.toLowerCase().includes('unsubscribe')) {
+        result += footer;
+      }
+      return result;
     }
 
     function personalizeText(text: string, contact: any): string {
@@ -214,6 +243,8 @@ export async function POST(req: Request) {
 
         // Personalize text tags first
         let personalizedHtml = personalizeText(campaign.html_content || "", contact);
+        // Inject footer with company info + unsubscribe links
+        personalizedHtml = injectFooter(personalizedHtml, recipientEmail);
 
         // Inject per-recipient open tracking pixel
         const openTrackingPixel = `<img src="${appUrl}/api/tracking/open?cid=${campaign.id}&uid=${contactId}&email=${encodeURIComponent(recipientEmail)}" width="1" height="1" style="display:none" alt="" />`;
