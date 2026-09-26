@@ -1692,7 +1692,7 @@ function ConversationsContent() {
             <div className="p-4 pb-32 space-y-2">
               {panelConfig.order.map((sec: string, i: number) => (
                 <div key={sec} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sec === 'personal' ? 'Info Pessoais' : sec === 'cursos' ? 'Cursos' : sec === 'automacoes' ? 'Fluxos de Automação' : sec === 'transacoes' ? 'Transações' : sec === 'timeline' ? 'Linha do Tempo' : 'Observações'}</span>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sec === 'personal' ? 'Info Pessoais' : sec === 'cursos' ? 'Cursos' : sec === 'automacoes' ? 'Fluxos de Automação' : sec === 'transacoes' ? 'Transações' : 'Observações'}</span>
                   <div className="flex items-center gap-2">
                     <button onClick={() => toggleSection(sec)} className={`text-[10px] px-2 py-1 font-bold rounded ${panelConfig.openState[sec] ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>{panelConfig.openState[sec] ? 'ABERTO' : 'FECHADO'}</button>
                     <div className="flex flex-col gap-1">
