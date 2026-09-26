@@ -6,24 +6,37 @@ export async function triggerFlowsForEvent(supabase: any, eventName: string, con
     let operator = config?.operator;
     let value = config?.value;
 
-    if (!rule && triggerType && triggerType.includes("Regras: ")) {
+    // If the trigger node config has the rule explicitly set, use it directly
+    if (rule && rule !== "Nenhuma regra extra" && rule !== "Nenhuma Regra Adicional") {
+      // Already set from node config — fall through to evaluation below
+    } else if (triggerType && triggerType.includes("Regras: ")) {
+      // Parse from trigger_type string
       const rulePart = triggerType.split("Regras: ")[1].trim();
       if (rulePart && rulePart !== "Nenhuma regra extra" && rulePart !== "Disparador não configurado") {
-        const operatorsOld = ["Igual a", "Não é igual a", "Contém", "Não contém", "Maior que (Valor/Data)", "Menor que (Valor/Data)"];
-        let matchedOldOp = false;
-        for (const op of operatorsOld) {
-          if (rulePart.startsWith(op + " ")) {
-            rule = "Nome do Curso específico";
-            operator = op === "Igual a" ? "É igual a" : op;
-            value = rulePart.replace(op + " ", "");
-            matchedOldOp = true;
-            break;
-          }
-        }
-        if (!matchedOldOp) {
+        // New format: "Regras: [Diferente de] NR 10" or "Regras: [É igual a] NR 10"
+        const bracketMatch = rulePart.match(/^\[([^\]]+)\]\s*(.+)$/);
+        if (bracketMatch) {
+          operator = bracketMatch[1].trim();
+          value = bracketMatch[2].trim();
           rule = "Nome do Curso específico";
-          operator = "É igual a";
-          value = rulePart;
+        } else {
+          // Legacy format: "Regras: NR 10" or "Regras: Igual a NR 10"
+          const operatorsOld = ["Igual a", "Não é igual a", "Contém", "Não contém", "Maior que (Valor/Data)", "Menor que (Valor/Data)"];
+          let matchedOldOp = false;
+          for (const op of operatorsOld) {
+            if (rulePart.startsWith(op + " ")) {
+              rule = "Nome do Curso específico";
+              operator = op === "Igual a" ? "É igual a" : op;
+              value = rulePart.replace(op + " ", "");
+              matchedOldOp = true;
+              break;
+            }
+          }
+          if (!matchedOldOp) {
+            rule = "Nome do Curso específico";
+            operator = "É igual a";
+            value = rulePart;
+          }
         }
       }
     }
@@ -32,12 +45,11 @@ export async function triggerFlowsForEvent(supabase: any, eventName: string, con
 
     if (rule === "Nome do Curso específico" && payload.course_name) {
       const payloadVal = (payload.course_name || "").toLowerCase().trim();
-      const condVal = (value || "").toLowerCase().trim();
-      
-      // condVal could be a comma separated list
-      const condList = condVal.split(",").map((v: string) => v.trim());
+      // value can be an array (from node config) or a string (from trigger_type parsing)
+      const condValues = Array.isArray(value) ? value : [value];
+      const condList = condValues.flatMap((v: string) => String(v).split(",").map((s: string) => s.trim().toLowerCase())).filter(Boolean);
 
-      if (operator === "É igual a") {
+      if (operator === "É igual a" || operator === "Igual a") {
         return condList.some((c: string) => payloadVal === c);
       }
       if (operator === "Diferente de" || operator === "Não é igual a") {

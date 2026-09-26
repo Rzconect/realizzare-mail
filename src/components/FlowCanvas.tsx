@@ -4294,8 +4294,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
           }
 
           let description = `Fonte: ${config.source.toUpperCase()}`;
-          if (ruleText) {
-            description += ` - Regras: ${ruleText}`;
+          if (ruleText && config.rule !== "Nenhuma regra extra") {
+            // Include operator in brackets so evaluateTriggerRule can parse correctly
+            description += ` - Regras: [${config.operator || "\u00e9 igual a"}] ${ruleText}`;
           }
 
           setFlow(prev => ({
