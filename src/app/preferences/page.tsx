@@ -49,7 +49,7 @@ function PreferencesContent() {
             .eq("contact_id", contact.id);
 
           const subsMap: Record<string, boolean> = {};
-          (subs || []).forEach(s => {
+          (subs || []).forEach((s: any) => {
             subsMap[s.list_id] = s.status === 'subscribed';
           });
           setSubscriptions(subsMap);

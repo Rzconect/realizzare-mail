@@ -1,4 +1,4 @@
-﻿
+
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 
@@ -120,7 +120,7 @@ export async function processFlows() {
              const companyCnpj = orgSettings?.cnpj || '';
 
              // Build tag replacement function
-             function applyTemplateTags(htmlHtml, contactData, evPayload, appUrl) {
+             function applyTemplateTags(htmlHtml: string, contactData: any, evPayload: any, appUrl: string): string {
                let result = htmlHtml;
                const firstName = contactData?.first_name || "Cliente";
                const email = contactData?.email || "";
