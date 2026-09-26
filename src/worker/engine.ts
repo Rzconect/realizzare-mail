@@ -17,11 +17,11 @@ const transporter = nodemailer.createTransport({
 export async function processFlows() {
   console.log(`[${new Date().toISOString()}] Executando Motor de Fluxos...`);
   try {
-    const { data: runs, error } = await supabase
-      .from("flow_runs")
-      .select("*, contacts(*)")
-      .eq("status", "running")
-      .lte("next_execution_at", new Date().toISOString());
+    const now = new Date().toISOString();
+    const { data: runsToProcess } = await supabase.from("flow_runs").select("id").eq("status", "running").lte("next_execution_at", now);
+    if (!runsToProcess || runsToProcess.length === 0) return;
+    const ids = runsToProcess.map(r => r.id);
+    const { data: runs, error } = await supabase.from("flow_runs").update({ status: "processing" }).in("id", ids).eq("status", "running").select("*, contacts(*)");
 
     if (error) {
       console.error("Erro ao buscar flow_runs:", error);
@@ -135,6 +135,7 @@ export async function processFlows() {
            
            // Update run and break
            await supabase.from("flow_runs").update({
+             status: "running",
              current_node_id: nextNodeId,
              next_execution_at: futureTime,
              updated_at: new Date().toISOString()
