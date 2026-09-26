@@ -939,7 +939,12 @@ export default function ContactProfilePage({ params }: PageProps) {
         const seenEvtKeys = new Set();
         const timeline = rawEvents
           .filter(e => {
-            const key = `${e.label}-${e.details}-${e.timestamp}`;
+            let timeKey = e.timestamp;
+            if (e.type === "open" || e.type === "email_click") {
+              // Truncate to the minute (YYYY-MM-DDTHH:mm) to deduplicate rapid multiple opens
+              timeKey = typeof timeKey === "string" ? timeKey.substring(0, 16) : timeKey;
+            }
+            const key = `${e.label}-${e.details}-${timeKey}`;
             if (seenEvtKeys.has(key)) return false;
             seenEvtKeys.add(key);
             return true;
