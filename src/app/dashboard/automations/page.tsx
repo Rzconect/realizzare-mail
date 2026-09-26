@@ -166,7 +166,7 @@ export default function AutomationsPage() {
               id: f.id,
               name: f.name,
               triggerDescription: f.description || f.trigger_type || "Gatilho Padrão",
-              type: "Automação",
+              type: (f.flow_type === 'transactional' ? 'Transacional' : 'Automação') as 'Automação' | 'Transacional',
               status: (f.status === "active" ? "Ativo" : (f.status === "paused" ? "Pausado" : "Rascunho")) as "Ativo" | "Pausado" | "Rascunho",
               updatedAt: new Date(f.updated_at || f.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
               activeContacts: activeContactsMap[f.id] || 0,
@@ -634,6 +634,23 @@ export default function AutomationsPage() {
                 <option value="Rascunho">Rascunhos</option>
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+            </div>
+
+            {/* Type Filter */}
+            <div className="flex items-center gap-1">
+              {(["all", "Automação", "Transacional"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTypeFilter(t)}
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all ${
+                    typeFilter === t
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+                  }`}
+                >
+                  {t === "all" ? "Todos os Tipos" : t}
+                </button>
+              ))}
             </div>
 
             {/* Period Filter */}

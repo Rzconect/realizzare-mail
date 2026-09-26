@@ -1109,6 +1109,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
         trigger_filters: [], // Clear out since we use flow_nodes
         profile_filters: flow.profileFilters,
         exit_conditions: flow.exitConditions,
+        flow_type: flow.type === 'Transacional' ? 'transactional' : 'automation',
         updated_at: new Date().toISOString()
       }).eq("id", flow.id);
       
