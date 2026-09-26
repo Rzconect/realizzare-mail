@@ -341,7 +341,17 @@ export default function DashboardPage() {
             quantity: meta.quantity || 1,
             amount: amt,
             category: meta.category || "certificado",
-            paymentMethod: "Cartão / PIX",
+            paymentMethod: (() => {
+              const ev = (meta.event || '').toLowerCase();
+              const pm = (meta.payment_method || '').toLowerCase();
+              if (pm.includes('boleto')) return 'Boleto Bancário';
+              if (pm.includes('pix')) return 'PIX';
+              if (pm.includes('credit') || pm.includes('cartao') || pm.includes('cartão')) return 'Cartão de Crédito';
+              if (ev.includes('boleto')) return 'Boleto Bancário';
+              if (ev === 'order.paid' || ev === 'charge.paid') return 'Cartão / PIX';
+              if (ev === 'order.created' || ev === 'charge.pending') return 'Aguardando Pagamento';
+              return 'Cartão / PIX';
+            })(),
             timestampMs: dateObj.getTime(),
             type: "purchase",
             status: meta.event?.includes("paid") ? "paid" : "pending",
@@ -1758,7 +1768,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex justify-between text-slate-600 font-semibold pt-1">
                       <span>Método de Pagamento:</span>
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest uppercase">Cartão / PIX</span>
+                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest uppercase">{selectedEventModal?.paymentMethod || 'Cartão / PIX'}</span>
                     </div>
                   </>
                 ) : (

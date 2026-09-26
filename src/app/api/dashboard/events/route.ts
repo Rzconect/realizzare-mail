@@ -13,7 +13,18 @@ export async function GET(req: NextRequest) {
     const { data: eventsData, error } = await supabase
       .from("reporting_events")
       .select("*")
-      .order("created_at", { ascending: false });
+      .not("metadata->>item_title", "ilike", "%amplify%")
+      .not("metadata->>item_title", "ilike", "%forge%")
+      .not("metadata->>item_title", "ilike", "%pentest%")
+      .not("metadata->>item_title", "ilike", "%sweep%")
+      .not("metadata->>customer_name", "ilike", "%amplify%")
+      .not("metadata->>customer_name", "ilike", "%forge%")
+      .not("metadata->>customer_name", "ilike", "%pentest%")
+      .not("contact_email", "ilike", "%.invalid")
+      .not("contact_email", "ilike", "%example.com")
+      .not("contact_email", "ilike", "%example.invalid")
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (error) throw error;
 

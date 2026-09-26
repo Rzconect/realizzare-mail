@@ -169,13 +169,24 @@ export async function POST(req: Request) {
       // 1. Log the purchase event
       const pagarmeId = data?.order?.id || data?.id || `pagarme-webhook-${Date.now()}`;
       
+      // For dedup: treat charge.pending as equivalent to order.created,
+      // and charge.paid as equivalent to order.paid, since Pagar.me sends
+      // both sub-events for the same transaction.
+      const equivalentEvents: Record<string, string[]> = {
+        'charge.pending': ['order.created', 'charge.pending'],
+        'order.created':  ['order.created', 'charge.pending'],
+        'charge.paid':    ['order.paid',    'charge.paid'],
+        'order.paid':     ['order.paid',    'charge.paid'],
+      };
+      const eventsToCheck = equivalentEvents[eventType] || [eventType];
+
       const { data: existingEvent } = await supabase
         .from("reporting_events")
         .select("id")
         .eq("contact_email", email)
         .eq("event_type", "purchase")
         .eq("metadata->>pagarme_id", pagarmeId)
-        .eq("metadata->>event", eventType)
+        .in("metadata->>event", eventsToCheck)
         .maybeSingle();
 
       if (!existingEvent) {
