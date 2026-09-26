@@ -367,6 +367,10 @@ export async function POST(request: Request) {
       });
 
       await triggerFlowsForEvent(supabase, "Contato Criado / Atualizado", contact.id, {});
+      // Also fire "Novo Lead Cadastrado" when the contact has no enrollments (is a pure lead)
+      if (!count || count === 0) {
+        await triggerFlowsForEvent(supabase, "Novo Lead Cadastrado", contact.id, {});
+      }
       processedResult = { action: "contact_upserted", contact_id: contact.id, email, list: count && count > 0 ? "Alunos" : "Leads" };
     }
 
@@ -460,6 +464,8 @@ export async function POST(request: Request) {
       const courseName = body.certificate?.course_name || body.course_name || (body.certificate?.course_id || body.course_id || body.course?.id ? `Curso (ID: ${body.certificate?.course_id || body.course_id || body.course?.id})` : "Curso Desconhecido");
       const courseId = body.certificate?.course_id || body.course_id || body.course?.id?.toString() || null;
       const certCode = body.certificate?.code || `CERT-${Math.floor(Math.random() * 90000 + 10000)}`;
+      // The Realizzare platform may send a certificate view/download URL
+      const certUrl = body.certificate?.url || body.certificate?.pdf_url || body.certificate?.view_url || body.cert_url || body.certificate_url || null;
 
       if (!email) {
         return NextResponse.json({ success: false, message: "E-mail do aluno obrigatório." }, { status: 400 });
@@ -542,12 +548,17 @@ export async function POST(request: Request) {
           code: certCode,
           issued_at: body.timestamp || new Date().toISOString(),
           credit_consumed: true,
-          note: "(1 crédito de certificado consumido)"
+          note: "(1 crédito de certificado consumido)",
+          ...(certUrl ? { cert_url: certUrl } : {})
         }
       });
 
       // FIX 5: Trigger automation flows for certificate issued event
-      await triggerFlowsForEvent(supabase, "Certificado Emitido (certificate_issued)", contact.id, { course_name: course.name || "" });
+      await triggerFlowsForEvent(supabase, "Certificado Emitido (certificate_issued)", contact.id, {
+        course_name: course.name || "",
+        cert_url: certUrl || "",
+        cert_code: certCode
+      });
 
       processedResult = { action: "certificate_issued", email, courseName: course.name, certCode };
     }
@@ -584,6 +595,8 @@ export async function POST(request: Request) {
         }
       });
 
+      await triggerFlowsForEvent(supabase, "Teste Aprovado", contact.id, { course_name: course.name || "", score: testScore });
+
       processedResult = { action: "test_approved", email, courseName: course.name, testScore };
     }
 
@@ -607,9 +620,84 @@ export async function POST(request: Request) {
             cart_item: body.cart_item || "Curso Realizzare"
           }
         });
+
+        if (actionType === "checkout_abandoned") {
+          await triggerFlowsForEvent(supabase, "Carrinho Abandonado (checkout_abandoned)", contact.id, { course_name: body.cart_item || "" });
+        } else if (actionType === "checkout_click") {
+          await triggerFlowsForEvent(supabase, "Clique em Emissão/Checkout (checkout_click)", contact.id, { course_name: body.cart_item || "" });
+        } else if (actionType === "page_view") {
+          await triggerFlowsForEvent(supabase, "Visualizou Página (page_view)", contact.id, { page_url: body.page_url || "" });
+        }
       }
 
       processedResult = { action: "user_action_logged", email, actionType };
+    }
+
+    // =========================================================================
+    // EVENT 6: course.exam_failed / test.failed
+    // =========================================================================
+    else if (eventType === "course.exam_failed" || eventType === "test.failed") {
+      const email = (body.student_email || body.email || "").toLowerCase().trim();
+      const courseName = body.course_name || body.course?.title || "Curso Desconhecido";
+      const courseId = body.course_id || body.course?.id?.toString() || null;
+      const testScore = Number(body.test_score || body.score || 0);
+
+      if (email) {
+        const contact = await ensureContact(email);
+        const course = await ensureCourse(courseName, 197.00, courseId);
+        const enrollment = await ensureEnrollment(contact.id, course.id);
+
+        await supabase.from("course_events").insert({
+          org_id: DEFAULT_ORG_ID,
+          contact_id: contact.id,
+          course_id: course.id,
+          enrollment_id: enrollment.id,
+          event_type: "progress_updated",
+          metadata: {
+            original_event: "exam_failed",
+            course_name: course.name,
+            score: testScore,
+            failed_at: body.timestamp || new Date().toISOString()
+          }
+        });
+
+        await triggerFlowsForEvent(supabase, "Reprovação na Prova (course.exam_failed)", contact.id, { course_name: course.name || "", score: testScore });
+        processedResult = { action: "exam_failed_logged", email, courseName: course.name, testScore };
+      }
+    }
+
+    // =========================================================================
+    // EVENT 7: contact.unsubscribed
+    // =========================================================================
+    else if (eventType === "contact.unsubscribed") {
+      const email = (body.student_email || body.email || "").toLowerCase().trim();
+
+      if (email) {
+        const contact = await ensureContact(email);
+
+        // Mark contact as unsubscribed in contacts table
+        await supabase.from("contacts").update({ status: "unsubscribed" }).eq("id", contact.id);
+
+        await triggerFlowsForEvent(supabase, "Descadastro de Email (contact.unsubscribed)", contact.id, {});
+        processedResult = { action: "contact_unsubscribed", email };
+      }
+    }
+
+    // =========================================================================
+    // EVENT 8: contact.reactivated
+    // =========================================================================
+    else if (eventType === "contact.reactivated") {
+      const email = (body.student_email || body.email || "").toLowerCase().trim();
+
+      if (email) {
+        const contact = await ensureContact(email);
+
+        // Re-activate contact
+        await supabase.from("contacts").update({ status: "active" }).eq("id", contact.id);
+
+        await triggerFlowsForEvent(supabase, "Reativação de Contato (contact.reactivated)", contact.id, {});
+        processedResult = { action: "contact_reactivated", email };
+      }
     }
 
     // Log request to inbound_webhook_events table for live feed monitoring

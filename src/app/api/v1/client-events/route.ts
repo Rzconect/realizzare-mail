@@ -163,6 +163,16 @@ export async function POST(request: Request) {
       status: "processed"
     });
 
+    if (contactId) {
+      if (eventType === "checkout_click") {
+        await triggerFlowsForEvent(supabase, "Clique em Emissão/Checkout (checkout_click)", contactId, payload);
+      } else if (eventType === "page_view") {
+        await triggerFlowsForEvent(supabase, "Visualizou Página (page_view)", contactId, payload);
+      } else if (eventType === "add_to_cart") {
+        await triggerFlowsForEvent(supabase, "Adicionou ao Carrinho (add_to_cart)", contactId, payload);
+      }
+    }
+
     return NextResponse.json(
       { success: true, message: `Evento '${eventType}' recebido e processado via DataLayer.` },
       { status: 200, headers: corsHeaders() }

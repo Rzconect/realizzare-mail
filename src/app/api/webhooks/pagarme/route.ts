@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { triggerFlowsForEvent } from "@/lib/flows/trigger";
 
 export async function POST(req: Request) {
   try {
@@ -358,6 +359,29 @@ export async function POST(req: Request) {
                 onConflict: "contact_id,list_id"
               });
           }
+        }
+      }
+      
+      // Trigger flows based on the mapped event type string
+      if (contactId) {
+        let triggerMetric = "";
+        if (eventType === "order.paid" || eventType === "charge.paid") {
+          triggerMetric = "Transação Aprovada (order_paid)";
+        } else if (eventType === "order.created" || eventType === "charge.pending") {
+          triggerMetric = "Boleto Gerado (order_created)";
+        } else if (eventType === "subscription.canceled") {
+          triggerMetric = "Assinatura Cancelada (subscription_canceled)";
+        } else if (eventType === "checkout.abandoned" || eventType === "cart.abandoned") {
+          triggerMetric = "Carrinho Abandonado (checkout_abandoned)";
+        }
+
+        if (triggerMetric) {
+          await triggerFlowsForEvent(supabase, triggerMetric, contactId, { 
+            course_name: finalItemTitle, 
+            event_type: eventType,
+            amount: amountInReais,
+            category: category
+          });
         }
       }
     } catch (dbErr) {
