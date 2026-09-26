@@ -311,10 +311,20 @@ export async function POST(request: Request) {
       const leadsList = await ensureList("Leads", "Lista de leads cadastrados via formulário ou integração.");
       const alunosList = await ensureList("Alunos", "Lista de alunos matriculados em cursos.");
 
-      if (leadsList) {
+      // Check current subscription state to avoid redundant list change events
+      const { data: currentSubs } = await supabase
+        .from("list_subscriptions")
+        .select("list_id, status")
+        .eq("contact_id", contactId);
+
+      const currentSubMap = new Map((currentSubs || []).map((s: any) => [s.list_id, s.status]));
+
+      // Only unsubscribe from Leads if currently subscribed
+      if (leadsList && currentSubMap.get(leadsList.id) === "subscribed") {
         await unsubscribeFromList(contactId, leadsList.id);
       }
-      if (alunosList) {
+      // Only subscribe to Alunos if not already subscribed
+      if (alunosList && currentSubMap.get(alunosList.id) !== "subscribed") {
         await subscribeToList(contactId, alunosList.id);
       }
     };
@@ -456,10 +466,56 @@ export async function POST(request: Request) {
       }
 
       const contact = await ensureContact(email);
-      const course = await ensureCourse(courseName, 197.00, courseId);
-      const enrollment = await ensureEnrollment(contact.id, course.id);
 
-      // Ensure in Alunos list
+      // FIX: Find the MOST RECENT existing enrollment for this contact (prefer completed/active ones)
+      // Do NOT call ensureCourse with a possibly wrong name like "digital" from the certificate payload
+      let course: any = null;
+      let enrollment: any = null;
+
+      // First try to find by courseId if provided
+      if (courseId) {
+        const { data: courseById } = await supabase.from("courses").select("*").eq("id", courseId).maybeSingle();
+        if (courseById) course = courseById;
+      }
+
+      // If no course found by ID, try by name (only if it's a meaningful name, not "digital" placeholder)
+      if (!course && courseName && courseName !== "digital" && !courseName.includes("Curso (ID:")) {
+        const { data: courseByName } = await supabase.from("courses").select("*").ilike("name", courseName.trim()).maybeSingle();
+        if (courseByName) course = courseByName;
+      }
+
+      // Last resort: find the most recent enrollment for this contact
+      if (!course) {
+        const { data: latestEnrollment } = await supabase
+          .from("enrollments")
+          .select("*, courses(*)")
+          .eq("contact_id", contact.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestEnrollment) {
+          course = latestEnrollment.courses;
+          enrollment = latestEnrollment;
+        }
+      }
+
+      // If still no course, fallback to creating one with the name
+      if (!course) {
+        course = await ensureCourse(courseName, 197.00, courseId);
+      }
+
+      // If no enrollment found yet, find or create one for this course
+      if (!enrollment) {
+        const { data: existingEnrollment } = await supabase
+          .from("enrollments")
+          .select("*")
+          .eq("contact_id", contact.id)
+          .eq("course_id", course.id)
+          .maybeSingle();
+        enrollment = existingEnrollment || await ensureEnrollment(contact.id, course.id);
+      }
+
+      // Ensure in Alunos list (idempotent - won't create duplicate events)
       await handleCourseEnrollmentListTransition(contact.id);
 
       // 1. Mark enrollment as Certificate Issued = true & completed
@@ -485,10 +541,13 @@ export async function POST(request: Request) {
           course_name: course.name,
           code: certCode,
           issued_at: body.timestamp || new Date().toISOString(),
-          credit_consumed: body.certificate?.credit_consumed || false,
+          credit_consumed: true,
           note: "(1 crédito de certificado consumido)"
         }
       });
+
+      // FIX 5: Trigger automation flows for certificate issued event
+      await triggerFlowsForEvent(supabase, "Certificado Emitido (certificate_issued)", contact.id, { course_name: course.name || "" });
 
       processedResult = { action: "certificate_issued", email, courseName: course.name, certCode };
     }

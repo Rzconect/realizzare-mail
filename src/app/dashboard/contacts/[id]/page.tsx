@@ -735,6 +735,10 @@ export default function ContactProfilePage({ params }: PageProps) {
               type = "enrollment";
               note = "(1 crédito de certificado consumido)";
               usedCredits += 1;
+              // Decrement the breakdown so the display shows remaining credits correctly
+              if (creditsBreakdown.digital > 0) creditsBreakdown.digital -= 1;
+              else if (creditsBreakdown.impresso > 0) creditsBreakdown.impresso -= 1;
+              else if (creditsBreakdown.mensal > 0) creditsBreakdown.mensal -= 1;
               creditsHistory.push({
                 id: `ch-${ce.id}`,
                 date: ce.created_at,
@@ -944,7 +948,9 @@ export default function ContactProfilePage({ params }: PageProps) {
               // Truncate to the minute (YYYY-MM-DDTHH:mm) to deduplicate rapid multiple opens
               timeKey = typeof timeKey === "string" ? timeKey.substring(0, 16) : timeKey;
             }
-            const key = `${e.label}-${e.details}-${timeKey}`;
+            // For pending purchases, deduplicate by label+details alone (same order = same key regardless of timestamp)
+            const dedupeTimeKey = (e.type === "purchase_pending") ? "grouped" : timeKey;
+            const key = `${e.label}-${e.details}-${dedupeTimeKey}`;
             if (seenEvtKeys.has(key)) return false;
             seenEvtKeys.add(key);
             return true;
