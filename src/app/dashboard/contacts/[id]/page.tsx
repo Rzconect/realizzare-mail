@@ -930,8 +930,8 @@ export default function ContactProfilePage({ params }: PageProps) {
         }
 
         const emailsSentCount = rawEvents.filter((e) => e.type === "send").length;
-        const emailsOpenedCount = new Set(rawEvents.filter((e) => e.type === "open").map(e => e.payload?.campaign_id)).size;
-        const emailsClickedCount = new Set(rawEvents.filter((e) => e.type === "email_click").map(e => e.payload?.campaign_id)).size;
+        const emailsOpenedCount = new Set(rawEvents.filter((e) => e.type === "open").map(e => e.payload?.campaign_id || e.payload?.node_id)).size;
+        const emailsClickedCount = new Set(rawEvents.filter((e) => e.type === "email_click").map(e => e.payload?.campaign_id || e.payload?.node_id)).size;
 
         creditsHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 

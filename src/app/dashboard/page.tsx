@@ -1011,7 +1011,7 @@ export default function DashboardPage() {
             const email = (payload.email || payload.contact_email || "").toLowerCase().trim();
             if (!email) return;
 
-            const campId = payload.campaign_id || payload.campaignId || "default";
+            const campId = payload.campaign_id || payload.campaignId || payload.node_id || payload.flow_id || "default";
             const slotName = period === "today"
               ? `${String(dateObj.getHours()).padStart(2, "0")}:00`
               : `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
