@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       .not("contact_email", "ilike", "%example.com")
       .not("contact_email", "ilike", "%example.invalid")
       .order("created_at", { ascending: false })
-      .limit(200);
+      ;
 
     if (error) throw error;
 

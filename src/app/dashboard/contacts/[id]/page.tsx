@@ -138,12 +138,15 @@ export const mockProfileData: Record<string, {
   }
 };
 
-export function formatTransactionDate(paidAt: string, productType?: string): string {
+export function formatTransactionDate(paidAt: string, productType?: string, pmData?: string): string {
   if (!paidAt) return "Data não informada";
 
   let method = "";
-  if (paidAt.toLowerCase().includes("pix")) method = " • PIX";
-  else if (paidAt.toLowerCase().includes("cartão") || paidAt.toLowerCase().includes("card")) method = " • Cartão de Crédito";
+  const pmLower = (pmData || "").toLowerCase();
+  
+  if (pmLower.includes("pix") || paidAt.toLowerCase().includes("pix")) method = " • PIX";
+  else if (pmLower.includes("boleto")) method = " • Boleto Bancário";
+  else if (pmLower.includes("credit") || pmLower.includes("cartão") || pmLower.includes("cartao") || paidAt.toLowerCase().includes("cartão") || paidAt.toLowerCase().includes("card")) method = " • Cartão de Crédito";
   else if (productType === "course") method = " • Cartão de Crédito";
   else method = " • PIX";
 
@@ -519,6 +522,7 @@ export default function ContactProfilePage({ params }: PageProps) {
           amount: parseFloat(p.amount || 0),
           paid_at: p.paid_at,
           status: p.status,
+          payment_method: p.payment_method,
           sku: p.sku || ""
         }));
 
@@ -2249,7 +2253,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                       </td>
                       <td className="py-3 px-3">
                         <div className="text-xs text-slate-600 font-semibold whitespace-nowrap">
-                          {formatTransactionDate(purchase.paid_at, purchase.product_type)}
+                          {formatTransactionDate(purchase.paid_at, purchase.product_type, (purchase as any).payment_method)}
                         </div>
                       </td>
                       <td className="py-3 px-3 font-black text-emerald-700 text-xs whitespace-nowrap">

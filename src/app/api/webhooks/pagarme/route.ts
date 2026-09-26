@@ -126,6 +126,7 @@ export async function POST(req: Request) {
                       "Certificado / Curso Realizzare";
     const amountInCents = data?.amount || data?.total_amount || 4990;
     const amountInReais = (amountInCents / 100).toFixed(2);
+    const paymentMethodStr = data?.charges?.[0]?.payment_method || data?.payment_method || "";
 
     // Determine event classification
     const lowerTitle = itemTitle.toLowerCase();
@@ -203,7 +204,8 @@ export async function POST(req: Request) {
             category: category,
             customer_name: name,
             phone: phone,
-            pagarme_id: pagarmeId
+            pagarme_id: pagarmeId,
+            payment_method: paymentMethodStr
           }
         });
       }
@@ -290,6 +292,7 @@ export async function POST(req: Request) {
               sku: pagarmeId,
               status: purchaseStatus,
               paid_at: purchaseStatus === "paid" ? new Date().toISOString() : null,
+              payment_method: paymentMethodStr,
               created_at: new Date().toISOString()
             });
           }

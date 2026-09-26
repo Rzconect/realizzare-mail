@@ -348,9 +348,12 @@ export default function DashboardPage() {
               if (pm.includes('pix')) return 'PIX';
               if (pm.includes('credit') || pm.includes('cartao') || pm.includes('cartão')) return 'Cartão de Crédito';
               if (ev.includes('boleto')) return 'Boleto Bancário';
-              if (ev === 'order.paid' || ev === 'charge.paid') return 'Cartão / PIX';
+              
+              // Fallback matching contact page logic
+              const isCourse = (meta.category === 'course' || meta.category === 'curso');
               if (ev === 'order.created' || ev === 'charge.pending') return 'Aguardando Pagamento';
-              return 'Cartão / PIX';
+              
+              return isCourse ? 'Cartão de Crédito' : 'PIX';
             })(),
             timestampMs: dateObj.getTime(),
             type: "purchase",
