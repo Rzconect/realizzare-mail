@@ -1122,20 +1122,18 @@ function countMatchingContacts(contacts: any[], groups: any[], globalOp: "and" |
 interface SearchableCourseDropdownProps {
   value: string;
   onChange: (value: string) => void;
+  optionsList?: { value: string; label: string }[];
 }
-function SearchableCourseDropdown({ value, onChange }: SearchableCourseDropdownProps) {
+function SearchableCourseDropdown({ value, onChange, optionsList }: SearchableCourseDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const options = [
+  const defaultOptions = [
     { value: "all", label: "Todos os Cursos" },
-    { value: "Introdução à Programação Web", label: "Introdução à Programação Web" },
-    { value: "Gestão Financeira para Negócios", label: "Gestão Financeira para Negócios" },
-    { value: "Desenvolvimento de Carreira e Liderança", label: "Desenvolvimento de Carreira e Liderança" },
-    { value: "Marketing Digital de Performance", label: "Marketing Digital de Performance" },
     { value: "Nenhum", label: "Sem Matrícula" }
   ];
+  const options = optionsList && optionsList.length > 0 ? optionsList : defaultOptions;
   
   const filteredOptions = options.filter(o => 
     o.label.toLowerCase().includes(search.toLowerCase())
@@ -1660,6 +1658,8 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [customFields, setCustomFields] = useState<any[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<{ value: string; label: string }[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // Default values
   const defaultCustomFields = [
@@ -1881,7 +1881,71 @@ export default function ContactsPage() {
         });
         saveLists(merged);
 
-        // 3. Fetch Contacts
+        // 3. Fetch Courses & Tags from database
+        try {
+          const { data: coursesData } = await supabase
+            .from("courses")
+            .select("id, name")
+            .order("name", { ascending: true });
+          if (coursesData && coursesData.length > 0) {
+            setAvailableCourses(coursesData.map((co: any) => ({ value: co.name, label: co.name })));
+          }
+
+          const { data: tagsData } = await supabase
+            .from("tags")
+            .select("id, name")
+            .order("name", { ascending: true });
+          if (tagsData && tagsData.length > 0) {
+            setAvailableTags(tagsData.map((t: any) => t.name).filter(Boolean));
+          }
+        } catch (e) {
+          console.warn("Failed to fetch courses/tags for filters:", e);
+        }
+
+        // 4. Fetch Purchases and Course Events for accurate real-time Credits & Certificates
+        const purchasedCreditsMap: Record<string, number> = {};
+        const certEventsContactSet = new Set<string>();
+        const consumedCreditsMap: Record<string, number> = {};
+
+        try {
+          const { data: purchasesData } = await supabase
+            .from("purchases")
+            .select("contact_id, product_name, sku, status");
+
+          if (purchasesData) {
+            purchasesData.forEach((p: any) => {
+              if (p.contact_id && (p.status === "paid" || p.status === "approved" || p.status === "Pago")) {
+                const nameLower = String(p.product_name || "").toLowerCase();
+                const sku = String(p.sku || "");
+                if (
+                  nameLower.includes("certificado") ||
+                  nameLower.includes("impresso") ||
+                  nameLower.includes("assinatura") ||
+                  ["1", "2", "3", "179", "180"].includes(sku)
+                ) {
+                  purchasedCreditsMap[p.contact_id] = (purchasedCreditsMap[p.contact_id] || 0) + 1;
+                }
+              }
+            });
+          }
+
+          const { data: cEventsData } = await supabase
+            .from("course_events")
+            .select("contact_id, event_type");
+
+          if (cEventsData) {
+            cEventsData.forEach((ce: any) => {
+              if (ce.contact_id && ce.event_type === "certificate_issued") {
+                certEventsContactSet.add(ce.contact_id);
+                consumedCreditsMap[ce.contact_id] = (consumedCreditsMap[ce.contact_id] || 0) + 1;
+              }
+            });
+          }
+        } catch (e) {
+          console.warn("Failed to fetch purchases/course_events for credit balance:", e);
+        }
+
+        // 5. Fetch Contacts with real City and State
         const { data: contactsData, error: contactsError } = await supabase
           .from("contacts")
           .select(`
@@ -1890,6 +1954,9 @@ export default function ContactsPage() {
             last_name,
             email,
             phone,
+            city,
+            state,
+            country,
             status,
             created_at,
             total_spent,
@@ -1900,10 +1967,12 @@ export default function ContactsPage() {
               )
             ),
             enrollments (
+              id,
               status,
               progress,
               enrolled_at,
               certificate_issued,
+              certificate_issued_at,
               courses (
                 name
               )
@@ -1940,6 +2009,11 @@ export default function ContactsPage() {
           );
           const primaryEnrollment = sortedEnrollments[0];
           const course = primaryEnrollment?.courses?.name || "Sem Matrícula";
+
+          const enrolledCoursesList = Array.from(
+            new Set((c.enrollments || []).map((e: any) => e.courses?.name).filter(Boolean))
+          );
+
           let courseStatus = "Não Iniciado / Sem Matrícula";
           if (primaryEnrollment) {
             if (primaryEnrollment.certificate_issued || (primaryEnrollment.progress >= 100 && primaryEnrollment.status === "completed")) {
@@ -1953,6 +2027,16 @@ export default function ContactsPage() {
             }
           }
 
+          const hasCert = 
+            primaryEnrollment?.certificate_issued === true ||
+            (c.enrollments || []).some((e: any) => e.certificate_issued === true) ||
+            certEventsContactSet.has(c.id) ||
+            tags.includes("Certificado Emitido");
+
+          const acquired = purchasedCreditsMap[c.id] || 0;
+          const consumed = (consumedCreditsMap[c.id] || 0) + (hasCert && (consumedCreditsMap[c.id] || 0) === 0 ? 1 : 0);
+          const creditsBal = Math.max(0, acquired - consumed);
+
           const cleanEmail = (c.email || "").toLowerCase().trim();
 
           return {
@@ -1961,12 +2045,17 @@ export default function ContactsPage() {
             last_name: c.last_name || "",
             email: c.email,
             phone: c.phone || "",
+            city: c.city || "",
+            state: c.state ? c.state.toUpperCase().trim() : "",
             status: c.status,
             created_at: c.created_at ? new Date(c.created_at).toISOString().split("T")[0] : "",
             tags,
             course,
             courseStatus,
+            enrolledCoursesList,
             enrollments: c.enrollments || [],
+            has_certificate: hasCert,
+            credits_balance: creditsBal,
             total_spent: parseFloat(c.total_spent || 0),
             last_paid_order_date: lastPaidMap[cleanEmail] || ""
           };
@@ -2584,11 +2673,47 @@ export default function ContactsPage() {
     );
   };
 
+  // Dynamic filter options derived from real database & contacts
+  const coursesOptions = useMemo(() => {
+    const list = [{ value: "all", label: "Todos os Cursos" }];
+    const courseNames = new Set<string>();
+    availableCourses.forEach((co) => { if (co.value) courseNames.add(co.value); });
+    contacts.forEach((c) => {
+      if (c.course && c.course !== "Sem Matrícula" && c.course !== "Nenhum") courseNames.add(c.course);
+      (c.enrolledCoursesList || []).forEach((cn: string) => { if (cn) courseNames.add(cn); });
+    });
+    Array.from(courseNames).sort().forEach((name) => {
+      list.push({ value: name, label: name });
+    });
+    list.push({ value: "Nenhum", label: "Sem Matrícula" });
+    return list;
+  }, [availableCourses, contacts]);
+
+  const allTagsList = useMemo(() => {
+    const tagsSet = new Set<string>(availableTags);
+    contacts.forEach((c) => {
+      (c.tags || []).forEach((t: string) => {
+        if (t) tagsSet.add(t);
+      });
+    });
+    return Array.from(tagsSet).sort();
+  }, [availableTags, contacts]);
+
+  const allStatesList = useMemo(() => {
+    const statesSet = new Set<string>();
+    contacts.forEach((c) => {
+      if (c.state && c.state.trim().length > 0) {
+        statesSet.add(c.state.toUpperCase().trim());
+      }
+    });
+    return Array.from(statesSet).sort();
+  }, [contacts]);
+
   // Filtered and sorted contacts calculation
   const processedContacts = useMemo(() => {
     let result = [...contacts];
 
-    // Search filter
+    // Search filter - searches name, email, phone, city, state, course, tags
     if (searchTerm && searchTerm.trim().length > 0) {
       const query = searchTerm.toLowerCase().trim();
       const tokens = query.split(/\s+/).filter(Boolean);
@@ -2599,22 +2724,34 @@ export default function ContactsPage() {
         const fullName = `${firstName} ${lastName}`.trim();
         const email = (c.email || "").toLowerCase();
         const rawPhone = (c.phone || "").toLowerCase();
+        const city = (c.city || "").toLowerCase();
+        const state = (c.state || "").toLowerCase();
+        const course = (c.course || "").toLowerCase();
+        const tagsStr = (c.tags || []).join(" ").toLowerCase();
 
-        // Direct full name, email or phone match
+        // Direct full name, email, phone, location or course match
         if (
           fullName.includes(query) ||
           email.includes(query) ||
-          rawPhone.includes(query)
+          rawPhone.includes(query) ||
+          city.includes(query) ||
+          state.includes(query) ||
+          course.includes(query) ||
+          tagsStr.includes(query)
         ) {
           return true;
         }
 
-        // Tokenized multi-word search (matches all query terms in full name/email/phone)
+        // Tokenized multi-word search
         return tokens.every(
           (t) =>
             fullName.includes(t) ||
             email.includes(t) ||
-            rawPhone.includes(t)
+            rawPhone.includes(t) ||
+            city.includes(t) ||
+            state.includes(t) ||
+            course.includes(t) ||
+            tagsStr.includes(t)
         );
       });
     }
@@ -2624,18 +2761,26 @@ export default function ContactsPage() {
       result = result.filter((c) => c.status === statusFilter);
     }
 
-    // Course filter (checks any enrollment)
+    // Course filter (checks any enrollment or primary course)
     if (courseFilter !== "all" && courseFilter !== "") {
       result = result.filter((c) => {
-        const matchesPrimary = c.course === courseFilter;
-        const matchesAny = c.enrollments?.some((e: any) => e.courses?.name === courseFilter || e.course_name === courseFilter);
+        if (courseFilter === "Nenhum" || courseFilter.toLowerCase() === "sem matrícula") {
+          return !c.enrolledCoursesList || c.enrolledCoursesList.length === 0 || c.course === "Sem Matrícula";
+        }
+        const matchesPrimary = (c.course || "").toLowerCase() === courseFilter.toLowerCase();
+        const matchesAny = (c.enrolledCoursesList || []).some((cn: string) => (cn || "").toLowerCase() === courseFilter.toLowerCase());
         return matchesPrimary || matchesAny;
       });
     }
 
     // Latest Course Filter (checks exact primary/latest enrolled course)
     if (latestCourseFilter !== "all" && latestCourseFilter !== "") {
-      result = result.filter((c) => c.course === latestCourseFilter);
+      result = result.filter((c) => {
+        if (latestCourseFilter === "Nenhum" || latestCourseFilter.toLowerCase() === "sem matrícula") {
+          return c.course === "Sem Matrícula" || !c.enrolledCoursesList || c.enrolledCoursesList.length === 0;
+        }
+        return (c.course || "").toLowerCase() === latestCourseFilter.toLowerCase();
+      });
     }
     
     // Course status filter
@@ -2654,48 +2799,32 @@ export default function ContactsPage() {
 
     // Tag filter
     if (tagFilter !== "all") {
-      result = result.filter((c) => c.tags.includes(tagFilter));
+      result = result.filter((c) => (c.tags || []).some((t: string) => t.toLowerCase() === tagFilter.toLowerCase()));
     }
 
-    // Certificate filter
+    // Certificate filter (Real database field)
     if (certFilter !== "all") {
       result = result.filter((c) => {
-        if (typeof window !== "undefined") {
-          const storedProfile = localStorage.getItem(`realizzare_profile_${c.id}`);
-          if (storedProfile) {
-            try {
-              const parsed = JSON.parse(storedProfile);
-              const hasIssued = parsed.enrollments?.some((e: any) => e.certificate_issued) || false;
-              return certFilter === "sim" ? hasIssued : !hasIssued;
-            } catch (e) {}
-          }
-        }
-        return certFilter === "nao";
+        if (certFilter === "sim") return !!c.has_certificate;
+        if (certFilter === "nao") return !c.has_certificate;
+        return true;
       });
     }
 
-    // Credits filter
+    // Credits filter (Real calculated balance)
     if (creditsFilter !== "all") {
       result = result.filter((c) => {
-        if (typeof window !== "undefined") {
-          const storedProfile = localStorage.getItem(`realizzare_profile_${c.id}`);
-          if (storedProfile) {
-            try {
-              const parsed = JSON.parse(storedProfile);
-              const hasCredits = (parsed.credits_balance && parsed.credits_balance > 0) || ["c1", "c4", "c7"].includes(c.id);
-              return creditsFilter === "sim" ? hasCredits : !hasCredits;
-            } catch (e) {}
-          }
-        }
-        return ["c1", "c4", "c7"].includes(c.id) ? creditsFilter === "sim" : creditsFilter === "nao";
+        if (creditsFilter === "sim") return (c.credits_balance || 0) > 0;
+        if (creditsFilter === "nao") return (c.credits_balance || 0) <= 0;
+        return true;
       });
     }
 
     // State (UF) filter
     if (stateFilter !== "all") {
       result = result.filter((c) => {
-        const st = c.location?.state || c.state || "";
-        return st.toUpperCase() === stateFilter.toUpperCase();
+        const st = (c.state || "").toUpperCase().trim();
+        return st === stateFilter.toUpperCase().trim();
       });
     }
 
@@ -2703,7 +2832,7 @@ export default function ContactsPage() {
     if (cityFilter && cityFilter.trim().length > 0) {
       const cQuery = cityFilter.toLowerCase().trim();
       result = result.filter((c) => {
-        const ct = (c.location?.city || c.city || "").toLowerCase();
+        const ct = (c.city || "").toLowerCase().trim();
         return ct.includes(cQuery);
       });
     }
@@ -4232,6 +4361,7 @@ export default function ContactsPage() {
               <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Curso Matriculado</label>
               <SearchableCourseDropdown
                 value={courseFilter}
+                optionsList={coursesOptions}
                 onChange={(val) => {
                   setCourseFilter(val);
                   setCurrentPage(1);
@@ -4244,6 +4374,7 @@ export default function ContactsPage() {
               <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Último Curso</label>
               <SearchableCourseDropdown
                 value={latestCourseFilter}
+                optionsList={coursesOptions}
                 onChange={(val) => {
                   setLatestCourseFilter(val);
                   setCurrentPage(1);
@@ -4275,12 +4406,9 @@ export default function ContactsPage() {
                 className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 font-medium"
               >
                 <option value="all">Todas as Tags</option>
-                <option value="Novo">Novo</option>
-                <option value="Matriculado">Matriculado</option>
-                <option value="Interessado">Interessado</option>
-                <option value="Vip">Vip</option>
-                <option value="Ex-Aluno">Ex-Aluno</option>
-                <option value="Bounced">Bounced</option>
+                {allTagsList.map((tag) => (
+                  <option key={tag} value={tag}>{tag}</option>
+                ))}
               </select>
             </div>
 
@@ -4330,19 +4458,9 @@ export default function ContactsPage() {
                 className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 font-medium"
               >
                 <option value="all">Todos os Estados</option>
-                <option value="MT">MT - Mato Grosso</option>
-                <option value="SP">SP - São Paulo</option>
-                <option value="RJ">RJ - Rio de Janeiro</option>
-                <option value="MG">MG - Minas Gerais</option>
-                <option value="PR">PR - Paraná</option>
-                <option value="RS">RS - Rio Grande do Sul</option>
-                <option value="BA">BA - Bahia</option>
-                <option value="PE">PE - Pernambuco</option>
-                <option value="DF">DF - Distrito Federal</option>
-                <option value="CE">CE - Ceará</option>
-                <option value="AM">AM - Amazonas</option>
-                <option value="SC">SC - Santa Catarina</option>
-                <option value="GO">GO - Goiás</option>
+                {allStatesList.map((uf) => (
+                  <option key={uf} value={uf}>{uf}</option>
+                ))}
               </select>
             </div>
 

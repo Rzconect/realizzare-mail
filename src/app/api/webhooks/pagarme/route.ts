@@ -13,6 +13,7 @@ export async function POST(req: Request) {
       const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.SUPABASE_SERVICE_ROLE_KEY || "");
       await supabase.from("inbound_webhook_events").insert({
         org_id: "00000000-0000-0000-0000-000000000001",
+        source: "pagarme",
         event_type: body?.type || body?.event || "unknown_pagarme",
         payload: body,
         created_at: new Date().toISOString()
