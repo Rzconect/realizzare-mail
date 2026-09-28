@@ -90,56 +90,108 @@ export default function DealModal({ isOpen, onClose, deal, columns = [], onEdit,
             }
          }
 
-                  // 2. Fetch Timeline Events
-         if (deal.email) {
-           const { data: events } = await supabase
-             .from('reporting_events')
-             .select('*')
-             .eq('contact_email', deal.email)
-             .order('created_at', { ascending: false });
-           
-           if (events) {
-             const uniqueEvents: any[] = [];
-             const seen = new Set();
-             
-                          const grouped = new Map();
-             
-             events.forEach((evt: any) => {
-                const isPaid = evt.metadata?.status === 'paid' || evt.event === 'order.paid' || evt.metadata?.event === 'order.paid' || evt.metadata?.event === 'charge.paid';
-                let title = evt.metadata?.item_title || evt.metadata?.course_name || "Produto";
-                const amt = evt.metadata?.amount || "0";
-                const timeStr = new Date(evt.created_at).toISOString().slice(0, 16); // Up to minutes
+                  // 2. Fetch Timeline Events with robust deduplication
+          if (deal.email) {
+            const { data: events } = await supabase
+              .from('reporting_events')
+              .select('*')
+              .eq('contact_email', deal.email)
+              .order('created_at', { ascending: false });
+            
+            if (events && events.length > 0) {
+              // Step 1: Group by pagarme_id (order ID)
+              const byPagarmeId = new Map();
+              const withoutPagarmeId: any[] = [];
+
+              events.forEach((evt: any) => {
+                const isPaid = evt.metadata?.status === 'paid' || 
+                               evt.event === 'order.paid' || 
+                               evt.metadata?.event === 'order.paid' || 
+                               evt.metadata?.event === 'charge.paid';
                 
-                // If title is the fallback, mark it so we can prefer real titles
-                const isFallback = title.includes("Certificado / Curso Realizzare");
-                
-                // Group by amount + minute
-                const key = `${amt}-${timeStr}`;
-                
-                if (!grouped.has(key)) {
-                  grouped.set(key, { ...evt, _isPaid: isPaid, _isFallback: isFallback, _title: title });
-                } else {
-                  const existing = grouped.get(key);
-                  // Prefer paid status
-                  if (isPaid) existing._isPaid = true;
-                  // Prefer real title over fallback
-                  if (existing._isFallback && !isFallback) {
-                    existing._title = title;
-                    existing._isFallback = false;
-                    existing.metadata = { ...existing.metadata, item_title: title }; // Update metadata for rendering
+                let title = evt.metadata?.item_title || evt.metadata?.course_name || 'Produto Realizzare';
+                const isFallback = title.includes('Certificado / Curso Realizzare');
+                const pid = evt.metadata?.pagarme_id || evt.metadata?.order_id;
+
+                const normalized = {
+                  ...evt,
+                  _isPaid: isPaid,
+                  _title: title,
+                  _isFallback: isFallback,
+                  _timeMs: new Date(evt.created_at).getTime()
+                };
+
+                if (pid && String(pid).startsWith('or_')) {
+                  if (!byPagarmeId.has(pid)) {
+                    byPagarmeId.set(pid, normalized);
+                  } else {
+                    const existing = byPagarmeId.get(pid);
+                    if (isPaid) {
+                      existing._isPaid = true;
+                      existing.metadata = { ...existing.metadata, status: 'paid', event: 'order.paid' };
+                    }
+                    if (existing._isFallback && !isFallback) {
+                      existing._title = title;
+                      existing._isFallback = false;
+                      existing.metadata = { ...existing.metadata, item_title: title };
+                    }
+                    if (normalized._timeMs > existing._timeMs) {
+                      existing.created_at = normalized.created_at;
+                      existing._timeMs = normalized._timeMs;
+                    }
                   }
-                  // If we upgraded to paid, update metadata event so mapping logic renders it green
-                  if (isPaid && (!existing.metadata?.event || !existing.metadata.event.includes('paid'))) {
-                    existing.metadata = { ...existing.metadata, event: 'order.paid' };
+                } else {
+                  withoutPagarmeId.push(normalized);
+                }
+              });
+
+              const mergedEvents = [...Array.from(byPagarmeId.values()), ...withoutPagarmeId];
+              mergedEvents.sort((a, b) => b._timeMs - a._timeMs);
+
+              // Step 2: Fuzzy deduplication for checkout retries within 15 minutes with same amount
+              const finalEvents: any[] = [];
+              mergedEvents.forEach((evt: any) => {
+                const amt = Number(evt.metadata?.amount || 0).toFixed(2);
+                const isPaid = evt._isPaid;
+
+                const dupeIndex = finalEvents.findIndex((existing: any) => {
+                  const existingAmt = Number(existing.metadata?.amount || 0).toFixed(2);
+                  const timeDiffMinutes = Math.abs(existing._timeMs - evt._timeMs) / (1000 * 60);
+
+                  if (existingAmt === amt && timeDiffMinutes <= 15) {
+                    // Both pending -> duplicate retry attempt
+                    if (!existing._isPaid && !isPaid) return true;
+                    // Both paid -> duplicate paid webhook
+                    if (existing._isPaid && isPaid) return true;
+                    // Existing is paid, incoming is pending -> paid supersedes pending
+                    if (existing._isPaid && !isPaid) return true;
+                  }
+                  return false;
+                });
+
+                if (dupeIndex === -1) {
+                  finalEvents.push(evt);
+                } else {
+                  const existing = finalEvents[dupeIndex];
+                  if (isPaid && !existing._isPaid) {
+                    existing._isPaid = true;
+                    if (evt._title && !evt._isFallback) {
+                      existing._title = evt._title;
+                      existing.metadata = { ...existing.metadata, item_title: evt._title, status: 'paid', event: 'order.paid' };
+                    }
+                    existing.created_at = evt.created_at;
+                    existing._timeMs = evt._timeMs;
                   }
                 }
-             });
-             
-             setTimelineEvents(Array.from(grouped.values()));
-           }
-         }
+              });
 
-         // 3. Fetch Users
+              setTimelineEvents(finalEvents);
+            } else {
+              setTimelineEvents([]);
+            }
+          }
+
+          // 3. Fetch Users
          try {
            const res = await fetch('/api/auth/users');
            if (res.ok) {
