@@ -128,7 +128,7 @@ export async function triggerFlowsForEvent(supabase: any, eventName: string, con
         .eq("flow_id", flow.id)
         .eq("contact_id", contactId)
         .eq("status", "running")
-        .single();
+        .maybeSingle();
       
       // se já está rodando, pula
       if (existing) continue;
@@ -140,8 +140,7 @@ export async function triggerFlowsForEvent(supabase: any, eventName: string, con
           contact_id: contactId,
           status: "running",
           current_node_id: startNodeId,
-          next_execution_at: new Date().toISOString(),
-          metadata: payload || {}
+          next_execution_at: new Date().toISOString()
         });
     }
   } catch (e) {
