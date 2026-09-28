@@ -64,15 +64,16 @@ export async function GET() {
        // 1. Try exact pagarme_id match (only if they both have or_ or ch_)
        let matchingPaid = paidList.find(p => p.metadata?.pagarme_id && pendingId && p.metadata.pagarme_id === pendingId);
        
-       // 2. Try fuzzy match (same email, same amount, within 60 minutes)
+       // 2. Try fuzzy match (same email, same amount, paid AT or AFTER pending within 60 minutes)
        if (!matchingPaid) {
           matchingPaid = paidList.find(p => {
              if (p.contact_email !== pendingEmail) return false;
-             if ((p.metadata?.amount || 0) !== pendingAmt) return false;
+             if (Number(p.metadata?.amount || 0).toFixed(2) !== Number(pendingAmt).toFixed(2)) return false;
              
              const paidTime = new Date(p.created_at).getTime();
-             const diffMinutes = Math.abs(paidTime - pendingTime) / (1000 * 60);
-             return diffMinutes <= 60; // if paid within 60 minutes of pending, it's the same order
+             if (paidTime < pendingTime - 10000) return false; // Past paid events do not match new pending orders
+             const diffMinutes = (paidTime - pendingTime) / (1000 * 60);
+             return diffMinutes <= 60; // if paid within 60 minutes after pending creation
           });
        }
        

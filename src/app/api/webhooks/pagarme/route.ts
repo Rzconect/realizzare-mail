@@ -25,14 +25,15 @@ export async function POST(req: Request) {
 
     const validEvents = [
       "order.paid", "charge.paid", "subscription.activated", "subscription.created",
-      "order.created", "order.pending", "charge.pending"
+      "order.created", "order.pending", "charge.pending", "charge.created",
+      "order.payment_failed", "charge.payment_failed"
     ];
     if (!validEvents.includes(eventType)) {
       return NextResponse.json({ message: `Webhook ignorado: evento ${eventType} não processado.` }, { status: 200 });
     }
 
     let purchaseStatus = "paid";
-    if (eventType.includes("pending") || eventType === "order.created") {
+    if (eventType.includes("pending") || eventType.includes("created") || eventType.includes("failed")) {
       purchaseStatus = "pending";
     }
 
@@ -175,8 +176,9 @@ export async function POST(req: Request) {
       // and charge.paid as equivalent to order.paid, since Pagar.me sends
       // both sub-events for the same transaction.
       const equivalentEvents: Record<string, string[]> = {
-        'charge.pending': ['order.created', 'charge.pending'],
-        'order.created':  ['order.created', 'charge.pending'],
+        'charge.pending': ['order.created', 'charge.pending', 'charge.created'],
+        'charge.created': ['order.created', 'charge.pending', 'charge.created'],
+        'order.created':  ['order.created', 'charge.pending', 'charge.created'],
         'charge.paid':    ['order.paid',    'charge.paid'],
         'order.paid':     ['order.paid',    'charge.paid'],
       };
