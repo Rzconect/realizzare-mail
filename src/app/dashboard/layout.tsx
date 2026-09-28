@@ -93,6 +93,14 @@ export default function DashboardLayout({
 
         try {
           const parsed = JSON.parse(sessionStr);
+          
+          if (parsed.expiresAt && parsed.expiresAt <= Date.now()) {
+            localStorage.removeItem("realizzare_current_session");
+            sessionStorage.removeItem("realizzare_current_session");
+            router.push("/login");
+            return;
+          }
+
           const isDevOrAdminBypass =
             parsed.email?.includes("nilton") ||
             parsed.email?.includes("dev") ||
@@ -106,20 +114,14 @@ export default function DashboardLayout({
             try {
               const { createClient } = await import("@/lib/supabase/client");
               const supabase = createClient();
-              const { data: { user }, error: userError } = await supabase.auth.getUser();
-              if (userError || !user) {
-                console.warn("Invalid Supabase Auth session. Forcing logout.");
-                localStorage.removeItem("realizzare_current_session");
-                sessionStorage.removeItem("realizzare_current_session");
-                router.push("/login");
-                return;
-              } else {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
                 const isNew = user.user_metadata?.is_new_user !== false;
-                parsed.isNewUser = isNew;
-                
-                // Persist the corrected state in both local & session storages
-                localStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
-                sessionStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+                if (parsed.isNewUser !== isNew) {
+                  parsed.isNewUser = isNew;
+                  localStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+                  sessionStorage.setItem("realizzare_current_session", JSON.stringify(parsed));
+                }
               }
             } catch (e) {
               console.warn("Background user session sync skipped:", e);
@@ -149,14 +151,19 @@ export default function DashboardLayout({
           }
         } catch (e) {
           console.error(e);
-          router.push("/login");
         }
       }
     };
+
     checkAuthSession();
-    window.addEventListener("storage", () => {
-      checkAuthSession();
-    });
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.key || e.key === "realizzare_current_session") {
+        checkAuthSession();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
     
     // Suppress generic ResizeObserver errors caused by Recharts during sidebar transitions
     const hideResizeErrors = (e: ErrorEvent) => {
@@ -170,10 +177,10 @@ export default function DashboardLayout({
     window.addEventListener("error", hideResizeErrors);
 
     return () => {
-      window.removeEventListener("storage", () => checkAuthSession());
+      window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("error", hideResizeErrors);
     };
-  }, [pathname, router]);
+  }, [router]);
 
   useEffect(() => {
     const loadNotifications = () => {
