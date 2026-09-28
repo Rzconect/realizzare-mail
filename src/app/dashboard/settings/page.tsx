@@ -3326,13 +3326,20 @@ export default function SettingsPage() {
             <div className="space-y-6">
               {/* Suppression KPIs Summary Line */}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {[
-                  { label: "Total Suprimidos", value: suppressedEmails.length, color: "bg-slate-500" },
-                  { label: "Hard Bounces", value: 1, color: "bg-red-500" },
-                  { label: "Reclamações Spam", value: 1, color: "bg-amber-500" },
-                  { label: "Cancelamento Manual", value: 1, color: "bg-rose-500" },
-                  { label: "Soft Bounce Repetido", value: 1, color: "bg-orange-500" }
-                ].map((k) => (
+                {(() => {
+                  const hardBouncesCount = suppressedEmails.filter(s => s.reason === "hard_bounce").length;
+                  const spamCount = suppressedEmails.filter(s => s.reason === "complaint").length;
+                  const unsubCount = suppressedEmails.filter(s => s.reason === "unsubscribe").length;
+                  const softBouncesCount = suppressedEmails.filter(s => s.reason === "soft_bounce_repeated").length;
+
+                  return [
+                    { label: "Total Suprimidos", value: suppressedEmails.length, color: "bg-slate-500" },
+                    { label: "Hard Bounces", value: hardBouncesCount, color: "bg-red-500" },
+                    { label: "Reclamações Spam", value: spamCount, color: "bg-amber-500" },
+                    { label: "Cancelamento Manual", value: unsubCount, color: "bg-rose-500" },
+                    { label: "Soft Bounce Repetido", value: softBouncesCount, color: "bg-orange-500" }
+                  ];
+                })().map((k) => (
                   <div key={k.label} className="bg-white border border-slate-205 border-slate-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
                     <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">{k.label}</span>
                     <h4 className="text-xl font-black text-slate-800 mt-1">{k.value}</h4>

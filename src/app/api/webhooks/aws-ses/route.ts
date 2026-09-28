@@ -128,10 +128,29 @@ export async function POST(req: NextRequest) {
 
           for (const recipient of bouncedRecipients) {
             const email = recipient.emailAddress;
-            if (bounce.bounceType === "Permanent") {
-              const { data: contact } = await supabase.from("contacts").update({ status: "unsubscribed" }).ilike("email", email).select("id").maybeSingle();
-              if (contact?.id) await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+            if (email) {
+              const cleanEmail = email.toLowerCase().trim();
+              if (bounce.bounceType === "Permanent") {
+                const { data: contact } = await supabase.from("contacts").update({ status: "bounced" }).ilike("email", cleanEmail).select("id").maybeSingle();
+                if (contact?.id) await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+              }
+
+              try {
+                const { data: existingSup } = await supabase.from("suppression_list").select("id").eq("email", cleanEmail).maybeSingle();
+                if (!existingSup) {
+                  await supabase.from("suppression_list").insert({
+                    org_id: "00000000-0000-0000-0000-000000000001",
+                    email: cleanEmail,
+                    reason: bounce.bounceType === "Permanent" ? "hard_bounce" : "soft_bounce_repeated",
+                    origin: campaignId ? `Campanha ${campaignId}` : (flowId ? `Automação ${flowId}` : "AWS SES Bounce"),
+                    removable: bounce.bounceType !== "Permanent"
+                  });
+                }
+              } catch (supErr) {
+                console.error("Error inserting suppression list from AWS SES bounce:", supErr);
+              }
             }
+
             await supabase.from("inbound_webhook_events").insert({
               org_id: "00000000-0000-0000-0000-000000000001",
               source: "aws_ses",
@@ -140,9 +159,9 @@ export async function POST(req: NextRequest) {
                 event: "email.bounce",
                 email,
                 campaign_id: campaignId,
-              contact_id: contactId,
-              flow_id: flowId,
-              node_id: nodeId,
+                contact_id: contactId,
+                flow_id: flowId,
+                node_id: nodeId,
                 bounce_type: bounce.bounceType,
                 sub_type: bounce.bounceSubType,
                 timestamp: new Date().toISOString()
@@ -163,8 +182,26 @@ export async function POST(req: NextRequest) {
 
           for (const recipient of complainedRecipients) {
             const email = recipient.emailAddress;
-            const { data: contact } = await supabase.from("contacts").update({ status: "unsubscribed" }).ilike("email", email).select("id").maybeSingle();
-            if (contact?.id) await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+            if (email) {
+              const cleanEmail = email.toLowerCase().trim();
+              const { data: contact } = await supabase.from("contacts").update({ status: "unsubscribed" }).ilike("email", cleanEmail).select("id").maybeSingle();
+              if (contact?.id) await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+
+              try {
+                const { data: existingSup } = await supabase.from("suppression_list").select("id").eq("email", cleanEmail).maybeSingle();
+                if (!existingSup) {
+                  await supabase.from("suppression_list").insert({
+                    org_id: "00000000-0000-0000-0000-000000000001",
+                    email: cleanEmail,
+                    reason: "complaint",
+                    origin: campaignId ? `Campanha ${campaignId}` : (flowId ? `Automação ${flowId}` : "AWS SES Complaint"),
+                    removable: false
+                  });
+                }
+              } catch (supErr) {
+                console.error("Error inserting suppression list from AWS SES complaint:", supErr);
+              }
+            }
             
             await supabase.from("inbound_webhook_events").insert({
               org_id: "00000000-0000-0000-0000-000000000001",
@@ -174,9 +211,9 @@ export async function POST(req: NextRequest) {
                 event: "email.spam_complaint",
                 email,
                 campaign_id: campaignId,
-              contact_id: contactId,
-              flow_id: flowId,
-              node_id: nodeId,
+                contact_id: contactId,
+                flow_id: flowId,
+                node_id: nodeId,
                 feedback_type: complaint.complaintFeedbackType,
                 timestamp: new Date().toISOString()
               },

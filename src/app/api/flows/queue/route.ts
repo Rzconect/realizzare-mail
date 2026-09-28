@@ -1,4 +1,3 @@
-﻿
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -18,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const { data: runs, error } = await supabase
       .from("flow_runs")
-      .select("id, created_at, status, contacts(id, email, first_name, last_name)")
+      .select("id, flow_id, created_at, status, contacts(id, email, first_name, last_name)")
       .eq("current_node_id", nodeId)
       .eq("status", "running")
       .order("created_at", { ascending: false })
@@ -39,6 +38,8 @@ export async function GET(req: NextRequest) {
       
       return {
         id: c.id,
+        runId: r.id,
+        flowId: r.flow_id,
         name,
         email: c.email,
         initials: name.substring(0, 2).toUpperCase(),
@@ -52,4 +53,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

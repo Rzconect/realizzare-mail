@@ -36,7 +36,7 @@ import {
   MessageSquare,
   RefreshCw,
   Sliders,
-  Users, UserPlus,
+  Users, UserPlus, UserMinus,
   Database,
   ExternalLink,
   BookOpen,
@@ -458,6 +458,46 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
       console.error(err);
     }
   };
+  const [removingRunId, setRemovingRunId] = useState<string | null>(null);
+
+  const handleRemoveLeadFromFlow = async (lead: any) => {
+    if (typeof window !== "undefined") {
+      const confirmRemove = window.confirm(`Deseja realmente remover o lead "${lead.name}" (${lead.email}) desta automação?`);
+      if (!confirmRemove) return;
+    }
+    const targetId = lead.runId || lead.id;
+    setRemovingRunId(targetId);
+    try {
+      const res = await fetch("/api/flows/remove-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runId: lead.runId,
+          contactId: lead.id,
+          flowId: lead.flowId || flow.id
+        })
+      });
+      if (res.ok) {
+        setQueueLeads(prev => prev.filter(l => (l.runId ? l.runId !== lead.runId : l.id !== lead.id)));
+        setQueueModalCount(prev => Math.max(0, prev - 1));
+        if (editId) {
+          fetch("/api/flows/metrics?flowId=" + editId)
+            .then(r => r.json())
+            .then(d => { if (d.metrics) setNodeMetricsData(d.metrics); })
+            .catch(console.error);
+        }
+      } else {
+        const data = await res.json();
+        alert(`Erro ao remover lead: ${data.error || "Tente novamente."}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Erro ao remover lead: ${err.message || "Falha na conexão."}`);
+    } finally {
+      setRemovingRunId(null);
+    }
+  };
+
   const [showInsertionPopover, setShowInsertionPopover] = useState(false);
   const [popoverCoords, setPopoverCoords] = useState({ x: 0, y: 0 });
 
@@ -3982,6 +4022,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                           <th className="px-4 py-3">Lead / Contato</th>
                           <th className="px-4 py-3">Data de Entrada</th>
                           <th className="px-4 py-3">Tempo na Etapa</th>
+                          <th className="px-4 py-3 text-center">Remover</th>
                           <th className="px-4 py-3 text-right">Ação</th>
                         </tr>
                       </thead>
@@ -3999,6 +4040,18 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                             </td>
                             <td className="px-4 py-3.5 text-slate-600 font-medium">{lead.enteredAt}</td>
                             <td className="px-4 py-3.5 text-slate-500 font-medium">{lead.timeElapsed}</td>
+                            <td className="px-4 py-3.5 text-center">
+                              <button
+                                type="button"
+                                disabled={removingRunId === (lead.runId || lead.id)}
+                                onClick={() => handleRemoveLeadFromFlow(lead)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 text-[10px] font-bold border border-rose-200 transition-all cursor-pointer disabled:opacity-50"
+                                title="Remover este lead da automação"
+                              >
+                                <UserMinus className="h-3 w-3" />
+                                {removingRunId === (lead.runId || lead.id) ? "Removendo..." : "Remover"}
+                              </button>
+                            </td>
                             <td className="px-4 py-3.5 text-right">
                               <Link 
                                 href={`/dashboard/contacts/${lead.id}`}

@@ -317,10 +317,20 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
         if (dbCamp) {
           // 2. Fetch tracking events for opens & clicks (Optimized)
+          // 2. Fetch tracking events for opens, clicks, bounces, and spam complaints
           const { data: trackingEvents } = await supabase
             .from("inbound_webhook_events")
             .select("created_at, event_type, payload")
-            .in("event_type", ["email.opened", "email.open", "email.clicked", "email.click"]);
+            .in("event_type", [
+              "email.opened", "email.open", 
+              "email.clicked", "email.click",
+              "email.bounce", "email.bounced",
+              "email.spam_complaint", "email.complaint"
+            ]);
+
+          // Fetch suppression list to identify suppressed/bounced recipients
+          const { data: supsData } = await supabase.from("suppression_list").select("email, reason");
+          const suppressedEmailsSet = new Set((supsData || []).map((s: any) => (s.email || "").toLowerCase().trim()));
 
           // 3. Fetch purchase reporting events for conversions
           const { data: purchaseEvents } = await supabase
@@ -328,9 +338,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             .select("created_at, event_type, contact_email, metadata")
             .eq("event_type", "purchase");
 
-          // Extract open/click events matching this campaign ID or email
+          // Extract open/click/bounce/spam events matching this campaign ID or email
           const campOpens = new Map<string, string>(); // email -> date
           const campClicks = new Map<string, string>(); // email -> date
+          const campBounces = new Map<string, string>(); // email -> date
+          const campSpams = new Map<string, string>(); // email -> date
 
           (trackingEvents || []).forEach((te: any) => {
             const payload = te.payload || {};
@@ -347,6 +359,16 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 if (te.event_type === "email.clicked" || te.event_type === "email.click") {
                   if (!campClicks.has(email) || new Date(eventDate) > new Date(campClicks.get(email)!)) {
                     campClicks.set(email, eventDate);
+                  }
+                }
+                if (te.event_type === "email.bounce" || te.event_type === "email.bounced") {
+                  if (!campBounces.has(email) || new Date(eventDate) > new Date(campBounces.get(email)!)) {
+                    campBounces.set(email, eventDate);
+                  }
+                }
+                if (te.event_type === "email.spam_complaint" || te.event_type === "email.complaint") {
+                  if (!campSpams.has(email) || new Date(eventDate) > new Date(campSpams.get(email)!)) {
+                    campSpams.set(email, eventDate);
                   }
                 }
               }
@@ -395,6 +417,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             const clickDate = campClicks.get(eml) || null;
             const isOpen = !!openDate;
             const isClick = !!clickDate;
+            const isBounced = campBounces.has(eml) || suppressedEmailsSet.has(eml) || c.status === "bounced";
+            const isSpam = campSpams.has(eml);
 
             // Calculate attributed revenue (7 day window)
             let rev = 0;
@@ -418,6 +442,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               email: c.email || "",
               opened: isOpen,
               clicked: isClick,
+              bounced: isBounced,
+              spam: isSpam,
+              status: c.status,
               openDate: openDate,
               clickDate: clickDate,
               revenue: rev,
@@ -433,8 +460,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             totalSent = recipientsPool.length;
           }
 
-          const deliveredCount = totalSent > 0 ? totalSent : 0;
-          const bouncedCount = (isScheduled || isDraft) ? 0 : Math.max(0, totalSent - deliveredCount);
+          const bouncedCount = (isScheduled || isDraft) ? 0 : recipientRows.filter((r: any) => r.bounced).length;
+          const spamComplaintsCount = (isScheduled || isDraft) ? 0 : recipientRows.filter((r: any) => r.spam).length;
+          const unsubscribedCount = recipientRows.filter((r: any) => r.status === "unsubscribed").length;
+          const deliveredCount = (isScheduled || isDraft) ? 0 : Math.max(0, totalSent - bouncedCount);
 
           const totalOpens = campOpens.size;
           const totalClicks = campClicks.size;
@@ -468,8 +497,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               sent: totalSent,
               bounced: bouncedCount,
               delivered: deliveredCount,
-              spamComplaints: 0,
-              unsubscribed: 0
+              spamComplaints: spamComplaintsCount,
+              unsubscribed: unsubscribedCount
             }
           });
           return;
@@ -548,7 +577,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       if (recipientFilter === "opened") return r.opened;
       if (recipientFilter === "clicked") return r.clicked;
       if (recipientFilter === "converted") return r.revenue > 0;
-      if (recipientFilter === "bounced") return !r.opened && !r.clicked;
+      if (recipientFilter === "bounced") return r.bounced || (!r.opened && !r.clicked && data.deliveryStats.bounced > 0);
 
       return true;
     });
@@ -1095,6 +1124,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                             {row.openDate ? new Date(row.openDate).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "-"}
                           </span>
                         </div>
+                      ) : row.bounced ? (
+                        <span className="text-red-700 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                          Falha / Bounce
+                        </span>
                       ) : (
                         <span className="text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full text-[11px]">
                           Não

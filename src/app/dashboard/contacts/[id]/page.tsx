@@ -35,7 +35,9 @@ import {
   X,
   Pencil,
   Plus,
-  Coins
+  Coins,
+  UserMinus,
+  Ban
 } from "lucide-react";
 
 // Mock Database of detailed profiles
@@ -54,7 +56,7 @@ export const mockProfileData: Record<string, {
   lists: Array<{ name: string; status: string; updated_at: string }>;
   enrollments: Array<{ course_name: string; price: string; status: string; progress: number; enrolled_at: string; certificate_issued: boolean; completed_at: string | null }>;
   purchases: Array<{ product_type: string; product_name: string; amount: number; paid_at: string; status: string; sku: string }>;
-  flows: Array<{ name: string; status: 'active' | 'completed'; progress: number; entered_at: string }>;
+  flows: Array<{ name: string; status: 'active' | 'completed' | 'cancelled_manually'; progress: number; entered_at: string }>;
   timeline: Array<{ id: string; type: string; label: string; details: string; timestamp: string }>;
 }> = {
   "c1": {
@@ -579,10 +581,34 @@ export default function ContactProfilePage({ params }: PageProps) {
           .select("*")
           .in("run_id", (flowRunsData || []).map((r: any) => r.id));
 
-
+        const { data: suppressionData } = await supabase
+          .from("suppression_list")
+          .select("*")
+          .ilike("email", contact.email || "")
+          .maybeSingle();
 
         let rawEvents: any[] = [];
         const contactEmailLower = (contact.email || "").toLowerCase().trim();
+
+        if (suppressionData || contact.status === "bounced") {
+          const reasonText = suppressionData?.reason === "hard_bounce" 
+            ? "Hard Bounce (E-mail inexistente ou rejeitado pelo servidor)"
+            : (suppressionData?.reason === "complaint" ? "Reclamação de SPAM" : (contact.status === "bounced" ? "Hard Bounce (E-mail rejeitado)" : "Supressão de Envio"));
+
+          rawEvents.push({
+            id: "suppression-" + (suppressionData?.id || contact.id),
+            type: "suppressed",
+            label: "Adicionado à Lista de Supressão",
+            details: `Motivo: ${reasonText} • Origem: ${suppressionData?.origin || "Automação / AWS SES Webhook"}`,
+            timestamp: suppressionData?.created_at || contact.updated_at || contact.created_at,
+            payload: {
+              "Status do Bloqueio": "Ativo (Envio Bloqueado)",
+              "Motivo": reasonText,
+              "Origem": suppressionData?.origin || "Automação Realizzare",
+              "Removível": suppressionData?.removable ? "Sim" : "Não (Proteção de Entregabilidade)"
+            }
+          });
+        }
 
         // A. Campaign Sent Events (only if explicitly targeted to this contact's email)
         if (dbCampaignsData) {
@@ -933,6 +959,15 @@ export default function ContactProfilePage({ params }: PageProps) {
                 timestamp: log.created_at,
                 payload: { "Assunto": campSubj, "Campaign ID": campId }
               });
+            } else if (log.action_taken && log.action_taken.startsWith("Removido da Automação")) {
+              rawEvents.push({
+                id: "log-" + log.id,
+                type: "flow_removed",
+                label: log.action_taken,
+                details: "Removido manualmente do fluxo pelo painel",
+                timestamp: log.created_at,
+                payload: { "Ação": log.action_taken, "Motivo": "Remoção manual na fila" }
+              });
             }
           });
         }
@@ -1000,7 +1035,8 @@ export default function ContactProfilePage({ params }: PageProps) {
                 emailNodesCount = flowNodesData.filter((n: any) => n.flow_id === r.flow_id && n.config?.emailCampaignId).length;
               }
               const totalNodes = emailNodesCount || 1; // avoid division by zero
-              const progress = r.status === 'completed' ? 100 : Math.min(95, Math.max(10, Math.round((1 / totalNodes) * 100)));
+              const isCancelled = r.status === 'cancelled_manually' || r.status === 'cancelled' || r.status === 'removed_manually' || r.status === 'removed';
+              const progress = (r.status === 'completed' || isCancelled) ? 100 : Math.min(95, Math.max(10, Math.round((1 / totalNodes) * 100)));
               
               // Timezone fix for entered_at
               const dateObj = new Date(r.created_at);
@@ -1010,7 +1046,7 @@ export default function ContactProfilePage({ params }: PageProps) {
 
               return {
                 name: r.flows?.name || "Fluxo Desconhecido",
-                status: r.status === 'completed' ? 'completed' : 'active',
+                status: isCancelled ? 'cancelled_manually' : (r.status === 'completed' ? 'completed' : 'active'),
                 progress,
                 total_emails: totalNodes,
                 entered_at: brtDate
@@ -1536,6 +1572,10 @@ export default function ContactProfilePage({ params }: PageProps) {
         return <DollarSign className="h-3.5 w-3.5 text-emerald-600" />;
       case "purchase_pending":
         return <Clock className="h-3.5 w-3.5 text-orange-500" />;
+      case "flow_removed":
+        return <UserMinus className="h-3.5 w-3.5 text-amber-600" />;
+      case "suppressed":
+        return <Ban className="h-3.5 w-3.5 text-red-600" />;
       default:
         return <Clock className="h-3.5 w-3.5 text-slate-500" />;
     }
@@ -1558,6 +1598,10 @@ export default function ContactProfilePage({ params }: PageProps) {
         return "bg-emerald-50 border border-emerald-200";
       case "purchase_pending":
         return "bg-orange-50 border border-orange-200";
+      case "flow_removed":
+        return "bg-amber-50 border border-amber-200";
+      case "suppressed":
+        return "bg-red-50 border border-red-200";
       default:
         return "bg-slate-100 border border-slate-200";
     }
@@ -2185,10 +2229,14 @@ export default function ContactProfilePage({ params }: PageProps) {
                     draft.flows.map((flow: any, idx: number) => {
                       const totalSteps = flow.total_emails || 1;
                       const currentStep = flow.status === 'completed' ? totalSteps : Math.round((flow.progress / 100) * totalSteps);
-                      const statusLabel = flow.status === "active" ? "Em Andamento" : "Finalizado";
-                      const badgeCls = flow.status === "active"
-                        ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                        : "bg-slate-100 border-slate-200 text-slate-500";
+                      const statusLabel = flow.status === "cancelled_manually" || flow.status === "cancelled" || flow.status === "removed_manually"
+                        ? "Removido Manualmente"
+                        : (flow.status === "active" ? "Em Andamento" : "Finalizado");
+                      const badgeCls = flow.status === "cancelled_manually" || flow.status === "cancelled" || flow.status === "removed_manually"
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : (flow.status === "active"
+                          ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                          : "bg-slate-100 border-slate-200 text-slate-500");
 
                       return (
                         <tr key={idx} className="group">
