@@ -840,7 +840,6 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [invitePassword, setInvitePassword] = useState("");
   const [inviteRole, setInviteRole] = useState("Editor");
 
   // 3. API Keys
@@ -861,13 +860,7 @@ export default function SettingsPage() {
     { id: "dom-2", domain: "realizzarecursos.com.br", verificationStatus: "Pendente", spfStatus: "Pendente", dkimStatus: "Pendente", dmarcStatus: "Pendente" }
   ]);
 
-  // 6. Suppression List
-  const [suppressedEmails, setSuppressedEmails] = useState([
-    { email: "carlos.spam@gmail.com", reason: "complaint", date: "12/07/2026", origin: "Campanha Black Friday", removable: false },
-    { email: "maria.bounce@yahoo.com", reason: "hard_bounce", date: "08/07/2026", origin: "Automatizado - Boas-vindas", removable: false },
-    { email: "joao.optout@hotmail.com", reason: "unsubscribe", date: "05/07/2026", origin: "Manual - Unsubscribe Link", removable: true },
-    { email: "vendedor.fake@bol.com.br", reason: "soft_bounce_repeated", date: "01/07/2026", origin: "Manual", removable: true }
-  ]);
+  const [suppressedEmails, setSuppressedEmails] = useState<any[]>([]);
   const [searchSuppressQuery, setSearchSuppressQuery] = useState("");
 
   const filteredSuppressionList = suppressedEmails.filter((item) =>
@@ -895,7 +888,7 @@ export default function SettingsPage() {
 
   const handleInviteUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteName.trim() || !inviteEmail.trim() || !invitePassword.trim()) {
+    if (!inviteName.trim() || !inviteEmail.trim()) {
       alert("Por favor, preencha todos os campos.");
       return;
     }
@@ -908,7 +901,6 @@ export default function SettingsPage() {
     setInvitePendingData({
       name: inviteName.trim(),
       email: inviteEmail.trim(),
-      password: invitePassword.trim(),
       role: inviteRole,
       isNewUser: true
     });
@@ -958,13 +950,12 @@ export default function SettingsPage() {
 
       const newUser = invitePendingData;
       
-      // Criar o usuário no Supabase via API route
+      // Criar o usuário no Supabase via API route (senha padrão "123456" definida pelo servidor)
       const response = await fetch('/api/auth/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: newUser.email,
-          password: newUser.password,
           name: newUser.name,
           role: newUser.role
         })
@@ -984,12 +975,11 @@ export default function SettingsPage() {
 
       setInviteName("");
       setInviteEmail("");
-      setInvitePassword("");
       setInvitePendingData(null);
       setAdminConfirmPassword("");
       setShowInviteConfirmModal(false);
 
-      alert(`Membro "${newUser.name}" adicionado com sucesso e integrado ao Supabase! Quando ele fizer login pela primeira vez com a senha provisória, precisará definir uma nova senha.`);
+      alert(`Membro "${newUser.name}" adicionado com sucesso! Ele poderá fazer login com a senha padrão "123456" e precisará definir uma nova senha no primeiro acesso.`);
     } catch (err: any) {
       console.error("Invite user confirmation error:", err);
       alert("Ocorreu um erro ao confirmar a sua senha ou ao criar o usuário. Tente novamente.");
@@ -998,11 +988,27 @@ export default function SettingsPage() {
     }
   };
 
-  const handleRemoveUser = (email: string) => {
-    if (confirm("Deseja realmente revogar o acesso deste usuário?")) {
-      const updated = users.filter((u) => u.email !== email);
-      setUsers(updated);
-      localStorage.setItem("realizzare_auth_users", JSON.stringify(updated));
+  const handleRemoveUser = async (email: string) => {
+    if (confirm("Deseja realmente revogar o acesso deste usuário? Esta ação não pode ser desfeita.")) {
+      try {
+        const response = await fetch('/api/auth/invite', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          alert(`Erro ao remover usuário: ${data.error}`);
+          return;
+        }
+        const updated = users.filter((u) => u.email !== email);
+        setUsers(updated);
+        localStorage.setItem("realizzare_auth_users", JSON.stringify(updated));
+        alert("Usuário removido com sucesso.");
+      } catch (err: any) {
+        console.error("Remove user error:", err);
+        alert("Erro ao remover usuário. Tente novamente.");
+      }
     }
   };
 
@@ -1723,7 +1729,7 @@ export default function SettingsPage() {
                       <Plus className="h-4.5 w-4.5 text-indigo-600" />
                       <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Cadastrar Novo Usuário</h4>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nome Completo</label>
                         <input
@@ -1743,17 +1749,6 @@ export default function SettingsPage() {
                           placeholder="Ex: ana@realizzare.com.br"
                           value={inviteEmail}
                           onChange={(e) => setInviteEmail(e.target.value)}
-                          className="w-full mt-1.5 bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Senha Provisória</label>
-                        <input
-                          type="password"
-                          required
-                          placeholder="Ex: senha123"
-                          value={invitePassword}
-                          onChange={(e) => setInvitePassword(e.target.value)}
                           className="w-full mt-1.5 bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                         />
                       </div>
@@ -1820,20 +1815,31 @@ export default function SettingsPage() {
                               </span>
                             </td>
                             <td className="py-3 text-right space-x-1.5">
-                              {u.email !== "contato@realizzarecursos.com.br" ? (
+                              {currentUser?.email === "contato@realizzarecursos.com.br" && u.email !== "contato@realizzarecursos.com.br" ? (
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      const updatedUsers = users.map(user => {
-                                        if (user.email === u.email) {
-                                          return { ...user, password: "123456", isNewUser: true };
+                                    onClick={async () => {
+                                      try {
+                                        const res = await fetch('/api/auth/invite', {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ email: u.email })
+                                        });
+                                        const resData = await res.json();
+                                        if (!res.ok) {
+                                          alert(`Erro ao resetar senha: ${resData.error}`);
+                                          return;
                                         }
-                                        return user;
-                                      });
-                                      setUsers(updatedUsers);
-                                      localStorage.setItem("realizzare_account_users", JSON.stringify(updatedUsers));
-                                      alert(`Senha de ${u.name} resetada para "123456". O usuário será solicitado a criar uma nova senha no próximo login.`);
+                                        const updatedUsers = users.map(user =>
+                                          user.email === u.email ? { ...user, isNewUser: true } : user
+                                        );
+                                        setUsers(updatedUsers);
+                                        localStorage.setItem("realizzare_account_users", JSON.stringify(updatedUsers));
+                                        alert(`Senha de ${u.name} resetada para "123456" e autenticação de 2 fatores removida. O usuário precisará configurar tudo novamente no próximo login.`);
+                                      } catch (err: any) {
+                                        alert("Erro ao resetar senha. Tente novamente.");
+                                      }
                                     }}
                                     className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded text-[10px] font-bold transition-all cursor-pointer inline-flex items-center gap-1"
                                     title="Resetar Senha para 123456"
@@ -1850,6 +1856,8 @@ export default function SettingsPage() {
                                     <Trash2 className="h-4 w-4" />
                                   </button>
                                 </>
+                              ) : u.email !== "contato@realizzarecursos.com.br" ? (
+                                <span className="text-[10px] text-slate-400 italic">–</span>
                               ) : (
                                 <span className="text-[10px] text-slate-400 italic">Dono da conta</span>
                               )}
