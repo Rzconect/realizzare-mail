@@ -280,6 +280,9 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
     return [...extra, ...base];
   };
 
+  // Strips internal identifiers like "(certificate_issued)" from trigger_metric for UI display
+  const formatTriggerLabel = (metric: string) => metric?.replace(/\s*\([^)]*\)\s*$/, "").trim() || metric;
+
   const [nodeMetricsData, setNodeMetricsData] = useState<Record<string, any>>({});
   const [manualContacts, setManualContacts] = useState<any[]>([]);
   const [manualSearchQuery, setManualSearchQuery] = useState("");
@@ -1553,7 +1556,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                       <div className="overflow-hidden flex-1 text-left">
                         <h4 className="text-[11px] font-black text-slate-800 whitespace-normal leading-tight">
                           {isTrigger ? (
-                            node.name !== "Disparador" ? node.name : (flow.triggerMetric || "Disparador")
+                            node.name !== "Disparador" ? formatTriggerLabel(node.name || "") : formatTriggerLabel(flow.triggerMetric || "Disparador")
                           ) : (
                             node.type === "email" ? (node.config?.campaignName || "Enviar E-mail") : node.name
                           )}
@@ -2657,20 +2660,29 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
 
                   {/* Recommendations & Trigger Selection Options */}
                   <div className="space-y-4">
-                    {/* Grupo Ações & Listas */}
+                    {/* Grupo Contatos */}
                     <div className="space-y-2">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Listas & Tags</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Contatos</span>
                       <div
-                        onClick={() => handleSelectTrigger("Inscrever-se em uma lista", "Acionado quando o contato entra em uma lista específica")}
+                        onClick={() => handleSelectTrigger("Contato Criado / Atualizado", "Disparado quando um novo contato é criado ou atualizado no sistema")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                           <Users className="h-4 w-4 text-indigo-600" />
-                          Inscrever-se em uma lista
+                          Contato Criado / Atualizado
                         </span>
-                        <p className="text-[10px] text-slate-500">Inicia a automação sempre que um contato é inscrito em uma lista escolhida.</p>
+                        <p className="text-[10px] text-slate-500">Inicia quando um novo contato é criado ou atualizado (ex: cadastro via formulário).</p>
                       </div>
-
+                      <div
+                        onClick={() => handleSelectTrigger("Novo Lead Cadastrado", "Disparado quando um novo lead é cadastrado pela primeira vez")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-violet-600" />
+                          Novo Lead Cadastrado
+                        </span>
+                        <p className="text-[10px] text-slate-500">Aciona o fluxo apenas na primeira vez que o contato é criado no sistema.</p>
+                      </div>
                       <div
                         onClick={() => handleSelectTrigger("Quando alguma tag for adicionada", "Acionado quando uma tag específica é aplicada ao perfil")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
@@ -2681,35 +2693,32 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         </span>
                         <p className="text-[10px] text-slate-500">Aciona o fluxo quando o aluno recebe uma tag específica (ex: VIP, Interessado).</p>
                       </div>
-
                       <div
-                        onClick={() => handleSelectTrigger("Alteração nos campos de contato", "Acionado quando um campo do perfil sofre alteração")}
+                        onClick={() => handleSelectTrigger("Descadastro de Email (contact.unsubscribed)", "Disparado quando o contato cancela o recebimento de e-mails")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Database className="h-4 w-4 text-blue-600" />
-                          Alteração nos campos de contato
+                          <Database className="h-4 w-4 text-red-500" />
+                          Descadastro de E-mail
                         </span>
-                        <p className="text-[10px] text-slate-500">Inicia a automação se algum campo do perfil do usuário for modificado.</p>
+                        <p className="text-[10px] text-slate-500">Inicia quando o contato solicita descadastro de e-mails.</p>
                       </div>
                     </div>
-
-                    {/* Grupo E-Commerce & Checkout (Pagar.me / PagBank / Realizzare) */}
+                    {/* Grupo Cursos & Progresso */}
                     <div className="space-y-2">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Vendas, Créditos & Plataforma</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Cursos & Progresso</span>
                       <div
-                        onClick={() => handleSelectTrigger("Créditos Adquiridos", "Compra de créditos via Pagar.me ou PagBank")}
+                        onClick={() => handleSelectTrigger("Matrícula Realizada", "Disparado quando o aluno é matriculado em um curso")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <DollarSign className="h-4 w-4 text-emerald-600" />
-                          Créditos adquiridos
+                          <BookOpen className="h-4 w-4 text-blue-600" />
+                          Matrícula Realizada
                         </span>
-                        <p className="text-[10px] text-slate-500">Acionado via checkout quando o aluno compra 1 ou mais créditos de certificado.</p>
+                        <p className="text-[10px] text-slate-500">Inicia quando o aluno é matriculado em um curso (pode filtrar por nome do curso).</p>
                       </div>
-
                       <div
-                        onClick={() => handleSelectTrigger("Certificado Emitido", "Emissão de certificado na plataforma Realizzare")}
+                        onClick={() => handleSelectTrigger("Certificado Emitido (certificate_issued)", "Emissão de certificado na plataforma Realizzare")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -2718,31 +2727,136 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                         </span>
                         <p className="text-[10px] text-slate-500">Disparado automaticamente quando o usuário conclui e emite um certificado Realizzare.</p>
                       </div>
-
                       <div
-                        onClick={() => handleSelectTrigger("Assinatura Realizada", "Assinatura contratada no checkout (Pagar.me/PagBank)")}
+                        onClick={() => handleSelectTrigger("Curso Iniciado (course.progress - Inicio)", "Disparado quando o aluno inicia um curso")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Zap className="h-4 w-4 text-indigo-600" />
-                          Assinatura Realizada
+                          <BookOpen className="h-4 w-4 text-green-600" />
+                          Curso Iniciado
                         </span>
-                        <p className="text-[10px] text-slate-500">Inicia o fluxo de boas-vindas assim que a assinatura de plano é aprovada.</p>
+                        <p className="text-[10px] text-slate-500">Inicia quando o aluno começa a assistir o primeiro módulo do curso.</p>
                       </div>
-
                       <div
-                        onClick={() => handleSelectTrigger("Curso Pago", "Compra de curso individual via checkout")}
+                        onClick={() => handleSelectTrigger("Curso em Andamento 50% (course.progress - Meio)", "Disparado quando o aluno atinge 50% do curso")}
                         className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
                       >
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <DollarSign className="h-4 w-4 text-emerald-700" />
-                          Curso Pago
+                          <BookOpen className="h-4 w-4 text-yellow-600" />
+                          Curso em Andamento (50%)
                         </span>
-                        <p className="text-[10px] text-slate-500">Acionado quando o pagamento de um curso pago específico é confirmado.</p>
+                        <p className="text-[10px] text-slate-500">Aciona quando o aluno atinge a metade do progresso do curso.</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Curso Concluído 100% (course.progress - Fim)", "Disparado quando o aluno conclui 100% do curso")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <BookOpen className="h-4 w-4 text-emerald-600" />
+                          Curso Concluído (100%)
+                        </span>
+                        <p className="text-[10px] text-slate-500">Inicia quando o aluno finaliza todos os módulos do curso.</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Reprovação na Prova (course.exam_failed)", "Disparado quando o aluno é reprovado em uma prova")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Sliders className="h-4 w-4 text-red-500" />
+                          Reprovação na Prova
+                        </span>
+                        <p className="text-[10px] text-slate-500">Aciona quando o aluno é reprovado em uma avaliação do curso.</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Teste Aprovado", "Disparado quando o aluno é aprovado em uma prova")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Sliders className="h-4 w-4 text-green-500" />
+                          Aprovação na Prova
+                        </span>
+                        <p className="text-[10px] text-slate-500">Aciona quando o aluno é aprovado em uma avaliação do curso.</p>
+                      </div>
+                    </div>
+                    {/* Grupo Vendas & Checkout */}
+                    <div className="space-y-2">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Vendas & Checkout</span>
+                      <div
+                        onClick={() => handleSelectTrigger("Transação Aprovada (order_paid)", "Compra aprovada via Pagar.me")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <DollarSign className="h-4 w-4 text-emerald-600" />
+                          Transação Aprovada
+                        </span>
+                        <p className="text-[10px] text-slate-500">Disparado quando uma compra é aprovada no Pagar.me (cartão, PIX ou boleto).</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Boleto Gerado (order_created)", "Boleto bancário gerado no checkout")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <DollarSign className="h-4 w-4 text-orange-500" />
+                          Boleto Gerado
+                        </span>
+                        <p className="text-[10px] text-slate-500">Aciona quando um boleto bancário é gerado e aguarda pagamento.</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Assinatura Cancelada (subscription_canceled)", "Assinatura cancelada pelo cliente ou sistema")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Zap className="h-4 w-4 text-red-500" />
+                          Assinatura Cancelada
+                        </span>
+                        <p className="text-[10px] text-slate-500">Inicia quando uma assinatura ativa é cancelada.</p>
+                      </div>
+                    </div>
+                    {/* Grupo Comportamento */}
+                    <div className="space-y-2">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Comportamento</span>
+                      <div
+                        onClick={() => handleSelectTrigger("Carrinho Abandonado (checkout_abandoned)", "Disparado quando o aluno inicia mas não finaliza o checkout")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Sliders className="h-4 w-4 text-orange-500" />
+                          Carrinho Abandonado
+                        </span>
+                        <p className="text-[10px] text-slate-500">Aciona quando o usuário inicia um checkout mas não conclui a compra.</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Clique em Emissão/Checkout (checkout_click)", "Disparado quando o aluno clica para emitir certificado ou abre o checkout")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Zap className="h-4 w-4 text-blue-500" />
+                          Clique em Checkout / Emissão
+                        </span>
+                        <p className="text-[10px] text-slate-500">Inicia quando o aluno clica no botão de emitir certificado ou abre o checkout.</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Adicionou ao Carrinho (add_to_cart)", "Disparado quando o aluno adiciona um item ao carrinho")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Sliders className="h-4 w-4 text-indigo-500" />
+                          Adicionou ao Carrinho
+                        </span>
+                        <p className="text-[10px] text-slate-500">Aciona quando o aluno adiciona um produto ao carrinho de compras.</p>
+                      </div>
+                      <div
+                        onClick={() => handleSelectTrigger("Visualizou Página (page_view)", "Disparado quando o aluno visita uma página específica")}
+                        className="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/10 rounded-xl cursor-pointer transition-all space-y-1"
+                      >
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Database className="h-4 w-4 text-slate-500" />
+                          Visualizou Página
+                        </span>
+                        <p className="text-[10px] text-slate-500">Inicia quando o aluno visita uma página ou URL específica da plataforma.</p>
                       </div>
                     </div>
                   </div>
-
                 </div>
               )}
 
@@ -2760,7 +2874,7 @@ export default function FlowCanvas({ editId }: { editId: string | null }) {
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Disparador Selecionado</span>
                     <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                       <Zap className="h-3.5 w-3.5 text-indigo-500" />
-                      {flow.triggerMetric}
+                      {formatTriggerLabel(flow.triggerMetric || "")}
                     </h4>
                     <p className="text-[10px] text-slate-450">{flow.triggerType}</p>
                   </div>
