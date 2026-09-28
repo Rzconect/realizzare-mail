@@ -529,15 +529,10 @@ export default function DashboardPage() {
 
           const email = (evt.email || "").toLowerCase().trim();
           const amt = Number(evt.amount || 0).toFixed(2);
+          const dateStr = new Date(evt.timestampMs).toISOString().split("T")[0];
           
-          let key;
-          if (evt.pagarmeId && String(evt.pagarmeId).startsWith("or_")) {
-            key = evt.pagarmeId;
-          } else {
-            // Legacy fallback for old events without proper or_ IDs
-            const dateStr = new Date(evt.timestampMs).toISOString().split("T")[0];
-            key = `${email}_${amt}_${dateStr}`;
-          }
+          // Deduplicate by email + amount + date to prevent order.paid (or_) and charge.paid (ch_) from duplicating
+          const key = `${email}_${amt}_${dateStr}`;
           
           if (!purchaseEventsMap.has(key)) {
             purchaseEventsMap.set(key, evt);
@@ -547,9 +542,9 @@ export default function DashboardPage() {
             if (existing.status !== "paid" && evt.status === "paid") {
               purchaseEventsMap.set(key, evt);
             } 
-            // Priority 2: If statuses are the same (both paid or both pending), prefer real titles
+            // Priority 2: If both are paid or both pending, prefer order.paid or real title over fallback
             else if (existing.status === evt.status) {
-              if (existing.itemTitle === "Certificado / Curso Realizzare" && evt.itemTitle !== "Certificado / Curso Realizzare") {
+              if (evt.rawEvent === "order.paid" || (existing.itemTitle === "Certificado / Curso Realizzare" && evt.itemTitle !== "Certificado / Curso Realizzare")) {
                 purchaseEventsMap.set(key, evt);
               } else if (existing.itemTitle === evt.itemTitle && evt.timestampMs > existing.timestampMs) {
                 purchaseEventsMap.set(key, evt);
