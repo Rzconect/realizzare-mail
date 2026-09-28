@@ -316,27 +316,28 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         }
 
         if (dbCamp) {
-          // 2. Fetch tracking events for opens & clicks (Optimized)
-          // 2. Fetch tracking events for opens, clicks, bounces, and spam complaints
-          const { data: trackingEvents } = await supabase
-            .from("inbound_webhook_events")
-            .select("created_at, event_type, payload")
-            .in("event_type", [
-              "email.opened", "email.open", 
-              "email.clicked", "email.click",
-              "email.bounce", "email.bounced",
-              "email.spam_complaint", "email.complaint"
-            ]);
+          // 2. Fetch tracking events, suppression list, and purchase events concurrently in parallel
+          const [trackingRes, supsRes, purchaseRes] = await Promise.all([
+            supabase
+              .from("inbound_webhook_events")
+              .select("created_at, event_type, payload")
+              .in("event_type", [
+                "email.opened", "email.open", 
+                "email.clicked", "email.click",
+                "email.bounce", "email.bounced",
+                "email.spam_complaint", "email.complaint"
+              ]),
+            supabase.from("suppression_list").select("email, reason"),
+            supabase
+              .from("reporting_events")
+              .select("created_at, event_type, contact_email, metadata")
+              .eq("event_type", "purchase")
+          ]);
 
-          // Fetch suppression list to identify suppressed/bounced recipients
-          const { data: supsData } = await supabase.from("suppression_list").select("email, reason");
+          const trackingEvents = trackingRes.data || [];
+          const supsData = supsRes.data || [];
+          const purchaseEvents = purchaseRes.data || [];
           const suppressedEmailsSet = new Set((supsData || []).map((s: any) => (s.email || "").toLowerCase().trim()));
-
-          // 3. Fetch purchase reporting events for conversions
-          const { data: purchaseEvents } = await supabase
-            .from("reporting_events")
-            .select("created_at, event_type, contact_email, metadata")
-            .eq("event_type", "purchase");
 
           // Extract open/click/bounce/spam events matching this campaign ID or email
           const campOpens = new Map<string, string>(); // email -> date
@@ -524,7 +525,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         replyTo: customCampaign.replyTo,
         status: customCampaign.status as "Rascunho" | "Enviado" | "Agendado" | "Arquivada" | "Enviando",
         targetList: customCampaign.targetList,
-        sentAtDate: customCampaign.dateStr,
+        sentAtDate: customCampaign.sentAtDate || customCampaign.dateStr || "Ainda não disparado",
         recipientCount: customCampaign.sentCount || 0,
         openCount: customCampaign.openCount || 0,
         clickCount: customCampaign.clickCount || 0,

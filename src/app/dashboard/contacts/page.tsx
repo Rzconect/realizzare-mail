@@ -1902,53 +1902,16 @@ export default function ContactsPage() {
           console.warn("Failed to fetch courses/tags for filters:", e);
         }
 
-        // 4. Fetch Purchases and Course Events for accurate real-time Credits & Certificates
+        // 4. Fetch Purchases, Course Events, Contacts & Reporting Events in parallel for maximum performance
         const purchasedCreditsMap: Record<string, number> = {};
         const certEventsContactSet = new Set<string>();
         const consumedCreditsMap: Record<string, number> = {};
+        const lastPaidMap: Record<string, string> = {};
 
-        try {
-          const { data: purchasesData } = await supabase
-            .from("purchases")
-            .select("contact_id, product_name, sku, status");
-
-          if (purchasesData) {
-            purchasesData.forEach((p: any) => {
-              if (p.contact_id && (p.status === "paid" || p.status === "approved" || p.status === "Pago")) {
-                const nameLower = String(p.product_name || "").toLowerCase();
-                const sku = String(p.sku || "");
-                if (
-                  nameLower.includes("certificado") ||
-                  nameLower.includes("impresso") ||
-                  nameLower.includes("assinatura") ||
-                  ["1", "2", "3", "179", "180"].includes(sku)
-                ) {
-                  purchasedCreditsMap[p.contact_id] = (purchasedCreditsMap[p.contact_id] || 0) + 1;
-                }
-              }
-            });
-          }
-
-          const { data: cEventsData } = await supabase
-            .from("course_events")
-            .select("contact_id, event_type");
-
-          if (cEventsData) {
-            cEventsData.forEach((ce: any) => {
-              if (ce.contact_id && ce.event_type === "certificate_issued") {
-                certEventsContactSet.add(ce.contact_id);
-                consumedCreditsMap[ce.contact_id] = (consumedCreditsMap[ce.contact_id] || 0) + 1;
-              }
-            });
-          }
-        } catch (e) {
-          console.warn("Failed to fetch purchases/course_events for credit balance:", e);
-        }
-
-        // 5. Fetch Contacts with real City and State
-        const { data: contactsData, error: contactsError } = await supabase
-          .from("contacts")
-          .select(`
+        const [purchasesRes, cEventsRes, contactsRes, eventsRes] = await Promise.all([
+          supabase.from("purchases").select("contact_id, product_name, sku, status"),
+          supabase.from("course_events").select("contact_id, event_type"),
+          supabase.from("contacts").select(`
             id,
             first_name,
             last_name,
@@ -1977,29 +1940,45 @@ export default function ContactsPage() {
                 name
               )
             )
-          `)
-          .order("created_at", { ascending: false });
-        if (contactsError) throw contactsError;
+          `).order("created_at", { ascending: false }),
+          supabase.from("reporting_events").select("contact_email, created_at").eq("event_type", "purchase").order("created_at", { ascending: true })
+        ]);
 
-        // Fetch purchase events to map last_paid_order_date dynamically
-        const lastPaidMap: Record<string, string> = {};
-        try {
-          const { data: eventsData } = await supabase
-            .from("reporting_events")
-            .select("contact_email, created_at")
-            .eq("event_type", "purchase")
-            .order("created_at", { ascending: true }); // ascending so latest overrides
-          if (eventsData) {
-            eventsData.forEach((evt: any) => {
-              if (evt.contact_email) {
-                const em = evt.contact_email.toLowerCase().trim();
-                lastPaidMap[em] = new Date(evt.created_at).toISOString().split("T")[0];
-              }
-            });
+        if (contactsRes.error) throw contactsRes.error;
+
+        const purchasesData = purchasesRes.data || [];
+        purchasesData.forEach((p: any) => {
+          if (p.contact_id && (p.status === "paid" || p.status === "approved" || p.status === "Pago")) {
+            const nameLower = String(p.product_name || "").toLowerCase();
+            const sku = String(p.sku || "");
+            if (
+              nameLower.includes("certificado") ||
+              nameLower.includes("impresso") ||
+              nameLower.includes("assinatura") ||
+              ["1", "2", "3", "179", "180"].includes(sku)
+            ) {
+              purchasedCreditsMap[p.contact_id] = (purchasedCreditsMap[p.contact_id] || 0) + 1;
+            }
           }
-        } catch (e) {
-          console.warn("Failed to fetch reporting_events for mapping:", e);
-        }
+        });
+
+        const cEventsData = cEventsRes.data || [];
+        cEventsData.forEach((ce: any) => {
+          if (ce.contact_id && ce.event_type === "certificate_issued") {
+            certEventsContactSet.add(ce.contact_id);
+            consumedCreditsMap[ce.contact_id] = (consumedCreditsMap[ce.contact_id] || 0) + 1;
+          }
+        });
+
+        const eventsData = eventsRes.data || [];
+        eventsData.forEach((evt: any) => {
+          if (evt.contact_email) {
+            const em = evt.contact_email.toLowerCase().trim();
+            lastPaidMap[em] = new Date(evt.created_at).toISOString().split("T")[0];
+          }
+        });
+
+        const contactsData = contactsRes.data || [];
 
         const mappedContacts = contactsData.map((c: any) => {
           const tags = c.contact_tags?.map((ct: any) => ct.tags?.name).filter(Boolean) || [];
