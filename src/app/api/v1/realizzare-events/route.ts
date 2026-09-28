@@ -121,8 +121,15 @@ export async function POST(request: Request) {
         contactRecord = inserted;
       }
 
-      // Handle tags synchronization
-      const incomingTags = Array.isArray(extraData.tags) ? extraData.tags : (extraData.tag ? [extraData.tag] : []);
+      // Handle tags synchronization (supports array, string or single tag)
+      let incomingTags: string[] = [];
+      if (Array.isArray(extraData.tags)) {
+        incomingTags = extraData.tags;
+      } else if (typeof extraData.tags === "string" && extraData.tags.trim()) {
+        incomingTags = extraData.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
+      } else if (typeof extraData.tag === "string" && extraData.tag.trim()) {
+        incomingTags = [extraData.tag.trim()];
+      }
       if (incomingTags.length > 0 && contactRecord) {
         try {
           const { data: globalTags } = await supabase.from("tags").select("id, name");
