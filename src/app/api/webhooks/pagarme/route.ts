@@ -186,7 +186,7 @@ export async function POST(req: Request) {
 
       const { data: existingEvent } = await supabase
         .from("reporting_events")
-        .select("id")
+        .select("id, metadata")
         .eq("contact_email", email)
         .eq("event_type", "purchase")
         .eq("metadata->>pagarme_id", pagarmeId)
@@ -194,6 +194,21 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (!existingEvent) {
+        // If finalItemTitle is generic, inherit real title from any prior order event for same order ID
+        if (finalItemTitle === "Certificado / Curso Realizzare" || finalItemTitle.startsWith("Certificado / Curso Realizzare")) {
+          const { data: priorEvent } = await supabase
+            .from("reporting_events")
+            .select("metadata")
+            .eq("contact_email", email)
+            .eq("event_type", "purchase")
+            .eq("metadata->>pagarme_id", pagarmeId)
+            .neq("metadata->>item_title", "Certificado / Curso Realizzare")
+            .maybeSingle();
+          if (priorEvent?.metadata?.item_title) {
+            finalItemTitle = priorEvent.metadata.item_title;
+          }
+        }
+
         await supabase.from("reporting_events").insert({
           org_id: "00000000-0000-0000-0000-000000000001",
           contact_email: email,
@@ -211,6 +226,12 @@ export async function POST(req: Request) {
             payment_method: paymentMethodStr
           }
         });
+      } else if (existingEvent.metadata?.item_title === "Certificado / Curso Realizzare" && finalItemTitle !== "Certificado / Curso Realizzare") {
+        const updatedMeta = { ...existingEvent.metadata, item_title: finalItemTitle, event: eventType };
+        await supabase
+          .from("reporting_events")
+          .update({ metadata: updatedMeta })
+          .eq("id", existingEvent.id);
       }
 
       // 2. Find or create the contact in Supabase

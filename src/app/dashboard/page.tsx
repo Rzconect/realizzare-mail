@@ -540,6 +540,11 @@ export default function DashboardPage() {
             const existing = purchaseEventsMap.get(key);
             // Priority 1: Paid status always wins over pending status
             if (existing.status !== "paid" && evt.status === "paid") {
+              if ((!evt.itemTitle || evt.itemTitle === "Certificado / Curso Realizzare" || evt.itemTitle === "Certificado de Conclusão - Realizzare Cursos") &&
+                  existing.itemTitle && existing.itemTitle !== "Certificado / Curso Realizzare" && existing.itemTitle !== "Certificado de Conclusão - Realizzare Cursos") {
+                evt.itemTitle = existing.itemTitle;
+                evt.eventLabel = existing.eventLabel;
+              }
               purchaseEventsMap.set(key, evt);
             } 
             // Priority 2: If both are paid or both pending, prefer order.paid or real title over fallback
