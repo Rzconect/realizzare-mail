@@ -316,7 +316,6 @@ export async function POST(req: Request) {
               sku: pagarmeId,
               status: purchaseStatus,
               paid_at: purchaseStatus === "paid" ? new Date().toISOString() : null,
-              payment_method: paymentMethodStr,
               created_at: new Date().toISOString()
             });
           }

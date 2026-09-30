@@ -836,13 +836,33 @@ export default function ContactProfilePage({ params }: PageProps) {
           .order("created_at", { ascending: true });
 
         if (reportingEventsData && reportingEventsData.length > 0) {
+          const groupedByOrder = new Map();
+          
           reportingEventsData.forEach((evt: any) => {
             const meta = evt.metadata || {};
-            // Ignore redundant Pagar.me charge webhooks
-            if (meta.event && String(meta.event).startsWith("charge.")) return;
-            
-            const amtStr = Number(meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const pid = meta.pagarme_id || meta.order_id || evt.id; // fallback to evt.id if no order ID
             const isPaid = meta.event?.includes("paid");
+            
+            if (!groupedByOrder.has(pid)) {
+               groupedByOrder.set(pid, { ...evt, _isPaid: isPaid });
+            } else {
+               const existing = groupedByOrder.get(pid);
+               // If this event is paid, upgrade the group to paid
+               if (isPaid) {
+                  existing._isPaid = true;
+                  existing.metadata = { ...existing.metadata, event: meta.event };
+               }
+               // Keep the most recent timestamp
+               if (new Date(evt.created_at).getTime() > new Date(existing.created_at).getTime()) {
+                  existing.created_at = evt.created_at;
+               }
+            }
+          });
+
+          groupedByOrder.forEach((evt: any) => {
+            const meta = evt.metadata || {};
+            const amtStr = Number(meta.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const isPaid = evt._isPaid;
             const prodName = meta.item_title || "Certificado de Conclusão - Realizzare Cursos";
             
             rawEvents.push({
