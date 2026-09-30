@@ -1007,9 +1007,10 @@ export default function ContactProfilePage({ params }: PageProps) {
               // Truncate to the minute (YYYY-MM-DDTHH:mm) to deduplicate rapid multiple opens
               timeKey = typeof timeKey === "string" ? timeKey.substring(0, 16) : timeKey;
             }
-            // For pending purchases, deduplicate by label+details alone (same order = same key regardless of timestamp)
-            const dedupeTimeKey = (e.type === "purchase_pending") ? "grouped" : timeKey;
-            const key = `${e.label}-${e.details}-${dedupeTimeKey}`;
+            // Use exact timekey. For Pagar.me events, duplicates for the same order are already grouped by pagarme_id earlier.
+            // But we can also add the pagarme_id to the dedupe key just to be safe if multiple events happen exactly at the same ms.
+            const dedupeMeta = e.payload?.pagarme_id || e.payload?.order_id || "";
+            const key = `${e.label}-${e.details}-${timeKey}-${dedupeMeta}`;
             if (seenEvtKeys.has(key)) return false;
             seenEvtKeys.add(key);
             return true;
