@@ -86,11 +86,20 @@ export async function POST(request: Request) {
 
       if (existing) {
         if (extraData.first_name || extraData.phone || extraData.city) {
+          let newFirstName = extraData.first_name || existing.first_name;
+          let newLastName = extraData.last_name !== undefined ? extraData.last_name : existing.last_name;
+
+          // If the new first name contains the old last name (due to a platform sending full name as first name),
+          // we should avoid duplicating it.
+          if (newLastName && newFirstName !== existing.first_name && newFirstName.includes(newLastName)) {
+             newLastName = "";
+          }
+
           await supabase
             .from("contacts")
             .update({
-              first_name: extraData.first_name || existing.first_name,
-              last_name: extraData.last_name || existing.last_name,
+              first_name: newFirstName,
+              last_name: newLastName,
               phone: extraData.phone || existing.phone,
               city: extraData.city || existing.city,
               state: extraData.state || existing.state,
