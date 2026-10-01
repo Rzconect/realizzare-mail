@@ -194,11 +194,8 @@ export default function CrmPage() {
     let isMounted = true;
     
     const setupPresence = async () => {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
         
         const myClientId = Math.random().toString(36).substring(2, 15);
         let me: any = null;
@@ -215,7 +212,7 @@ export default function CrmPage() {
         if (!me) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+            const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
             if (profile) me = profile;
           }
         }
@@ -235,7 +232,10 @@ export default function CrmPage() {
         if (!me) me = { id: Math.random().toString(), name: "Colaborador", email: "guest@example.com" };
         
         channel = supabase.channel('crm_presence', {
-          config: { presence: { key: myClientId } },
+          config: { 
+            presence: { key: myClientId },
+            broadcast: { ack: true }
+          },
         });
 
         if (!isMounted) {
