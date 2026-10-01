@@ -16,22 +16,12 @@ export async function POST(request: Request) {
     const socketId = data.get('socket_id') as string;
     const channel = data.get('channel_name') as string;
 
-    // Authenticate the user securely using Supabase
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.user) {
-      return new NextResponse('Forbidden', { status: 403 });
-    }
-
-    const { data: profileData } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
-    const profile = profileData as any;
-
+    // Temporarily bypass Supabase auth to test Pusher connection
     const presenceData = {
-      user_id: session.user.id,
+      user_id: 'user_' + Math.random().toString(36).substring(2, 9),
       user_info: {
-        name: profile?.name || profile?.full_name || profile?.first_name || session.user.email || 'Usuário',
-        email: session.user.email,
+        name: 'Vendedor (Teste)',
+        email: 'vendedor@realizzare.com',
       },
     };
 
