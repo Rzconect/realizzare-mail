@@ -24,7 +24,8 @@ export async function POST(request: Request) {
       return new NextResponse('Forbidden', { status: 403 });
     }
 
-    const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
+    const { data: profileData } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
+    const profile = profileData as any;
 
     const presenceData = {
       user_id: session.user.id,
