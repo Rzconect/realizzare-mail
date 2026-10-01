@@ -205,8 +205,25 @@ export default function CrmPage() {
         const { data: { session } } = await supabase.auth.getSession();
         
         const myClientId = Math.random().toString(36).substring(2, 15);
-        const currentUserId = session?.user?.id || myClientId;
-        const currentUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Usuário';
+        let currentUserId = session?.user?.id || myClientId;
+        let currentUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || '';
+
+        if (typeof window !== "undefined") {
+          const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
+          if (sessionStr) {
+            try {
+              const parsed = JSON.parse(sessionStr);
+              if (!currentUserName || currentUserName === 'Usuário' || currentUserName === '') {
+                const fullName = parsed.first_name && parsed.last_name ? `${parsed.first_name} ${parsed.last_name}` : parsed.first_name || parsed.name;
+                currentUserName = fullName || parsed.email?.split('@')[0] || 'Usuário';
+              }
+              if (!session?.user?.id && (parsed.email || parsed.id)) {
+                currentUserId = parsed.id || parsed.email;
+              }
+            } catch (e) {}
+          }
+        }
+        if (!currentUserName) currentUserName = 'Usuário';
         
         pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '94bf9c2f552d80c7721e', {
           cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'sa1',
@@ -450,7 +467,7 @@ export default function CrmPage() {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const now = Date.now();
-    if (now - lastCursorUpdateRef.current > 50) { // 50ms throttle
+    if (now - lastCursorUpdateRef.current > 30) { // 30ms throttle for smoothness
       lastCursorUpdateRef.current = now;
       const w = window as any;
       if (w.__crm_pusher_channel) {
@@ -473,11 +490,12 @@ export default function CrmPage() {
       {Object.entries(cursors).map(([id, cursor]) => (
         <div 
           key={id} 
-          className="pointer-events-none fixed z-[9999] transition-all duration-75 ease-linear"
+          className="pointer-events-none fixed z-[9999]"
           style={{ 
-            left: cursor.x, 
-            top: cursor.y,
-            transform: 'translate(-2px, -2px)'
+            left: 0, 
+            top: 0,
+            transform: `translate(${cursor.x - 2}px, ${cursor.y - 2}px)`,
+            transition: 'transform 0.04s linear'
           }}
         >
           {/* Cursor SVG */}
@@ -496,23 +514,6 @@ export default function CrmPage() {
       <div className="flex flex-col gap-4 p-6 border-b border-slate-100 shrink-0">
         <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 tracking-widest uppercase w-full">
           <div>CRM <span className="mx-2 text-slate-300">•</span> FUNIL DE VENDAS</div>
-          
-          <div className="flex items-center">
-             <span className="mr-3 normal-case text-xs text-slate-400 font-medium flex items-center gap-1.5">
-               <span className="relative flex h-2 w-2">
-                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-               </span>
-               {activeUsersInPage.length} online
-             </span>
-             <div className="flex -space-x-2">
-                {activeUsersInPage.map((u, i) => (
-                   <div key={u.client_id} className="h-8 w-8 rounded-full bg-indigo-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm ring-2 ring-transparent hover:ring-indigo-300 transition-all cursor-default" title={u.name} style={{ zIndex: 10 - i }}>
-                     {u.name ? (u.name.split(" ").length > 1 ? u.name.split(" ")[0][0] + u.name.split(" ")[u.name.split(" ").length - 1][0] : u.name.substring(0, 2)).toUpperCase() : "CO"}
-                   </div>
-                ))}
-             </div>
-          </div>
         </div>
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
