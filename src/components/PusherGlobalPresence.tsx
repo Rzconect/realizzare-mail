@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function PusherGlobalPresence() {
   const pathname = usePathname();
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [myUserId, setMyUserId] = useState<string>('');
 
   useEffect(() => {
     let pusher: Pusher | null = null;
@@ -33,11 +34,16 @@ export default function PusherGlobalPresence() {
               const fullName = parsed.first_name && parsed.last_name ? `${parsed.first_name} ${parsed.last_name}` : parsed.first_name || parsed.name;
               currentUserName = fullName || parsed.email?.split('@')[0] || 'Usuário';
             }
+            // Use email as a deterministic user_id so Pusher deduplicates multiple tabs/components
+            if (!session?.user?.id && (parsed.email || parsed.id)) {
+              currentUserId = parsed.id || parsed.email;
+            }
           } catch (e) {}
         }
       }
       
       if (!currentUserName) currentUserName = 'Usuário';
+      setMyUserId(currentUserId);
 
       pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '94bf9c2f552d80c7721e', {
         cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'sa1',
@@ -89,12 +95,15 @@ export default function PusherGlobalPresence() {
     };
   }, [pathname]);
 
-  if (activeUsers.length === 0) return null;
+  // Filter out ourselves so we only see other people
+  const others = activeUsers.filter(u => u.id !== myUserId);
+
+  if (others.length === 0) return null;
 
   return (
     <div className="flex items-center gap-2 mr-2">
       <div className="flex -space-x-1.5 hover:-space-x-0.5 transition-all duration-200">
-        {activeUsers.map((u) => {
+        {others.map((u) => {
           const initials = (u.name || 'U').substring(0, 2).toUpperCase();
           const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-purple-500', 'bg-pink-500'];
           const color = colors[(u.name?.length || 0) % colors.length];
