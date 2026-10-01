@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const channel = data.get('channel_name') as string;
 
     // Authenticate the user securely using Supabase
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session?.user) {
