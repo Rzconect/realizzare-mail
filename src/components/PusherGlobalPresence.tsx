@@ -30,7 +30,8 @@ export default function PusherGlobalPresence() {
           try {
             const parsed = JSON.parse(sessionStr);
             if (!currentUserName || currentUserName === 'Usuário' || currentUserName === '') {
-              currentUserName = parsed.first_name || parsed.name || parsed.email?.split('@')[0] || 'Usuário';
+              const fullName = parsed.first_name && parsed.last_name ? `${parsed.first_name} ${parsed.last_name}` : parsed.first_name || parsed.name;
+              currentUserName = fullName || parsed.email?.split('@')[0] || 'Usuário';
             }
           } catch (e) {}
         }
