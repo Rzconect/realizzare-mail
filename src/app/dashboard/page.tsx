@@ -702,8 +702,11 @@ export default function DashboardPage() {
       const nowStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       setLastSyncTime(`Hoje às ${nowStr}`);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      if (typeof window !== "undefined") {
+        alert("Erro ao carregar métricas: " + err.message);
+      }
       setMetrics({
         active_leads: 0,
         students_count: 0,

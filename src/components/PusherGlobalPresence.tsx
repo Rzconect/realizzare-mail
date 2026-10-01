@@ -20,8 +20,23 @@ export default function PusherGlobalPresence() {
       const { data: { session } } = await supabase.auth.getSession();
       
       const myClientId = Math.random().toString(36).substring(2, 15);
-      const currentUserId = session?.user?.id || myClientId;
-      const currentUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Usuário';
+      let currentUserId = session?.user?.id || myClientId;
+      let currentUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || '';
+
+      // Fallback to local storage session if Supabase cookies are missing
+      if (typeof window !== "undefined") {
+        const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
+        if (sessionStr) {
+          try {
+            const parsed = JSON.parse(sessionStr);
+            if (!currentUserName || currentUserName === 'Usuário' || currentUserName === '') {
+              currentUserName = parsed.first_name || parsed.name || parsed.email?.split('@')[0] || 'Usuário';
+            }
+          } catch (e) {}
+        }
+      }
+      
+      if (!currentUserName) currentUserName = 'Usuário';
 
       pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '94bf9c2f552d80c7721e', {
         cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'sa1',
