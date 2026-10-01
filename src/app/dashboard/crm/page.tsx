@@ -196,11 +196,23 @@ export default function CrmPage() {
     let isMounted = true;
     
     const setupPresence = async () => {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
         const myClientId = Math.random().toString(36).substring(2, 15);
+        const currentUserId = session?.user?.id || myClientId;
+        const currentUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Usuário';
         
         pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '94bf9c2f552d80c7721e', {
           cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'sa1',
           authEndpoint: '/api/pusher/auth',
+          auth: {
+            params: {
+              user_id: currentUserId,
+              user_name: currentUserName
+            }
+          }
         });
         
         channel = pusher.subscribe('presence-crm');

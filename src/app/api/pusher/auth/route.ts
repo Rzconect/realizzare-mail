@@ -16,12 +16,14 @@ export async function POST(request: Request) {
     const socketId = data.get('socket_id') as string;
     const channel = data.get('channel_name') as string;
 
-    // Temporarily bypass Supabase auth to test Pusher connection
+    const userId = data.get('user_id') as string;
+    const userName = data.get('user_name') as string;
+
+    // Utilize user details passed from the client, as Next.js server cookies can sometimes be tricky
     const presenceData = {
-      user_id: 'user_' + Math.random().toString(36).substring(2, 9),
+      user_id: userId || 'user_' + Math.random().toString(36).substring(2, 9),
       user_info: {
-        name: 'Vendedor (Teste)',
-        email: 'vendedor@realizzare.com',
+        name: userName || 'Usuário',
       },
     };
 
