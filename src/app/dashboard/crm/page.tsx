@@ -467,7 +467,7 @@ export default function CrmPage() {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const now = Date.now();
-    if (now - lastCursorUpdateRef.current > 30) { // 30ms throttle for smoothness
+    if (now - lastCursorUpdateRef.current > 100) { // 100ms throttle to respect Pusher Client Event rate limits (max 10/sec)
       lastCursorUpdateRef.current = now;
       const w = window as any;
       if (w.__crm_pusher_channel) {
@@ -495,7 +495,7 @@ export default function CrmPage() {
             left: 0, 
             top: 0,
             transform: `translate(${cursor.x - 2}px, ${cursor.y - 2}px)`,
-            transition: 'transform 0.04s linear'
+            transition: 'transform 0.1s linear'
           }}
         >
           {/* Cursor SVG */}
