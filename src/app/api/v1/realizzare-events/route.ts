@@ -174,6 +174,33 @@ export async function POST(request: Request) {
         }
       }
 
+      // Handle dynamic Custom Fields mapping
+      if (contactRecord && extraData) {
+        try {
+          const { data: globalFields } = await supabase.from("custom_fields").select("id, tag");
+          if (globalFields && globalFields.length > 0) {
+            const customValuesToUpsert = [];
+            for (const gf of globalFields) {
+              if (gf.tag && extraData[gf.tag] !== undefined && extraData[gf.tag] !== null) {
+                const val = String(extraData[gf.tag]).trim();
+                if (val) {
+                  customValuesToUpsert.push({
+                    contact_id: contactRecord.id,
+                    field_id: gf.id,
+                    value_text: val
+                  });
+                }
+              }
+            }
+            if (customValuesToUpsert.length > 0) {
+              await supabase.from("contact_custom_values").upsert(customValuesToUpsert, { onConflict: "contact_id,field_id" });
+            }
+          }
+        } catch (cfErr) {
+          console.error("Error saving custom fields for contact:", cfErr);
+        }
+      }
+
       return contactRecord;
     };
 
