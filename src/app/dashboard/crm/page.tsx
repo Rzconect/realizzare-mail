@@ -194,8 +194,23 @@ export default function CrmPage() {
     let isMounted = true;
     
     const setupPresence = async () => {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
+        // We use the proxy client just to get the session
+        const { createClient: createProxyClient } = await import('@/lib/supabase/client');
+        const proxyClient = createProxyClient();
+        const { data: { session } } = await proxyClient.auth.getSession();
+
+        // WebSockets don't work through the Next.js API proxy, so we must connect directly to Supabase.
+        // We pass the auth token manually so Realtime respects our logged-in user.
+        const { createClient: createDirectClient } = await import('@supabase/supabase-js');
+        const supabase = createDirectClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
+            }
+          }
+        );
         
         const myClientId = Math.random().toString(36).substring(2, 15);
         let me: any = null;
@@ -209,12 +224,9 @@ export default function CrmPage() {
           } catch(e) {}
         }
         
-        if (!me) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
-            if (profile) me = profile;
-          }
+        if (!me && session?.user) {
+          const { data: profile } = await proxyClient.from('users').select('*').eq('id', session.user.id).maybeSingle();
+          if (profile) me = profile;
         }
         if (me) {
            let n = me.name || me.full_name || me.first_name || "";
