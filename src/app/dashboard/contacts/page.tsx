@@ -4086,6 +4086,7 @@ export default function ContactsPage() {
                         <tr className="border-b border-slate-200 text-[10px] uppercase font-bold text-slate-400 select-none">
                           <th className="py-2.5 px-3">Nome do Campo</th>
                           <th className="py-2.5 px-3 w-48">Tag Dinâmica</th>
+                          <th className="py-2.5 px-3 w-48">Payload Key (API)</th>
                           <th className="py-2.5 px-3">Objetivo</th>
                           <th className="py-2.5 px-3 text-right w-24">Ações</th>
                         </tr>
@@ -4093,7 +4094,7 @@ export default function ContactsPage() {
                       <tbody className="divide-y divide-slate-100 text-slate-700">
                         {customFields.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="py-6 text-center text-slate-400 italic">
+                            <td colSpan={5} className="py-6 text-center text-slate-400 italic">
                               Nenhum campo personalizado cadastrado. Preencha o formulário abaixo para criar.
                             </td>
                           </tr>
@@ -4117,6 +4118,9 @@ export default function ContactsPage() {
                                       onChange={(e) => setEditingFieldTag(e.target.value.toLowerCase().replace(/[^a-z0-9_]+/g, ""))}
                                       className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:border-indigo-500 font-mono font-bold"
                                     />
+                                  </td>
+                                  <td className="py-2 px-1 flex items-center justify-center h-10 mt-1">
+                                    <span className="text-[10px] text-slate-400 font-mono font-medium">Auto-gerado</span>
                                   </td>
                                   <td className="py-2 px-1">
                                     <input
@@ -4160,6 +4164,11 @@ export default function ContactsPage() {
                                   <td className="py-3.5 px-3 whitespace-nowrap">
                                     <code className="font-mono font-bold text-indigo-650 bg-indigo-50/70 border border-indigo-100 px-1.5 py-0.5 rounded select-all whitespace-nowrap">
                                       {"{{"} {field.tag} {"}}"}
+                                    </code>
+                                  </td>
+                                  <td className="py-3.5 px-3 whitespace-nowrap">
+                                    <code className="font-mono text-xs text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded select-all whitespace-nowrap">
+                                      {field.tag}
                                     </code>
                                   </td>
                                   <td className="py-3.5 px-3 text-slate-500 italic">
