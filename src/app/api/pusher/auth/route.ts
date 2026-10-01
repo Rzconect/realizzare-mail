@@ -3,9 +3,9 @@ import Pusher from 'pusher';
 import { createClient } from '@/lib/supabase/server';
 
 const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID || '',
-  key: process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '',
-  secret: process.env.PUSHER_SECRET || '',
+  appId: process.env.PUSHER_APP_ID || '2198909',
+  key: process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '94bf9c2f552d80c7721e',
+  secret: process.env.PUSHER_SECRET || '109a49b40e350429fa66',
   cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'sa1',
   useTLS: true,
 });

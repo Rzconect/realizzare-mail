@@ -198,8 +198,8 @@ export default function CrmPage() {
     const setupPresence = async () => {
         const myClientId = Math.random().toString(36).substring(2, 15);
         
-        pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
-          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+        pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '94bf9c2f552d80c7721e', {
+          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'sa1',
           authEndpoint: '/api/pusher/auth',
         });
         
