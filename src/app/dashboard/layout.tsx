@@ -31,6 +31,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import PusherGlobalPresence from "@/components/PusherGlobalPresence";
 
 interface SidebarItem {
   name: string;
@@ -526,6 +527,7 @@ export default function DashboardLayout({
           <span className="font-bold text-lg text-slate-900">Realizzare Mail</span>
         </div>
         <div className="flex items-center gap-3">
+          <PusherGlobalPresence />
           {/* Notifications Bell Dropdown */}
           <div className="relative notifications-dropdown-container">
             <button
@@ -832,7 +834,8 @@ export default function DashboardLayout({
         {/* Desktop Topbar Header */}
         <header className="hidden md:flex h-14 shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm items-center justify-between px-8 z-40">
           <div className="flex items-center gap-4 ml-auto">
-            {/* Notifications Bell Dropdown */}
+            <PusherGlobalPresence />
+          {/* Notifications Bell Dropdown */}
             <div className="relative notifications-dropdown-container">
               <button
                 onClick={handleToggleNotifications}
