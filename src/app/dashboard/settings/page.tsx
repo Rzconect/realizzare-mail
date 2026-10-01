@@ -228,6 +228,33 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDisconnectWhatsapp = async () => {
+    if (!confirm('Tem certeza que deseja desconectar o WhatsApp atual? Isso exigirá a leitura de um novo QR Code depois.')) return;
+    setIsEvoLoading(true);
+    setEvoError('');
+    try {
+      const response = await fetch("https://evolution-api-production-8158.up.railway.app/instance/logout/RealizzareCRM", {
+        method: "DELETE",
+        headers: {
+          "apikey": "RealizzareSenhaSecreta2026"
+        }
+      });
+      await response.json();
+      
+      // Delay to allow Evolution API to process
+      setTimeout(() => {
+        setEvoStatus('');
+        setEvoQrCode('');
+        checkEvoConnection();
+        setIsEvoLoading(false);
+      }, 2000);
+    } catch (error) {
+      console.error(error);
+      setEvoError('Erro de rede ao desconectar WhatsApp.');
+      setIsEvoLoading(false);
+    }
+  };
+
   const checkEvoConnection = async () => {
     try {
       const connectRes = await fetch("https://evolution-api-production-8158.up.railway.app/instance/connect/RealizzareCRM", {
@@ -3781,9 +3808,18 @@ export default function SettingsPage() {
 
                 {/* Real Evolution API QR Code */}
                 {evoStatus === "Conectado" ? (
-                  <div className="border border-emerald-200 rounded-3xl p-6 bg-emerald-50 inline-block mb-4 shadow-sm">
-                    <CheckCircle2 className="h-20 w-20 text-emerald-500 mx-auto mb-2" />
-                    <p className="text-emerald-700 font-bold">Aparelho Conectado</p>
+                  <div className="flex flex-col items-center">
+                    <div className="border border-emerald-200 rounded-3xl p-6 bg-emerald-50 inline-block mb-4 shadow-sm">
+                      <CheckCircle2 className="h-20 w-20 text-emerald-500 mx-auto mb-2" />
+                      <p className="text-emerald-700 font-bold">Aparelho Conectado</p>
+                    </div>
+                    <button 
+                      onClick={handleDisconnectWhatsapp}
+                      disabled={isEvoLoading}
+                      className="bg-red-50 text-red-600 border border-red-200 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors disabled:opacity-50 mt-2"
+                    >
+                      {isEvoLoading ? "Desconectando..." : "Desconectar WhatsApp"}
+                    </button>
                   </div>
                 ) : (
                   <>
