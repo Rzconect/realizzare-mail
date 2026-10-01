@@ -5,6 +5,7 @@ import DealModal from "@/components/crm/DealModal";
 import AddDealModal from "@/components/crm/AddDealModal";
 import ItemTitleWithCoupon from "@/components/ui/ItemTitleWithCoupon";
 import { Plus, Archive, Settings, Eye, EyeOff, ChevronUp, ChevronDown, Clock, AlertCircle, Trash2 } from "lucide-react";
+import Pusher from "pusher-js";
 
 type ColumnId = "novo" | "qualificando" | "proposta" | "negociacao" | "ganho" | "rascunho" | "em_andamento" | "finalizada";
 
@@ -188,123 +189,70 @@ export default function CrmPage() {
   
   const [activeUsersInPage, setActiveUsersInPage] = useState<any[]>([]);
 
-  // Setup Supabase Presence and Realtime sync
+  // Setup Pusher Presence and Realtime sync
   useEffect(() => {
+    let pusher: any = null;
     let channel: any = null;
     let isMounted = true;
     
     const setupPresence = async () => {
-        // We use the proxy client just to get the session
-        const { createClient: createProxyClient } = await import('@/lib/supabase/client');
-        const proxyClient = createProxyClient();
-        const { data: { session } } = await proxyClient.auth.getSession();
-
-        // WebSockets don't work through the Next.js API proxy, so we must connect directly to Supabase.
-        // We pass the auth token manually so Realtime respects our logged-in user.
-        const { createClient: createDirectClient } = await import('@supabase/supabase-js');
-        const supabase = createDirectClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          {
-            global: {
-              headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
-            }
-          }
-        );
-        
         const myClientId = Math.random().toString(36).substring(2, 15);
-        let me: any = null;
         
-        // Try getting user from layout session first
-        const sessionStr = localStorage.getItem("realizzare_current_session") || sessionStorage.getItem("realizzare_current_session");
-        if (sessionStr) {
-          try {
-             const parsed = JSON.parse(sessionStr);
-             me = { id: parsed.id || Math.random().toString(), name: parsed.name || "Vendedor", email: parsed.email };
-          } catch(e) {}
-        }
+        pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
+          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+          authEndpoint: '/api/pusher/auth',
+        });
         
-        if (!me && session?.user) {
-          const { data: profile } = await proxyClient.from('users').select('*').eq('id', session.user.id).maybeSingle();
-          if (profile) me = profile;
-        }
-        if (me) {
-           let n = me.name || me.full_name || me.first_name || "";
-           let i = "UX";
-           if (n) {
-             const pts = n.trim().split(" ");
-             if(pts.length > 1) i = (pts[0].charAt(0) + pts[pts.length-1].charAt(0)).toUpperCase();
-             else i = pts[0].substring(0, 2).toUpperCase();
-           } else if (me.email) {
-             i = me.email.substring(0, 2).toUpperCase();
-           }
-           setCurrentUser({ name: n, initials: i });
-        }
-        
-        if (!me) me = { id: Math.random().toString(), name: "Colaborador", email: "guest@example.com" };
-        
-        channel = supabase.channel('crm_presence', {
-          config: { 
-            presence: { key: myClientId },
-            broadcast: { ack: true }
-          },
+        channel = pusher.subscribe('presence-crm');
+
+        channel.bind('pusher:subscription_succeeded', (members: any) => {
+          if (!isMounted) return;
+          const users: any[] = [];
+          members.each((member: any) => {
+            users.push({ user_id: member.id, name: member.info?.name, email: member.info?.email });
+          });
+          setActiveUsersInPage(users);
         });
 
-        if (!isMounted) {
-          try { channel.unsubscribe(); } catch(e) {}
-          return;
-        }
-        
-        channel.on('presence', { event: 'sync' }, () => {
+        channel.bind('pusher:member_added', (member: any) => {
           if (!isMounted) return;
-          const state = channel.presenceState();
-          const usersInPageMap: Record<string, any> = {};
-          
-          for (const userId in state) {
-            const presences = state[userId];
-            if (presences && presences.length > 0) {
-              for (const presence of presences) {
-                usersInPageMap[presence.user_id] = presence;
-              }
-            }
-          }
-          setActiveUsersInPage(Object.values(usersInPageMap));
+          setActiveUsersInPage((prev: any[]) => {
+            if (prev.find(u => u.user_id === member.id)) return prev;
+            return [...prev, { user_id: member.id, name: member.info?.name, email: member.info?.email }];
+          });
+        });
+
+        channel.bind('pusher:member_removed', (member: any) => {
+          if (!isMounted) return;
+          setActiveUsersInPage((prev: any[]) => prev.filter(u => u.user_id !== member.id));
         });
 
         // Listen for real-time moves and deletes
-        channel.on('broadcast', { event: 'card_moved' }, (payload: any) => {
+        channel.bind('card_moved', (payload: any) => {
           if (!isMounted) return;
-          setDeals(prev => prev.map(d => d.id === payload.payload.dealId ? { ...d, columnId: payload.payload.colId } : d));
+          setDeals((prev: any[]) => prev.map(d => d.id === payload.dealId ? { ...d, columnId: payload.colId } : d));
         });
 
-        channel.on('broadcast', { event: 'card_deleted' }, (payload: any) => {
+        channel.bind('card_deleted', (payload: any) => {
           if (!isMounted) return;
-          setDeals(prev => prev.filter(d => d.id !== payload.payload.dealId));
+          setDeals((prev: any[]) => prev.filter(d => d.id !== payload.dealId));
         });
 
-        channel.on('broadcast', { event: 'card_updated' }, (payload: any) => {
+        channel.bind('card_updated', (payload: any) => {
           if (!isMounted) return;
-          setDeals(prev => prev.map(d => d.id === payload.payload.deal.id ? { ...d, ...payload.payload.deal } : d));
+          setDeals((prev: any[]) => prev.map(d => d.id === payload.deal.id ? { ...d, ...payload.deal } : d));
         });
         
-        channel.subscribe(async (status: string) => {
-          if (!isMounted) {
-             try { channel.unsubscribe(); } catch(e) {}
-             return;
-          }
-          if (status === 'SUBSCRIBED') {
-            try {
-              await channel.track({ client_id: myClientId, user_id: me.id, name: me.name });
-            } catch(e) { console.warn("Initial presence track failed", e); }
-            
-            const w = window as any;
-            if (w.__crm_channel && w.__crm_channel !== channel) {
-               try { w.__crm_channel.unsubscribe(); } catch(e) {}
-            }
-            w.__crm_me = me;
-            w.__crm_client_id = myClientId;
-            w.__crm_channel = channel;
-          }
+        const w = window as any;
+        if (w.__crm_pusher && w.__crm_pusher !== pusher) {
+           try { w.__crm_pusher.disconnect(); } catch(e) {}
+        }
+        w.__crm_client_id = myClientId;
+        w.__crm_pusher = pusher;
+        w.__crm_socket_id = null;
+        
+        pusher.connection.bind('connected', () => {
+          w.__crm_socket_id = pusher?.connection.socket_id;
         });
     };
     
@@ -312,8 +260,9 @@ export default function CrmPage() {
     
     return () => {
       isMounted = false;
-      if (channel) {
-        try { channel.unsubscribe(); } catch(e) {}
+      if (pusher) {
+        pusher.unsubscribe('presence-crm');
+        pusher.disconnect();
       }
     };
   }, []);
@@ -353,8 +302,12 @@ export default function CrmPage() {
 
   const handleUpdateDeal = (updatedDeal: Deal) => {
     const w = window as any;
-    if (w.__crm_channel) {
-      w.__crm_channel.send({ type: 'broadcast', event: 'card_updated', payload: { deal: updatedDeal } });
+    if (w.__crm_pusher) {
+      fetch('/api/pusher/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'presence-crm', event: 'card_updated', payload: { deal: updatedDeal }, socket_id: w.__crm_socket_id })
+      }).catch(e => console.error('Error broadcasting:', e));
     }
     
     setDeals(prev => prev.map(d => d.id === updatedDeal.id ? { ...d, ...updatedDeal } : d));
@@ -372,9 +325,13 @@ export default function CrmPage() {
   const handleDeleteDeal = (dealId: string) => {
     if (confirm('Tem certeza que deseja excluir este card? Esta ação não pode ser desfeita.')) {
       const w = window as any;
-      if (w.__crm_channel) {
-        w.__crm_channel.send({ type: 'broadcast', event: 'card_deleted', payload: { dealId } });
-      }
+    if (w.__crm_pusher) {
+      fetch('/api/pusher/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'presence-crm', event: 'card_deleted', payload: { dealId }, socket_id: w.__crm_socket_id })
+      }).catch(e => console.error('Error broadcasting:', e));
+    }
       
       setDeals(prev => prev.filter(d => d.id !== dealId));
       
@@ -427,8 +384,12 @@ export default function CrmPage() {
     if (!draggedDealId) return;
 
     const w = window as any;
-    if (w.__crm_channel) {
-      w.__crm_channel.send({ type: 'broadcast', event: 'card_moved', payload: { dealId: draggedDealId, colId } });
+    if (w.__crm_pusher) {
+      fetch('/api/pusher/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'presence-crm', event: 'card_moved', payload: { dealId: draggedDealId, colId }, socket_id: w.__crm_socket_id })
+      }).catch(e => console.error('Error broadcasting:', e));
     }
 
     setDeals((prev) =>
