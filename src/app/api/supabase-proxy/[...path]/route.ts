@@ -71,7 +71,15 @@ async function handleRequest(request: Request, params: { path: string[] }) {
 
     const responseBody = await res.text();
 
-    return new NextResponse(responseBody, {
+    if (res.status === 204 || res.status === 205 || res.status === 304) {
+      return new NextResponse(null, {
+        status: res.status,
+        statusText: res.statusText,
+        headers: responseHeaders,
+      });
+    }
+
+    return new NextResponse(responseBody || null, {
       status: res.status,
       statusText: res.statusText,
       headers: responseHeaders,

@@ -1608,7 +1608,8 @@ export default function ContactProfilePage({ params }: PageProps) {
           phone: draft.phone || null,
           city: draft.location?.city || draft.city || null,
           state: draft.location?.state || draft.state || null,
-          birth_date: draft.birth_date || null
+          birth_date: draft.birth_date || null,
+          status: draft.status || "active"
         } as any)
         .eq("id", id);
       if (updateError) throw updateError;
