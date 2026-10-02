@@ -1093,13 +1093,17 @@ export default function ContactProfilePage({ params }: PageProps) {
             const tB = new Date(b.timestamp).getTime();
             if (Math.abs(tB - tA) > 2000) return tB - tA; // Standard sort if events are more than 2 seconds apart
             const weight = (label: string) => {
-              if (label.includes("Finalizou")) return 6;
-              if (label.includes("Aberto") || label.includes("Clicado")) return 5;
-              if (label.includes("Foi enviado")) return 4;
-              if (label.includes("Iniciou")) return 3;
-              if (label.includes("Inscrito") || label.includes("Removido")) return 2;
-              if (label.includes("Cadastrado")) return 1;
-              return 0;
+              if (label.includes("Certificado Emitido")) return 9;
+              if (label.includes("Teste Aprovado")) return 8;
+              if (label.includes("Progresso de Aulas (100%)")) return 7;
+              if (label.includes("Progresso de Aulas")) return 6;
+              if (label.includes("Finalizou")) return 5;
+              if (label.includes("Aberto") || label.includes("Clicado")) return 4;
+              if (label.includes("Foi enviado")) return 3;
+              if (label.includes("Iniciou")) return 2;
+              if (label.includes("Matrícula") || label.includes("Inscrito") || label.includes("Removido")) return 1;
+              if (label.includes("Cadastrado")) return 0;
+              return -1;
             };
             return weight(b.label || "") - weight(a.label || "");
           })
