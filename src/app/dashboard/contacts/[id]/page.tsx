@@ -832,6 +832,23 @@ export default function ContactProfilePage({ params }: PageProps) {
               timestamp: ce.created_at
             });
           });
+          
+          // Force enrollments to show 100% completed if the course has a test_approved event
+          if (testedCourses.size > 0 && enrollments.length > 0) {
+            enrollments.forEach((enr: any) => {
+              let hasTested = false;
+              testedCourses.forEach((tc) => {
+                if (enr.course_name === tc || (enr.course_name && tc && (enr.course_name.includes(tc) || tc.includes(enr.course_name)))) {
+                  hasTested = true;
+                }
+              });
+              if (hasTested) {
+                enr.progress = 100;
+                enr.status = "completed";
+                if (!enr.completed_at) enr.completed_at = new Date().toISOString();
+              }
+            });
+          }
         }
 
         // C. Purchase Events (Pagar.me Transactions)
