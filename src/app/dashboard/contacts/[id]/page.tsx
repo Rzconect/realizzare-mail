@@ -800,12 +800,42 @@ export default function ContactProfilePage({ params }: PageProps) {
               
               let added = 0;
               let skuName = "";
+              const price = p.amount || 0;
 
-              if (nameLower.includes("impresso ies/mec") || sku === "180") { added = 1; creditsBreakdown.ies_impresso += added; skuName = "Certificado Impresso IES/MEC"; }
-              else if (nameLower.includes("ies/mec") || sku === "179") { added = 1; creditsBreakdown.ies_digital += added; skuName = "Certificado Digital IES/MEC"; }
-              else if (nameLower.includes("+ impresso") || sku === "2") { added = 1; creditsBreakdown.impresso += added; skuName = "Certificado Digital + Impresso"; }
-              else if (nameLower.includes("assinatura mensal") || sku === "3") { added = 1; creditsBreakdown.mensal += added; skuName = "Assinatura Mensal"; }
-              else if (nameLower.includes("certificado digital") || sku === "1") { added = 1; creditsBreakdown.digital += added; skuName = "Certificado Digital"; }
+              if (nameLower.includes("impresso ies/mec") || sku === "180") { 
+                if (price <= 85.70) added = 1;
+                else if (price <= 155.00) added = 2;
+                else if (price <= 227.00) added = 3;
+                else added = 5;
+                creditsBreakdown.ies_impresso += added; 
+                skuName = "Certificado Impresso IES/MEC"; 
+              }
+              else if (nameLower.includes("ies/mec") || sku === "179") { 
+                if (price <= 56.00) added = 1;
+                else if (price <= 101.00) added = 2;
+                else if (price <= 147.00) added = 3;
+                else added = 5;
+                creditsBreakdown.ies_digital += added; 
+                skuName = "Certificado Digital IES/MEC"; 
+              }
+              else if (nameLower.includes("+ impresso") || sku === "2") { 
+                added = 1; // Assuming default 1 if not specified otherwise
+                creditsBreakdown.impresso += added; 
+                skuName = "Certificado Digital + Impresso"; 
+              }
+              else if (nameLower.includes("assinatura mensal") || sku === "3") { 
+                added = 1; 
+                creditsBreakdown.mensal += added; 
+                skuName = "Assinatura Mensal"; 
+              }
+              else if (nameLower.includes("certificado digital") || sku === "1") { 
+                if (price <= 46.00) added = 1;
+                else if (price <= 83.00) added = 2;
+                else if (price <= 121.00) added = 3;
+                else added = 5;
+                creditsBreakdown.digital += added; 
+                skuName = "Certificado Digital"; 
+              }
               
               if (added > 0) {
                 acquiredCredits += added;
@@ -1882,7 +1912,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-slate-800">{draft.city || "Belo Horizonte"}</span>
+                        <span className="text-sm font-semibold text-slate-800">{draft.city || "-"}</span>
                         <button onClick={() => toggleEdit("city")} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer"><Pencil className="h-3 w-3" /></button>
                       </div>
                     )}
@@ -1896,7 +1926,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-slate-800">{draft.phone || "(11) 99999-9999"}</span>
+                        <span className="text-sm font-semibold text-slate-800">{draft.phone || "-"}</span>
                         <button onClick={() => toggleEdit("phone")} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer"><Pencil className="h-3 w-3" /></button>
                       </div>
                     )}
@@ -1910,7 +1940,7 @@ export default function ContactProfilePage({ params }: PageProps) {
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-slate-800">{draft.state || "Minas Gerais"}</span>
+                        <span className="text-sm font-semibold text-slate-800">{draft.state || "-"}</span>
                         <button onClick={() => toggleEdit("state")} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 cursor-pointer"><Pencil className="h-3 w-3" /></button>
                       </div>
                     )}
