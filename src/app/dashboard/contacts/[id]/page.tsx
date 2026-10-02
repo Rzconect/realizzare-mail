@@ -723,8 +723,12 @@ export default function ContactProfilePage({ params }: PageProps) {
 
         if (courseEventsData && courseEventsData.length > 0) {
           const seenProgress = new Set<string>();
+          const consumedCerts = new Set<string>();
+          const testedCourses = new Set<string>();
+          const seen100Progress = new Set<string>();
 
-          courseEventsData.forEach((ce: any) => {
+          // Process from oldest to newest to correctly apply timeline logic
+          [...courseEventsData].reverse().forEach((ce: any) => {
             const metadataCourseName = ce.metadata?.course_name;
             const cName = (metadataCourseName && metadataCourseName !== "Curso Desconhecido" && !metadataCourseName.includes("Curso (ID:"))
               ? metadataCourseName 
@@ -740,12 +744,31 @@ export default function ContactProfilePage({ params }: PageProps) {
               type = "enrollment";
             } else if (ce.event_type === "progress_updated") {
               if (ce.metadata?.original_event === "test_approved" || ce.metadata?.score !== undefined) {
+                if (!testedCourses.has(cName)) {
+                  testedCourses.add(cName);
+                  if (!seen100Progress.has(cName)) {
+                    seen100Progress.add(cName);
+                    rawEvents.push({
+                      id: `prog-100-${ce.id}`,
+                      type: "enrollment",
+                      label: `Progresso de Aulas (100%)`,
+                      details: `Concluiu 100% das aulas do curso '${cName}'`,
+                      payload: { course_name: cName, event_type: "progress_updated" },
+                      timestamp: new Date(new Date(ce.created_at).getTime() - 1000).toISOString()
+                    });
+                  }
+                }
                 const score = ce.metadata?.score || 100;
                 label = `Teste Aprovado (Nota: ${score})`;
                 details = `Teste de '${cName}' concluído com sucesso`;
                 type = "enrollment";
               } else {
                 const pct = ce.metadata?.progress_percent || 0;
+                if (pct === 100 || pct === "100") seen100Progress.add(cName);
+                
+                // Ignore retroactive progress updates if already tested
+                if (testedCourses.has(cName)) return; 
+
                 const progressKey = `${cName}-${pct}`;
                 if (seenProgress.has(progressKey)) return; // Skip duplicate progress events
                 seenProgress.add(progressKey);
@@ -755,28 +778,48 @@ export default function ContactProfilePage({ params }: PageProps) {
                 type = "enrollment";
               }
             } else if (ce.event_type === "test_approved") {
+              if (!testedCourses.has(cName)) {
+                testedCourses.add(cName);
+                if (!seen100Progress.has(cName)) {
+                  seen100Progress.add(cName);
+                  rawEvents.push({
+                    id: `prog-100-${ce.id}`,
+                    type: "enrollment",
+                    label: `Progresso de Aulas (100%)`,
+                    details: `Concluiu 100% das aulas do curso '${cName}'`,
+                    payload: { course_name: cName, event_type: "progress_updated" },
+                    timestamp: new Date(new Date(ce.created_at).getTime() - 1000).toISOString()
+                  });
+                }
+              }
               const score = ce.metadata?.score || 100;
-              label = `Teste Aprovado (${score}%)`;
+              label = `Teste Aprovado (Nota: ${score})`;
               details = `Teste de '${cName}' concluído com sucesso`;
               type = "enrollment";
             } else if (ce.event_type === "certificate_issued") {
               label = "Certificado Emitido";
               details = `Certificado #${ce.metadata?.code || "CERT-2026"} emitido para '${cName}'`;
               type = "enrollment";
-              note = "(1 crédito de certificado consumido)";
-              usedCredits += 1;
-              // Decrement the breakdown so the display shows remaining credits correctly
-              if (creditsBreakdown.digital > 0) creditsBreakdown.digital -= 1;
-              else if (creditsBreakdown.impresso > 0) creditsBreakdown.impresso -= 1;
-              else if (creditsBreakdown.mensal > 0) creditsBreakdown.mensal -= 1;
-              creditsHistory.push({
-                id: `ch-${ce.id}`,
-                date: ce.created_at,
-                type: "consumed",
-                title: "Emissão de Certificado",
-                amount: -1,
-                course: cName
-              });
+
+              if (!consumedCerts.has(cName)) {
+                consumedCerts.add(cName);
+                note = "(1 crédito de certificado consumido)";
+                usedCredits += 1;
+                // Decrement the breakdown so the display shows remaining credits correctly
+                if (creditsBreakdown.digital > 0) creditsBreakdown.digital -= 1;
+                else if (creditsBreakdown.impresso > 0) creditsBreakdown.impresso -= 1;
+                else if (creditsBreakdown.mensal > 0) creditsBreakdown.mensal -= 1;
+                creditsHistory.push({
+                  id: `ch-${ce.id}`,
+                  date: ce.created_at,
+                  type: "consumed",
+                  title: "Emissão de Certificado",
+                  amount: -1,
+                  course: cName
+                });
+              } else {
+                note = "(Visualização / 2ª via)";
+              }
             }
 
             rawEvents.push({
