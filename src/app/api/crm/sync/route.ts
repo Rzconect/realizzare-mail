@@ -183,6 +183,22 @@ export async function GET() {
       });
     }
 
+    // 3. Fetch Manual Activities (Atividades)
+    const { data: activitiesEvents } = await supabase
+      .from("reporting_events")
+      .select("id, created_at, metadata")
+      .eq("event_type", "crm_activity")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    for (const act of (activitiesEvents || [])) {
+      items.push({
+        id: `act-${act.id}`,
+        ...act.metadata,
+        createdAt: act.metadata?.createdAt || act.created_at
+      });
+    }
+
     return NextResponse.json({ success: true, items });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

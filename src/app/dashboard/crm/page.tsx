@@ -108,19 +108,24 @@ export default function CrmPage() {
       .then(r => r.json())
       .then(data => {
         if (data && data.success && data.items) {
-          setDeals(prevDeals => {
-            // Keep only manually created deals (which don't start with test- or pend-)
-            // or deals from other boards not synced by this API
-            const newDeals = prevDeals.filter(d => !d.id.startsWith("test-") && !d.id.startsWith("pend-"));
-            
-            // Add all fresh active deals from the API
-            for (const item of data.items) {
-              newDeals.push(item);
-            }
-            
-            localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(newDeals));
-            return newDeals;
-          });
+              setDeals(prevDeals => {
+                const dealMap = new Map();
+                // Keep local manual deals that might not be in DB yet
+                prevDeals.forEach(d => {
+                  if (!d.id.startsWith("test-") && !d.id.startsWith("pend-")) {
+                    dealMap.set(d.id, d);
+                  }
+                });
+                
+                // Add all fresh active deals from the API (overwrites local ones if they match)
+                for (const item of data.items) {
+                  dealMap.set(item.id, item);
+                }
+                
+                const newDeals = Array.from(dealMap.values());
+                localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(newDeals));
+                return newDeals;
+              });
         }
       })
       .catch(console.error);
@@ -132,6 +137,71 @@ export default function CrmPage() {
       localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(deals));
     }
   }, [deals, isLoaded]);
+
+  // Supabase Realtime Sync para manter o Kanban sincronizado entre sessões
+  useEffect(() => {
+    let isMounted = true;
+    let channel: any = null;
+    let supabaseClient: any = null;
+
+    const setupRealtime = async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      supabaseClient = createClient();
+      
+      const fetchDeals = () => {
+        fetch(`/api/crm/sync?t=${Date.now()}`)
+          .then(r => r.json())
+          .then(data => {
+            if (!isMounted) return;
+            if (data && data.success && data.items) {
+              setDeals(prevDeals => {
+                const dealMap = new Map();
+                // Keep local manual deals that might not be in DB yet
+                prevDeals.forEach(d => {
+                  if (!d.id.startsWith("test-") && !d.id.startsWith("pend-")) {
+                    dealMap.set(d.id, d);
+                  }
+                });
+                
+                // Add all fresh active deals from the API (overwrites local ones if they match)
+                for (const item of data.items) {
+                  dealMap.set(item.id, item);
+                }
+                
+                const newDeals = Array.from(dealMap.values());
+                localStorage.setItem('realizzare_mock_crm_deals', JSON.stringify(newDeals));
+                return newDeals;
+              });
+            }
+          })
+          .catch(console.error);
+      };
+
+      channel = supabaseClient.channel('custom-all-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'course_events' }, () => {
+          fetchDeals();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reporting_events' }, () => {
+          fetchDeals();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'crm_deals' }, () => {
+          fetchDeals();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, () => {
+          fetchDeals();
+        })
+        .subscribe();
+    };
+
+    setupRealtime();
+
+    return () => {
+      isMounted = false;
+      if (supabaseClient && channel) {
+        supabaseClient.removeChannel(channel);
+      }
+    };
+  }, []);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>("all");
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
@@ -327,6 +397,38 @@ export default function CrmPage() {
 
 
 
+  const syncDealToDB = async (deal: Deal) => {
+    // Only sync manual activities (don't sync test_approved or pending_orders back to reporting_events this way)
+    if (deal.id.startsWith("test-") || deal.id.startsWith("pend-")) return;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      // Use reporting_events to store crm_activity
+      const id = deal.id.replace("act-", "");
+      await supabase.from("reporting_events").upsert({
+        id: id,
+        org_id: "00000000-0000-0000-0000-000000000001",
+        contact_email: deal.email || null,
+        event_type: "crm_activity",
+        metadata: deal
+      });
+    } catch (e) {
+      console.error("Error syncing deal to DB:", e);
+    }
+  };
+
+  const deleteDealFromDB = async (dealId: string) => {
+    if (dealId.startsWith("test-") || dealId.startsWith("pend-")) return;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const id = dealId.replace("act-", "");
+      await supabase.from("reporting_events").delete().eq("id", id).eq("event_type", "crm_activity");
+    } catch (e) {
+      console.error("Error deleting deal from DB:", e);
+    }
+  };
+
   const dispatchNotification = (deal: Deal) => {
     if (deal.boardId === 'atividades' && deal.assignedTo && deal.assignedTo !== "Sem responsável") {
       try {
@@ -354,6 +456,7 @@ export default function CrmPage() {
     } as Deal;
     setDeals((prev) => [finalDeal, ...prev]);
     dispatchNotification(finalDeal);
+    syncDealToDB(finalDeal);
   };
 
   const handleUpdateDeal = (updatedDeal: Deal) => {
@@ -369,34 +472,40 @@ export default function CrmPage() {
     setDeals(prev => prev.map(d => d.id === updatedDeal.id ? { ...d, ...updatedDeal } : d));
     if (selectedDeal && selectedDeal.id === updatedDeal.id) setSelectedDeal({ ...selectedDeal, ...updatedDeal });
     dispatchNotification(updatedDeal);
+    syncDealToDB(updatedDeal);
     
-    // Save state
-    fetch("/api/crm/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: updatedDeal.id, action: "update", payload: { columnId: updatedDeal.columnId, assignedTo: updatedDeal.assignedTo, notes: updatedDeal.notes } })
-    });
+    // Save state for auto-generated deals (test/pend)
+    if (updatedDeal.id.startsWith("test-") || updatedDeal.id.startsWith("pend-")) {
+      fetch("/api/crm/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: updatedDeal.id, action: "update", payload: { columnId: updatedDeal.columnId, assignedTo: updatedDeal.assignedTo, notes: updatedDeal.notes } })
+      });
+    }
   };
 
   const handleDeleteDeal = (dealId: string) => {
     if (confirm('Tem certeza que deseja excluir este card? Esta ação não pode ser desfeita.')) {
       const w = window as any;
-    if (w.__crm_pusher) {
-      fetch('/api/pusher/trigger', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel: 'presence-crm', event: 'card_deleted', payload: { dealId }, socket_id: w.__crm_socket_id })
-      }).catch(e => console.error('Error broadcasting:', e));
-    }
+      if (w.__crm_pusher) {
+        fetch('/api/pusher/trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel: 'presence-crm', event: 'card_deleted', payload: { dealId }, socket_id: w.__crm_socket_id })
+        }).catch(e => console.error('Error broadcasting:', e));
+      }
       
       setDeals(prev => prev.filter(d => d.id !== dealId));
+      deleteDealFromDB(dealId);
       
-      // Save state
-      fetch("/api/crm/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: dealId, action: "archive" })
-      });
+      // Save state for auto-generated deals (test/pend) - we just "archive" them so they don't reappear
+      if (dealId.startsWith("test-") || dealId.startsWith("pend-")) {
+        fetch("/api/crm/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: dealId, action: "archive" })
+        });
+      }
     }
   };
 
@@ -448,16 +557,29 @@ export default function CrmPage() {
       }).catch(e => console.error('Error broadcasting:', e));
     }
 
+    let updatedDealObj: Deal | null = null;
     setDeals((prev) =>
-      prev.map((d) => (d.id === draggedDealId ? { ...d, columnId: colId } : d))
+      prev.map((d) => {
+        if (d.id === draggedDealId) {
+          updatedDealObj = { ...d, columnId: colId };
+          return updatedDealObj;
+        }
+        return d;
+      })
     );
     
-    // Save state
-    fetch("/api/crm/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: draggedDealId, action: "update", payload: { columnId: colId } })
-    });
+    setTimeout(() => {
+      if (updatedDealObj) syncDealToDB(updatedDealObj);
+    }, 0);
+    
+    // Save state for auto-generated deals (test/pend)
+    if (draggedDealId.startsWith("test-") || draggedDealId.startsWith("pend-")) {
+      fetch("/api/crm/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: draggedDealId, action: "update", payload: { columnId: colId } })
+      });
+    }
   };
 
   const openDealModal = (deal: Deal | null = null) => {
