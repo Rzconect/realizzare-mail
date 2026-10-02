@@ -238,16 +238,25 @@ export async function POST(req: Request) {
       let contactId = null;
       const { data: existingContact } = await supabase
         .from("contacts")
-        .select("id")
+        .select("id, first_name, last_name, city, state, phone")
         .eq("email", email)
         .maybeSingle();
 
       if (existingContact) {
         contactId = existingContact.id;
         const updatePayload: any = { status: "active", updated_at: new Date().toISOString() };
-        if (city) updatePayload.city = city;
-        if (state) updatePayload.state = state;
-        if (phone) updatePayload.phone = phone;
+        if (city && !existingContact.city) updatePayload.city = city;
+        if (state && !existingContact.state) updatePayload.state = state;
+        if (phone && !existingContact.phone) updatePayload.phone = phone;
+        
+        // Update name if missing or if it looks like an email prefix
+        const isNameMissingOrEmail = !existingContact.first_name || existingContact.first_name.includes("@") || existingContact.first_name === email.split("@")[0];
+        if (isNameMissingOrEmail && name && name.trim() !== "") {
+          const nameParts = name.trim().split(" ");
+          updatePayload.first_name = nameParts[0] || "Cliente";
+          updatePayload.last_name = nameParts.slice(1).join(" ") || "Realizzare";
+        }
+
         updatePayload.country = "Brasil";
         await supabase.from("contacts").update(updatePayload).eq("id", existingContact.id);
       } else {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, ChevronUp, Settings, Filter, Unlink, MessageSquare, Plus, ChevronDown, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2, GitBranch } from "lucide-react";
+import { Search, ChevronUp, Settings, Filter, Unlink, MessageSquare, Plus, ChevronDown, Check, CheckCheck, Send, Phone, User as UserIcon, Lock, MoreVertical, X, Bot, Calendar, DollarSign, Mail, Tag, Clock, ExternalLink, MapPin, BookOpen, ChevronRight, Paperclip, Image as ImageIcon, FileText, Headphones, Mic, Download, Play, Pause, Trash2, GitBranch } from "lucide-react";
 import { mockProfileData, formatTransactionDate, formatTimelineTimestamp } from "../contacts/[id]/page";
 import { createClient } from "@/lib/supabase/client";
 import ContactNotes from "@/components/crm/ContactNotes";
@@ -17,7 +17,7 @@ function ConversationsContent() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   
-  const [activeFilter, setActiveFilter] = useState<"minhas" | "fila" | "todos">("todos");
+  const [activeFilter, setActiveFilter] = useState<"minhas" | "fila" | "todos" | "arquivadas">("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
   const [replyingTo, setReplyingTo] = useState<any>(null);
@@ -41,11 +41,16 @@ function ConversationsContent() {
     const [panelConfig, setPanelConfig] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('realizzare_contact_panel_config');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!parsed.order.includes('custom_fields')) parsed.order.splice(parsed.order.length - 1, 0, 'custom_fields');
+        if (parsed.openState.custom_fields === undefined) parsed.openState.custom_fields = false;
+        return parsed;
+      }
     }
     return {
-      order: ["personal", "cursos", "automacoes", "transacoes", "timeline", "notes"],
-      openState: { personal: true, cursos: false, automacoes: false, transacoes: false, timeline: false, notes: false }
+      order: ["personal", "cursos", "automacoes", "transacoes", "timeline", "custom_fields", "notes"],
+      openState: { personal: true, cursos: false, automacoes: false, transacoes: false, timeline: false, custom_fields: false, notes: false }
     };
   });
   const [isPanelConfigOpen, setIsPanelConfigOpen] = useState(false);
@@ -223,6 +228,7 @@ function ConversationsContent() {
                 return {
                   id: m.id,
                   messageId: m.message_id,
+                  status: m.status,
                   sender: m.sender === 'user' ? 'client' : m.sender,
                   text: displayText,
                   isQuoted,
@@ -731,9 +737,7 @@ function ConversationsContent() {
         return false;
       }
     }
-    if (activeFilter === "minhas") return chat.assignedTo === currentUser?.name;
-    if (activeFilter === "fila") return !chat.assignedTo;
-    return true; // "todos"
+    if (activeFilter === "arquivadas") return chat.status === "archived"; if (chat.status === "archived") return false; if (activeFilter === "minhas") return chat.assignedTo === currentUser?.name; if (activeFilter === "fila") return !chat.assignedTo; return true; // "todos"
   });
 
   const handleCreateNewChat = (e: React.FormEvent) => {
@@ -741,10 +745,13 @@ function ConversationsContent() {
     if (!newChatPhone.trim()) return;
     
     // Clean phone numbers: remove anything that is not digit or +
-    const cleanPhone = newChatPhone.replace(/[^\d+]/g, '');
+    let cleanPhone = newChatPhone.replace(/\D/g, '');
+    if (cleanPhone.length === 10 || cleanPhone.length === 11) {
+      cleanPhone = '55' + cleanPhone;
+    }
 
     const newChat = {
-      id: "c" + Date.now(),
+      id: "temp-" + cleanPhone, remoteJid: cleanPhone + "@s.whatsapp.net",
       name: "Novo Contato",
       phone: cleanPhone,
       initials: "NC",
@@ -898,9 +905,7 @@ function ConversationsContent() {
             onClick={() => setActiveFilter("todos")}
             className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeFilter === "todos" ? "bg-slate-200 text-slate-800" : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}
           >
-            Todos ({chats.length})
-          </button>
-        </div>
+            Todos ({chats.filter(c => c.status !== "archived").length})</button><button onClick={() => setActiveFilter("arquivadas")} className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeFilter === "arquivadas" ? "bg-slate-800 text-white" : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}>Arq ({chats.filter(c => c.status === "archived").length})</button></div>
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -1042,10 +1047,7 @@ function ConversationsContent() {
                   )}
                 </div>
 
-                <div className="h-6 w-px bg-slate-200 mx-1"></div>
-                
-                <button 
-                  onClick={() => setShowContactDetails(!showContactDetails)}
+                <div className="h-6 w-px bg-slate-200 mx-1"></div>{activeChat.status !== "archived" ? (<button onClick={async () => { if (confirm("Tem certeza que deseja arquivar esta conversa?")) { const { createClient } = await import("@supabase/supabase-js"); const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!); await supabase.from("whatsapp_chats").update({ status: "archived" }).eq("id", activeChat.id); setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, status: "archived" } : c)); setActiveChatId(null); } }} className="flex items-center gap-1.5 font-bold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-slate-600 bg-slate-100 hover:bg-slate-200">Arquivar</button>) : (<button onClick={async () => { const { createClient } = await import("@supabase/supabase-js"); const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!); await supabase.from("whatsapp_chats").update({ status: "Aberto" }).eq("id", activeChat.id); setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, status: "Aberto" } : c)); }} className="flex items-center gap-1.5 font-bold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-emerald-600 bg-emerald-50 hover:bg-emerald-100">Desarquivar</button>)}<button onClick={() => setShowContactDetails(!showContactDetails)}
                   className={`flex items-center gap-1.5 font-bold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${showContactDetails ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'}`}
                 >
                   Ver detalhes do contato
@@ -1251,7 +1253,7 @@ function ConversationsContent() {
   {msg.isEdited && <span className="italic">Editada</span>}
   {msg.time}
 </span>
-                        {isMine && <CheckCheck className="h-3 w-3 text-blue-500" />}
+                        {isMine && (msg.status === "read" ? <CheckCheck className="h-3 w-3 text-blue-500" /> : msg.status === "delivered" ? <CheckCheck className="h-3 w-3 text-slate-400" /> : <Check className="h-3 w-3 text-slate-400" />)}
                       </div>
                       <button onClick={() => setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id)} className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 p-0.5 rounded-full shadow-sm text-slate-500 hover:text-slate-800">
                         <ChevronDown className="h-3.5 w-3.5" />
@@ -1469,6 +1471,28 @@ function ConversationsContent() {
                                         <span className="text-slate-500 text-xs">Estado:</span>
                                         <span className="font-medium text-slate-700 text-right text-xs">{(profile as any).location?.state || "-"}</span>
                                     </div>
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                            custom_fields: (
+                              <div key="custom_fields">
+                                <button onClick={() => toggleSection('custom_fields')} className="w-full flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                                  <div className="flex items-center gap-1"><Tag className="h-4 w-4 text-slate-400" /> Campos Personalizados</div>
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${panelConfig.openState.custom_fields ? 'rotate-180' : ''}`} />
+                                </button>
+                                {panelConfig.openState.custom_fields && (
+                                  <div className="space-y-2.5 text-sm mt-3">
+                                    {(profile as any).custom_fields && (profile as any).custom_fields.length > 0 ? (
+                                      (profile as any).custom_fields.map((field: any, idx: number) => (
+                                        <div key={idx} className="flex justify-between items-start gap-2">
+                                          <span className="text-slate-500 text-xs shrink-0 pt-0.5">{field.name}:</span>
+                                          <span className="font-medium text-slate-700 text-right text-xs break-words" title={field.value}>{field.value || "-"}</span>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="text-xs text-slate-400 italic text-center w-full">Nenhum campo personalizado</p>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -1692,7 +1716,7 @@ function ConversationsContent() {
             <div className="p-4 pb-32 space-y-2">
               {panelConfig.order.map((sec: string, i: number) => (
                 <div key={sec} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sec === 'personal' ? 'Info Pessoais' : sec === 'cursos' ? 'Cursos' : sec === 'automacoes' ? 'Fluxos de Automação' : sec === 'transacoes' ? 'Transações' : 'Observações'}</span>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{sec === 'personal' ? 'Info Pessoais' : sec === 'cursos' ? 'Cursos' : sec === 'automacoes' ? 'Fluxos de Automação' : sec === 'transacoes' ? 'Transações' : sec === 'timeline' ? 'Linha do Tempo' : sec === 'custom_fields' ? 'Campos Personalizados' : 'Observações'}</span>
                   <div className="flex items-center gap-2">
                     <button onClick={() => toggleSection(sec)} className={`text-[10px] px-2 py-1 font-bold rounded ${panelConfig.openState[sec] ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>{panelConfig.openState[sec] ? 'ABERTO' : 'FECHADO'}</button>
                     <div className="flex flex-col gap-1">
@@ -1805,4 +1829,7 @@ function formatContactFullName(firstStr: string, lastStr: string): string {
     return lower.charAt(0).toUpperCase() + lower.slice(1);
   }).join(" ");
 }
+
+
+
 

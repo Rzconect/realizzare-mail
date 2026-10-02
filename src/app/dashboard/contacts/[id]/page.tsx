@@ -1837,13 +1837,30 @@ export default function ContactProfilePage({ params }: PageProps) {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {(draft.status === "active" && draft.lists && draft.lists.some((l: any) => l.status === "subscribed")) ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  {draft.status === "unsubscribed" ? (
+                    <span 
+                      onClick={() => setDraft({ ...draft, status: "active" })}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 cursor-pointer hover:bg-rose-100 transition-colors"
+                      title="Clique para reativar o contato"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                      Desativado (Manual)
+                    </span>
+                  ) : (draft.status === "active" && draft.lists && draft.lists.some((l: any) => l.status === "subscribed")) ? (
+                    <span 
+                      onClick={() => setDraft({ ...draft, status: "unsubscribed" })}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors"
+                      title="Clique para desativar o contato"
+                    >
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       Ativo
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    <span 
+                      onClick={() => setDraft({ ...draft, status: draft.status === "active" ? "unsubscribed" : "active" })}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors"
+                      title="Clique para alternar o status do contato"
+                    >
                       <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                       {draft.status === "active" ? "Sem Lista" : "Inativo"}
                     </span>
