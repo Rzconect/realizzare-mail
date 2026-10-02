@@ -209,34 +209,51 @@ export default function DashboardPage() {
       const now = new Date();
       let start = new Date();
       let end = new Date();
+      let prevStart = new Date();
+      let prevEnd = new Date();
       
       if (period === "today") {
         start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        prevStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+        prevEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
       } else if (period === "7") {
         start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         start.setHours(0, 0, 0, 0);
         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        prevStart = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
+        prevEnd = new Date(start.getTime() - 1);
       } else if (period === "30") {
         start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         start.setHours(0, 0, 0, 0);
         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        prevStart = new Date(start.getTime() - 30 * 24 * 60 * 60 * 1000);
+        prevEnd = new Date(start.getTime() - 1);
       } else if (period === "90") {
         start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
         start.setHours(0, 0, 0, 0);
         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        prevStart = new Date(start.getTime() - 90 * 24 * 60 * 60 * 1000);
+        prevEnd = new Date(start.getTime() - 1);
       } else if (period === "current_month") {
-        // First day of current month to end of current month
         start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+        prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
       } else if (period === "custom") {
-        start = new Date(customStartDate);
-        end = new Date(customEndDate);
-        end.setHours(23, 59, 59, 999);
+        const [sYear, sMonth, sDay] = customStartDate.split('-').map(Number);
+        const [eYear, eMonth, eDay] = customEndDate.split('-').map(Number);
+        start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+        end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+        const diffMs = end.getTime() - start.getTime() + 1;
+        prevStart = new Date(start.getTime() - diffMs);
+        prevEnd = new Date(start.getTime() - 1);
       }
 
       const startMs = start.getTime();
       const endMs = end.getTime();
+      const prevStartMs = prevStart.getTime();
+      const prevEndMs = prevEnd.getTime();
 
       // Fetch contacts first to map emails to IDs and calculate leads/students
       const { data: contactsList } = await supabase.from("contacts").select("id, first_name, last_name, email, created_at, contact_tags(tags(name))");
@@ -568,6 +585,9 @@ export default function DashboardPage() {
         .filter(evt => evt.timestampMs >= startMs && evt.timestampMs <= endMs)
         .sort((a, b) => b.timestampMs - a.timestampMs);
 
+      const prevPeriodEvents = deduplicatedEventsPool
+        .filter(evt => evt.timestampMs >= prevStartMs && evt.timestampMs <= prevEndMs);
+
       let finalRevenue = 0;
       let finalCerts = 0;
       let finalSubs = 0;
@@ -591,12 +611,29 @@ export default function DashboardPage() {
         }
       });
 
+      let prevRevenue = 0;
+      let prevCerts = 0;
+      let prevSubs = 0;
+      prevPeriodEvents.forEach(evt => {
+        if (evt.type === "purchase" && evt.status === "paid") {
+          prevRevenue += evt.amount || 0;
+          if (evt.category === "certificado") prevCerts += 1;
+          if (evt.category === "assinatura") prevSubs += 1;
+        }
+      });
+
       setRecentEventsList(filteredPeriodEvents);
 
       // Calculate dynamic active leads, active students, and enrolled in period
       let dynamicActiveLeads = 0;
       let dynamicActiveStudents = 0;
       let dynamicEnrolledPeriod = 0;
+
+      let prevEnrolledPeriod = 0;
+      let currentLeadsCreated = 0;
+      let prevLeadsCreated = 0;
+      let currentStudentsCreated = 0;
+      let prevStudentsCreated = 0;
 
       if (contactsList) {
         const uniqueStudents = new Set();
@@ -617,10 +654,15 @@ export default function DashboardPage() {
           if (isStudent) uniqueStudents.add(c.id);
 
           if (c.created_at) {
-            const createdDate = new Date(c.created_at);
-            const createdMs = createdDate.getTime();
+            const createdMs = new Date(c.created_at).getTime();
             if (createdMs >= startMs && createdMs <= endMs) {
               dynamicEnrolledPeriod++;
+              if (isLead) currentLeadsCreated++;
+              if (isStudent) currentStudentsCreated++;
+            } else if (createdMs >= prevStartMs && createdMs <= prevEndMs) {
+              prevEnrolledPeriod++;
+              if (isLead) prevLeadsCreated++;
+              if (isStudent) prevStudentsCreated++;
             }
           }
         });
@@ -633,6 +675,7 @@ export default function DashboardPage() {
       let dbLeadsCount = 0;
       let dbStudentsCount = 0;
       let dbEnrolledPeriod = 0;
+      let dbPrevEnrolledPeriod = 0;
       
       try {
         const { data: dbLists } = await supabase.from("lists").select("id, name");
@@ -674,11 +717,25 @@ export default function DashboardPage() {
           .gte("created_at", start.toISOString())
           .lte("created_at", end.toISOString());
         dbEnrolledPeriod = dbEnrollCount || 0;
+
+        const { count: prevDbEnrollCount } = await supabase
+          .from("contacts")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", prevStart.toISOString())
+          .lte("created_at", prevEnd.toISOString());
+        dbPrevEnrolledPeriod = prevDbEnrollCount || 0;
       } catch (err) {}
 
       const activeLeadsVal = Math.max(dynamicActiveLeads, dbLeadsCount);
       const activeStudentsVal = Math.max(dynamicActiveStudents, dbStudentsCount);
       const enrolledPeriodVal = Math.max(dynamicEnrolledPeriod, dbEnrolledPeriod);
+      const prevEnrolledPeriodVal = Math.max(prevEnrolledPeriod, dbPrevEnrolledPeriod);
+
+      const calcVariation = (curr: number, prev: number) => {
+        if (prev === 0) return curr > 0 ? "+100%" : "0%";
+        const pct = ((curr - prev) / prev) * 100;
+        return `${pct > 0 ? '+' : ''}${pct.toFixed(1).replace('.', ',')}%`;
+      };
 
       setMetrics({
         active_leads: activeLeadsVal,
@@ -690,12 +747,12 @@ export default function DashboardPage() {
         email_revenue: emailRevenue,
         email_paid_count: emailPaidCount,
         changes: { 
-          leads: activeLeadsVal > 0 ? `+${activeLeadsVal}%` : "0%", 
-          students: activeStudentsVal > 0 ? `+${activeStudentsVal}%` : "0%", 
-          enrolled: enrolledPeriodVal > 0 ? `+${enrolledPeriodVal}%` : "0%", 
-          certs: finalCerts > 0 ? `+${finalCerts}%` : "0%", 
-          revenue: finalRevenue > 0 ? `+${Math.round(finalRevenue / 100)}%` : "0%", 
-          subs: finalSubs > 0 ? `+${finalSubs}%` : "0%" 
+          leads: calcVariation(currentLeadsCreated, prevLeadsCreated),
+          students: calcVariation(currentStudentsCreated, prevStudentsCreated),
+          enrolled: calcVariation(enrolledPeriodVal, prevEnrolledPeriodVal),
+          certs: calcVariation(finalCerts, prevCerts),
+          revenue: calcVariation(finalRevenue, prevRevenue),
+          subs: calcVariation(finalSubs, prevSubs)
         }
       });
 
@@ -1162,6 +1219,25 @@ export default function DashboardPage() {
     return null;
   };
 
+  const ChangeBadge = ({ change }: { change: string }) => {
+    if (!change) return null;
+    const isNegative = change.startsWith('-');
+    const isZero = change === '0%' || change === '0,0%';
+    if (isZero) {
+      return (
+        <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
+          {change}
+        </span>
+      );
+    }
+    return (
+      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5 ${isNegative ? 'text-rose-700 bg-rose-50' : 'text-emerald-700 bg-emerald-50'}`}>
+        <TrendingUp className={`h-3 w-3 ${isNegative ? 'rotate-180' : ''}`} />
+        {change}
+      </span>
+    );
+  };
+
   const data = metrics || {
     active_leads: 0,
     students_count: 0,
@@ -1315,10 +1391,7 @@ export default function DashboardPage() {
                     <h4 className="text-lg font-black text-slate-850">
                       {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.enrolled_period)}
                     </h4>
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
-                      <TrendingUp className="h-3 w-3" />
-                      {data.changes.enrolled}
-                    </span>
+                    <ChangeBadge change={data.changes.enrolled} />
                   </div>
                 </div>
                 <span className="p-1.5 bg-violet-50 rounded-lg text-violet-600 shrink-0">
@@ -1334,10 +1407,7 @@ export default function DashboardPage() {
                     <h4 className="text-lg font-black text-slate-850">
                       {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.active_leads)}
                     </h4>
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
-                      <TrendingUp className="h-3 w-3" />
-                      {data.changes.leads}
-                    </span>
+                    <ChangeBadge change={data.changes.leads} />
                   </div>
                 </div>
                 <span className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600 shrink-0">
@@ -1353,10 +1423,7 @@ export default function DashboardPage() {
                     <h4 className="text-lg font-black text-slate-850">
                       {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : formatNumber(data.students_count)}
                     </h4>
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
-                      <TrendingUp className="h-3 w-3" />
-                      {data.changes.students}
-                    </span>
+                    <ChangeBadge change={data.changes.students} />
                   </div>
                 </div>
                 <span className="p-1.5 bg-blue-50 rounded-lg text-blue-600 shrink-0">
@@ -1377,10 +1444,7 @@ export default function DashboardPage() {
                     <h4 className="text-lg font-black text-slate-850">
                       {isLoadingMetrics ? <div className="h-5 w-14 bg-slate-100 animate-pulse rounded" /> : (showFinancials ? formatCurrency(data.total_paid) : 'R$ •••••')}
                     </h4>
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-2xs inline-flex items-center gap-0.5">
-                      <TrendingUp className="h-3 w-3" />
-                      {data.changes.revenue}
-                    </span>
+                    <ChangeBadge change={data.changes.revenue} />
                   </div>
                 </div>
                 <span className="p-1.5 bg-emerald-50 rounded-lg text-emerald-700 shrink-0">

@@ -8,10 +8,10 @@ import { createClient } from "@/lib/supabase/client";
 
 function UnsubscribeContent() {
   const searchParams = useSearchParams();
-  const rawEmail = searchParams.get("email") || "aluno@realizzarecursos.com.br";
+  const rawEmail = searchParams.get("email") || "";
   const campaignId = searchParams.get("campaign") || searchParams.get("id");
 
-  const [email, setEmail] = useState(rawEmail);
+  const email = rawEmail;
   const [isUnsubscribed, setIsUnsubscribed] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackReason, setFeedbackReason] = useState("");
@@ -53,12 +53,12 @@ function UnsubscribeContent() {
         const supabase = createClient();
         const { data: contact } = await supabase
           .from("contacts")
-          .update({ status: "unsubscribed" })
-          .eq("email", rawEmail)
           .select("id")
+          .ilike("email", rawEmail.trim())
           .maybeSingle();
 
         if (contact?.id) {
+          await supabase.from("contacts").update({ status: "unsubscribed" }).eq("id", contact.id);
           await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
         }
       } catch (err) {
@@ -75,11 +75,19 @@ function UnsubscribeContent() {
     setIsLoading(true);
     try {
       const supabase = createClient();
-      await supabase
+      const { data: contact } = await supabase
         .from("contacts")
-        .update({ status: "active" })
-        .eq("email", email);
-      setIsUnsubscribed(false);
+        .select("id")
+        .ilike("email", email.trim())
+        .maybeSingle();
+
+      if (contact?.id) {
+        await supabase
+          .from("contacts")
+          .update({ status: "active" })
+          .eq("id", contact.id);
+        setIsUnsubscribed(false);
+      }
     } catch (err) {
       console.error("Erro ao reativar:", err);
     } finally {

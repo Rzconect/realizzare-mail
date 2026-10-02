@@ -1631,7 +1631,7 @@ function CreateCampaignForm() {
         }
       }
 
-      const initialStatus = sendType === "immediate" ? "Enviando" : "scheduled";
+      const initialStatus = sendType === "immediate" ? "sending" : "scheduled";
       
       let scheduledAt: string | null = null;
       if (sendType === "immediate") {
@@ -1825,6 +1825,18 @@ function CreateCampaignForm() {
 
       const newId = newList.id;
       const newCount = matchedContacts.length;
+
+      setContacts((prev) => 
+        prev.map((c) => {
+          if (matchedContacts.some((mc: any) => mc.id === c.id)) {
+            return {
+              ...c,
+              list_ids: [...(c.list_ids || []), newId]
+            };
+          }
+          return c;
+        })
+      );
       
       // Add new segment dynamically to selection lists
       setListsList((prev) => [

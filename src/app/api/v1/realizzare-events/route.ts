@@ -468,35 +468,48 @@ export async function POST(request: Request) {
       const course = await ensureCourse(courseName, 197.00, courseId);
       const enrollment = await ensureEnrollment(contact.id, course.id);
 
-      // Automatic List Transition: Ensure lead is in Alunos list
-      await handleCourseEnrollmentListTransition(contact.id);
+      const { data: testApprovedEvent } = await supabase
+        .from("course_events")
+        .select("id")
+        .eq("contact_id", contact.id)
+        .eq("course_id", course.id)
+        .eq("event_type", "progress_updated")
+        .eq("metadata->>original_event", "test_approved")
+        .maybeSingle();
 
-      // Update Enrollment Progress
-      await supabase
-        .from("enrollments")
-        .update({
-          progress: progressPercent,
-          last_accessed_at: new Date().toISOString(),
-          status: progressPercent >= 100 ? "completed" : "active"
-        })
-        .eq("id", enrollment.id);
+      if (testApprovedEvent) {
+        processedResult = { action: "ignored_due_to_test_approved", email, courseName: course.name };
+      } else {
+        // Automatic List Transition: Ensure lead is in Alunos list
+        await handleCourseEnrollmentListTransition(contact.id);
 
-      // Log course progress event
-      await supabase.from("course_events").insert({
-        org_id: DEFAULT_ORG_ID,
-        contact_id: contact.id,
-        course_id: course.id,
-        enrollment_id: enrollment.id,
-        event_type: "progress_updated",
-        metadata: {
-          progress_percent: progressPercent,
-          completed_lessons: body.completed_lessons || 0,
-          total_lessons: body.total_lessons || 20,
-          course_name: course.name
-        }
-      });
+        // Update Enrollment Progress
+        await supabase
+          .from("enrollments")
+          .update({
+            progress: progressPercent,
+            last_accessed_at: new Date().toISOString(),
+            status: progressPercent >= 100 ? "completed" : "active"
+          })
+          .eq("id", enrollment.id);
 
-      processedResult = { action: "progress_updated", email, courseName: course.name, progressPercent };
+        // Log course progress event
+        await supabase.from("course_events").insert({
+          org_id: DEFAULT_ORG_ID,
+          contact_id: contact.id,
+          course_id: course.id,
+          enrollment_id: enrollment.id,
+          event_type: "progress_updated",
+          metadata: {
+            progress_percent: progressPercent,
+            completed_lessons: body.completed_lessons || 0,
+            total_lessons: body.total_lessons || 20,
+            course_name: course.name
+          }
+        });
+
+        processedResult = { action: "progress_updated", email, courseName: course.name, progressPercent };
+      }
     }
 
     // =========================================================================
@@ -528,7 +541,7 @@ export async function POST(request: Request) {
       }
 
       // If no course found by ID, try by name (only if it's a meaningful name, not "digital" placeholder)
-      if (!course && courseName && courseName !== "digital" && !courseName.includes("Curso (ID:")) {
+      if (!course && courseName && courseName.toLowerCase() !== "digital" && courseName.toLowerCase() !== "mec" && !courseName.includes("Curso (ID:")) {
         const { data: courseByName } = await supabase.from("courses").select("*").ilike("name", courseName.trim()).maybeSingle();
         if (courseByName) course = courseByName;
       }
@@ -607,6 +620,42 @@ export async function POST(request: Request) {
     }
 
     // =========================================================================
+    // EVENT: order.paid
+    // =========================================================================
+    else if (eventType === "order.paid") {
+      const email = (body.student_email || body.email || "").toLowerCase().trim();
+      const courseName = (body.course_name || body.item_name || body.product_name || "Certificado Digital").toLowerCase();
+      const totalAmount = Number(body.total_amount || body.amount || body.price || 0);
+
+      if (email) {
+        const contact = await ensureContact(email);
+        let creditsToAdd = 1;
+
+        if (courseName.includes("certificado digital + impresso ies/mec")) {
+           if (totalAmount <= 86.00) creditsToAdd = 1;
+           else if (totalAmount <= 155.00) creditsToAdd = 2;
+           else if (totalAmount <= 227.00) creditsToAdd = 3;
+           else if (totalAmount <= 343.00) creditsToAdd = 5;
+        } else if (courseName.includes("certificado digital ies/mec")) {
+           if (totalAmount <= 56.00) creditsToAdd = 1;
+           else if (totalAmount <= 101.00) creditsToAdd = 2;
+           else if (totalAmount <= 147.00) creditsToAdd = 3;
+           else if (totalAmount <= 223.00) creditsToAdd = 5;
+        } else if (courseName.includes("certificado digital")) {
+           if (totalAmount <= 46.00) creditsToAdd = 1;
+           else if (totalAmount <= 83.00) creditsToAdd = 2;
+           else if (totalAmount <= 121.00) creditsToAdd = 3;
+           else if (totalAmount <= 183.00) creditsToAdd = 5;
+        }
+
+        const newCredits = (contact.certificate_credits || 0) + creditsToAdd;
+        await supabase.from("contacts").update({ certificate_credits: newCredits }).eq("id", contact.id);
+
+        processedResult = { action: "credits_added", email, courseName, creditsToAdd, newCredits };
+      }
+    }
+
+    // =========================================================================
     // EVENT 5: test.approved / teste_aprovado
     // =========================================================================
     else if (eventType === "test.approved" || eventType === "teste_aprovado") {
@@ -622,6 +671,29 @@ export async function POST(request: Request) {
       const contact = await ensureContact(email);
       const course = await ensureCourse(courseName, 197.00, courseId);
       const enrollment = await ensureEnrollment(contact.id, course.id);
+
+      // Force progress to 100% before test.approved
+      await supabase.from("course_events").insert({
+        org_id: DEFAULT_ORG_ID,
+        contact_id: contact.id,
+        course_id: course.id,
+        enrollment_id: enrollment.id,
+        event_type: "progress_updated",
+        metadata: {
+          progress_percent: 100,
+          course_name: course.name,
+          forced_by: "test_approved"
+        }
+      });
+
+      await supabase
+        .from("enrollments")
+        .update({
+          progress: 100.00,
+          last_accessed_at: new Date().toISOString(),
+          status: "completed"
+        })
+        .eq("id", enrollment.id);
 
       // Log Test Approved in Course Events (Using progress_updated to bypass ENUM strictness, adding flag in metadata)
       await supabase.from("course_events").insert({

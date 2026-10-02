@@ -31,7 +31,7 @@ function PreferencesContent() {
         const { data: contact } = await supabase
           .from("contacts")
           .select("id, status")
-          .eq("email", rawEmail)
+          .ilike("email", rawEmail.trim())
           .maybeSingle();
 
         if (contact) {

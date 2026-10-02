@@ -917,18 +917,43 @@ export default function ContactProfilePage({ params }: PageProps) {
           });
         }
 
-        // Reporting Events fetch restored to allow pending -> paid visual progression
         const { data: reportingEventsData } = await supabase
           .from("reporting_events")
           .select("*")
           .eq("contact_email", String(contact.email).toLowerCase())
-          .eq("event_type", "purchase")
+          .in("event_type", ["purchase", "manual_deactivation", "list_unsubscribed_manual"])
           .order("created_at", { ascending: true });
 
         if (reportingEventsData && reportingEventsData.length > 0) {
           const groupedByOrder = new Map();
           
           reportingEventsData.forEach((evt: any) => {
+            if (evt.event_type === "manual_deactivation") {
+              rawEvents.push({
+                id: evt.id,
+                type: "suppressed",
+                label: "Cadastro Desativado Manualmente",
+                details: evt.metadata?.reason || "Desativado manualmente pela interface do CRM.",
+                timestamp: evt.created_at,
+                payload: {
+                  "Status": "Desativado",
+                  "Motivo": evt.metadata?.reason || ""
+                }
+              });
+              return;
+            }
+            if (evt.event_type === "list_unsubscribed_manual") {
+              rawEvents.push({
+                id: evt.id,
+                type: "unsubscribe",
+                label: "Removido da Lista (Desativação Manual)",
+                details: "O lead foi desativado e retirado das listas automaticamente.",
+                timestamp: evt.created_at,
+                payload: {}
+              });
+              return;
+            }
+
             const meta = evt.metadata || {};
             const pid = meta.pagarme_id || meta.order_id || evt.id; // fallback to evt.id if no order ID
             const isPaid = meta.event?.includes("paid");
@@ -1613,6 +1638,18 @@ export default function ContactProfilePage({ params }: PageProps) {
         } as any)
         .eq("id", id);
       if (updateError) throw updateError;
+
+      // Handle Manual Deactivation (removing from all lists and adding timeline events)
+      if (draft.status === "unsubscribed" && profile.status !== "unsubscribed") {
+        await supabase.from("list_subscriptions").update({ status: "unsubscribed", updated_at: new Date().toISOString() }).eq("contact_id", id);
+        
+        draft.lists = draft.lists?.map((l: any) => ({ ...l, status: "unsubscribed" })) || [];
+
+        await supabase.from("reporting_events").insert([
+          { org_id: "00000000-0000-0000-0000-000000000001", contact_email: draft.email, event_type: "manual_deactivation", metadata: { reason: "Desativado manualmente pela interface do CRM." } },
+          { org_id: "00000000-0000-0000-0000-000000000001", contact_email: draft.email, event_type: "list_unsubscribed_manual", metadata: { reason: "Desativado manualmente pela interface do CRM." } }
+        ]);
+      }
 
       // 2. Synchronize Tags
       const { data: globalTags } = await supabase.from("tags").select("id, name");
