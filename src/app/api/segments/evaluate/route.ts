@@ -26,6 +26,11 @@ export async function POST(req: Request) {
     .select('payload, event_type, created_at')
     .in('event_type', ['order.paid', 'charge.paid', 'charge.pending', 'order.payment_failed', 'charge.payment_failed']);
 
+  const { data: emailSent } = await supabase
+    .from('inbound_webhook_events')
+    .select('payload')
+    .in('event_type', ['email.delivered']);
+
   const { data: emailOpens } = await supabase
     .from('inbound_webhook_events')
     .select('payload')
@@ -54,6 +59,7 @@ export async function POST(req: Request) {
         courseEvents: courseEvents ?? [],
         purchases: purchases ?? [],
         pagarmeEvents: pagarmeEvents ?? [],
+        emailSent: emailSent ?? [],
         emailOpens: emailOpens ?? [],
         emailClicks: emailClicks ?? [],
         contactTags: contactTags ?? [],
@@ -77,6 +83,34 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
   const normalizedField = rule.field === 'courseStatus' ? 'course_status' : rule.field;
   const { operator, value } = rule;
   const field = normalizedField;
+
+  // Try parsing value if it's JSON (used by engagement fields)
+  let parsedValue = value;
+  try {
+    if (typeof value === 'string' && value.startsWith('{')) {
+      parsedValue = JSON.parse(value);
+    }
+  } catch (e) {}
+
+
+  const campaignId = parsedValue?.specificCampaign || rule.campaignId;
+  const campaignScope = parsedValue?.campaignScope || 'Qualquer campanha';
+  const timeframeMode = parsedValue?.timeframeMode || 'last_days';
+  const daysCount = parseInt(parsedValue?.daysCount || '30', 10);
+  
+  const isWithinTimeframe = (dateStr: string) => {
+    if (!dateStr) return true;
+    const date = new Date(dateStr);
+    if (timeframeMode === 'last_days') {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - daysCount);
+      return date >= cutoff;
+    }
+    // Could add custom date range here later
+    return true;
+  };
+
+
   
   const compare = (a: any, b: any): boolean => {
     if (operator === 'eq' || operator === 'is' || operator === 'equal') return String(a).toLowerCase() === String(b).toLowerCase();
@@ -175,29 +209,31 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
     case 'email_received': {
       // Anyone who opened is a superset of "received"
       // Also check direct opens
-      const receivedByMe = [...data.emailOpens, ...data.emailClicks].filter((e: any) =>
-        e.payload?.email === contact.email || e.payload?.contact_id === contact.id
+      const receivedByMe = [...data.emailSent, ...data.emailOpens, ...data.emailClicks].filter((e: any) =>
+        (e.payload?.email === contact.email || e.payload?.contact_id === contact.id) && isWithinTimeframe(e.created_at)
       );
-      // Apply time filter if rule has timeframe
+      if (campaignScope === 'Campanha específica' && campaignId) {
+        return receivedByMe.some((e: any) => e.payload?.campaign_id === campaignId);
+      }
       return receivedByMe.length > 0;
     }
     
     case 'email_opened': {
       const opensForMe = data.emailOpens.filter((e: any) =>
-        e.payload?.email === contact.email || e.payload?.contact_id === contact.id
+        (e.payload?.email === contact.email || e.payload?.contact_id === contact.id) && isWithinTimeframe(e.created_at)
       );
-      if (rule.campaignId && rule.campaignId !== 'any') {
-        return opensForMe.some((e: any) => e.payload?.campaign_id === rule.campaignId);
+      if (campaignScope === 'Campanha específica' && campaignId) {
+        return opensForMe.some((e: any) => e.payload?.campaign_id === campaignId);
       }
       return opensForMe.length > 0;
     }
     
     case 'email_clicked': {
       const clicksForMe = data.emailClicks.filter((e: any) =>
-        e.payload?.email === contact.email || e.payload?.contact_id === contact.id
+        (e.payload?.email === contact.email || e.payload?.contact_id === contact.id) && isWithinTimeframe(e.created_at)
       );
-      if (rule.campaignId && rule.campaignId !== 'any') {
-        return clicksForMe.some((e: any) => e.payload?.campaign_id === rule.campaignId);
+      if (campaignScope === 'Campanha específica' && campaignId) {
+        return clicksForMe.some((e: any) => e.payload?.campaign_id === campaignId);
       }
       return clicksForMe.length > 0;
     }

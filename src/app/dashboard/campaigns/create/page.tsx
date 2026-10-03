@@ -299,6 +299,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     "Informações pessoais do lead": false,
     "Cursos e Matrículas": false,
     "Campanhas e Automação": false,
+    "Informações de Pagamento (Pagar.me)": false,
     "Campos personalizados": false
   });
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -320,6 +321,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
         "Informações pessoais do lead": false,
         "Cursos e Matrículas": false,
         "Campanhas e Automação": false,
+        "Informações de Pagamento (Pagar.me)": false,
         "Campos personalizados": false
       });
     }
@@ -353,6 +355,13 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     { id: "active_in_flow", label: "Ativo na Automação" }
   ];
 
+  const pagarmeFields = [
+    { id: "payment_order_status", label: "Status do Pedido (Pagar.me)" },
+    { id: "payment_method", label: "Método de Pagamento" },
+    { id: "payment_amount", label: "Valor do Pedido" },
+    { id: "payment_product", label: "Produto Comprado" }
+  ];
+
   const allFieldsGrouped = [
     {
       title: "Informações pessoais do lead",
@@ -379,6 +388,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     personalFields.find(f => f.id === value)?.label ||
     courseFields.find(f => f.id === value)?.label ||
     engagementFields.find(f => f.id === value)?.label ||
+    pagarmeFields.find(f => f.id === value)?.label ||
     (customFields || []).find(cf => `cf_${cf.tag}` === value)?.name ||
     (customFields || []).find(cf => cf.tag === value)?.name ||
     value;

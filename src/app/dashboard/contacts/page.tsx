@@ -206,6 +206,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
 
   const courseFields = [
     { id: "course", label: "Curso Matriculado" },
+    { id: "last_course", label: "Último Curso Iniciado" },
     { id: "courseStatus", label: "Status do Curso" },
     { id: "enrolled_at", label: "Data de Inscrição" },
     { id: "certificate_issued", label: "Certificado Emitido?" }
@@ -232,6 +233,13 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     { id: "active_in_flow", label: "Ativo na Automação" }
   ];
 
+  const pagarmeFields = [
+    { id: "payment_order_status", label: "Status do Pedido (Pagar.me)" },
+    { id: "payment_method", label: "Método de Pagamento" },
+    { id: "payment_amount", label: "Valor do Pedido" },
+    { id: "payment_product", label: "Produto Comprado" }
+  ];
+
   const allFieldsGrouped = [
     {
       title: "Informações pessoais do lead",
@@ -250,6 +258,10 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
       items: engagementFields
     },
     {
+      title: "Informações de Pagamento (Pagar.me)",
+      items: pagarmeFields
+    },
+    {
       title: "Campos personalizados",
       items: (customFields || []).map((cf) => ({
         id: `cf_${cf.tag}`,
@@ -263,6 +275,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     courseFields.find(f => f.id === value)?.label ||
     paymentFields.find(f => f.id === value)?.label ||
     engagementFields.find(f => f.id === value)?.label ||
+    pagarmeFields.find(f => f.id === value)?.label ||
     (customFields || []).find(cf => `cf_${cf.tag}` === value)?.name ||
     (customFields || []).find(cf => cf.tag === value)?.name ||
     value;
@@ -415,7 +428,7 @@ function EngagementRuleExpanded({
       <div className="flex flex-wrap items-center gap-2">
         <SearchableFieldDropdown
           value={rule.field}
-          onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val })}
+          onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
           customFields={customFields}
         />
 
@@ -5167,7 +5180,7 @@ export default function ContactsPage() {
                                   <div className="flex items-center gap-3">
                                     <SearchableFieldDropdown
                                       value={rule.field}
-                                      onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val })}
+                                      onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
                                       customFields={customFields}
                                     />
 

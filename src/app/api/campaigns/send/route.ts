@@ -280,6 +280,17 @@ export async function POST(req: Request) {
           }
         });
         successCount++;
+        
+        // Log delivery event to inbound_webhook_events
+        await supabase.from("inbound_webhook_events").insert({
+          event_type: "email.delivered",
+          payload: {
+            email: recipientEmail,
+            contact_id: contactId,
+            campaign_id: campaign.id,
+            timestamp: new Date().toISOString()
+          }
+        });
       } catch (err: any) {
         console.error(`Failed to send email to ${email}:`, err);
         sendErrors.push({ email, error: err.message });
