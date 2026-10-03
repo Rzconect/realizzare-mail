@@ -1923,20 +1923,50 @@ function CreateCampaignForm() {
     try {
       const supabase = createClient();
       
-      // 1. Create a real list in the database for this segment
-      const { data: newList, error: listErr } = await supabase.from("lists").insert({
+      // 1. Create a real segment in segments table
+      const { data: newSeg, error: segErr } = await supabase.from("segments").insert({
         org_id: "00000000-0000-0000-0000-000000000001",
-        name: newSegmentName,
-        description: "Segmentação dinâmica (salva estaticamente)",
-        type: "segment"
+        name: newSegmentName.trim(),
+        description: "Segmentação dinâmica criada em campanhas",
+        type: "dynamic",
+        global_operator: globalOperator
       }).select("id").single();
 
-      if (listErr) throw listErr;
+      if (segErr) throw segErr;
+      const newId = newSeg.id;
 
-      // 2. Insert matched contacts into list_subscriptions
+      // 2. Insert segment rules
+      const rulesPayload = segmentGroups.flatMap((g, gIdx) =>
+        g.rules.map((r) => ({
+          segment_id: newId,
+          group_index: gIdx,
+          group_operator: g.logicalOperator || "and",
+          field: r.field,
+          operator: r.operator,
+          value: r.value
+        }))
+      );
+      if (rulesPayload.length > 0) {
+        const { error: rulesErr } = await supabase.from("segment_rules").insert(rulesPayload);
+        if (rulesErr) console.warn("Failed to insert segment rules:", rulesErr);
+      }
+
+      // 3. Create a real list in the database for this segment
+      const { error: listErr } = await supabase.from("lists").insert({
+        id: newId,
+        org_id: "00000000-0000-0000-0000-000000000001",
+        name: newSegmentName.trim(),
+        description: "Segmentação dinâmica (salva estaticamente)",
+        type: "segment",
+        subscriber_count: matchedContacts.length
+      });
+
+      if (listErr) console.warn("Failed to create list entry for segment:", listErr);
+
+      // 4. Insert matched contacts into list_subscriptions
       if (matchedContacts.length > 0) {
         const subsPayload = matchedContacts.map((mc: any) => ({
-          list_id: newList.id,
+          list_id: newId,
           contact_id: mc.id,
           status: "subscribed"
         }));
@@ -1945,7 +1975,21 @@ function CreateCampaignForm() {
         if (subsErr) console.warn("Failed to attach contacts to segment list:", subsErr);
       }
 
-      const newId = newList.id;
+      try {
+        const stored = localStorage.getItem("realizzare_saved_segments");
+        const parsed = stored ? JSON.parse(stored) : [];
+        parsed.unshift({
+          id: newId,
+          name: newSegmentName.trim(),
+          description: "Segmentação dinâmica criada em campanhas",
+          type: "Dinâmico",
+          count: matchedContacts.length,
+          global_operator: globalOperator,
+          segment_rules: rulesPayload
+        });
+        localStorage.setItem("realizzare_saved_segments", JSON.stringify(parsed));
+      } catch (e) {}
+
       const newCount = matchedContacts.length;
 
       setContacts((prev) => 

@@ -59,6 +59,57 @@ function formatContactFullName(firstStr: string, lastStr: string): string {
     .join(" ");
 }
 
+function getFieldFriendlyLabel(field: string): string {
+  const map: Record<string, string> = {
+    name: "Nome Completo",
+    first_name: "Primeiro Nome",
+    last_name: "Sobrenome",
+    email: "E-mail",
+    phone: "Telefone / WhatsApp",
+    created_at: "Data de Cadastro",
+    status: "Status do Lead",
+    total_spent: "Total Pago",
+    course: "Curso Matriculado",
+    last_course: "Último Curso Iniciado",
+    courseStatus: "Status do Curso",
+    course_status: "Status do Curso",
+    enrolled_at: "Data de Inscrição",
+    certificate_issued: "Certificado Emitido?",
+    payment_order_status: "Status do Pedido",
+    payment_order_amount: "Valor do Pedido",
+    payment_total_revenue: "Faturamento Total",
+    payment_total_orders: "Qtd. Pedidos",
+    payment_last_order_date: "Data Último Pedido",
+    payment_last_paid_order_date: "Data Último Pedido Pago",
+    payment_method: "Forma de Pagamento",
+    payment_subscription_plan: "Plano Assinatura",
+    payment_subscription_status: "Status Assinatura",
+    tag: "Possui Tag",
+    email_received: "Recebeu E-mail",
+    email_opened: "Abriu E-mail",
+    email_clicked: "Clicou em E-mail",
+    active_in_list: "Inscrito na Lista",
+    active_in_flow: "Ativo na Automação"
+  };
+  return map[field] || field;
+}
+
+function getOperatorFriendlyLabel(operator: string): string {
+  const map: Record<string, string> = {
+    eq: "=",
+    neq: "≠",
+    contains: "contém",
+    not_contains: "não contém",
+    gt: ">",
+    lt: "<",
+    gte: "≥",
+    lte: "≤",
+    starts_with: "começa com",
+    ends_with: "termina com"
+  };
+  return map[operator] || operator;
+}
+
 interface SearchableFieldDropdownProps {
   value: string;
   onChange: (value: string) => void;
@@ -1993,6 +2044,50 @@ export default function ContactsPage() {
     }
   };
 
+  const refreshSegmentsFromDB = async (supabaseClient?: any) => {
+    try {
+      const supabase = supabaseClient || createClient();
+      const { data: dbSegments, error: segErr } = await supabase
+        .from("segments")
+        .select("*, segment_rules(*)")
+        .order("created_at", { ascending: false });
+
+      if (!segErr && dbSegments) {
+        const { data: segLists } = await supabase
+          .from("lists")
+          .select("id, subscriber_count")
+          .eq("type", "segment");
+
+        const countsMap = new Map((segLists || []).map((l: any) => [l.id, l.subscriber_count || 0]));
+
+        const mapped = dbSegments.map((s: any) => {
+          let desc = s.description;
+          if ((!desc || desc === "Segmentação dinâmica (salva estaticamente)") && s.segment_rules && s.segment_rules.length > 0) {
+            desc = s.segment_rules
+              .map((r: any) => `${getFieldFriendlyLabel(r.field)} ${getOperatorFriendlyLabel(r.operator)} "${r.value}"`)
+              .join(s.global_operator === "or" ? " OU " : " E ");
+          }
+          return {
+            id: s.id,
+            name: s.name,
+            description: desc || "Segmentação dinâmica de leads",
+            type: s.type === "dynamic" ? "Dinâmico" : "Fixo",
+            count: countsMap.get(s.id) ?? 0,
+            global_operator: s.global_operator || "and",
+            segment_rules: s.segment_rules || []
+          };
+        });
+
+        setSavedSegments(mapped);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("realizzare_saved_segments", JSON.stringify(mapped));
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to refresh segments from DB:", e);
+    }
+  };
+
   // Integration & Automation settings states
   const [leadsToAlunosEnabled, setLeadsToAlunosEnabled] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -2097,6 +2192,13 @@ export default function ContactsPage() {
           }
         } catch (e) {
           console.warn("Failed to fetch courses/tags for filters:", e);
+        }
+
+        // 3.5 Fetch Saved Segments from database
+        try {
+          await refreshSegmentsFromDB(supabase);
+        } catch (e) {
+          console.warn("Failed to load segments from database:", e);
         }
 
         // 4. Fetch Purchases, Course Events, Contacts & Reporting Events in parallel for maximum performance
@@ -2523,14 +2625,25 @@ export default function ContactsPage() {
         .select()
         .single();
 
-      if (inserted && selectedContacts.length > 0) {
-        const subRows = selectedContacts.map(cid => ({
+      if (inserted) {
+        await supabase.from("segments").insert({
+          id: inserted.id,
           org_id: DEFAULT_ORG_ID,
-          list_id: inserted.id,
-          contact_id: cid,
-          status: "subscribed"
-        }));
-        await supabase.from("list_subscribers").upsert(subRows, { onConflict: "list_id,contact_id" });
+          name: name,
+          description: newSegment.description,
+          type: "static",
+          global_operator: "and"
+        });
+
+        if (selectedContacts.length > 0) {
+          const subRows = selectedContacts.map((cid) => ({
+            list_id: inserted.id,
+            contact_id: cid,
+            status: "subscribed"
+          }));
+          await supabase.from("list_subscriptions").insert(subRows);
+        }
+        await refreshSegmentsFromDB(supabase);
       }
     } catch (e) {
       console.warn("Supabase lists sync exception:", e);
@@ -2822,6 +2935,7 @@ export default function ContactsPage() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [qualifiedSegmentIds, setQualifiedSegmentIds] = useState<Set<string> | null>(null);
+  const [isSavingSegment, setIsSavingSegment] = useState(false);
 
   // Sorting handlers
   const handleSort = (field: string) => {
@@ -3273,6 +3387,249 @@ export default function ContactsPage() {
     );
   };
 
+  const handleEditSegment = (seg: any) => {
+    setEditingSegmentId(seg.id);
+    setSegmentName(seg.name || "");
+    setGlobalOperator((seg.global_operator as "and" | "or") || "and");
+
+    if (seg.segment_rules && seg.segment_rules.length > 0) {
+      const groupsMap = new Map<number, any[]>();
+      seg.segment_rules.forEach((r: any) => {
+        const gIdx = r.group_index ?? 0;
+        if (!groupsMap.has(gIdx)) groupsMap.set(gIdx, []);
+        groupsMap.get(gIdx)!.push(r);
+      });
+
+      const reconstructed = Array.from(groupsMap.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([gIdx, rulesList]) => ({
+          id: `g_${gIdx + 1}`,
+          logicalOperator: (rulesList[0]?.group_operator as "and" | "or") || "and",
+          rules: rulesList.map((r: any) => ({
+            field: r.field,
+            operator: r.operator,
+            value: r.value
+          }))
+        }));
+
+      setSegmentGroups(reconstructed.length > 0 ? reconstructed : [
+        { id: "g1", logicalOperator: "and", rules: [{ field: "status", operator: "eq", value: "active" }] }
+      ]);
+    } else {
+      setSegmentGroups([
+        { id: "g1", logicalOperator: "and", rules: [{ field: "status", operator: "eq", value: "active" }] }
+      ]);
+    }
+
+    setPreviewCount(seg.count ?? seg.subscriber_count ?? null);
+    setQualifiedSegmentIds(null);
+    setIsSegmentModalOpen(true);
+  };
+
+  const handleDeleteSegment = async (segmentId: string, segmentNameStr?: string) => {
+    try {
+      const supabase = createClient();
+      await supabase.from("segment_rules").delete().eq("segment_id", segmentId);
+      await supabase.from("list_subscriptions").delete().eq("list_id", segmentId);
+      await supabase.from("lists").delete().eq("id", segmentId);
+      const { error: segDelErr } = await supabase.from("segments").delete().eq("id", segmentId);
+      if (segDelErr) throw segDelErr;
+
+      const updated = savedSegments.filter((s) => s.id !== segmentId);
+      setSavedSegments(updated);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("realizzare_saved_segments", JSON.stringify(updated));
+      }
+      setLists((prev) => prev.filter((l) => l.id !== segmentId));
+      alert(`Segmentação "${segmentNameStr || 'selecionada'}" excluída com sucesso!`);
+    } catch (err) {
+      console.error("Erro ao excluir segmentação:", err);
+      alert("Erro ao excluir segmentação no banco de dados.");
+    }
+  };
+
+  const handleSaveSegment = async () => {
+    if (!segmentName.trim()) {
+      alert("Por favor, preencha o nome da segmentação.");
+      return;
+    }
+
+    setIsSavingSegment(true);
+    try {
+      const supabase = createClient();
+      const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
+
+      // 1. Calculate matched contact IDs
+      let matchedIds: string[] = [];
+      if (qualifiedSegmentIds !== null) {
+        matchedIds = Array.from(qualifiedSegmentIds);
+      } else {
+        try {
+          const evalRes = await fetch("/api/segments/evaluate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ groups: segmentGroups, globalOperator })
+          });
+          if (evalRes.ok) {
+            const evalData = await evalRes.json();
+            matchedIds = evalData.ids || [];
+          } else {
+            matchedIds = getMatchingSegmentLeads().map((c: any) => c.id);
+          }
+        } catch (e) {
+          matchedIds = getMatchingSegmentLeads().map((c: any) => c.id);
+        }
+      }
+
+      // Build human-friendly description of rules
+      const ruleDescriptions = segmentGroups
+        .map((g) =>
+          g.rules
+            .map((r) => `${getFieldFriendlyLabel(r.field)} ${getOperatorFriendlyLabel(r.operator)} "${r.value}"`)
+            .join(g.logicalOperator === "or" ? " OU " : " E ")
+        )
+        .join(globalOperator === "or" ? " | OU | " : " | E | ");
+
+      const desc = ruleDescriptions || "Segmentação dinâmica de leads";
+      let segmentId = editingSegmentId;
+
+      if (segmentId) {
+        // Update existing segment
+        const { error: updErr } = await supabase
+          .from("segments")
+          .update({
+            name: segmentName.trim(),
+            description: desc,
+            type: "dynamic",
+            global_operator: globalOperator,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", segmentId);
+
+        if (updErr) throw updErr;
+
+        // Delete existing rules and reinsert
+        await supabase.from("segment_rules").delete().eq("segment_id", segmentId);
+
+        const rulesPayload = segmentGroups.flatMap((g, gIdx) =>
+          g.rules.map((r) => ({
+            segment_id: segmentId,
+            group_index: gIdx,
+            group_operator: g.logicalOperator || "and",
+            field: r.field,
+            operator: r.operator,
+            value: r.value
+          }))
+        );
+
+        if (rulesPayload.length > 0) {
+          const { error: rulesErr } = await supabase.from("segment_rules").insert(rulesPayload);
+          if (rulesErr) console.warn("Failed to insert segment rules:", rulesErr);
+        }
+
+        // Upsert lists table
+        await supabase.from("lists").upsert({
+          id: segmentId,
+          org_id: DEFAULT_ORG_ID,
+          name: segmentName.trim(),
+          description: desc,
+          type: "segment",
+          subscriber_count: matchedIds.length,
+          updated_at: new Date().toISOString()
+        });
+
+        // Update list subscriptions
+        await supabase.from("list_subscriptions").delete().eq("list_id", segmentId);
+        if (matchedIds.length > 0) {
+          const subsPayload = matchedIds.map((cid) => ({
+            list_id: segmentId,
+            contact_id: cid,
+            status: "subscribed"
+          }));
+          await supabase.from("list_subscriptions").insert(subsPayload);
+        }
+      } else {
+        // Create new segment
+        const { data: newSeg, error: newSegErr } = await supabase
+          .from("segments")
+          .insert({
+            org_id: DEFAULT_ORG_ID,
+            name: segmentName.trim(),
+            description: desc,
+            type: "dynamic",
+            global_operator: globalOperator
+          })
+          .select()
+          .single();
+
+        if (newSegErr) throw newSegErr;
+        segmentId = newSeg.id;
+
+        // Insert rules
+        const rulesPayload = segmentGroups.flatMap((g, gIdx) =>
+          g.rules.map((r) => ({
+            segment_id: segmentId,
+            group_index: gIdx,
+            group_operator: g.logicalOperator || "and",
+            field: r.field,
+            operator: r.operator,
+            value: r.value
+          }))
+        );
+
+        if (rulesPayload.length > 0) {
+          const { error: rulesErr } = await supabase.from("segment_rules").insert(rulesPayload);
+          if (rulesErr) console.warn("Failed to insert segment rules:", rulesErr);
+        }
+
+        // Insert lists table
+        await supabase.from("lists").insert({
+          id: segmentId,
+          org_id: DEFAULT_ORG_ID,
+          name: segmentName.trim(),
+          description: desc,
+          type: "segment",
+          subscriber_count: matchedIds.length
+        });
+
+        // Insert list subscriptions
+        if (matchedIds.length > 0) {
+          const subsPayload = matchedIds.map((cid) => ({
+            list_id: segmentId,
+            contact_id: cid,
+            status: "subscribed"
+          }));
+          await supabase.from("list_subscriptions").insert(subsPayload);
+        }
+      }
+
+      // Refresh savedSegments from DB
+      await refreshSegmentsFromDB(supabase);
+
+      setIsSegmentModalOpen(false);
+      const savedName = segmentName.trim();
+      setEditingSegmentId(null);
+      setSegmentName("");
+      setSegmentGroups([
+        {
+          id: "g1",
+          logicalOperator: "and",
+          rules: [{ field: "status", operator: "eq", value: "active" }]
+        }
+      ]);
+      setGlobalOperator("and");
+      setPreviewCount(null);
+      setQualifiedSegmentIds(null);
+
+      alert(`Segmento "${savedName}" salvo com sucesso!`);
+    } catch (err) {
+      console.error("Erro ao salvar segmentação:", err);
+      alert("Erro ao salvar a segmentação no banco de dados.");
+    } finally {
+      setIsSavingSegment(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Page Header */}
@@ -3291,8 +3648,19 @@ export default function ContactsPage() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
-              setIsSegmentModalOpen(true);
+              setEditingSegmentId(null);
+              setSegmentName("");
+              setGlobalOperator("and");
+              setSegmentGroups([
+                {
+                  id: "g1",
+                  logicalOperator: "and",
+                  rules: [{ field: "status", operator: "eq", value: "active" }]
+                }
+              ]);
               setPreviewCount(null);
+              setQualifiedSegmentIds(null);
+              setIsSegmentModalOpen(true);
             }}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg text-sm font-semibold transition-all cursor-pointer shadow-sm"
           >
@@ -3832,8 +4200,19 @@ export default function ContactsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setIsSegmentModalOpen(true);
+                          setEditingSegmentId(null);
+                          setSegmentName("");
+                          setGlobalOperator("and");
+                          setSegmentGroups([
+                            {
+                              id: "g1",
+                              logicalOperator: "and",
+                              rules: [{ field: "status", operator: "eq", value: "active" }]
+                            }
+                          ]);
                           setPreviewCount(null);
+                          setQualifiedSegmentIds(null);
+                          setIsSegmentModalOpen(true);
                         }}
                         className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
                         title="Criar Nova Segmentação"
@@ -3844,55 +4223,72 @@ export default function ContactsPage() {
                     </div>
 
                     {isSegmentsPanelOpen && (
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin animate-fadeIn">
+                      <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin animate-fadeIn">
                         {savedSegments.length === 0 ? (
-                          <div className="text-center py-4 text-xs text-slate-400 font-medium italic">
-                            Nenhuma segmentação salva. Clique no botão (+) acima para criar.
+                          <div className="text-center py-6 text-xs text-slate-400 font-medium italic bg-white rounded-xl border border-dashed border-slate-200">
+                            Nenhuma segmentação salva. Clique no botão (+) acima para criar sua primeira segmentação.
                           </div>
                         ) : (
                           savedSegments.map((seg) => (
-                            <div key={seg.id} className="bg-white border border-slate-200 rounded-xl p-3.5 flex justify-between items-center shadow-2xs hover:border-slate-350 transition-all">
-                              <div className="flex-1 min-w-0 pr-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-slate-800 block truncate">{seg.name}</span>
-                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-indigo-50 text-indigo-650 rounded border border-indigo-100 shrink-0">
-                                    {seg.type || "Engajamento"}
+                            <div key={seg.id} className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2 shadow-2xs hover:border-slate-350 transition-all">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1 min-w-0 pr-3">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-bold text-slate-800 block truncate">{seg.name}</span>
+                                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-indigo-50 text-indigo-650 rounded border border-indigo-100 shrink-0">
+                                      {seg.type === "dynamic" || seg.type === "Dinâmico" ? "Dinâmico" : seg.type || "Dinâmico"}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-emerald-700 font-bold block mt-1">
+                                    {(seg.count ?? seg.subscriber_count ?? 0).toLocaleString("pt-BR")} leads qualificados
                                   </span>
                                 </div>
-                                {seg.description && (
-                                  <p className="text-[10px] text-slate-400 truncate mt-0.5" title={seg.description}>
-                                    {seg.description}
-                                  </p>
-                                )}
-                                <span className="text-[9px] text-slate-450 font-bold block mt-1">{seg.count || 0} leads qualificados</span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditSegment(seg)}
+                                    className="p-1.5 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+                                    title="Editar segmentação"
+                                  >
+                                    <Edit3 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (confirm(`Deseja realmente remover a segmentação "${seg.name}"?`)) {
+                                        handleDeleteSegment(seg.id, seg.name);
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                    title="Excluir segmentação"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  onClick={() => {
-                                    setSegmentModalMode("edit");
-                                    setEditingSegmentId(seg.id);
-                                    setSegmentModalName(seg.name || "");
-                                    setSegmentModalDescription(seg.description || "");
-                                    setSegmentModalPeriod(seg.period || "30");
-                                    setShowAddSegmentModal(true);
-                                  }}
-                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                                  title="Editar segmentação"
-                                >
-                                  <Edit3 className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (confirm(`Remover a segmentação "${seg.name}"?`)) {
-                                      saveSegments(savedSegments.filter(s => s.id !== seg.id));
-                                    }
-                                  }}
-                                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                                  title="Excluir segmentação"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+
+                              {/* Rules preview chips */}
+                              {seg.segment_rules && seg.segment_rules.length > 0 ? (
+                                <div className="bg-slate-50/80 rounded-lg p-2 border border-slate-150 space-y-1">
+                                  <div className="text-[9px] font-bold text-slate-450 uppercase tracking-wider flex items-center gap-1">
+                                    <Filter className="h-2.5 w-2.5" />
+                                    <span>Regras ({seg.global_operator === "or" ? "União OU" : "União E"}):</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {seg.segment_rules.map((r: any, rIdx: number) => (
+                                      <span key={rIdx} className="inline-flex items-center text-[10px] bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-medium shadow-2xs">
+                                        <span className="font-bold text-indigo-700 mr-1">{getFieldFriendlyLabel(r.field)}</span>
+                                        <span className="text-slate-400 mr-1">{getOperatorFriendlyLabel(r.operator)}</span>
+                                        <span className="font-semibold text-slate-900">{r.value || "qualquer"}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : seg.description ? (
+                                <p className="text-[10px] text-slate-500 italic mt-0.5 truncate" title={seg.description}>
+                                  {seg.description}
+                                </p>
+                              ) : null}
                             </div>
                           ))
                         )}
@@ -5080,7 +5476,9 @@ export default function ContactsPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Criar Novo Segmento Dinâmico</h3>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {editingSegmentId ? "Editar Segmento Dinâmico" : "Criar Novo Segmento Dinâmico"}
+                </h3>
                 <p className="text-xs text-slate-500">Leads que atenderem às condições serão agrupados automaticamente.</p>
               </div>
               <button
@@ -5594,14 +5992,23 @@ export default function ContactsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  alert(`Segmento "${segmentName}" salvo com sucesso (mock)!`);
-                  setIsSegmentModalOpen(false);
-                }}
-                disabled={!segmentName}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed shadow-md cursor-pointer"
+                onClick={handleSaveSegment}
+                disabled={!segmentName.trim() || isSavingSegment}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed shadow-md cursor-pointer flex items-center gap-1.5"
               >
-                Salvar Segmento
+                {isSavingSegment && (
+                  <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
+                <span>
+                  {isSavingSegment
+                    ? "Salvando..."
+                    : editingSegmentId
+                    ? "Salvar Alterações"
+                    : "Salvar Segmento"}
+                </span>
               </button>
             </div>
           </div>
