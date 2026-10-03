@@ -81,10 +81,14 @@ export default function PagesDashboard() {
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
+  // Connected Domains State
+  const [domains, setDomains] = useState<any[]>([]);
+
   // Modals for Pages
   const [showCreatePageModal, setShowCreatePageModal] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
+  const [newPageDomain, setNewPageDomain] = useState("realizzareconect.com.br");
 
   const [editingDesignPage, setEditingDesignPage] = useState<PageItem | null>(null);
   const [designHtml, setDesignHtml] = useState("");
@@ -116,7 +120,61 @@ export default function PagesDashboard() {
 
   useEffect(() => {
     fetchPages();
+    // Load sending_domains from Supabase
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        const { data } = await supabase.from("sending_domains").select("domain, verification_status");
+        if (data && data.length > 0) {
+          const domList = data.map((d: any) => ({
+            id: `dom-${d.domain}`,
+            domain: d.domain,
+            status: d.verification_status === "verified" ? "connected" : "pending",
+            cnameHost: "lp",
+            cnameTarget: "cname.realizzareconect.com.br",
+            lastCheck: "Verificado"
+          }));
+          setDomains((prev) => {
+            const existing = new Set(prev.map((p) => p.domain));
+            const newDoms = domList.filter((d: any) => !existing.has(d.domain));
+            return [...prev, ...newDoms];
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao carregar domínios:", err);
+      }
+    })();
   }, []);
+
+  // Available domains for landing pages
+  const availableDomains = useMemo(() => {
+    const list = ["realizzareconect.com.br"];
+    domains.forEach((d) => {
+      const name = typeof d === "string" ? d : d?.domain;
+      if (name && !list.includes(name)) {
+        list.push(name);
+      }
+    });
+    return list;
+  }, [domains]);
+
+  // Computed slug for new page
+  const computedSlug = useMemo(() => {
+    return (newPageSlug.trim() || newPageName.trim())
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  }, [newPageSlug, newPageName]);
+
+  // Check if slug is already in use by any page
+  const isSlugTaken = useMemo(() => {
+    if (!computedSlug) return false;
+    return pages.some((p) => p.slug?.toLowerCase() === computedSlug.toLowerCase());
+  }, [pages, computedSlug]);
 
   // Filtered & Sorted Pages
   const filteredPages = useMemo(() => {
@@ -167,7 +225,10 @@ export default function PagesDashboard() {
   };
 
   const handleCopyUrl = (page: PageItem) => {
-    const url = page.url || `https://realizzareconect.com.br/${page.slug}`;
+    const fallbackUrl = page.isNative
+      ? (page.slug === "descadastro" || page.slug === "unsubscribe" ? "https://realizzareconect.com.br/unsubscribe" : "https://realizzareconect.com.br/preferences")
+      : `https://realizzareconect.com.br/p/${page.slug}`;
+    const url = page.url || fallbackUrl;
     navigator.clipboard.writeText(url);
     setOpenDropdownId(null);
     showToast("URL copiada para a área de transferência!");
@@ -175,12 +236,13 @@ export default function PagesDashboard() {
 
   const handleDuplicate = async (page: PageItem) => {
     const newId = `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const duplicatedSlug = `${page.slug}-copia-${Math.floor(Math.random() * 1000)}`;
     const duplicated: PageItem = {
       ...page,
       id: newId,
       name: `${page.name} (Cópia)`,
-      slug: `${page.slug}-copia-${Math.floor(Math.random() * 1000)}`,
-      url: `https://realizzareconect.com.br/${page.slug}-copia`,
+      slug: duplicatedSlug,
+      url: `https://realizzareconect.com.br/p/${duplicatedSlug}`,
       status: "draft",
       views: 0,
       conversions: 0,
@@ -215,19 +277,19 @@ export default function PagesDashboard() {
 
   const handleCreatePage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPageName.trim()) return;
+    if (!newPageName.trim() || isSlugTaken || !computedSlug) {
+      if (isSlugTaken) showToast("Erro: O slug informado já está em uso por outra página.");
+      return;
+    }
 
-    const slug = (newPageSlug.trim() || newPageName)
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
+    const slug = computedSlug;
+    const pageUrl = `https://${newPageDomain}/p/${slug}`;
 
     const newPage: PageItem = {
       id: `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: newPageName.trim(),
       slug: slug,
-      url: `https://realizzareconect.com.br/${slug}`,
+      url: pageUrl,
       status: "draft",
       views: 0,
       conversions: 0,
@@ -255,7 +317,7 @@ export default function PagesDashboard() {
   
   <main class="max-w-4xl mx-auto px-6 py-16 text-center space-y-6">
     <span class="inline-block bg-indigo-50 text-indigo-700 font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
-      Novo Curso Online Gratuito
+      Novo Conteúdo
     </span>
     <h1 class="text-4xl sm:text-5xl font-black text-slate-900 leading-tight">
       ${newPageName.trim()}
@@ -289,6 +351,7 @@ export default function PagesDashboard() {
     setShowCreatePageModal(false);
     setNewPageName("");
     setNewPageSlug("");
+    setNewPageDomain("realizzareconect.com.br");
     showToast(`Página "${newPage.name}" criada com sucesso!`);
   };
 
@@ -313,7 +376,6 @@ export default function PagesDashboard() {
   // ==========================================
   // TAB 3: DOMÍNIOS STATE & 3-STEP MODAL
   // ==========================================
-  const [domains, setDomains] = useState<any[]>([]);
   const [domainSearchQuery, setDomainSearchQuery] = useState("");
   const [isTestingDomain, setIsTestingDomain] = useState<string | null>(null);
 
@@ -598,7 +660,9 @@ export default function PagesDashboard() {
                   {filteredPages.map((page) => {
                     const isSelected = selectedPages.includes(page.id);
                     const isDropdownOpen = openDropdownId === page.id;
-                    const previewPath = page.slug === "preferences" ? "/preferences" : (page.slug === "unsubscribe" ? "/unsubscribe" : `/${page.slug}`);
+                    const previewPath = page.slug === "preferences" || page.slug === "preferencias"
+                      ? "/preferences"
+                      : (page.slug === "unsubscribe" || page.slug === "descadastro" ? "/unsubscribe" : `/p/${page.slug}`);
 
                     return (
                       <tr key={page.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? "bg-blue-50/40" : ""} ${isDropdownOpen ? "relative z-40" : "relative z-0"}`}>
@@ -656,7 +720,11 @@ export default function PagesDashboard() {
                                   rel="noreferrer"
                                   className="text-[11px] text-slate-400 hover:text-blue-600 hover:underline flex items-center gap-1 transition-colors font-mono"
                                 >
-                                  <span>realizzareconect.com.br/{page.slug}</span>
+                                  <span>
+                                    {page.isNative
+                                      ? (page.slug === "descadastro" || page.slug === "unsubscribe" ? "realizzareconect.com.br/unsubscribe" : "realizzareconect.com.br/preferences")
+                                      : (page.url?.replace(/^https?:\/\//, "") || `realizzareconect.com.br/p/${page.slug}`)}
+                                  </span>
                                   <ExternalLink className="h-3 w-3 shrink-0" />
                                 </a>
                               </div>
@@ -1253,23 +1321,66 @@ export default function PagesDashboard() {
                   placeholder="Ex: Curso Gratuito de Inteligência Artificial"
                   value={newPageName}
                   onChange={(e) => setNewPageName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-blue-600 text-slate-800"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">Caminho da URL (Slug)</label>
-                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-                  <span className="text-slate-400 font-mono">realizzarecursos.com.br/</span>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Domínio da Página</label>
+                <select
+                  value={newPageDomain}
+                  onChange={(e) => setNewPageDomain(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-blue-600 text-slate-800"
+                >
+                  {availableDomains.map((dom) => (
+                    <option key={dom} value={dom}>
+                      {dom} {dom === "realizzareconect.com.br" ? "(Domínio oficial da plataforma)" : "(Domínio personalizado)"}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  As landing pages rodam por padrão no subdomínio da plataforma ou em qualquer subdomínio conectado na aba &ldquo;Domínios&rdquo;.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700 uppercase">Caminho da URL (Slug)</label>
+                  {computedSlug && (
+                    <span className={`text-[11px] font-bold flex items-center gap-1 ${isSlugTaken ? "text-rose-600" : "text-emerald-600"}`}>
+                      {isSlugTaken ? (
+                        <>
+                          <AlertTriangle className="h-3.5 w-3.5" /> URL já em uso
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> URL disponível
+                        </>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <div className={`flex items-center bg-slate-50 border rounded-xl px-3 py-2 text-xs transition-colors ${isSlugTaken ? "border-rose-400 bg-rose-50/30" : "border-slate-200"}`}>
+                  <span className="text-slate-400 font-mono text-[11px] shrink-0">{`https://${newPageDomain}/p/`}</span>
                   <input
                     type="text"
                     placeholder="curso-ia-gratis"
                     value={newPageSlug}
                     onChange={(e) => setNewPageSlug(e.target.value)}
-                    className="flex-1 bg-transparent font-mono font-bold text-slate-800 focus:outline-none ml-1"
+                    className="flex-1 bg-transparent font-mono font-bold text-slate-800 focus:outline-none ml-1 min-w-0"
                   />
                 </div>
+                {isSlugTaken && (
+                  <p className="text-[11px] text-rose-600 font-semibold mt-1">
+                    Já existe uma página cadastrada com o slug &quot;{computedSlug}&quot;. Escolha outro caminho para evitar conflito.
+                  </p>
+                )}
+                {computedSlug && !isSlugTaken && (
+                  <p className="text-[11px] text-slate-400 font-mono mt-1 truncate">
+                    Link final: <span className="text-indigo-600 font-bold">{`https://${newPageDomain}/p/${computedSlug}`}</span>
+                  </p>
+                )}
               </div>
 
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-150">
@@ -1282,7 +1393,12 @@ export default function PagesDashboard() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md"
+                  disabled={!newPageName.trim() || isSlugTaken || !computedSlug}
+                  className={`px-4 py-2 rounded-xl font-bold shadow-md transition-all ${
+                    !newPageName.trim() || isSlugTaken || !computedSlug
+                      ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
                 >
                   Criar Página
                 </button>
@@ -1746,54 +1862,86 @@ export default function PagesDashboard() {
       {/* ======================================================== */}
       {/* MODAL: EDITAR URL */}
       {/* ======================================================== */}
-      {editUrlModalPage && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="text-base font-black text-slate-900">Editar URL da Página</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Novo Slug</label>
-              <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-                <span className="text-slate-400 font-mono">realizzareconect.com.br/</span>
-                <input
-                  type="text"
-                  value={editUrlValue}
-                  onChange={(e) => setEditUrlValue(e.target.value)}
-                  className="flex-1 bg-transparent font-mono font-bold text-slate-800 focus:outline-none ml-1"
-                  autoFocus
-                />
+      {editUrlModalPage && (() => {
+        const cleanEditSlug = editUrlValue.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+        const isEditSlugTaken = pages.some((p) => p.id !== editUrlModalPage.id && p.slug?.toLowerCase() === cleanEditSlug);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black text-slate-900">Editar URL da Página</h3>
+                {cleanEditSlug && (
+                  <span className={`text-[11px] font-bold flex items-center gap-1 ${isEditSlugTaken ? "text-rose-600" : "text-emerald-600"}`}>
+                    {isEditSlugTaken ? (
+                      <>
+                        <AlertTriangle className="h-3 w-3" /> Já em uso
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-3 w-3" /> Disponível
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Novo Caminho (Slug)</label>
+                <div className={`flex items-center bg-slate-50 border rounded-xl px-3 py-2 text-xs transition-colors ${isEditSlugTaken ? "border-rose-400 bg-rose-50/30" : "border-slate-200"}`}>
+                  <span className="text-slate-400 font-mono text-[11px] shrink-0">realizzareconect.com.br/p/</span>
+                  <input
+                    type="text"
+                    value={editUrlValue}
+                    onChange={(e) => setEditUrlValue(e.target.value)}
+                    className="flex-1 bg-transparent font-mono font-bold text-slate-800 focus:outline-none ml-1 min-w-0"
+                    autoFocus
+                  />
+                </div>
+                {isEditSlugTaken && (
+                  <p className="text-[11px] text-rose-600 font-semibold mt-1">
+                    Este slug já está sendo utilizado por outra página.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-150">
+                <button
+                  type="button"
+                  onClick={() => setEditUrlModalPage(null)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={!cleanEditSlug || isEditSlugTaken}
+                  onClick={async () => {
+                    if (cleanEditSlug && !isEditSlugTaken) {
+                      const updated = {
+                        ...editUrlModalPage,
+                        slug: cleanEditSlug,
+                        url: `https://realizzareconect.com.br/p/${cleanEditSlug}`
+                      };
+                      await savePageToAPI(updated);
+                      setPages((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                      setEditUrlModalPage(null);
+                      showToast("URL da página atualizada com sucesso!");
+                    }
+                  }}
+                  className={`px-4 py-2 text-xs rounded-xl font-bold shadow-md transition-all ${
+                    !cleanEditSlug || isEditSlugTaken
+                      ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                >
+                  Salvar URL
+                </button>
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-150">
-              <button
-                type="button"
-                onClick={() => setEditUrlModalPage(null)}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (editUrlValue.trim()) {
-                    const slug = editUrlValue.trim().toLowerCase().replace(/[^a-z0-9]/g, "-");
-                    const updated = {
-                      ...editUrlModalPage,
-                      slug: slug,
-                      url: `https://realizzareconect.com.br/${slug}`
-                    };
-                    await savePageToAPI(updated);
-                    setEditUrlModalPage(null);
-                    showToast("URL da página atualizada!");
-                  }
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-xl font-bold shadow-md"
-              >
-                Salvar URL
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ======================================================== */}
       {/* MODAL: CONFIRMAR EXCLUSÃO */}

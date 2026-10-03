@@ -264,7 +264,7 @@ export async function GET() {
         conversionRate: rate,
         url: p.slug === "preferences"
           ? "https://realizzareconect.com.br/preferences"
-          : (p.slug === "unsubscribe" ? "https://realizzareconect.com.br/unsubscribe" : p.url)
+          : (p.slug === "unsubscribe" ? "https://realizzareconect.com.br/unsubscribe" : (p.url?.includes("/p/") ? p.url : `https://realizzareconect.com.br/p/${p.slug}`))
       };
     });
 

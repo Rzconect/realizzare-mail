@@ -85,10 +85,15 @@ export async function POST(req: Request) {
     <a href="${unsubLink}" style="color:#94a3b8;text-decoration:none">Descadastrar</a>
   </p>
 </div>`;
-      // Replace tag-based links first
+      // 1. Full HTML link tags (ActiveCampaign style: {{preferences}} and {{unsubscribe}})
       let result = html
-        .replace(/{{link_descadastro}}/g, unsubLink)
-        .replace(/{{link_preferencias}}/g, prefsLink);
+        .replace(/\{\{\s*(preferences|preferencias|gerenciar_preferencias)\s*\}\}/gi, `<a href="${prefsLink}" style="color:#6366f1;text-decoration:underline;">Gerenciar Preferências</a>`)
+        .replace(/\{\{\s*(unsubscribe|descadastro|cancelar_inscricao|optout)\s*\}\}/gi, `<a href="${unsubLink}" style="color:#94a3b8;text-decoration:underline;">Descadastrar</a>`);
+
+      // 2. Raw URL tags (for custom buttons and href attributes)
+      result = result
+        .replace(/\{\{\s*(link_preferencias|preferences_url|url_preferencias)\s*\}\}/gi, prefsLink)
+        .replace(/\{\{\s*(link_descadastro|unsubscribe_url|url_descadastro)\s*\}\}/gi, unsubLink);
       // Inject footer before closing body or at end
       if (result.includes('</body>')) {
         result = result.replace('</body>', footer + '</body>');

@@ -134,8 +134,13 @@ export async function processFlows() {
                // Unsubscribe / preferences links
                const unsub = `${appUrl}/unsubscribe?email=${encodeURIComponent(email)}`;
                const prefs = `${appUrl}/preferences?email=${encodeURIComponent(email)}`;
-               result = result.replace(/\{\{link_descadastro\}\}/g, unsub);
-               result = result.replace(/\{\{link_preferencias\}\}/g, prefs);
+               // 1. Full HTML link tags
+               result = result.replace(/\{\{\s*(preferences|preferencias|gerenciar_preferencias)\s*\}\}/gi, `<a href="${prefs}" style="color:#6366f1;text-decoration:underline;">Gerenciar Preferências</a>`);
+               result = result.replace(/\{\{\s*(unsubscribe|descadastro|cancelar_inscricao|optout)\s*\}\}/gi, `<a href="${unsub}" style="color:#94a3b8;text-decoration:underline;">Descadastrar</a>`);
+
+               // 2. Raw URL tags
+               result = result.replace(/\{\{\s*(link_preferencias|preferences_url|url_preferencias)\s*\}\}/gi, prefs);
+               result = result.replace(/\{\{\s*(link_descadastro|unsubscribe_url|url_descadastro)\s*\}\}/gi, unsub);
                
                // Event payload tags
                const payload = evPayload || {};

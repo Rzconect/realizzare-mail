@@ -37,9 +37,10 @@ export async function GET(req: Request) {
       subscriptions[l.id] = true;
     });
 
+    let visibleLists = lists;
     let contact: any = null;
 
-    // 3. If email provided, look up contact and existing subscriptions
+    // 3. If email provided, look up contact and filter to ONLY subscribed lists
     if (email) {
       const { data: contactRecord } = await supabase
         .from("contacts")
@@ -53,13 +54,18 @@ export async function GET(req: Request) {
         const { data: subs } = await supabase
           .from("list_subscriptions")
           .select("list_id, status")
-          .eq("contact_id", contactRecord.id);
+          .eq("contact_id", contactRecord.id)
+          .eq("status", "subscribed");
 
-        if (subs && subs.length > 0) {
-          subs.forEach((s) => {
-            subscriptions[s.list_id] = s.status === "subscribed";
-          });
-        }
+        const subscribedListIds = new Set((subs || []).map((s) => s.list_id));
+
+        // Show strictly the lists the contact is actually subscribed to
+        visibleLists = lists.filter((l) => subscribedListIds.has(l.id));
+
+        // Subscriptions state for these lists
+        visibleLists.forEach((l) => {
+          subscriptions[l.id] = true;
+        });
       }
     }
 
@@ -67,7 +73,7 @@ export async function GET(req: Request) {
       success: true,
       email,
       contact,
-      lists,
+      lists: visibleLists,
       subscriptions
     });
   } catch (err: any) {

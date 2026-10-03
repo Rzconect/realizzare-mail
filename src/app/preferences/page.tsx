@@ -214,19 +214,27 @@ function PreferencesContent() {
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Suas Inscrições
+                Suas Inscrições {lists.length > 0 ? `(${lists.length})` : ""}
               </h3>
-              <button
-                type="button"
-                onClick={handleUnsubscribeAll}
-                className="text-[11px] text-slate-400 hover:text-red-500 transition-colors"
-              >
-                Desmarcar todas
-              </button>
+              {lists.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleUnsubscribeAll}
+                  className="text-[11px] text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  Desmarcar todas
+                </button>
+              )}
             </div>
 
             {lists.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">Nenhuma categoria configurada.</p>
+              <div className="text-center py-6 px-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto" />
+                <p className="text-xs font-bold text-slate-800">Você não possui inscrições ativas</p>
+                <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                  Seu endereço de e-mail não está cadastrado para receber comunicados de marketing ou boletins informativos.
+                </p>
+              </div>
             ) : (
               <div className="space-y-2.5">
                 {lists.map((list) => {
