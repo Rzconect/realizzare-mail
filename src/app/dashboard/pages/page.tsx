@@ -167,7 +167,7 @@ export default function PagesDashboard() {
   };
 
   const handleCopyUrl = (page: PageItem) => {
-    const url = page.url || `https://realizzarecursos.com.br/${page.slug}`;
+    const url = page.url || `https://realizzareconect.com.br/${page.slug}`;
     navigator.clipboard.writeText(url);
     setOpenDropdownId(null);
     showToast("URL copiada para a área de transferência!");
@@ -180,7 +180,7 @@ export default function PagesDashboard() {
       id: newId,
       name: `${page.name} (Cópia)`,
       slug: `${page.slug}-copia-${Math.floor(Math.random() * 1000)}`,
-      url: `https://realizzarecursos.com.br/${page.slug}-copia`,
+      url: `https://realizzareconect.com.br/${page.slug}-copia`,
       status: "draft",
       views: 0,
       conversions: 0,
@@ -227,7 +227,7 @@ export default function PagesDashboard() {
       id: `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: newPageName.trim(),
       slug: slug,
-      url: `https://realizzarecursos.com.br/${slug}`,
+      url: `https://realizzareconect.com.br/${slug}`,
       status: "draft",
       views: 0,
       conversions: 0,
@@ -307,49 +307,13 @@ export default function PagesDashboard() {
   // ==========================================
   // TAB 2: FORMULÁRIOS STATE
   // ==========================================
-  const [forms, setForms] = useState<FormItem[]>([
-    {
-      id: "form-01",
-      name: "Formulário de Inscrição em Newsletter",
-      type: "inline",
-      status: "published",
-      submissions: 142,
-      conversionRate: 18.4,
-      createdAt: "2026-08-10T14:00:00Z"
-    },
-    {
-      id: "form-02",
-      name: "Formulário de Pré-Matrícula em Cursos",
-      type: "popup",
-      status: "published",
-      submissions: 388,
-      conversionRate: 31.2,
-      createdAt: "2026-09-02T11:20:00Z"
-    }
-  ]);
+  const [forms, setForms] = useState<FormItem[]>([]);
   const [showEmbedCodeModal, setShowEmbedCodeModal] = useState<FormItem | null>(null);
 
   // ==========================================
   // TAB 3: DOMÍNIOS STATE & 3-STEP MODAL
   // ==========================================
-  const [domains, setDomains] = useState([
-    {
-      id: "dom-conteudos",
-      domain: "conteudos.realizzarecursos.com.br",
-      status: "connected",
-      cnameHost: "conteudos",
-      cnameTarget: "cname.realizzareconect.com.br",
-      lastCheck: "Hoje às 10:45"
-    },
-    {
-      id: "dom-main",
-      domain: "realizzarecursos.com.br",
-      status: "connected",
-      cnameHost: "@",
-      cnameTarget: "realizzareconect.com.br",
-      lastCheck: "Hoje às 10:45"
-    }
-  ]);
+  const [domains, setDomains] = useState<any[]>([]);
   const [domainSearchQuery, setDomainSearchQuery] = useState("");
   const [isTestingDomain, setIsTestingDomain] = useState<string | null>(null);
 
@@ -399,9 +363,8 @@ export default function PagesDashboard() {
   const [nativeTrackingEnabled, setNativeTrackingEnabled] = useState(true);
   const [conversionAttribution, setConversionAttribution] = useState<"button_click" | "form_submission">("button_click");
   const [authorizedDomains, setAuthorizedDomains] = useState([
-    "realizzarecursos.com.br",
-    "conteudos.realizzarecursos.com.br",
-    "blog.realizzarecursos.com.br"
+    "realizzareconect.com.br",
+    "realizzarecursos.com.br"
   ]);
   const [newAuthDomainInput, setNewAuthDomainInput] = useState("");
 
@@ -490,9 +453,11 @@ export default function PagesDashboard() {
           >
             <FileText className="h-4 w-4" />
             <span>Formulários</span>
-            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
-              {forms.length}
-            </span>
+            {forms.length > 0 && (
+              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                {forms.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -505,9 +470,11 @@ export default function PagesDashboard() {
           >
             <Server className="h-4 w-4" />
             <span>Domínios</span>
-            <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
-              {domains.length} ativos
-            </span>
+            {domains.length > 0 && (
+              <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
+                {domains.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -689,7 +656,7 @@ export default function PagesDashboard() {
                                   rel="noreferrer"
                                   className="text-[11px] text-slate-400 hover:text-blue-600 hover:underline flex items-center gap-1 transition-colors font-mono"
                                 >
-                                  <span>conteudos.realizzarecursos.com.br/{page.slug}</span>
+                                  <span>realizzareconect.com.br/{page.slug}</span>
                                   <ExternalLink className="h-3 w-3 shrink-0" />
                                 </a>
                               </div>
@@ -893,64 +860,95 @@ export default function PagesDashboard() {
               </button>
             </div>
 
-            {/* Forms Table */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden mt-4">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">Nome do Formulário</th>
-                    <th className="py-3 px-4">Tipo</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-center">Submissões</th>
-                    <th className="py-3 px-4 text-center">Taxa de Conversão</th>
-                    <th className="py-3 px-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {forms.map((form) => (
-                    <tr key={form.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-800">
-                        {form.name}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500 capitalize">
-                        {form.type === "inline" ? "Incorporado (Inline)" : (form.type === "popup" ? "Pop-up / Modal" : "Barra Flutuante")}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {form.status === "published" ? "Publicado" : "Rascunho"}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                        {form.submissions}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                        {form.conversionRate}%
-                      </td>
-                      <td className="py-3.5 px-4 text-right space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowEmbedCodeModal(form)}
-                          className="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors"
-                        >
-                          Obter Embed
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setForms(forms.filter((f) => f.id !== form.id));
-                            showToast("Formulário removido.");
-                          }}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </td>
+            {forms.length === 0 ? (
+              <div className="py-16 text-center space-y-3 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-4">
+                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 mx-auto shadow-2xs">
+                  <FileText className="h-6 w-6 text-slate-400" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800">Nenhum formulário cadastrado</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                  Você ainda não criou nenhum formulário de captura ou pop-up. Clique no botão abaixo para criar seu primeiro formulário.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newF: FormItem = {
+                      id: `form-${Date.now()}`,
+                      name: `Formulário de Inscrição #${forms.length + 1}`,
+                      type: "inline",
+                      status: "draft",
+                      submissions: 0,
+                      conversionRate: 0,
+                      createdAt: new Date().toISOString()
+                    };
+                    setForms([newF]);
+                    showToast("Formulário criado com sucesso!");
+                  }}
+                  className="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Criar Primeiro Formulário</span>
+                </button>
+              </div>
+            ) : (
+              <div className="border border-slate-200 rounded-2xl overflow-hidden mt-4">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Nome do Formulário</th>
+                      <th className="py-3 px-4">Tipo</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-center">Submissões</th>
+                      <th className="py-3 px-4 text-center">Taxa de Conversão</th>
+                      <th className="py-3 px-4 text-right">Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {forms.map((form) => (
+                      <tr key={form.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-slate-800">
+                          {form.name}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500 capitalize">
+                          {form.type === "inline" ? "Incorporado (Inline)" : (form.type === "popup" ? "Pop-up / Modal" : "Barra Flutuante")}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {form.status === "published" ? "Publicado" : "Rascunho"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                          {form.submissions}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                          {form.conversionRate}%
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowEmbedCodeModal(form)}
+                            className="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors"
+                          >
+                            Obter Embed
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForms(forms.filter((f) => f.id !== form.id));
+                              showToast("Formulário removido.");
+                            }}
+                            className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -960,76 +958,98 @@ export default function PagesDashboard() {
       {/* ======================================================== */}
       {activeTab === "dominios" && (
         <div className="space-y-6">
-          {/* Domains Header and Filter */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
-            <div className="relative flex-1 sm:max-w-xs w-full">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Pesquisar domínios"
-                value={domainSearchQuery}
-                onChange={(e) => setDomainSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
-              />
+          {domains.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-3 shadow-2xs">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-150 flex items-center justify-center text-blue-600 mx-auto shadow-2xs">
+                <Server className="h-6 w-6" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-850">Nenhum domínio personalizado configurado</h4>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Suas páginas utilizam por padrão o domínio oficial <strong className="text-slate-700 font-mono">realizzareconect.com.br</strong>. Para conectar um domínio ou subdomínio próprio (ex: <span className="font-mono">conteudos.seudominio.com.br</span>), clique no botão abaixo.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenDomainModal}
+                className="mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-md"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Adicionar um domínio personalizado</span>
+              </button>
             </div>
+          ) : (
+            <>
+              {/* Domains Header and Filter */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
+                <div className="relative flex-1 sm:max-w-xs w-full">
+                  <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Pesquisar domínios"
+                    value={domainSearchQuery}
+                    onChange={(e) => setDomainSearchQuery(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
+                  />
+                </div>
 
-            <div className="text-xs text-slate-400 font-medium">
-              {domains.length} domínio(s) configurado(s)
-            </div>
-          </div>
+                <div className="text-xs text-slate-400 font-medium">
+                  {domains.length} domínio(s) configurado(s)
+                </div>
+              </div>
 
-          {/* Domains Table (Exact ActiveCampaign style) */}
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-            <table className="w-full border-collapse text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Domínios personalizados</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Apontamento CNAME</th>
-                  <th className="py-3 px-4 text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {domains
-                  .filter((d) => d.domain.toLowerCase().includes(domainSearchQuery.toLowerCase()))
-                  .map((dom) => (
-                    <tr key={dom.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <Server className="h-4 w-4 text-slate-400" />
-                          <span className="font-mono font-bold text-slate-800 text-xs">{dom.domain}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <div className="inline-flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50" />
-                          <span className="text-xs font-medium text-emerald-700">Conectado</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-center text-slate-500 font-mono text-[11px]">
-                        {dom.cnameHost} → {dom.cnameTarget}
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleTestDomainConnection(dom.id)}
-                          disabled={isTestingDomain === dom.id}
-                          className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                        >
-                          {isTestingDomain === dom.id ? (
-                            <span className="flex items-center gap-1">
-                              <RefreshCw className="h-3 w-3 animate-spin" /> Testando...
-                            </span>
-                          ) : (
-                            "Testar conexão"
-                          )}
-                        </button>
-                      </td>
+              {/* Domains Table */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Domínios personalizados</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-center">Apontamento CNAME</th>
+                      <th className="py-3 px-4 text-right">Ação</th>
                     </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {domains
+                      .filter((d) => d.domain.toLowerCase().includes(domainSearchQuery.toLowerCase()))
+                      .map((dom) => (
+                        <tr key={dom.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <Server className="h-4 w-4 text-slate-400" />
+                              <span className="font-mono font-bold text-slate-800 text-xs">{dom.domain}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <div className="inline-flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50" />
+                              <span className="text-xs font-medium text-emerald-700">Conectado</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-center text-slate-500 font-mono text-[11px]">
+                            {dom.cnameHost} → {dom.cnameTarget}
+                          </td>
+                          <td className="py-4 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleTestDomainConnection(dom.id)}
+                              disabled={isTestingDomain === dom.id}
+                              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                            >
+                              {isTestingDomain === dom.id ? (
+                                <span className="flex items-center gap-1">
+                                  <RefreshCw className="h-3 w-3 animate-spin" /> Testando...
+                                </span>
+                              ) : (
+                                "Testar conexão"
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
 

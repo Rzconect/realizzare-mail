@@ -19,6 +19,20 @@ function PreferencesContent() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
+    // Record real visit to Preferences page
+    fetch("/api/tracking/page", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pageId: "page-preferences-01",
+        slug: "preferences",
+        type: "view",
+        email: rawEmail || ""
+      })
+    }).catch(() => {});
+  }, [rawEmail]);
+
+  useEffect(() => {
     async function loadData() {
       if (!rawEmail) {
         setIsLoading(false);
@@ -114,6 +128,17 @@ function PreferencesContent() {
       }
 
       setMessage({ type: 'success', text: 'Preferências salvas com sucesso!' });
+      // Record real conversion event
+      fetch("/api/tracking/page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageId: "page-preferences-01",
+          slug: "preferences",
+          type: "conversion",
+          email: rawEmail || ""
+        })
+      }).catch(() => {});
     } catch (e) {
       console.error(e);
       setMessage({ type: 'error', text: 'Ocorreu um erro ao salvar preferências.' });

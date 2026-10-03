@@ -6,13 +6,13 @@ const DEFAULT_PAGES = [
     id: "page-preferences-01",
     name: "Página de Preferências de E-mail",
     slug: "preferences",
-    url: "https://realizzarecursos.com.br/preferences",
+    url: "https://realizzareconect.com.br/preferences",
     status: "published",
-    views: 342,
-    conversions: 89,
-    conversionRate: 26.0,
+    views: 0,
+    conversions: 0,
+    conversionRate: 0,
     conversionGoal: "form_submission",
-    metaDescription: "Gerencie as categorias de e-mails, cursos e avisos que você deseja receber.",
+    metaDescription: "Gerencie as categorias de e-mails, cursos e avisos que você deseja receber da Realizzare.",
     isNative: true,
     createdAt: "2026-08-01T10:00:00.000Z",
     updatedAt: "2026-10-02T18:30:00.000Z",
@@ -21,66 +21,83 @@ const DEFAULT_PAGES = [
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preferências de Comunicação - Realizzare Cursos</title>
+  <title>Gerenciar Preferências - Realizzare Cursos</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex items-center justify-center p-4">
-  <div class="max-w-xl w-full bg-white rounded-3xl shadow-xl border border-slate-150 p-8 space-y-6">
-    <div class="text-center space-y-2">
-      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mb-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+<body class="bg-slate-50 min-h-screen flex flex-col justify-center items-center p-4 font-sans text-slate-800">
+  <div class="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
+    <!-- Header -->
+    <div class="p-6 bg-indigo-600 text-white text-center space-y-2">
+      <div class="inline-flex p-3 bg-white/10 rounded-full mb-1">
+        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
       </div>
-      <h1 class="text-2xl font-black text-slate-900">Gerenciar Preferências de E-mail</h1>
-      <p class="text-sm text-slate-500">Escolha quais comunicações você gostaria de continuar recebendo da Realizzare Cursos.</p>
+      <h1 class="text-xl font-bold tracking-tight">Gerenciar Preferências</h1>
+      <p class="text-xs text-indigo-100 max-w-sm mx-auto font-medium">
+        Selecione o tipo de conteúdo que deseja receber.
+      </p>
     </div>
 
-    <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
-      <span class="text-xs font-semibold text-slate-500">Seu e-mail:</span>
-      <span class="text-xs font-bold text-slate-800 bg-white px-3 py-1 rounded-xl border border-slate-200">{{email}}</span>
-    </div>
-
-    <div class="space-y-3">
-      <label class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-200 transition-colors cursor-pointer bg-white">
-        <div>
-          <span class="font-bold text-sm text-slate-800 block">Novos Cursos & Lançamentos</span>
-          <span class="text-xs text-slate-400">Avisos em primeira mão sobre cursos gratuitos e materiais de estudo.</span>
+    <!-- Content -->
+    <div class="p-6 space-y-6">
+      <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div class="h-10 w-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-lg">
+          A
         </div>
-        <input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded accent-indigo-600">
-      </label>
-
-      <label class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-200 transition-colors cursor-pointer bg-white">
         <div>
-          <span class="font-bold text-sm text-slate-800 block">Promoções e Cupons de Desconto</span>
-          <span class="text-xs text-slate-400">Descontos exclusivos para emissão de certificados válidos em todo o Brasil.</span>
+          <p className="text-xs text-slate-500 font-medium">E-mail atual</p>
+          <p className="text-sm font-bold text-slate-800 truncate">{{email}}</p>
         </div>
-        <input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded accent-indigo-600">
-      </label>
+      </div>
 
-      <label class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-200 transition-colors cursor-pointer bg-white">
-        <div>
-          <span class="font-bold text-sm text-slate-800 block">Dicas de Estudo e Carreira</span>
-          <span class="text-xs text-slate-400">Artigos e orientações semanais para enriquecer seu currículo e crescer na carreira.</span>
+      <div class="space-y-4">
+        <h3 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">Suas Inscrições</h3>
+        
+        <div class="space-y-3">
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" checked class="w-4 h-4 mt-0.5 text-indigo-600 rounded accent-indigo-600">
+            <div class="flex-1">
+              <p class="text-sm font-bold text-slate-800">Novos Cursos & Lançamentos</p>
+              <p class="text-xs text-slate-400">Avisos em primeira mão sobre cursos gratuitos e materiais de estudo.</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" checked class="w-4 h-4 mt-0.5 text-indigo-600 rounded accent-indigo-600">
+            <div class="flex-1">
+              <p class="text-sm font-bold text-slate-800">Promoções e Cupons de Desconto</p>
+              <p class="text-xs text-slate-400">Descontos exclusivos para emissão de certificados válidos.</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" checked class="w-4 h-4 mt-0.5 text-indigo-600 rounded accent-indigo-600">
+            <div class="flex-1">
+              <p class="text-sm font-bold text-slate-800">Dicas de Estudo e Carreira</p>
+              <p class="text-xs text-slate-400">Artigos e orientações semanais para enriquecer seu currículo.</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" checked class="w-4 h-4 mt-0.5 text-indigo-600 rounded accent-indigo-600">
+            <div class="flex-1">
+              <p class="text-sm font-bold text-slate-800">Notificações Acadêmicas</p>
+              <p class="text-xs text-slate-400">Lembretes de progresso, prazos de avaliação e certificados.</p>
+            </div>
+          </label>
         </div>
-        <input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded accent-indigo-600">
-      </label>
+      </div>
 
-      <label class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 hover:border-indigo-200 transition-colors cursor-pointer bg-white">
-        <div>
-          <span class="font-bold text-sm text-slate-800 block">Notificações Acadêmicas</span>
-          <span class="text-xs text-slate-400">Lembretes de progresso, prazos de avaliação e emissão de certificados.</span>
-        </div>
-        <input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded accent-indigo-600">
-      </label>
-    </div>
+      <div class="pt-2">
+        <button type="button" class="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all text-sm">
+          Salvar Preferências
+        </button>
+      </div>
 
-    <button type="button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-indigo-600/20 transition-all text-sm">
-      Salvar Minhas Preferências
-    </button>
-
-    <div class="text-center pt-2">
-      <a href="/unsubscribe" class="text-xs text-slate-400 hover:text-red-500 font-medium transition-colors">
-        Deseja cancelar todas as comunicações? Cancelar inscrição completa
-      </a>
+      <div class="text-center pt-1">
+        <a href="/unsubscribe" class="text-xs text-slate-500 hover:text-red-500 underline transition-colors">
+          Cancelar inscrição de todos os e-mails
+        </a>
+      </div>
     </div>
   </div>
 </body>
@@ -90,11 +107,11 @@ const DEFAULT_PAGES = [
     id: "page-unsubscribe-02",
     name: "Página de Descadastro / Opt-out",
     slug: "unsubscribe",
-    url: "https://realizzarecursos.com.br/unsubscribe",
+    url: "https://realizzareconect.com.br/unsubscribe",
     status: "published",
-    views: 128,
-    conversions: 24,
-    conversionRate: 18.75,
+    views: 0,
+    conversions: 0,
+    conversionRate: 0,
     conversionGoal: "button_click",
     metaDescription: "Página de cancelamento de inscrição de e-mails da Realizzare Cursos.",
     isNative: true,
@@ -108,48 +125,83 @@ const DEFAULT_PAGES = [
   <title>Cancelamento de Inscrição - Realizzare Cursos</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex items-center justify-center p-4">
-  <div class="max-w-xl w-full bg-white rounded-3xl shadow-xl border border-slate-150 p-8 space-y-6">
-    <div class="text-center space-y-3">
-      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 mb-2">
-        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+<body class="bg-slate-50 min-h-screen flex flex-col justify-center items-center p-4 font-sans text-slate-800">
+  <div class="w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
+    <!-- Header Bar -->
+    <div class="p-6 bg-indigo-600 text-white text-center space-y-2">
+      <div class="inline-flex p-3 bg-white/10 rounded-full backdrop-blur-md mb-1">
+        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
       </div>
-      <h1 class="text-2xl font-black text-slate-900">Inscrição Cancelada com Sucesso</h1>
-      <p class="text-sm text-slate-500">Lamentamos ver você partir. Seu e-mail <strong class="text-slate-800">{{email}}</strong> foi removido de nossas listas de transmissão.</p>
+      <h1 class="text-xl font-bold tracking-tight">Inscrição Cancelada com Sucesso</h1>
+      <p class="text-xs text-white/80 max-w-sm mx-auto font-medium leading-relaxed">
+        Lamentamos ver você partir. Seu e-mail foi removido de nossas listas de transmissão.
+      </p>
     </div>
 
-    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
-      <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Poderia nos contar o motivo do cancelamento?</h2>
-      <div class="space-y-2 text-xs">
-        <label class="flex items-center gap-2 cursor-pointer text-slate-650">
-          <input type="radio" name="reason" value="too_many" class="text-indigo-600 accent-indigo-600">
-          <span>Recebo e-mails com muita frequência</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer text-slate-650">
-          <input type="radio" name="reason" value="not_relevant" class="text-indigo-600 accent-indigo-600">
-          <span>O conteúdo não é mais relevante para mim</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer text-slate-650">
-          <input type="radio" name="reason" value="never_subscribed" class="text-indigo-600 accent-indigo-600">
-          <span>Nunca me inscrevi nesta lista</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer text-slate-650">
-          <input type="radio" name="reason" value="other" class="text-indigo-600 accent-indigo-600">
-          <span>Outro motivo</span>
-        </label>
+    <!-- Content Body -->
+    <div class="p-6 space-y-6">
+      <!-- Status Alert Box -->
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
+        <svg class="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <div class="space-y-1 text-xs">
+          <p class="font-bold text-emerald-900">
+            O endereço <span class="underline font-mono">{{email}}</span> foi descadastrado.
+          </p>
+          <p class="text-emerald-700">
+            Você não receberá mais boletins informativos ou e-mails de marketing da Realizzare Cursos.
+          </p>
+        </div>
       </div>
-      <button type="button" class="mt-2 text-xs font-bold text-indigo-650 hover:text-indigo-850 transition-colors">
-        Enviar Feedback
-      </button>
+
+      <!-- Undo / Re-subscribe Option -->
+      <div class="text-center pt-1 pb-2 border-b border-slate-100">
+        <p class="text-xs text-slate-500 mb-2">Foi um engano ou clicou sem querer?</p>
+        <button type="button" class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer">
+          Reativar minha inscrição
+        </button>
+      </div>
+
+      <!-- Feedback Form -->
+      <div class="space-y-3 pt-1">
+        <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+          <span>Por que você decidiu se descadastrar? (Opcional)</span>
+        </div>
+
+        <div class="space-y-2 text-xs text-slate-650">
+          <label class="flex items-center gap-2.5 p-2 bg-slate-50 hover:bg-slate-100/80 rounded-xl cursor-pointer transition-colors">
+            <input type="radio" name="reason" value="too_many" class="text-indigo-600 accent-indigo-600">
+            <span>Recebo e-mails com muita frequência</span>
+          </label>
+          <label class="flex items-center gap-2.5 p-2 bg-slate-50 hover:bg-slate-100/80 rounded-xl cursor-pointer transition-colors">
+            <input type="radio" name="reason" value="not_relevant" class="text-indigo-600 accent-indigo-600">
+            <span>O conteúdo não é relevante para meu momento</span>
+          </label>
+          <label class="flex items-center gap-2.5 p-2 bg-slate-50 hover:bg-slate-100/80 rounded-xl cursor-pointer transition-colors">
+            <input type="radio" name="reason" value="never_subscribed" class="text-indigo-600 accent-indigo-600">
+            <span>Nunca me cadastrei nesta lista</span>
+          </label>
+          <label class="flex items-center gap-2.5 p-2 bg-slate-50 hover:bg-slate-100/80 rounded-xl cursor-pointer transition-colors">
+            <input type="radio" name="reason" value="other" class="text-indigo-600 accent-indigo-600">
+            <span>Outro motivo</span>
+          </label>
+        </div>
+
+        <button type="button" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+          Enviar Feedback
+        </button>
+      </div>
+
+      <!-- Manage Preferences Link -->
+      <div class="pt-2 text-center text-xs">
+        <a href="/preferences" class="text-indigo-600 hover:text-indigo-700 font-bold hover:underline">
+          Prefere ajustar quais e-mails recebe? Clique aqui para gerenciar preferências
+        </a>
+      </div>
     </div>
 
-    <div class="pt-2 flex flex-col sm:flex-row gap-3">
-      <a href="/preferences" class="flex-1 text-center py-2.5 px-4 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-        Ajustar Preferências
-      </a>
-      <button type="button" class="flex-1 text-center py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition-colors">
-        Reativar Inscrição
-      </button>
+    <!-- Footer Branding -->
+    <div class="bg-slate-100/70 border-t border-slate-200 p-4 text-center text-[11px] text-slate-400 font-medium">
+      Realizzare Cursos • Plataforma de Ensino a Distância
     </div>
   </div>
 </body>
@@ -168,33 +220,55 @@ export async function GET() {
   try {
     const supabase = getSupabase();
 
-    const { data: dbRecords, error } = await supabase
+    // 1. Fetch saved page items
+    const { data: dbRecords } = await supabase
       .from("reporting_events")
       .select("*")
       .eq("event_type", "page_item")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.warn("Could not query reporting_events for pages, returning default:", error);
-      return NextResponse.json({ success: true, pages: DEFAULT_PAGES });
-    }
+    // 2. Fetch all real tracking events for accurate counts
+    const { data: trackingEvents } = await supabase
+      .from("reporting_events")
+      .select("event_type, metadata")
+      .in("event_type", ["page_view", "page_conversion"]);
 
-    if (!dbRecords || dbRecords.length === 0) {
-      // Seed default pages
-      for (const p of DEFAULT_PAGES) {
-        await supabase.from("reporting_events").insert({
-          id: p.id.replace("page-", "").padEnd(36, "0").slice(0, 36),
-          org_id: "00000000-0000-0000-0000-000000000001",
-          contact_email: "sistema@realizzarecursos.com.br",
-          event_type: "page_item",
-          metadata: p
-        });
+    // Calculate real metrics per slug
+    const viewsMap: Record<string, number> = {};
+    const convsMap: Record<string, number> = {};
+
+    (trackingEvents || []).forEach((evt) => {
+      const slug = evt.metadata?.slug || evt.metadata?.page_id;
+      if (!slug) return;
+      if (evt.event_type === "page_view") {
+        viewsMap[slug] = (viewsMap[slug] || 0) + 1;
+      } else if (evt.event_type === "page_conversion") {
+        convsMap[slug] = (convsMap[slug] || 0) + 1;
       }
-      return NextResponse.json({ success: true, pages: DEFAULT_PAGES });
-    }
+    });
 
-    const pages = dbRecords.map((r) => r.metadata || r);
-    return NextResponse.json({ success: true, pages });
+    const basePages = dbRecords && dbRecords.length > 0
+      ? dbRecords.map((r) => r.metadata || r)
+      : DEFAULT_PAGES;
+
+    // Attach real live metrics
+    const pagesWithRealMetrics = basePages.map((p) => {
+      const realViews = viewsMap[p.slug] || viewsMap[p.id] || 0;
+      const realConvs = convsMap[p.slug] || convsMap[p.id] || 0;
+      const rate = realViews > 0 ? Number(((realConvs / realViews) * 100).toFixed(1)) : 0;
+
+      return {
+        ...p,
+        views: realViews,
+        conversions: realConvs,
+        conversionRate: rate,
+        url: p.slug === "preferences"
+          ? "https://realizzareconect.com.br/preferences"
+          : (p.slug === "unsubscribe" ? "https://realizzareconect.com.br/unsubscribe" : p.url)
+      };
+    });
+
+    return NextResponse.json({ success: true, pages: pagesWithRealMetrics });
   } catch (err: any) {
     console.error("Error fetching pages:", err);
     return NextResponse.json({ success: true, pages: DEFAULT_PAGES });
@@ -211,7 +285,6 @@ export async function POST(req: Request) {
     }
 
     const supabase = getSupabase();
-    // Deterministic UUID for Supabase reporting_events
     const rawUuid = page.id.includes("-") && page.id.length === 36
       ? page.id
       : `00000000-0000-0000-0000-${page.id.replace(/[^a-zA-Z0-9]/g, "").padStart(12, "0").slice(0, 12)}`;
@@ -222,7 +295,7 @@ export async function POST(req: Request) {
         updatedAt: new Date().toISOString()
       };
 
-      const { error } = await supabase.from("reporting_events").upsert({
+      await supabase.from("reporting_events").upsert({
         id: rawUuid,
         org_id: "00000000-0000-0000-0000-000000000001",
         contact_email: "sistema@realizzarecursos.com.br",
@@ -230,9 +303,6 @@ export async function POST(req: Request) {
         metadata: pageToSave
       });
 
-      if (error) {
-        console.error("Error upserting page:", error);
-      }
       return NextResponse.json({ success: true, page: pageToSave });
     }
 

@@ -26,6 +26,20 @@ function UnsubscribeContent() {
   });
 
   useEffect(() => {
+    // Record real visit to Unsubscribe page
+    fetch("/api/tracking/page", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pageId: "page-unsubscribe-02",
+        slug: "unsubscribe",
+        type: "view",
+        email: rawEmail || ""
+      })
+    }).catch(() => {});
+  }, [rawEmail]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       try {
         const stored = localStorage.getItem("realizzare_consent_pages_config");
@@ -60,6 +74,18 @@ function UnsubscribeContent() {
         if (contact?.id) {
           await supabase.from("contacts").update({ status: "unsubscribed" }).eq("id", contact.id);
           await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
+
+          // Record real conversion event
+          fetch("/api/tracking/page", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pageId: "page-unsubscribe-02",
+              slug: "unsubscribe",
+              type: "conversion",
+              email: rawEmail
+            })
+          }).catch(() => {});
         }
       } catch (err) {
         console.error("Erro ao cancelar inscricao:", err);
