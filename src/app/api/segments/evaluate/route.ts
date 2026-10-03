@@ -18,11 +18,24 @@ export async function POST(req: Request) {
   
   // For each contact, evaluate all group conditions
   // Fetch supporting data upfront for efficiency:
-  const { data: courseEvents } = await supabase.from('course_events').select('contact_id, course_name, event_type, progress_percent, metadata, created_at');
+  const { data: courseEvents } = await supabase.from('course_events').select('contact_id, course_id, event_type, progress_percent, metadata, created_at');
   const { data: purchases } = await supabase.from('reporting_events').select('contact_email, event_type, metadata, created_at').eq('event_type', 'purchase');
-  const { data: emailOpens } = await supabase.from('inbound_webhook_events').select('payload').eq('event_type', 'email.open');
-  const { data: emailClicks } = await supabase.from('inbound_webhook_events').select('payload').eq('event_type', 'email.click');
-  const { data: emailSent } = await supabase.from('inbound_webhook_events').select('payload').eq('event_type', 'email.delivered');
+  
+  const { data: pagarmeEvents } = await supabase
+    .from('inbound_webhook_events')
+    .select('payload, event_type, created_at')
+    .in('event_type', ['order.paid', 'charge.paid', 'charge.pending', 'order.payment_failed', 'charge.payment_failed']);
+
+  const { data: emailOpens } = await supabase
+    .from('inbound_webhook_events')
+    .select('payload')
+    .in('event_type', ['email.open', 'email.opened']);
+
+  const { data: emailClicks } = await supabase
+    .from('inbound_webhook_events')
+    .select('payload')
+    .in('event_type', ['email.click', 'email.clicked']);
+    
   const { data: contactTags } = await supabase.from('contact_tags').select('contact_id, tag_id, tags(name)');
   const { data: listSubs } = await supabase.from('list_subscriptions').select('contact_id, list_id, status, lists(name)');
   
@@ -40,9 +53,9 @@ export async function POST(req: Request) {
       const groupPasses = group.rules[op]((rule: any) => evaluateRule(rule, contact, {
         courseEvents: courseEvents ?? [],
         purchases: purchases ?? [],
+        pagarmeEvents: pagarmeEvents ?? [],
         emailOpens: emailOpens ?? [],
         emailClicks: emailClicks ?? [],
-        emailSent: emailSent ?? [],
         contactTags: contactTags ?? [],
         listSubs: listSubs ?? [],
       }));
@@ -60,7 +73,10 @@ export async function POST(req: Request) {
 }
 
 function evaluateRule(rule: any, contact: any, data: any): boolean {
-  const { field, operator, value } = rule;
+  // Normalize field names from frontend aliases
+  const normalizedField = rule.field === 'courseStatus' ? 'course_status' : rule.field;
+  const { operator, value } = rule;
+  const field = normalizedField;
   
   const compare = (a: any, b: any): boolean => {
     if (operator === 'eq' || operator === 'is' || operator === 'equal') return String(a).toLowerCase() === String(b).toLowerCase();
@@ -92,7 +108,17 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
       const myEvents = data.courseEvents.filter((e: any) => e.contact_id === contact.id);
       if (value === 'Nenhum' || value === 'sem_matricula') return myEvents.length === 0;
       const courseNames = value.split(',').map((v: string) => v.trim().toLowerCase());
-      return myEvents.some((e: any) => courseNames.includes((e.course_name || '').toLowerCase()));
+      return myEvents.some((e: any) => courseNames.includes((e.metadata?.course_name || '').toLowerCase()));
+    }
+    
+    case 'last_course': {
+      const myEvents = data.courseEvents
+        .filter((e: any) => e.contact_id === contact.id)
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      if (myEvents.length === 0) return false;
+      const lastCourseName = (myEvents[0].metadata?.course_name || '').toLowerCase();
+      const courseNames = value.split(',').map((v: string) => v.trim().toLowerCase());
+      return courseNames.includes(lastCourseName);
     }
     
     case 'course_status': {
@@ -112,22 +138,48 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
     
     case 'payment_order_status': {
       const myPurchases = data.purchases.filter((p: any) => p.contact_email === contact.email);
-      if (myPurchases.length === 0) return false;
-      const status = value === 'paid' ? ['paid', 'order.paid', 'charge.paid'] : [value];
-      return myPurchases.some((p: any) => {
-        const s = p.metadata?.status || p.metadata?.event || '';
-        return status.some(sv => s.toLowerCase().includes(sv.toLowerCase()));
+      
+      // Also check inbound_webhook_events (raw pagar.me webhooks)
+      const myWebhookEvents = data.pagarmeEvents.filter((e: any) => {
+        const email = e.payload?.data?.customer?.email || '';
+        return email.toLowerCase() === (contact.email || '').toLowerCase();
+      });
+
+      const allPaymentEvents = [...myPurchases, ...myWebhookEvents.map((e: any) => ({
+        contact_email: contact.email,
+        metadata: { event: e.event_type }
+      }))];
+
+      if (allPaymentEvents.length === 0) return false;
+      
+      const targetVal = (value || '').toLowerCase();
+      
+      return allPaymentEvents.some((p: any) => {
+        const eventName = (p.metadata?.event || '').toLowerCase();
+        
+        if (targetVal === 'paid') {
+          // Match any paid event variants
+          return eventName.includes('paid') || eventName.includes('order.paid') || eventName.includes('charge.paid');
+        }
+        if (targetVal === 'pending') {
+          return eventName.includes('pending') || eventName.includes('charge.pending');
+        }
+        if (targetVal === 'failed') {
+          return eventName.includes('failed');
+        }
+        // Generic match
+        return eventName.includes(targetVal);
       });
     }
     
     case 'email_received': {
-      const sentToMe = data.emailSent.filter((e: any) => 
+      // Anyone who opened is a superset of "received"
+      // Also check direct opens
+      const receivedByMe = [...data.emailOpens, ...data.emailClicks].filter((e: any) =>
         e.payload?.email === contact.email || e.payload?.contact_id === contact.id
       );
-      if (rule.campaignId && rule.campaignId !== 'any') {
-        return sentToMe.some((e: any) => e.payload?.campaign_id === rule.campaignId);
-      }
-      return sentToMe.length > 0;
+      // Apply time filter if rule has timeframe
+      return receivedByMe.length > 0;
     }
     
     case 'email_opened': {
@@ -159,7 +211,6 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
     }
     
     case 'active_in_list': {
-      // Changed from 'active' to 'subscribed' based on table inspection
       const myLists = data.listSubs.filter((s: any) => s.contact_id === contact.id && (s.status === 'active' || s.status === 'subscribed'));
       return myLists.some((s: any) => {
         const listName = (s.lists as any)?.name || '';

@@ -338,6 +338,7 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
 
   const courseFields = [
     { id: "course", label: "Curso Matriculado" },
+    { id: "last_course", label: "Último Curso Iniciado" },
     { id: "courseStatus", label: "Status do Curso" },
     { id: "enrolled_at", label: "Data de Inscrição" },
     { id: "certificate_issued", label: "Certificado Emitido?" }
@@ -660,7 +661,7 @@ function EngagementRuleExpanded({
       <div className="flex flex-wrap items-center gap-2">
         <SearchableFieldDropdown
           value={rule.field}
-          onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val })}
+          onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
           customFields={customFields}
         />
 
@@ -3156,7 +3157,7 @@ function CreateCampaignForm() {
                               {/* Field Selection */}
                               <SearchableFieldDropdown
                                 value={rule.field}
-                                onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val })}
+                                onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
                                 customFields={customFields}
                               />
 
