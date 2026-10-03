@@ -33,8 +33,24 @@ export async function GET(req: NextRequest) {
         if (cData) resolvedEmail = cData.email;
       }
 
-      // 1. Update Campaign open_count
-      if (campaignId) {
+      // 1. Update Campaign open_count (Deduplicated)
+      let shouldIncrement = true;
+      if (campaignId && (resolvedEmail || resolvedContactId)) {
+        // Query database directly to see if this specific email opened this specific campaign
+        const searchPayload = resolvedEmail ? { campaign_id: campaignId, email: resolvedEmail } : { campaign_id: campaignId, contact_id: resolvedContactId };
+        const { data: existingOpens } = await supabase
+          .from("inbound_webhook_events")
+          .select("id")
+          .eq("event_type", "email.open")
+          .contains("payload", searchPayload)
+          .limit(1);
+
+        if (existingOpens && existingOpens.length > 0) {
+           shouldIncrement = false;
+        }
+      }
+
+      if (campaignId && shouldIncrement) {
         const { data: camp } = await supabase
           .from("campaigns")
           .select("open_count")

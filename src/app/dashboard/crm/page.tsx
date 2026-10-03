@@ -360,6 +360,14 @@ export default function CrmPage() {
           setDeals((prev: any[]) => prev.filter(d => d.id !== payload.dealId));
         });
 
+        channel.bind('card_added', (payload: any) => {
+          if (!isMounted) return;
+          setDeals((prev: any[]) => {
+            if (prev.some(d => d.id === payload.deal.id)) return prev;
+            return [payload.deal, ...prev];
+          });
+        });
+        
         channel.bind('card_updated', (payload: any) => {
           if (!isMounted) return;
           setDeals((prev: any[]) => prev.map(d => d.id === payload.deal.id ? { ...d, ...payload.deal } : d));
@@ -398,19 +406,12 @@ export default function CrmPage() {
 
 
   const syncDealToDB = async (deal: Deal) => {
-    // Only sync manual activities (don't sync test_approved or pending_orders back to reporting_events this way)
     if (deal.id.startsWith("test-") || deal.id.startsWith("pend-")) return;
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      // Use reporting_events to store crm_activity
-      const id = deal.id.replace("act-", "");
-      await supabase.from("reporting_events").upsert({
-        id: id,
-        org_id: "00000000-0000-0000-0000-000000000001",
-        contact_email: deal.email || null,
-        event_type: "crm_activity",
-        metadata: deal
+      await fetch('/api/crm/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upsert', deal })
       });
     } catch (e) {
       console.error("Error syncing deal to DB:", e);
@@ -420,10 +421,19 @@ export default function CrmPage() {
   const deleteDealFromDB = async (dealId: string) => {
     if (dealId.startsWith("test-") || dealId.startsWith("pend-")) return;
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const id = dealId.replace("act-", "");
-      await supabase.from("reporting_events").delete().eq("id", id).eq("event_type", "crm_activity");
+      await fetch('/api/crm/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', deal: { id: dealId } })
+      });
+      const w = window as any;
+      if (w.__crm_pusher) {
+        fetch('/api/pusher/trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel: 'presence-crm', event: 'card_deleted', payload: { dealId }, socket_id: w.__crm_socket_id })
+        }).catch(e => console.error('Error broadcasting:', e));
+      }
     } catch (e) {
       console.error("Error deleting deal from DB:", e);
     }
@@ -457,6 +467,15 @@ export default function CrmPage() {
     setDeals((prev) => [finalDeal, ...prev]);
     dispatchNotification(finalDeal);
     syncDealToDB(finalDeal);
+    
+    const w = window as any;
+    if (w.__crm_pusher) {
+      fetch('/api/pusher/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'presence-crm', event: 'card_added', payload: { deal: finalDeal }, socket_id: w.__crm_socket_id })
+      }).catch(e => console.error('Error broadcasting:', e));
+    }
   };
 
   const handleUpdateDeal = (updatedDeal: Deal) => {

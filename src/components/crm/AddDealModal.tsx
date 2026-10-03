@@ -78,7 +78,7 @@ export default function AddDealModal({ isOpen, onClose, onAdd, activeBoard = "te
       const tempInitials = initialsMatch ? initialsMatch.join('').substring(0, 2).toUpperCase() : "NO";
       
       onAdd({
-        id: dealToEdit ? dealToEdit.id : `act-${Date.now()}`,
+        id: dealToEdit ? dealToEdit.id : `act-${crypto.randomUUID()}`,
         title,
         value: activeBoard === 'atividades' ? 0 : parseFloat(value || "0"),
         clientInitials: dealToEdit?.clientInitials || tempInitials,

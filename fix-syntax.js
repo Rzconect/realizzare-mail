@@ -1,5 +1,0 @@
-const fs = require('fs');
-let c = fs.readFileSync('src/components/FlowCanvas.tsx', 'utf8');
-c = c.replace(/\} \$\{config\.value\}\`\;\n\s*\}/g, '}');
-fs.writeFileSync('src/components/FlowCanvas.tsx', c);
-console.log('Fixed syntax error via regex');

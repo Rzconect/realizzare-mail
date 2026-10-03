@@ -199,18 +199,12 @@ function SimulatedInboxPreview({ subjectLine, preheader, senderName, renderMockT
 }
 
 
-function SegmentCourseDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+function SegmentCourseDropdown({ value, onChange, availableCoursesList = [] }: { value: string; onChange: (val: string) => void; availableCoursesList?: string[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const availableCourses = [
-    "Introdução à Programação Web",
-    "Gestão Financeira para Negócios",
-    "Desenvolvimento de Carreira e Liderança",
-    "Marketing Digital de Performance",
-    "Nenhum"
-  ];
+  const availableCourses = [...availableCoursesList, "Nenhum"];
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -269,7 +263,7 @@ function SegmentCourseDropdown({ value, onChange }: { value: string; onChange: (
           </div>
 
           <div className="space-y-1">
-            {filtered.map(c => {
+            {filtered.map((c: any) => {
               const isChecked = selectedCourses.includes(c);
               return (
                 <label
@@ -494,7 +488,7 @@ interface ValueAutocompleteInputProps {
   customFields: any[];
 }
 
-function ValueAutocompleteInput({ value, onChange, field, contacts, customFields }: ValueAutocompleteInputProps) {
+function ValueAutocompleteInput({ value, onChange, field, contacts, customFields, availableTags = [] }: ValueAutocompleteInputProps & { availableTags?: string[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -521,7 +515,7 @@ function ValueAutocompleteInput({ value, onChange, field, contacts, customFields
       "area_de_interesse": ["Tecnologia da Informação", "Programação", "Marketing Digital", "Gestão Financeira", "Design Gráfico", "Ciência da Computação"],
       "nivel_academico": ["Ensino Médio Completo", "Ensino Superior Cursando", "Ensino Superior Completo", "Pós-Graduação"],
       "origem_lead": ["Instagram Ads", "Google Search", "Facebook Ads", "Indicação", "Blog Post"],
-      "curso_pretendido": ["React Native com Expo", "Introdução à Programação Web", "Marketing Digital de Performance", "Gestão Financeira para Negócios"]
+      "curso_pretendido": typeof window !== "undefined" && (window as any).__AVAILABLE_COURSES__ ? (window as any).__AVAILABLE_COURSES__ : []
     };
 
     if (contacts && Array.isArray(contacts)) {
@@ -542,10 +536,18 @@ function ValueAutocompleteInput({ value, onChange, field, contacts, customFields
           values.add(c.status || "");
         } else if (field === "total_spent") {
           values.add(String(c.total_spent || ""));
-        } else if (field === "tag" && Array.isArray(c.tags)) {
-          c.tags.forEach((t: string) => values.add(t));
+        } else if (field === "tag") {
+          if (Array.isArray(c.tags)) c.tags.forEach((t: string) => values.add(t));
         }
       });
+    }
+
+    if (field === "tag" && availableTags) {
+      availableTags.forEach(t => values.add(t));
+    }
+
+    if (field === "tag" && availableTags) {
+      availableTags.forEach(t => values.add(t));
     }
 
     if (field.startsWith("cf_")) {
@@ -978,7 +980,81 @@ function getMatchingContacts(contacts: any[], groups: any[], globalOp: "and" | "
     const groupResults: boolean[] = groups.map((group) => {
       if (!group.rules || group.rules.length === 0) return true;
       
-      const ruleResults: boolean[] = group.rules.map((rule: any) => evaluateRule(contact, rule, customFields));
+      
+        const evaluateCourseRules = (contact: any, rules: any[]) => {
+          const courseRule = rules.find((r: any) => r.field === "course");
+          const statusRule = rules.find((r: any) => r.field === "courseStatus");
+          const dateRule = rules.find((r: any) => r.field === "enrolled_at");
+          const certRule = rules.find((r: any) => r.field === "certificate_issued");
+          
+          if (!courseRule && !statusRule && !dateRule && !certRule) return null;
+          
+          let enrollments = [];
+          try {
+            const profile = JSON.parse(localStorage.getItem("realizzare_profile_" + contact.id) || "{}");
+            enrollments = profile.enrollments || [];
+          } catch(e){}
+
+          if (enrollments.length === 0) {
+            if (contact.course && contact.course !== "Nenhum" && contact.course !== "Sem Matrícula") {
+              enrollments = [{ 
+                course_name: contact.course, 
+                status: contact.courseStatus === "Finalizado" ? "completed" : "active",
+                enrolled_at: contact.created_at,
+                certificate_issued: false
+              }];
+            } else {
+              enrollments = [];
+            }
+          }
+
+          let courseList = courseRule && courseRule.value ? courseRule.value.split(",") : [];
+          if (courseList.includes("Nenhum")) return enrollments.length === 0;
+
+          return enrollments.some((e: any) => {
+            // Check course
+            if (courseList.length > 0 && !courseList.includes(e.course_name)) return false;
+            // Check status
+            if (statusRule) {
+               const targetStatus = statusRule.value === "Concluído" || statusRule.value === "Finalizado" ? "completed" : "active";
+               if (e.status !== targetStatus) return false;
+            }
+            // Check cert
+            if (certRule) {
+               const wantsCert = certRule.value === "sim";
+               const hasCert = !!e.certificate_issued;
+               if (wantsCert !== hasCert) return false;
+            }
+            // Check date (simplified matching logic for date Rule)
+            if (dateRule && dateRule.value && e.enrolled_at) {
+               const op = dateRule.operator;
+               const eDate = new Date(e.enrolled_at).getTime();
+               if (op === "between") {
+                 const [start, end] = dateRule.value.split("_");
+                 if (start && end) {
+                   const sDate = new Date(start).getTime();
+                   const eDateEnd = new Date(end).getTime() + 86400000;
+                   if (eDate < sDate || eDate > eDateEnd) return false;
+                 }
+               } else {
+                 const targetDate = new Date(dateRule.value).getTime();
+                 if (op === "eq" && Math.abs(eDate - targetDate) > 86400000) return false;
+                 if (op === "neq" && Math.abs(eDate - targetDate) <= 86400000) return false;
+                 if (op === "lte" && eDate > targetDate + 86400000) return false;
+               }
+            }
+            return true;
+          });
+        };
+
+        const ruleResults: boolean[] = group.rules.map((rule: any) => {
+          if (rule.field === "course" || rule.field === "courseStatus" || rule.field === "enrolled_at" || rule.field === "certificate_issued") {
+            const courseRes = evaluateCourseRules(contact, group.rules);
+            if (courseRes !== null) return courseRes;
+          }
+          return evaluateRule(contact, rule, customFields);
+        });
+  
       
       if (group.logicalOperator === "or") {
         return ruleResults.some((r: boolean) => r === true);
@@ -1329,6 +1405,14 @@ function CreateCampaignForm() {
             .map((d: any) => d.domain.toLowerCase().trim());
           if (vList.length > 0) {
             setVerifiedDomains(vList);
+          }
+        }
+      
+        // Fetch courses for segment builder mock replacement
+        const { data: coursesData } = await supabase.from("courses").select("name").order("name", { ascending: true });
+        if (coursesData && coursesData.length > 0) {
+          if (typeof window !== "undefined") {
+            (window as any).__AVAILABLE_COURSES__ = coursesData.map((c: any) => c.name);
           }
         }
       } catch (e) {}
@@ -3168,9 +3252,10 @@ function CreateCampaignForm() {
                                 if (rule.field === "course") {
                                   return (
                                     <SegmentCourseDropdown
-                                      value={rule.value}
-                                      onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: val })}
-                                    />
+      value={rule.value}
+      onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: val })}
+      availableCoursesList={(window as any).__AVAILABLE_COURSES__ || []}
+    />
                                   );
                                 }
 

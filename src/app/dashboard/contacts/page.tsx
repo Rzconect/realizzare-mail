@@ -65,18 +65,12 @@ interface SearchableFieldDropdownProps {
   customFields: Array<{ name: string; tag: string; type: string }>;
 }
 
-function SegmentCourseDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+function SegmentCourseDropdown({ value, onChange, availableCoursesList = [] }: { value: string; onChange: (val: string) => void; availableCoursesList?: string[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const availableCourses = [
-    "Introdução à Programação Web",
-    "Gestão Financeira para Negócios",
-    "Desenvolvimento de Carreira e Liderança",
-    "Marketing Digital de Performance",
-    "Nenhum"
-  ];
+  const availableCourses = [...availableCoursesList, "Nenhum"];
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -519,7 +513,7 @@ function EngagementRuleExpanded({
   );
 }
 
-function ValueAutocompleteInput({ value, onChange, field, contacts, customFields }: ValueAutocompleteInputProps) {
+function ValueAutocompleteInput({ value, onChange, field, contacts, customFields, availableTags = [] }: ValueAutocompleteInputProps & { availableTags?: string[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -546,7 +540,7 @@ function ValueAutocompleteInput({ value, onChange, field, contacts, customFields
       "area_de_interesse": ["Tecnologia da Informação", "Programação", "Marketing Digital", "Gestão Financeira", "Design Gráfico", "Ciência da Computação"],
       "nivel_academico": ["Ensino Médio Completo", "Ensino Superior Cursando", "Ensino Superior Completo", "Pós-Graduação"],
       "origem_lead": ["Instagram Ads", "Google Search", "Facebook Ads", "Indicação", "Blog Post"],
-      "curso_pretendido": ["React Native com Expo", "Introdução à Programação Web", "Marketing Digital de Performance", "Gestão Financeira para Negócios"]
+      "curso_pretendido": typeof window !== "undefined" && (window as any).__AVAILABLE_COURSES__ ? (window as any).__AVAILABLE_COURSES__ : []
     };
 
     if (contacts && Array.isArray(contacts)) {
@@ -567,10 +561,18 @@ function ValueAutocompleteInput({ value, onChange, field, contacts, customFields
           values.add(c.status || "");
         } else if (field === "total_spent") {
           values.add(String(c.total_spent || ""));
-        } else if (field === "tag" && Array.isArray(c.tags)) {
-          c.tags.forEach((t: string) => values.add(t));
+        } else if (field === "tag") {
+          if (Array.isArray(c.tags)) c.tags.forEach((t: string) => values.add(t));
         }
       });
+    }
+
+    if (field === "tag" && availableTags) {
+      availableTags.forEach(t => values.add(t));
+    }
+
+    if (field === "tag" && availableTags) {
+      availableTags.forEach(t => values.add(t));
     }
 
     if (field.startsWith("cf_")) {
@@ -1098,7 +1100,81 @@ function countMatchingContacts(contacts: any[], groups: any[], globalOp: "and" |
     const groupResults: boolean[] = groups.map((group) => {
       if (!group.rules || group.rules.length === 0) return true;
       
-      const ruleResults: boolean[] = group.rules.map((rule: any) => evaluateRule(contact, rule, customFields));
+      
+        const evaluateCourseRules = (contact: any, rules: any[]) => {
+          const courseRule = rules.find((r: any) => r.field === "course");
+          const statusRule = rules.find((r: any) => r.field === "courseStatus");
+          const dateRule = rules.find((r: any) => r.field === "enrolled_at");
+          const certRule = rules.find((r: any) => r.field === "certificate_issued");
+          
+          if (!courseRule && !statusRule && !dateRule && !certRule) return null;
+          
+          let enrollments = [];
+          try {
+            const profile = JSON.parse(localStorage.getItem("realizzare_profile_" + contact.id) || "{}");
+            enrollments = profile.enrollments || [];
+          } catch(e){}
+
+          if (enrollments.length === 0) {
+            if (contact.course && contact.course !== "Nenhum" && contact.course !== "Sem Matrícula") {
+              enrollments = [{ 
+                course_name: contact.course, 
+                status: contact.courseStatus === "Finalizado" ? "completed" : "active",
+                enrolled_at: contact.created_at,
+                certificate_issued: false
+              }];
+            } else {
+              enrollments = [];
+            }
+          }
+
+          let courseList = courseRule && courseRule.value ? courseRule.value.split(",") : [];
+          if (courseList.includes("Nenhum")) return enrollments.length === 0;
+
+          return enrollments.some((e: any) => {
+            // Check course
+            if (courseList.length > 0 && !courseList.includes(e.course_name)) return false;
+            // Check status
+            if (statusRule) {
+               const targetStatus = statusRule.value === "Concluído" || statusRule.value === "Finalizado" ? "completed" : "active";
+               if (e.status !== targetStatus) return false;
+            }
+            // Check cert
+            if (certRule) {
+               const wantsCert = certRule.value === "sim";
+               const hasCert = !!e.certificate_issued;
+               if (wantsCert !== hasCert) return false;
+            }
+            // Check date (simplified matching logic for date Rule)
+            if (dateRule && dateRule.value && e.enrolled_at) {
+               const op = dateRule.operator;
+               const eDate = new Date(e.enrolled_at).getTime();
+               if (op === "between") {
+                 const [start, end] = dateRule.value.split("_");
+                 if (start && end) {
+                   const sDate = new Date(start).getTime();
+                   const eDateEnd = new Date(end).getTime() + 86400000;
+                   if (eDate < sDate || eDate > eDateEnd) return false;
+                 }
+               } else {
+                 const targetDate = new Date(dateRule.value).getTime();
+                 if (op === "eq" && Math.abs(eDate - targetDate) > 86400000) return false;
+                 if (op === "neq" && Math.abs(eDate - targetDate) <= 86400000) return false;
+                 if (op === "lte" && eDate > targetDate + 86400000) return false;
+               }
+            }
+            return true;
+          });
+        };
+
+        const ruleResults: boolean[] = group.rules.map((rule: any) => {
+          if (rule.field === "course" || rule.field === "courseStatus" || rule.field === "enrolled_at" || rule.field === "certificate_issued") {
+            const courseRes = evaluateCourseRules(contact, group.rules);
+            if (courseRes !== null) return courseRes;
+          }
+          return evaluateRule(contact, rule, customFields);
+        });
+  
       
       if (group.logicalOperator === "or") {
         return ruleResults.some((r: boolean) => r === true);
@@ -1124,6 +1200,88 @@ interface SearchableCourseDropdownProps {
   onChange: (value: string) => void;
   optionsList?: { value: string; label: string }[];
 }
+function SearchableTagDropdown({ value, onChange, optionsList }: SearchableCourseDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const options = optionsList && optionsList.length > 0 ? optionsList : [{ value: "all", label: "Todas as Tags" }];
+  
+  const filteredOptions = options.filter(o => 
+    o.label.toLowerCase().includes(search.toLowerCase())
+  );
+  
+  const selectedLabel = options.find(o => o.value === value)?.label || "Todas as Tags";
+  
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 flex justify-between items-center cursor-pointer shadow-sm min-h-[38px]"
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[260px]">
+          <div className="p-2 border-b border-slate-100 flex items-center gap-1.5 bg-slate-50">
+            <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Pesquisar tag..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-transparent text-xs text-slate-705 outline-none border-none p-0 focus:ring-0"
+              autoFocus
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="text-xs text-slate-400 hover:text-slate-650"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          
+          <div className="overflow-y-auto divide-y divide-slate-105 py-1">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(o.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs transition-colors ${value === o.value ? "bg-indigo-50 font-bold text-indigo-700" : "text-slate-600 hover:bg-slate-50 font-medium"}`}
+                >
+                  {o.label}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-3 text-xs text-center text-slate-500">Nenhuma tag encontrada</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SearchableCourseDropdown({ value, onChange, optionsList }: SearchableCourseDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -1659,7 +1817,11 @@ export default function ContactsPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [customFields, setCustomFields] = useState<any[]>([]);
   const [availableCourses, setAvailableCourses] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => { (window as any).__AVAILABLE_COURSES__ = availableCourses.map(c => c.value); }, [availableCourses]);
+  useEffect(() => { (window as any).__AVAILABLE_COURSES__ = availableCourses.map(c => c.value); }, [availableCourses]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  useEffect(() => { (window as any).__AVAILABLE_TAGS__ = availableTags; }, [availableTags]);
+  useEffect(() => { (window as any).__AVAILABLE_TAGS__ = availableTags; }, [availableTags]);
 
   // Default values
   const defaultCustomFields = [
@@ -2765,13 +2927,27 @@ export default function ContactsPage() {
     // Course status filter
     if (courseStatusFilter.length > 0) {
       result = result.filter((c) => {
-        const cStatus = (c.courseStatus || "").toLowerCase();
+        let specificStatus = (c.courseStatus || "").toLowerCase();
+
+        // If a specific course is selected, find its specific enrollment status
+        if (courseFilter !== "all" && courseFilter !== "" && courseFilter !== "Nenhum") {
+          const specificEnrollment = (c.enrollments || []).find((e: any) => (e.courses?.name || "").toLowerCase() === courseFilter.toLowerCase());
+          if (specificEnrollment) {
+            specificStatus = specificEnrollment.status === "completed" ? "finalizado" : "em andamento";
+          } else {
+            return false; // If they don't even have the course, they shouldn't match
+          }
+        }
+
         return courseStatusFilter.some(filterOpt => {
           const fOpt = filterOpt.toLowerCase();
           if (fOpt.includes("não iniciado") || fOpt.includes("sem matrícula")) {
-            return cStatus.includes("não iniciado") || cStatus.includes("sem matrícula") || cStatus === "nenhum";
+            return specificStatus.includes("não iniciado") || specificStatus.includes("sem matrícula") || specificStatus === "nenhum";
           }
-          return cStatus.startsWith(fOpt) || fOpt.startsWith(cStatus);
+          if (fOpt.includes("concluído") || fOpt.includes("finalizado")) {
+            return specificStatus === "finalizado" || specificStatus === "concluído";
+          }
+          return specificStatus.startsWith(fOpt) || fOpt.startsWith(specificStatus) || specificStatus.includes("andamento");
         });
       });
     }
@@ -2903,7 +3079,52 @@ export default function ContactsPage() {
     return enforced.filter((contact) => {
       const groupResults: boolean[] = segmentGroups.map((group) => {
         if (!group.rules || group.rules.length === 0) return true;
-        const ruleResults: boolean[] = group.rules.map((rule: any) => evaluateRule(contact, rule, customFields));
+        
+        const evaluateCourseRules = (contact: any, rules: any[]) => {
+          const courseRule = rules.find((r: any) => r.field === "course");
+          const statusRule = rules.find((r: any) => r.field === "courseStatus");
+          if (!courseRule && !statusRule) return null;
+          
+          let enrollments = [];
+          try {
+            const profile = JSON.parse(localStorage.getItem("realizzare_profile_" + contact.id) || "{}");
+            enrollments = profile.enrollments || [];
+          } catch(e){}
+
+          if (enrollments.length === 0) {
+            if (contact.course && contact.course !== "Nenhum" && contact.course !== "Sem Matrícula") {
+              enrollments = [{ course_name: contact.course, status: contact.courseStatus === "Finalizado" ? "completed" : "active" }];
+            } else {
+              enrollments = [];
+            }
+          }
+
+          let courseList = courseRule && courseRule.value ? courseRule.value.split(",") : [];
+          
+          if (courseList.includes("Nenhum")) {
+             return enrollments.length === 0;
+          }
+
+          if (courseList.length > 0 && statusRule) {
+             const targetStatus = statusRule.value === "Concluído" || statusRule.value === "Finalizado" ? "completed" : "active";
+             return enrollments.some((e: any) => courseList.includes(e.course_name) && e.status === targetStatus);
+          } else if (courseList.length > 0) {
+             return enrollments.some((e: any) => courseList.includes(e.course_name));
+          } else if (statusRule) {
+             const targetStatus = statusRule.value === "Concluído" || statusRule.value === "Finalizado" ? "completed" : "active";
+             return enrollments.some((e: any) => e.status === targetStatus);
+          }
+          return false;
+        };
+
+        const ruleResults: boolean[] = group.rules.map((rule: any) => {
+          if (rule.field === "course" || rule.field === "courseStatus") {
+            const courseRes = evaluateCourseRules(contact, group.rules);
+            if (courseRes !== null) return courseRes;
+          }
+          return evaluateRule(contact, rule, customFields);
+        });
+  
         return group.logicalOperator === "or"
           ? ruleResults.some((r: boolean) => r === true)
           : ruleResults.every((r: boolean) => r === true);
@@ -4340,7 +4561,7 @@ export default function ContactsPage() {
                 <option value="all">Todos os Status</option>
                 <option value="active">Ativo (Active)</option>
                 <option value="bounced">Bounced</option>
-                <option value="unsubscribed">Unsubscribed</option>
+                <option value="unsubscribed">Unsubscribed / Desativado</option>
               </select>
             </div>
 
@@ -4385,19 +4606,17 @@ export default function ContactsPage() {
             {/* Tag Filter */}
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Marcado com Tag</label>
-              <select
+              <SearchableTagDropdown
                 value={tagFilter}
-                onChange={(e) => {
-                  setTagFilter(e.target.value);
+                onChange={(val) => {
+                  setTagFilter(val);
                   setCurrentPage(1);
                 }}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 font-medium"
-              >
-                <option value="all">Todas as Tags</option>
-                {allTagsList.map((tag) => (
-                  <option key={tag} value={tag}>{tag}</option>
-                ))}
-              </select>
+                optionsList={[
+                  { value: "all", label: "Todas as Tags" },
+                  ...allTagsList.map(tag => ({ value: tag, label: tag }))
+                ]}
+              />
             </div>
 
             {/* Certificado Filter */}
@@ -5124,9 +5343,10 @@ export default function ContactsPage() {
                                       if (rule.field === "course") {
                                         return (
                                           <SegmentCourseDropdown
-                                            value={rule.value}
-                                            onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: val })}
-                                          />
+      value={rule.value}
+      onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: val })}
+      availableCoursesList={(window as any).__AVAILABLE_COURSES__ || []}
+    />
                                         );
                                       }
 

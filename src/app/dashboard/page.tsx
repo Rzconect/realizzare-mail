@@ -239,7 +239,7 @@ export default function DashboardPage() {
         start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-        prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        prevEnd = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate(), 23, 59, 59, 999);
       } else if (period === "custom") {
         const [sYear, sMonth, sDay] = customStartDate.split('-').map(Number);
         const [eYear, eMonth, eDay] = customEndDate.split('-').map(Number);
@@ -747,8 +747,8 @@ export default function DashboardPage() {
         email_revenue: emailRevenue,
         email_paid_count: emailPaidCount,
         changes: { 
-          leads: calcVariation(currentLeadsCreated, prevLeadsCreated),
-          students: calcVariation(currentStudentsCreated, prevStudentsCreated),
+          leads: calcVariation(activeLeadsVal, activeLeadsVal - currentLeadsCreated),
+          students: calcVariation(activeStudentsVal, activeStudentsVal - currentStudentsCreated),
           enrolled: calcVariation(enrolledPeriodVal, prevEnrolledPeriodVal),
           certs: calcVariation(finalCerts, prevCerts),
           revenue: calcVariation(finalRevenue, prevRevenue),
