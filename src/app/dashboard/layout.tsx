@@ -28,7 +28,8 @@ import {
   CheckCircle2,
   FileText,
   KanbanSquare,
-  MessageCircle
+  MessageCircle,
+  Globe
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PusherGlobalPresence from "@/components/PusherGlobalPresence";
@@ -353,6 +354,7 @@ export default function DashboardLayout({
         { name: "Campanhas", href: "/dashboard/campaigns", icon: Mail },
         { name: "Automações", href: "/dashboard/automations", icon: GitBranch },
         { name: "Conteúdos", href: "/dashboard/contents", icon: Image },
+        { name: "Páginas", href: "/dashboard/pages", icon: Globe },
         { name: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },
         { name: "Cursos", href: "/dashboard/courses", icon: BookOpen }
       ];
