@@ -1331,6 +1331,7 @@ function CreateCampaignForm() {
   const [globalOperator, setGlobalOperator] = useState<"and" | "or">("and");
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [qualifiedSegmentIds, setQualifiedSegmentIds] = useState<Set<string> | null>(null);
 
   const [showConfirmSendModal, setShowConfirmSendModal] = useState(false);
 

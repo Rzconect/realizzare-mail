@@ -885,15 +885,35 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   
   // Custom checks for comma-separated courses or special engagement fields
   if (rule.field === "course") {
-    const contactCourse = getContactEnrollmentInfo(contact).course;
-    const selectedList = rule.value ? rule.value.split(",") : [];
-    if (selectedList.length === 0) return true;
-    const match = selectedList.some(c => {
-      if (c === "Nenhum") {
-        return contactCourse === "Nenhum curso iniciado" || contactCourse === "";
-      }
-      return contactCourse.toLowerCase() === c.toLowerCase();
+    const allCourses = Array.from(new Set([
+      ...(contact.enrolledCoursesList || []),
+      ...((contact.enrollments || []).map((e: any) => e.courses?.name || e.course_name).filter(Boolean)),
+      contact.course
+    ])).filter(Boolean) as string[];
+
+    const searchTerms = (rule.value || "").split(",").map((v: string) => v.trim().toLowerCase()).filter(Boolean);
+    if (searchTerms.length === 0) return true;
+    if (searchTerms.includes("nenhum") || searchTerms.includes("sem_matricula")) {
+      return allCourses.length === 0;
+    }
+    const match = allCourses.some((cName: string) => {
+      const cnLower = cName.toLowerCase();
+      return searchTerms.some((term: string) => {
+        if (rule.operator === "contains" || rule.operator === "contain") {
+          return cnLower.includes(term);
+        }
+        return cnLower === term || cnLower.includes(term);
+      });
     });
+    if (rule.operator === "neq") return !match;
+    return match;
+  }
+
+  if (rule.field === "last_course") {
+    const contactCourse = (contact.course || "").toLowerCase();
+    const searchTerms = (rule.value || "").split(",").map((v: string) => v.trim().toLowerCase()).filter(Boolean);
+    if (searchTerms.length === 0) return true;
+    const match = searchTerms.some((term: string) => contactCourse.includes(term));
     if (rule.operator === "neq") return !match;
     return match;
   }
@@ -961,6 +981,9 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
   } else if (rule.field === "total_spent" || rule.field === "payment_total_revenue") {
     contactValue = String(getContactPagarmeInfo(contact).total_spent);
   } else if (rule.field === "payment_order_status") {
+    const isPaid = (contact.total_spent > 0) || Boolean(contact.last_paid_order_date);
+    const target = String(rule.value || "paid").toLowerCase();
+    if (target === "paid" || target.includes("pago")) return isPaid;
     contactValue = getContactPagarmeInfo(contact).order_status;
   } else if (rule.field === "payment_order_amount") {
     contactValue = String(getContactPagarmeInfo(contact).last_order_amount);
@@ -2799,6 +2822,7 @@ export default function ContactsPage() {
   ]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [qualifiedSegmentIds, setQualifiedSegmentIds] = useState<Set<string> | null>(null);
 
   // Sorting handlers
   const handleSort = (field: string) => {
@@ -3087,6 +3111,9 @@ export default function ContactsPage() {
   const [segmentSearchQuery, setSegmentSearchQuery] = useState("");
 
   const getMatchingSegmentLeads = () => {
+    if (qualifiedSegmentIds !== null) {
+      return contacts.filter((c: any) => qualifiedSegmentIds.has(c.id));
+    }
     const enforced = contacts;
     if (!segmentGroups || segmentGroups.length === 0) return enforced;
     return enforced.filter((contact) => {
@@ -3098,34 +3125,38 @@ export default function ContactsPage() {
           const statusRule = rules.find((r: any) => r.field === "courseStatus");
           if (!courseRule && !statusRule) return null;
           
-          let enrollments = [];
-          try {
-            const profile = JSON.parse(localStorage.getItem("realizzare_profile_" + contact.id) || "{}");
-            enrollments = profile.enrollments || [];
-          } catch(e){}
+          const allCourses: string[] = Array.from(new Set([
+            ...(contact.enrolledCoursesList || []),
+            ...((contact.enrollments || []).map((e: any) => e.courses?.name || e.course_name).filter(Boolean)),
+            contact.course
+          ])).filter(Boolean) as string[];
 
-          if (enrollments.length === 0) {
-            if (contact.course && contact.course !== "Nenhum" && contact.course !== "Sem Matrícula") {
-              enrollments = [{ course_name: contact.course, status: contact.courseStatus === "Finalizado" ? "completed" : "active" }];
-            } else {
-              enrollments = [];
-            }
-          }
-
-          let courseList = courseRule && courseRule.value ? courseRule.value.split(",") : [];
+          let courseList = courseRule && courseRule.value 
+            ? courseRule.value.split(",").map((v: string) => v.trim().toLowerCase()).filter(Boolean)
+            : [];
           
-          if (courseList.includes("Nenhum")) {
-             return enrollments.length === 0;
+          if (courseList.includes("nenhum") || courseList.includes("sem_matricula")) {
+             return allCourses.length === 0;
           }
 
           if (courseList.length > 0 && statusRule) {
              const targetStatus = statusRule.value === "Concluído" || statusRule.value === "Finalizado" ? "completed" : "active";
-             return enrollments.some((e: any) => courseList.includes(e.course_name) && e.status === targetStatus);
+             const enrollments = contact.enrollments || [];
+             return enrollments.some((e: any) => {
+               const cName = (e.courses?.name || e.course_name || "").toLowerCase();
+               const isTarget = courseList.some((t: string) => cName.includes(t) || cName === t);
+               const isStatus = e.status === targetStatus || (targetStatus === "completed" && (e.progress >= 100 || e.certificate_issued));
+               return isTarget && isStatus;
+             });
           } else if (courseList.length > 0) {
-             return enrollments.some((e: any) => courseList.includes(e.course_name));
+             return allCourses.some((cName: string) => {
+               const cnLower = cName.toLowerCase();
+               return courseList.some((t: string) => cnLower.includes(t) || cnLower === t);
+             });
           } else if (statusRule) {
              const targetStatus = statusRule.value === "Concluído" || statusRule.value === "Finalizado" ? "completed" : "active";
-             return enrollments.some((e: any) => e.status === targetStatus);
+             const enrollments = contact.enrollments || [];
+             return enrollments.some((e: any) => e.status === targetStatus || (targetStatus === "completed" && (e.progress >= 100 || e.certificate_issued)));
           }
           return false;
         };
@@ -3149,14 +3180,32 @@ export default function ContactsPage() {
   };
 
   // Segment preview triggers
-  const handleCalculatePreview = () => {
+  const handleCalculatePreview = async () => {
     setIsPreviewLoading(true);
     setPreviewCount(null);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/segments/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groups: segmentGroups })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPreviewCount(data.count ?? 0);
+        setQualifiedSegmentIds(new Set(data.ids ?? []));
+      } else {
+        const matching = getMatchingSegmentLeads();
+        setPreviewCount(matching.length);
+        setQualifiedSegmentIds(new Set(matching.map((m: any) => m.id)));
+      }
+    } catch (e) {
+      console.warn("Failed to evaluate segment via API, falling back to local:", e);
       const matching = getMatchingSegmentLeads();
       setPreviewCount(matching.length);
+      setQualifiedSegmentIds(new Set(matching.map((m: any) => m.id)));
+    } finally {
       setIsPreviewLoading(false);
-    }, 400);
+    }
   };
 
   const handleAddGroup = () => {
