@@ -406,15 +406,17 @@ export default function CrmPage() {
 
 
   const syncDealToDB = async (deal: Deal) => {
-    if (deal.id.startsWith("test-") || deal.id.startsWith("pend-")) return;
+    if (deal.id.startsWith('test-') || deal.id.startsWith('pend-')) return;
     try {
-      await fetch('/api/crm/activity', {
+      const res = await fetch('/api/crm/activity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'upsert', deal })
       });
+      const json = await res.json();
+      if (!json.success) console.error('DB save failed:', json.error);
     } catch (e) {
-      console.error("Error syncing deal to DB:", e);
+      console.error('Error syncing deal to DB:', e);
     }
   };
 
@@ -458,7 +460,7 @@ export default function CrmPage() {
     }
   };
 
-  const handleAddDeal = (newDeal: Deal) => {
+  const handleAddDeal = async (newDeal: Deal) => {
     const finalDeal = {
       ...newDeal,
       boardId: activeBoard,
@@ -466,8 +468,11 @@ export default function CrmPage() {
     } as Deal;
     setDeals((prev) => [finalDeal, ...prev]);
     dispatchNotification(finalDeal);
-    syncDealToDB(finalDeal);
     
+    // Wait for DB save first
+    await syncDealToDB(finalDeal);
+    
+    // Then broadcast to other users
     const w = window as any;
     if (w.__crm_pusher) {
       fetch('/api/pusher/trigger', {
