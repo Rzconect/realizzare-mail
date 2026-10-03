@@ -233,13 +233,6 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     { id: "active_in_flow", label: "Ativo na Automação" }
   ];
 
-  const pagarmeFields = [
-    { id: "payment_order_status", label: "Status do Pedido (Pagar.me)" },
-    { id: "payment_method", label: "Método de Pagamento" },
-    { id: "payment_amount", label: "Valor do Pedido" },
-    { id: "payment_product", label: "Produto Comprado" }
-  ];
-
   const allFieldsGrouped = [
     {
       title: "Informações pessoais do lead",
@@ -258,10 +251,6 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
       items: engagementFields
     },
     {
-      title: "Informações de Pagamento (Pagar.me)",
-      items: pagarmeFields
-    },
-    {
       title: "Campos personalizados",
       items: (customFields || []).map((cf) => ({
         id: `cf_${cf.tag}`,
@@ -275,7 +264,6 @@ function SearchableFieldDropdown({ value, onChange, customFields }: SearchableFi
     courseFields.find(f => f.id === value)?.label ||
     paymentFields.find(f => f.id === value)?.label ||
     engagementFields.find(f => f.id === value)?.label ||
-    pagarmeFields.find(f => f.id === value)?.label ||
     (customFields || []).find(cf => `cf_${cf.tag}` === value)?.name ||
     (customFields || []).find(cf => cf.tag === value)?.name ||
     value;
@@ -3198,7 +3186,7 @@ export default function ContactsPage() {
       const res = await fetch("/api/segments/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groups: segmentGroups })
+        body: JSON.stringify({ groups: segmentGroups, globalOperator })
       });
       if (res.ok) {
         const data = await res.json();

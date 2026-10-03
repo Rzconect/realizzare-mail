@@ -1889,14 +1889,29 @@ function CreateCampaignForm() {
     );
   };
 
-  const handleCalculatePreview = () => {
+  const handleCalculatePreview = async () => {
     setIsPreviewLoading(true);
     setPreviewCount(null);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/segments/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groups: segmentGroups, globalOperator })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPreviewCount(data.count ?? 0);
+        setQualifiedSegmentIds(new Set(data.ids ?? []));
+      } else {
+        const count = getMatchingContacts(contacts, segmentGroups, globalOperator, customFields).length;
+        setPreviewCount(count);
+      }
+    } catch (e) {
       const count = getMatchingContacts(contacts, segmentGroups, globalOperator, customFields).length;
       setPreviewCount(count);
+    } finally {
       setIsPreviewLoading(false);
-    }, 800);
+    }
   };
 
   const handleSaveSegment = async () => {

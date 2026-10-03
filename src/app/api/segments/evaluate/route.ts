@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: Request) {
   try {
-    const { groups } = await req.json();
+    const { groups, globalOperator = "and" } = await req.json();
     
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,17 +62,22 @@ export async function POST(req: Request) {
     const qualifiedIds: string[] = [];
     
     for (const contact of (allContacts ?? [])) {
-      let contactQualifies = true;
+      const groupResults: boolean[] = [];
       
       for (const group of groups) {
         if (!group.rules || group.rules.length === 0) continue;
-        
         const groupPasses = evaluateGroup(group, contact, evaluationContext);
-        if (!groupPasses) {
-          contactQualifies = false;
-          break;
-        }
+        groupResults.push(groupPasses);
       }
+
+      if (groupResults.length === 0) {
+        qualifiedIds.push(contact.id);
+        continue;
+      }
+
+      const contactQualifies = globalOperator === 'or' 
+        ? groupResults.some(r => r === true)
+        : groupResults.every(r => r === true);
       
       if (contactQualifies) qualifiedIds.push(contact.id);
     }
@@ -100,16 +105,30 @@ function evaluateGroup(group: any, contact: any, data: any): boolean {
       const targetCourse = String(courseRule.value || '').toLowerCase().trim();
 
       // Find enrollments and course_events for this specific course
+      const searchTerms = String(courseRule.value || '')
+        .split(',')
+        .map((v: string) => v.trim().toLowerCase())
+        .filter(Boolean);
+
+      const matchesCourse = (cName: string) => {
+        const cnLower = String(cName || '').toLowerCase().trim();
+        if (!cnLower || searchTerms.length === 0) return false;
+        return searchTerms.some((term: string) => {
+          if (courseRule.operator === 'contains' || courseRule.operator === 'contain') {
+            return cnLower.includes(term);
+          }
+          return cnLower === term || cnLower.includes(term);
+        });
+      };
+
       const myEnrollments = data.enrollments.filter((e: any) => {
         if (e.contact_id !== contact.id) return false;
-        const cName = (e.courses?.name || '').toLowerCase().trim();
-        return cName.includes(targetCourse) || targetCourse.includes(cName);
+        return matchesCourse(e.courses?.name);
       });
 
       const myEvents = data.courseEvents.filter((e: any) => {
         if (e.contact_id !== contact.id) return false;
-        const cName = (e.metadata?.course_name || '').toLowerCase().trim();
-        return cName.includes(targetCourse) || targetCourse.includes(cName);
+        return matchesCourse(e.metadata?.course_name);
       });
 
       const hasThisCourse = myEnrollments.length > 0 || myEvents.length > 0;
