@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     }
 
     const lists = dbLists && dbLists.length > 0 ? dbLists : [
-      { id: "list-clientes", name: "Clientes", description: "Informações sobre pedidos, confirmações e ofertas exclusivas." },
+      { id: "list-clientes", name: "Clientes", description: "Contatos inscritos através de uma transação." },
       { id: "list-alunos", name: "Alunos", description: "Avisos sobre seus cursos, progresso e emissão de certificados." },
       { id: "list-leads", name: "Leads & Novidades", description: "Lançamentos de cursos gratuitos, materiais e dicas de estudo." },
       { id: "list-professores", name: "Professores & Instrutores", description: "Comunicados acadêmicos e orientações para instrutores." }
@@ -162,7 +162,33 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Record conversion event in reporting_events
+    // 3. Synchronize with suppression_list
+    if (isCompletelyUnsubscribed) {
+      const { data: existingSup } = await supabase
+        .from("suppression_list")
+        .select("id")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (!existingSup) {
+        await supabase.from("suppression_list").insert({
+          org_id: "00000000-0000-0000-0000-000000000001",
+          email: cleanEmail,
+          reason: "unsubscribe",
+          origin: "Página de Preferências (Opt-out)",
+          removable: true
+        });
+      }
+    } else {
+      // If contact active in at least one list, remove from suppression_list
+      await supabase
+        .from("suppression_list")
+        .delete()
+        .eq("email", cleanEmail)
+        .eq("reason", "unsubscribe");
+    }
+
+    // 4. Record conversion event in reporting_events
     await supabase.from("reporting_events").insert({
       org_id: "00000000-0000-0000-0000-000000000001",
       contact_email: cleanEmail,

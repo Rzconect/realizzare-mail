@@ -59,34 +59,19 @@ function UnsubscribeContent() {
       }
     }
 
-    // Auto unsubscribe contact in Supabase if real contact
+    // Auto unsubscribe contact via API (updates contacts, list_subscriptions, and suppression_list)
     const executeUnsubscribe = async () => {
       if (!rawEmail) return;
       setIsLoading(true);
       try {
-        const supabase = createClient();
-        const { data: contact } = await supabase
-          .from("contacts")
-          .select("id")
-          .ilike("email", rawEmail.trim())
-          .maybeSingle();
-
-        if (contact?.id) {
-          await supabase.from("contacts").update({ status: "unsubscribed" }).eq("id", contact.id);
-          await supabase.from("list_subscriptions").update({ status: "unsubscribed" }).eq("contact_id", contact.id);
-
-          // Record real conversion event
-          fetch("/api/tracking/page", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              pageId: "page-unsubscribe-02",
-              slug: "unsubscribe",
-              type: "conversion",
-              email: rawEmail
-            })
-          }).catch(() => {});
-        }
+        await fetch("/api/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: rawEmail,
+            action: "unsubscribe"
+          })
+        });
       } catch (err) {
         console.error("Erro ao cancelar inscricao:", err);
       } finally {
@@ -100,18 +85,16 @@ function UnsubscribeContent() {
   const handleResubscribe = async () => {
     setIsLoading(true);
     try {
-      const supabase = createClient();
-      const { data: contact } = await supabase
-        .from("contacts")
-        .select("id")
-        .ilike("email", email.trim())
-        .maybeSingle();
-
-      if (contact?.id) {
-        await supabase
-          .from("contacts")
-          .update({ status: "active" })
-          .eq("id", contact.id);
+      const res = await fetch("/api/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          action: "resubscribe"
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
         setIsUnsubscribed(false);
       }
     } catch (err) {

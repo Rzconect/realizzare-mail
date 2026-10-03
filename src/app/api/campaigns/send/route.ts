@@ -227,6 +227,19 @@ export async function POST(req: Request) {
     const excludeSet = new Set(typeof excludeEmails !== "undefined" ? excludeEmails : []);
     recipients = Array.from(new Set(recipients.map((e: string) => e.trim().toLowerCase()))).filter(e => !excludeSet.has(e));
 
+    // Exclude emails in platform suppression_list (bounces, complaints, unsubscribes)
+    if (recipients.length > 0) {
+      const { data: suppressed } = await supabase
+        .from("suppression_list")
+        .select("email")
+        .in("email", recipients);
+
+      if (suppressed && suppressed.length > 0) {
+        const suppressedSet = new Set(suppressed.map((s: any) => (s.email || "").toLowerCase()));
+        recipients = recipients.filter((e) => !suppressedSet.has(e.toLowerCase()));
+      }
+    }
+
     let successCount = 0;
     const sendErrors: any[] = [];
 
@@ -276,7 +289,9 @@ export async function POST(req: Request) {
           html: personalizedHtml,
           headers: {
             "X-Campaign-ID": campaign.id,
-            "X-Contact-ID": contactId
+            "X-Contact-ID": contactId,
+            "List-Unsubscribe": `<${appUrl}/unsubscribe?email=${encodeURIComponent(recipientEmail)}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
           }
         });
         successCount++;
