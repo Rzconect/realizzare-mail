@@ -64,12 +64,13 @@ export async function POST(req: Request) {
       const matchingCname = cnameRecords.some(
         (target) =>
           target.toLowerCase().includes("realizzareconect.com.br") ||
+          target.toLowerCase().includes("vercel-dns.com") ||
           target.toLowerCase() === expectedTarget
       );
 
       if (matchingCname) {
         verified = true;
-        message = `Conexão validada com sucesso! O registro DNS CNAME de "${cleanDomain}" está ativo e apontando corretamente para "${expectedTarget}".`;
+        message = `Conexão validada com sucesso! O registro DNS CNAME de "${cleanDomain}" está ativo e apontando corretamente para nossa infraestrutura.`;
       } else {
         verified = false;
         message = `O domínio "${cleanDomain}" possui um registro CNAME apontando para "${cnameRecords[0]}", mas precisa apontar para "${expectedTarget}". Atualize seu provedor DNS.`;
