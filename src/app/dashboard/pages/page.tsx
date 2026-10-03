@@ -270,7 +270,7 @@ export default function PagesDashboard() {
   const handleCopyUrl = (page: PageItem) => {
     const fallbackUrl = page.isNative
       ? (page.slug === "descadastro" || page.slug === "unsubscribe" ? "https://realizzareconect.com.br/unsubscribe" : "https://realizzareconect.com.br/preferences")
-      : `https://realizzareconect.com.br/p/${page.slug}`;
+      : `https://realizzareconect.com.br/${page.slug}`;
     const url = page.url || fallbackUrl;
     navigator.clipboard.writeText(url);
     setOpenDropdownId(null);
@@ -285,7 +285,7 @@ export default function PagesDashboard() {
       id: newId,
       name: `${page.name} (Cópia)`,
       slug: duplicatedSlug,
-      url: `https://realizzareconect.com.br/p/${duplicatedSlug}`,
+      url: `https://realizzareconect.com.br/${duplicatedSlug}`,
       status: "draft",
       views: 0,
       conversions: 0,
@@ -326,7 +326,7 @@ export default function PagesDashboard() {
     }
 
     const slug = computedSlug;
-    const pageUrl = `https://${fullDomain}/p/${slug}`;
+    const pageUrl = `https://${fullDomain}/${slug}`;
 
     const newPage: PageItem = {
       id: `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
@@ -720,7 +720,7 @@ export default function PagesDashboard() {
                     const isDropdownOpen = openDropdownId === page.id;
                     const previewPath = page.slug === "preferences" || page.slug === "preferencias"
                       ? "/preferences"
-                      : (page.slug === "unsubscribe" || page.slug === "descadastro" ? "/unsubscribe" : `/p/${page.slug}`);
+                      : (page.slug === "unsubscribe" || page.slug === "descadastro" ? "/unsubscribe" : `/${page.slug}`);
 
                     return (
                       <tr key={page.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? "bg-blue-50/40" : ""} ${isDropdownOpen ? "relative z-40" : "relative z-0"}`}>
@@ -781,7 +781,7 @@ export default function PagesDashboard() {
                                   <span>
                                     {page.isNative
                                       ? (page.slug === "descadastro" || page.slug === "unsubscribe" ? "realizzareconect.com.br/unsubscribe" : "realizzareconect.com.br/preferences")
-                                      : (page.url?.replace(/^https?:\/\//, "") || `realizzareconect.com.br/p/${page.slug}`)}
+                                      : (page.url?.replace(/^https?:\/\//, "") || `realizzareconect.com.br/${page.slug}`)}
                                   </span>
                                   <ExternalLink className="h-3 w-3 shrink-0" />
                                 </a>
@@ -1376,7 +1376,7 @@ export default function PagesDashboard() {
       {/* ======================================================== */}
       {showCreatePageModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-150 pb-3">
               <h3 className="text-base font-black text-slate-900">Adicionar uma nova página</h3>
               <button onClick={() => setShowCreatePageModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -1462,34 +1462,34 @@ export default function PagesDashboard() {
               </div>
 
               {/* Box de Instruções DNS CNAME com Botões Copiar */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
-                <div className="flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                    <Server className="h-3.5 w-3.5 text-blue-600" />
-                    <span>Registro DNS CNAME para adicionar no provedor</span>
+                    <Server className="h-4 w-4 text-blue-600 shrink-0" />
+                    <span>Registro DNS CNAME para adicionar no seu provedor</span>
                   </div>
                   {effectiveBaseDomain === "realizzareconect.com.br" ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1 self-start sm:self-auto shrink-0">
                       <CheckCircle2 className="h-3 w-3" /> Domínio Oficial
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1 self-start sm:self-auto shrink-0">
                       <AlertTriangle className="h-3 w-3" /> Requer CNAME no DNS
                     </span>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                   {/* Campo 1: Tipo */}
-                  <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between shadow-2xs">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">1. Tipo</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">1. Tipo</span>
                       <span className="font-mono font-black text-slate-800 text-xs">CNAME</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopyDnsField("type", "CNAME")}
-                      className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
+                      className="mt-2.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
                     >
                       {copiedDnsKey === "type" ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
                       <span>{copiedDnsKey === "type" ? "Copiado!" : "Copiar"}</span>
@@ -1497,9 +1497,9 @@ export default function PagesDashboard() {
                   </div>
 
                   {/* Campo 2: Nome / Host */}
-                  <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between shadow-2xs">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">2. Nome / Host</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">2. Nome / Host</span>
                       <span className="font-mono font-black text-blue-700 text-xs truncate block" title={effectiveSubdomain || "@"}>
                         {effectiveSubdomain || "@"}
                       </span>
@@ -1507,7 +1507,7 @@ export default function PagesDashboard() {
                     <button
                       type="button"
                       onClick={() => handleCopyDnsField("host", effectiveSubdomain || "@")}
-                      className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
+                      className="mt-2.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
                     >
                       {copiedDnsKey === "host" ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
                       <span>{copiedDnsKey === "host" ? "Copiado!" : "Copiar"}</span>
@@ -1515,17 +1515,17 @@ export default function PagesDashboard() {
                   </div>
 
                   {/* Campo 3: Destino / Valor */}
-                  <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between shadow-2xs">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">3. Destino / Apontamento</span>
-                      <span className="font-mono font-black text-slate-800 text-xs truncate block" title="cname.realizzareconect.com.br">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">3. Destino / Apontamento</span>
+                      <span className="font-mono font-black text-slate-800 text-xs break-all block" title="cname.realizzareconect.com.br">
                         cname.realizzareconect.com.br
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopyDnsField("target", "cname.realizzareconect.com.br")}
-                      className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
+                      className="mt-2.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
                     >
                       {copiedDnsKey === "target" ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
                       <span>{copiedDnsKey === "target" ? "Copiado!" : "Copiar"}</span>
@@ -1533,10 +1533,10 @@ export default function PagesDashboard() {
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-500 leading-relaxed bg-white/70 p-2.5 rounded-xl border border-slate-150">
+                <div className="text-[11px] text-slate-500 leading-relaxed bg-white/80 p-2.5 rounded-xl border border-slate-150">
                   {effectiveBaseDomain === "realizzareconect.com.br" ? (
                     <p className="text-emerald-700 font-medium">
-                      💡 Domínio oficial da plataforma. Pronto para publicação com certificado SSL automático.
+                      💡 Domínio oficial da plataforma. Pronto para publicação imediata com certificado SSL automático.
                     </p>
                   ) : (
                     <p>
@@ -1566,14 +1566,14 @@ export default function PagesDashboard() {
                     </span>
                   )}
                 </div>
-                <div className={`flex items-center bg-slate-50 border rounded-xl px-3 py-2 text-xs transition-colors ${isSlugTaken ? "border-rose-400 bg-rose-50/30" : "border-slate-200"}`}>
-                  <span className="text-slate-400 font-mono text-[11px] shrink-0 font-medium">{`https://${fullDomain}/p/`}</span>
+                <div className={`flex items-center bg-slate-50 border rounded-xl px-3.5 py-2.5 text-xs transition-colors ${isSlugTaken ? "border-rose-400 bg-rose-50/30" : "border-slate-200"}`}>
+                  <span className="text-slate-400 font-mono text-xs shrink-0 font-medium">{`https://${fullDomain}/`}</span>
                   <input
                     type="text"
                     placeholder="curso-ia-gratis"
                     value={newPageSlug}
                     onChange={(e) => setNewPageSlug(e.target.value)}
-                    className="flex-1 bg-transparent font-mono font-bold text-slate-800 focus:outline-none ml-1 min-w-0"
+                    className="flex-1 bg-transparent font-mono font-bold text-slate-800 focus:outline-none ml-1.5 min-w-0"
                   />
                 </div>
                 {isSlugTaken && (
@@ -1582,8 +1582,8 @@ export default function PagesDashboard() {
                   </p>
                 )}
                 {computedSlug && !isSlugTaken && (
-                  <p className="text-[11px] text-slate-400 font-mono mt-1 truncate">
-                    Endereço final: <span className="text-indigo-600 font-bold">{`https://${fullDomain}/p/${computedSlug}`}</span>
+                  <p className="text-[11px] text-slate-400 font-mono mt-1.5 truncate">
+                    Endereço final: <span className="text-indigo-600 font-bold">{`https://${fullDomain}/${computedSlug}`}</span>
                   </p>
                 )}
               </div>
