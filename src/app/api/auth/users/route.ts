@@ -26,10 +26,14 @@ export async function GET() {
     }
 
     const mappedUsers = data.users.map(u => ({
+      id: u.id,
       email: u.email,
-      name: u.user_metadata?.name || 'Usuario',
-      role: u.user_metadata?.role || 'Editor',
-      isNewUser: u.user_metadata?.is_new_user === true
+      name: u.user_metadata?.name || (u.email ? u.email.split('@')[0] : 'Usuário'),
+      role: u.user_metadata?.role || (u.email?.toLowerCase() === 'contato@realizzarecursos.com.br' ? 'Administrador' : 'Editor'),
+      isNewUser: u.user_metadata?.is_new_user === true,
+      lastSignInAt: u.last_sign_in_at || u.updated_at || u.created_at,
+      createdAt: u.created_at,
+      lastPage: u.user_metadata?.last_page || '/dashboard'
     }));
 
     return NextResponse.json({ users: mappedUsers }, { status: 200 });

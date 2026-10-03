@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
         const { data: clickEvents } = await supabase
           .from("inbound_webhook_events")
           .select("payload")
-          .eq("event_type", "email.click")
+          .in("event_type", ["email.click", "email.clicked"])
           .filter("payload->>campaign_id", "eq", campaignId);
 
         const uniqueClickers = new Set<string>();

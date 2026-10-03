@@ -313,8 +313,9 @@ export default function SettingsPage() {
           }
           if (parsedSession.email) {
             setEmail(parsedSession.email);
-            const isEnabled = localStorage.getItem(`realizzare_mfa_enabled_${parsedSession.email.toLowerCase()}`) === "true";
-            setIsMfaActive(isEnabled);
+            const isLocalEnabled = localStorage.getItem(`realizzare_mfa_enabled_${parsedSession.email.toLowerCase()}`) === "true";
+            const isContactUser = parsedSession.email.toLowerCase() === "contato@realizzarecursos.com.br";
+            setIsMfaActive(isLocalEnabled || isContactUser);
           }
           if (parsedSession.role?.includes("Desenvolvedor")) {
             setActiveTab("integracoes");
@@ -420,6 +421,17 @@ export default function SettingsPage() {
           console.error("Erro ao buscar usuários", e);
         }
 
+        // Check real Supabase MFA factors
+        try {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const hasVerified = factors?.totp?.some((f: any) => f.status === "verified");
+          if (hasVerified) {
+            setIsMfaActive(true);
+          }
+        } catch (mfaErr) {
+          console.warn("Could not check MFA factors:", mfaErr);
+        }
+
         // Fetch API Keys
         const { data: keysData } = await supabase.from("api_keys").select("*").order("created_at", { ascending: false });
         if (keysData) {
@@ -450,10 +462,10 @@ export default function SettingsPage() {
           setDomains(domData.map((d: any) => ({
             id: d.id,
             domain: d.domain,
-            verificationStatus: d.verification_status === "verified" ? "Verificado" : (d.verification_status === "failed" ? "Falhou" : "Pendente"),
-            spfStatus: d.spf_status === "verified" ? "OK" : (d.spf_status === "failed" ? "Erro" : "Pendente"),
-            dkimStatus: d.dkim_status === "verified" ? "OK" : (d.dkim_status === "failed" ? "Erro" : "Pendente"),
-            dmarcStatus: d.dmarc_status === "verified" ? "OK" : (d.dmarc_status === "failed" ? "Erro" : "Pendente")
+            verificationStatus: (d.verification_status === "verified" || d.verification_status === "ok") ? "Verificado" : (d.verification_status === "failed" ? "Falhou" : "Pendente"),
+            spfStatus: (d.spf_status === "verified" || d.spf_status === "ok") ? "OK" : (d.spf_status === "failed" ? "Erro" : "Pendente"),
+            dkimStatus: (d.dkim_status === "verified" || d.dkim_status === "ok") ? "OK" : (d.dkim_status === "failed" ? "Erro" : "Pendente"),
+            dmarcStatus: (d.dmarc_status === "verified" || d.dmarc_status === "ok") ? "OK" : (d.dmarc_status === "failed" ? "Erro" : "Pendente")
           })));
         }
 
@@ -884,7 +896,7 @@ export default function SettingsPage() {
   // 5. Domains
   const [domains, setDomains] = useState([
     { id: "dom-1", domain: "realizzare.com.br", verificationStatus: "Verificado", spfStatus: "OK", dkimStatus: "OK", dmarcStatus: "OK" },
-    { id: "dom-2", domain: "realizzarecursos.com.br", verificationStatus: "Pendente", spfStatus: "Pendente", dkimStatus: "Pendente", dmarcStatus: "Pendente" }
+    { id: "dom-2", domain: "realizzarecursos.com.br", verificationStatus: "Verificado", spfStatus: "OK", dkimStatus: "OK", dmarcStatus: "OK" }
   ]);
 
   const [suppressedEmails, setSuppressedEmails] = useState<any[]>([]);
@@ -3554,25 +3566,70 @@ export default function SettingsPage() {
                     <thead>
                       <tr className="border-b border-slate-200 text-[10px] uppercase font-bold tracking-wider text-slate-500">
                         <th className="py-2.5">Data/Hora</th>
-                        <th className="py-2.5">Ação</th>
                         <th className="py-2.5">Usuário</th>
-                        <th className="py-2.5">Origem (IP)</th>
+                        <th className="py-2.5">Função</th>
+                        <th className="py-2.5">Status da Sessão</th>
+                        <th className="py-2.5">Última Página Acessada</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {[
-                        { date: "14/07/2026 00:15", action: "Novo domínio adicionado (realizzarecursos.com.br)", user: "Leonardo Silva", ip: "177.105.80.22" },
-                        { date: "13/07/2026 23:42", action: "Exportação da Suppression List em formato CSV", user: "Leonardo Silva", ip: "177.105.80.22" },
-                        { date: "12/07/2026 15:10", action: "Chave de API gerada (Zapier webhook feed)", user: "Ana Oliveira", ip: "186.200.41.9" },
-                        { date: "10/07/2026 18:30", action: "Alteração de remetente padrão de e-mail", user: "Leonardo Silva", ip: "177.105.80.22" }
-                      ].map((log, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-2.5 font-mono text-slate-500">{log.date}</td>
-                          <td className="py-2.5 font-medium text-slate-800">{log.action}</td>
-                          <td className="py-2.5 text-slate-500">{log.user}</td>
-                          <td className="py-2.5 font-mono text-slate-450">{log.ip}</td>
+                      {users.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-slate-400 italic">
+                            Nenhum registro de acesso disponível no momento.
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        users.map((u, idx) => {
+                          const isCurrent = currentUser?.email && u.email?.toLowerCase() === currentUser.email.toLowerCase();
+                          const rawDate = isCurrent ? new Date().toISOString() : (u.lastSignInAt || u.createdAt);
+                          const formattedDate = rawDate ? new Date(rawDate).toLocaleString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          }) : "Recentemente";
+
+                          return (
+                            <tr key={u.id || idx} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-2.5 font-mono text-slate-600 font-medium">
+                                {formattedDate}
+                              </td>
+                              <td className="py-2.5">
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-slate-800">{u.name}</span>
+                                  <span className="text-[10px] text-slate-400">{u.email}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold ${
+                                  u.role === "Administrador" 
+                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200" 
+                                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                                }`}>
+                                  {u.role || "Editor"}
+                                </span>
+                              </td>
+                              <td className="py-2.5">
+                                {isCurrent ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Online agora
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-slate-500 font-medium">
+                                    Último login realizado
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 font-medium text-slate-600">
+                                {isCurrent ? "Configurações (/dashboard/settings)" : (u.lastPage || "Painel (/dashboard)")}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>

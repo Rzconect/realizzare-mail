@@ -2208,8 +2208,8 @@ export default function ContactsPage() {
         const lastPaidMap: Record<string, string> = {};
 
         const [purchasesRes, cEventsRes, contactsRes, eventsRes] = await Promise.all([
-          supabase.from("purchases").select("contact_id, product_name, sku, status"),
-          supabase.from("course_events").select("contact_id, event_type"),
+          supabase.from("purchases").select("contact_id, product_name, sku, status, amount"),
+          supabase.from("course_events").select("contact_id, event_type, metadata, id"),
           supabase.from("contacts").select(`
             id,
             first_name,
@@ -2250,22 +2250,51 @@ export default function ContactsPage() {
           if (p.contact_id && (p.status === "paid" || p.status === "approved" || p.status === "Pago")) {
             const nameLower = String(p.product_name || "").toLowerCase();
             const sku = String(p.sku || "");
-            if (
-              nameLower.includes("certificado") ||
-              nameLower.includes("impresso") ||
-              nameLower.includes("assinatura") ||
-              ["1", "2", "3", "179", "180"].includes(sku)
-            ) {
-              purchasedCreditsMap[p.contact_id] = (purchasedCreditsMap[p.contact_id] || 0) + 1;
+            const price = Number(p.amount || 0);
+
+            let added = 0;
+            if (nameLower.includes("impresso ies/mec") || sku === "180") { 
+              if (price <= 86.00) added = 1;
+              else if (price <= 155.00) added = 2;
+              else if (price <= 227.00) added = 3;
+              else added = 5;
+            } else if (nameLower.includes("ies/mec") || sku === "179") { 
+              if (price <= 56.00) added = 1;
+              else if (price <= 101.00) added = 2;
+              else if (price <= 147.00) added = 3;
+              else added = 5;
+            } else if (nameLower.includes("+ impresso") || sku === "2") { 
+              added = 1;
+            } else if (nameLower.includes("assinatura mensal") || sku === "3") { 
+              added = 1; 
+            } else if (nameLower.includes("certificado") || ["1", "2", "3"].includes(sku)) { 
+              if (price <= 46.00) added = 1;
+              else if (price <= 83.00) added = 2;
+              else if (price <= 121.00) added = 3;
+              else added = 5;
+            }
+
+            if (added > 0) {
+              purchasedCreditsMap[p.contact_id] = (purchasedCreditsMap[p.contact_id] || 0) + added;
             }
           }
         });
 
+        const contactConsumedCourses = new Map<string, Set<string>>();
         const cEventsData = cEventsRes.data || [];
         cEventsData.forEach((ce: any) => {
           if (ce.contact_id && ce.event_type === "certificate_issued") {
             certEventsContactSet.add(ce.contact_id);
-            consumedCreditsMap[ce.contact_id] = (consumedCreditsMap[ce.contact_id] || 0) + 1;
+            const cName = ce.course_name || ce.metadata?.course_name || ce.metadata?.course || "";
+            if (!contactConsumedCourses.has(ce.contact_id)) {
+              contactConsumedCourses.set(ce.contact_id, new Set());
+            }
+            const set = contactConsumedCourses.get(ce.contact_id)!;
+            const courseKey = (cName || ce.id).toLowerCase().trim();
+            if (!set.has(courseKey)) {
+              set.add(courseKey);
+              consumedCreditsMap[ce.contact_id] = (consumedCreditsMap[ce.contact_id] || 0) + 1;
+            }
           }
         });
 

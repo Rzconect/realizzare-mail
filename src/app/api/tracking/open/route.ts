@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         const { data: openEvents } = await supabase
           .from("inbound_webhook_events")
           .select("payload")
-          .eq("event_type", "email.open")
+          .in("event_type", ["email.open", "email.opened"])
           .filter("payload->>campaign_id", "eq", campaignId);
 
         const uniqueOpeners = new Set<string>();
