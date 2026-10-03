@@ -500,7 +500,7 @@ export default function PagesDashboard() {
       {/* TAB 1: PÁGINAS (Main Table View) */}
       {/* ======================================================== */}
       {activeTab === "paginas" && (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-32">
           {/* Action and Filter Bar */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1">
@@ -552,7 +552,7 @@ export default function PagesDashboard() {
           </div>
 
           {/* Table Container */}
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-visible min-h-[380px]">
             {isLoadingPages ? (
               <div className="py-20 text-center space-y-3">
                 <RefreshCw className="h-6 w-6 text-blue-600 animate-spin mx-auto" />
@@ -601,7 +601,7 @@ export default function PagesDashboard() {
                     const previewPath = page.slug === "preferences" ? "/preferences" : (page.slug === "unsubscribe" ? "/unsubscribe" : `/${page.slug}`);
 
                     return (
-                      <tr key={page.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? "bg-blue-50/40" : ""}`}>
+                      <tr key={page.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? "bg-blue-50/40" : ""} ${isDropdownOpen ? "relative z-40" : "relative z-0"}`}>
                         {/* Checkbox */}
                         <td className="py-4 px-4">
                           <input
@@ -709,108 +709,119 @@ export default function PagesDashboard() {
 
                             {/* Functional Menu Popover */}
                             {isDropdownOpen && (
-                              <div className="absolute right-0 top-full mt-1.5 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 py-2 text-left animate-fadeIn">
-                                {/* 1. Ver configurações da página */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setConfigModalPage(page);
+                              <>
+                                {/* Click-outside backdrop */}
+                                <div
+                                  className="fixed inset-0 z-40 cursor-default"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setOpenDropdownId(null);
                                   }}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Settings className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Ver configurações da página</span>
-                                </button>
+                                />
 
-                                {/* 2. Ver página online */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    window.open(previewPath, "_blank");
-                                    setOpenDropdownId(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Ver página online</span>
-                                </button>
+                                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 py-1.5 text-left animate-fadeIn">
+                                  {/* 1. Ver configurações da página */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setConfigModalPage(page);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <Settings className="h-4 w-4 text-slate-400" />
+                                    <span>Ver configurações da página</span>
+                                  </button>
 
-                                {/* 3. Cancelar publicação / Publicar */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleTogglePublish(page)}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <RefreshCw className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>{page.status === "published" ? "Cancelar publicação" : "Publicar agora"}</span>
-                                </button>
+                                  {/* 2. Ver página online */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      window.open(previewPath, "_blank");
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <ExternalLink className="h-4 w-4 text-slate-400" />
+                                    <span>Ver página online</span>
+                                  </button>
 
-                                <div className="border-t border-slate-100 my-1" />
+                                  {/* 3. Cancelar publicação / Publicar */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePublish(page)}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <RefreshCw className="h-4 w-4 text-slate-400" />
+                                    <span>{page.status === "published" ? "Cancelar publicação" : "Publicar agora"}</span>
+                                  </button>
 
-                                {/* 4. Obter URL */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyUrl(page)}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Copy className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Obter URL</span>
-                                </button>
+                                  <div className="border-t border-slate-100 my-1" />
 
-                                {/* 5. Editar URL */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditUrlModalPage(page);
-                                    setEditUrlValue(page.slug);
-                                    setOpenDropdownId(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Edit3 className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Editar URL</span>
-                                </button>
+                                  {/* 4. Obter URL */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyUrl(page)}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <Copy className="h-4 w-4 text-slate-400" />
+                                    <span>Obter URL</span>
+                                  </button>
 
-                                {/* 6. Duplicar */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleDuplicate(page)}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Layers className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Duplicar</span>
-                                </button>
+                                  {/* 5. Editar URL */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditUrlModalPage(page);
+                                      setEditUrlValue(page.slug);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <Edit3 className="h-4 w-4 text-slate-400" />
+                                    <span>Editar URL</span>
+                                  </button>
 
-                                {/* 7. Renomear */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setRenameModalPage(page);
-                                    setRenameValue(page.name);
-                                    setOpenDropdownId(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <FileText className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Renomear</span>
-                                </button>
+                                  {/* 6. Duplicar */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDuplicate(page)}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <Layers className="h-4 w-4 text-slate-400" />
+                                    <span>Duplicar</span>
+                                  </button>
 
-                                <div className="border-t border-slate-100 my-1" />
+                                  {/* 7. Renomear */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setRenameModalPage(page);
+                                      setRenameValue(page.name);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <FileText className="h-4 w-4 text-slate-400" />
+                                    <span>Renomear</span>
+                                  </button>
 
-                                {/* 8. Excluir */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setDeleteConfirmPage(page);
-                                    setOpenDropdownId(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                                  <span>Excluir</span>
-                                </button>
-                              </div>
+                                  <div className="border-t border-slate-100 my-1" />
+
+                                  {/* 8. Excluir */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDeleteConfirmPage(page);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2.5 cursor-pointer transition-colors"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                    <span>Excluir</span>
+                                  </button>
+                                </div>
+                              </>
                             )}
                           </div>
                         </td>
@@ -1742,7 +1753,7 @@ export default function PagesDashboard() {
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Novo Slug</label>
               <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
-                <span className="text-slate-400 font-mono">realizzarecursos.com.br/</span>
+                <span className="text-slate-400 font-mono">realizzareconect.com.br/</span>
                 <input
                   type="text"
                   value={editUrlValue}
@@ -1768,7 +1779,7 @@ export default function PagesDashboard() {
                     const updated = {
                       ...editUrlModalPage,
                       slug: slug,
-                      url: `https://realizzarecursos.com.br/${slug}`
+                      url: `https://realizzareconect.com.br/${slug}`
                     };
                     await savePageToAPI(updated);
                     setEditUrlModalPage(null);
