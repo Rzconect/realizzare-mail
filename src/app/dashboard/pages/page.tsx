@@ -28,7 +28,11 @@ import {
   Smartphone,
   Server,
   Share2,
-  Filter
+  Filter,
+  Users,
+  List,
+  Link2,
+  Sparkles
 } from "lucide-react";
 
 interface PageItem {
@@ -48,19 +52,9 @@ interface PageItem {
   isNative: boolean;
 }
 
-interface FormItem {
-  id: string;
-  name: string;
-  type: "inline" | "popup" | "floating_bar";
-  status: "published" | "draft";
-  submissions: number;
-  conversionRate: number;
-  createdAt: string;
-}
-
 export default function PagesDashboard() {
-  // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<"paginas" | "formularios" | "dominios" | "rastreamento">("paginas");
+  // Navigation Tabs (without standalone formulários tab)
+  const [activeTab, setActiveTab] = useState<"paginas" | "dominios" | "rastreamento">("paginas");
 
   // Notification Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -131,33 +125,36 @@ export default function PagesDashboard() {
     }
   };
 
+  // Fetch Domains from API / DB
+  const fetchDomains = async () => {
+    try {
+      const res = await fetch("/api/pages/domains");
+      const data = await res.json();
+      const nativeDomain = {
+        id: "dom-native-realizzareconect",
+        domain: "realizzareconect.com.br",
+        status: "connected",
+        cnameHost: "@",
+        cnameTarget: "cname.realizzareconect.com.br",
+        lastCheck: "Nativo",
+        isNative: true
+      };
+
+      if (data.success && Array.isArray(data.domains)) {
+        const nonNative = data.domains.filter((d: any) => d.domain !== "realizzareconect.com.br");
+        setDomains([nativeDomain, ...nonNative]);
+      } else {
+        setDomains([nativeDomain]);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar domínios:", err);
+    }
+  };
+
   useEffect(() => {
     fetchPages();
-    // Load sending_domains from Supabase
-    (async () => {
-      try {
-        const { createClient } = await import("@/lib/supabase/client");
-        const supabase = createClient();
-        const { data } = await supabase.from("sending_domains").select("domain, verification_status");
-        if (data && data.length > 0) {
-          const domList = data.map((d: any) => ({
-            id: `dom-${d.domain}`,
-            domain: d.domain,
-            status: d.verification_status === "verified" ? "connected" : "pending",
-            cnameHost: "lp",
-            cnameTarget: "cname.realizzareconect.com.br",
-            lastCheck: "Verificado"
-          }));
-          setDomains((prev) => {
-            const existing = new Set(prev.map((p) => p.domain));
-            const newDoms = domList.filter((d: any) => !existing.has(d.domain));
-            return [...prev, ...newDoms];
-          });
-        }
-      } catch (err) {
-        console.error("Erro ao carregar domínios:", err);
-      }
-    })();
+    fetchDomains();
+    fetchLists();
   }, []);
 
   // Base domains available for landing pages
@@ -426,13 +423,151 @@ export default function PagesDashboard() {
   };
 
   // ==========================================
-  // TAB 2: FORMULÁRIOS STATE
+  // LIST INTEGRATION STATE (Modal Engrenagem no Editor HTML)
   // ==========================================
-  const [forms, setForms] = useState<FormItem[]>([]);
-  const [showEmbedCodeModal, setShowEmbedCodeModal] = useState<FormItem | null>(null);
+  interface PlatformList {
+    id: string;
+    name: string;
+    description: string;
+    subscriber_count: number;
+    type?: string;
+  }
+
+  const [availableLists, setAvailableLists] = useState<PlatformList[]>([]);
+  const [isLoadingLists, setIsLoadingLists] = useState(false);
+  const [selectedListId, setSelectedListId] = useState<string>("");
+  const [showListIntegrationModal, setShowListIntegrationModal] = useState(false);
+  const [formRedirectUrl, setFormRedirectUrl] = useState("https://realizzarecursos.com.br");
+  const [showCreateListModal, setShowCreateListModal] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [newListDesc, setNewListDesc] = useState("");
+  const [isCreatingList, setIsCreatingList] = useState(false);
+  const [copiedListId, setCopiedListId] = useState<string | null>(null);
+
+  // Fetch Lists from DB
+  const fetchLists = async () => {
+    setIsLoadingLists(true);
+    try {
+      const res = await fetch("/api/lists");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.lists)) {
+        setAvailableLists(data.lists);
+        if (data.lists.length > 0) {
+          setSelectedListId((prev) => {
+            if (prev) return prev;
+            const leads = data.lists.find((l: any) => l.name.toLowerCase() === "leads");
+            return leads ? leads.id : data.lists[0].id;
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao carregar listas:", err);
+    } finally {
+      setIsLoadingLists(false);
+    }
+  };
+
+  // Create New List on the Spot
+  const handleCreateList = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newListName.trim()) {
+      showToast("Por favor, informe o nome da nova lista.");
+      return;
+    }
+    setIsCreatingList(true);
+    try {
+      const res = await fetch("/api/lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newListName.trim(),
+          description: newListDesc.trim()
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.list) {
+        setAvailableLists((prev) => [...prev, data.list]);
+        setSelectedListId(data.list.id);
+        setShowCreateListModal(false);
+        setNewListName("");
+        setNewListDesc("");
+        showToast(`Lista "${data.list.name}" criada com sucesso!`);
+      } else {
+        showToast(`Erro ao criar lista: ${data.error || "Erro desconhecido"}`);
+      }
+    } catch (err) {
+      console.error("Erro ao criar lista:", err);
+      showToast("Erro ao criar nova lista.");
+    } finally {
+      setIsCreatingList(false);
+    }
+  };
+
+  // Form HTML Generator
+  const getFormHtmlCode = () => {
+    const list = availableLists.find((l) => l.id === selectedListId) || availableLists[0];
+    const pageId = editingDesignPage?.id || "page-id";
+    const slug = editingDesignPage?.slug || "landing-page";
+    const listId = list?.id || selectedListId || "list-id";
+    const listName = list?.name || "Leads";
+    const redirect = formRedirectUrl.trim() || "https://realizzarecursos.com.br";
+
+    return `<!-- ======================================================== -->
+<!-- Formulário Realizzare Mail - Lista: ${listName} -->
+<!-- ======================================================== -->
+<form action="https://realizzareconect.com.br/api/forms/submit" method="POST" class="w-full max-w-md mx-auto bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-100 space-y-4 font-sans text-slate-800">
+  <!-- Identificadores da página e lista no Realizzare Mail -->
+  <input type="hidden" name="page_id" value="${pageId}" />
+  <input type="hidden" name="slug" value="${slug}" />
+  <input type="hidden" name="list_id" value="${listId}" />
+  <input type="hidden" name="redirect_url" value="${redirect}" />
+
+  <div class="text-center space-y-1 pb-1">
+    <h3 class="text-lg font-black text-slate-900 tracking-tight">Garanta seu Acesso Gratuito</h3>
+    <p class="text-xs text-slate-500 font-medium">Preencha seus dados para receber o conteúdo:</p>
+  </div>
+
+  <div>
+    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nome Completo</label>
+    <input type="text" name="name" required placeholder="Digite seu nome completo" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition-all" />
+  </div>
+
+  <div>
+    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">E-mail</label>
+    <input type="email" name="email" required placeholder="seu@email.com" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition-all" />
+  </div>
+
+  <div>
+    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">WhatsApp / Telefone</label>
+    <input type="tel" name="phone" placeholder="(11) 99999-9999" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition-all" />
+  </div>
+
+  <button type="submit" class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 hover:scale-[1.01] active:scale-[0.99] transition-all text-xs uppercase tracking-wider cursor-pointer">
+    Quero me Inscrever Agora
+  </button>
+
+  <p class="text-[10px] text-center text-slate-400">
+    Seus dados estão protegidos. Respeitamos sua privacidade.
+  </p>
+</form>`;
+  };
+
+  // Helper to Insert Form snippet into the HTML editor
+  const handleInsertFormIntoHtml = () => {
+    const snippet = getFormHtmlCode();
+    if (!snippet) return;
+
+    if (designHtml.includes("</body>")) {
+      setDesignHtml((prev) => prev.replace("</body>", `  ${snippet}\n</body>`));
+    } else {
+      setDesignHtml((prev) => `${prev}\n\n${snippet}`);
+    }
+    showToast("Formulário inserido no código HTML com sucesso!");
+    setShowListIntegrationModal(false);
+  };
 
   // ==========================================
-  // TAB 3: DOMÍNIOS STATE & 3-STEP MODAL
+  // DOMÍNIOS STATE & REAL DNS VERIFICATION
   // ==========================================
   const [domainSearchQuery, setDomainSearchQuery] = useState("");
   const [isTestingDomain, setIsTestingDomain] = useState<string | null>(null);
@@ -450,31 +585,86 @@ export default function PagesDashboard() {
     setShowDomainModal(true);
   };
 
-  const handleTestDomainConnection = (domainId: string) => {
+  // Real DNS CNAME Testing
+  const handleTestDomainConnection = async (domainId: string, domainName: string) => {
     setIsTestingDomain(domainId);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/domains/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: domainName })
+      });
+      const data = await res.json();
+      if (data.verified) {
+        setDomains((prev) =>
+          prev.map((d) =>
+            d.id === domainId ? { ...d, status: "connected", lastCheck: "Agora" } : d
+          )
+        );
+        showToast(data.message || "Conexão validada com sucesso! O registro DNS CNAME está ativo.");
+      } else {
+        setDomains((prev) =>
+          prev.map((d) =>
+            d.id === domainId ? { ...d, status: "pending", lastCheck: "Agora" } : d
+          )
+        );
+        showToast(data.message || "CNAME não validado no DNS público. Aguarde a propagação.");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Erro ao testar conexão DNS.");
+    } finally {
       setIsTestingDomain(null);
-      showToast("Conexão validada com sucesso! O registro DNS CNAME está ativo.");
-    }, 1200);
+    }
   };
 
-  const handleSaveDomain = () => {
+  // Real Domain Creation (defaults to "pending")
+  const handleSaveDomain = async () => {
     if (!inputCustomDomain.trim()) return;
     const cleanDomain = inputCustomDomain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-    const host = cleanDomain.split(".")[0] || "conteudos";
+    const host = cleanDomain.split(".")[0] || "conteudo";
 
-    const newDomain = {
-      id: `dom-${Date.now()}`,
-      domain: cleanDomain,
-      status: "connected",
-      cnameHost: host,
-      cnameTarget: "cname.realizzareconect.com.br",
-      lastCheck: "Agora"
-    };
+    try {
+      const res = await fetch("/api/pages/domains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: cleanDomain,
+          cnameHost: host,
+          cnameTarget: "cname.realizzareconect.com.br"
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.domain) {
+        setDomains((prev) => [data.domain, ...prev.filter((d) => d.domain !== cleanDomain)]);
+        setShowDomainModal(false);
+        showToast(`Domínio "${cleanDomain}" adicionado com status Pendente.`);
 
-    setDomains((prev) => [newDomain, ...prev]);
-    setShowDomainModal(false);
-    showToast(`Domínio "${cleanDomain}" adicionado com sucesso!`);
+        // Trigger real DNS check
+        handleTestDomainConnection(data.domain.id, cleanDomain);
+      } else {
+        showToast(data.error || "Erro ao salvar domínio.");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Erro ao salvar domínio.");
+    }
+  };
+
+  // Delete Custom Domain
+  const handleDeleteDomain = async (domainName: string) => {
+    if (domainName === "realizzareconect.com.br") {
+      showToast("O domínio nativo não pode ser removido.");
+      return;
+    }
+    try {
+      await fetch(`/api/pages/domains?domain=${encodeURIComponent(domainName)}`, { method: "DELETE" });
+      setDomains((prev) => prev.filter((d) => d.domain !== domainName));
+      showToast(`Domínio "${domainName}" removido.`);
+    } catch (e) {
+      console.error(e);
+      showToast("Erro ao remover domínio.");
+    }
   };
 
   // ==========================================
@@ -561,23 +751,6 @@ export default function PagesDashboard() {
             <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
               {pages.length}
             </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("formularios")}
-            className={`pb-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === "formularios"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-            <span>Formulários</span>
-            {forms.length > 0 && (
-              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
-                {forms.length}
-              </span>
-            )}
           </button>
 
           <button
@@ -962,136 +1135,7 @@ export default function PagesDashboard() {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 2: FORMULÁRIOS */}
-      {/* ======================================================== */}
-      {activeTab === "formularios" && (
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-base font-bold text-slate-850">Formulários de Captura e Inscrição</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Crie formulários incorporáveis ou pop-ups para capturar novos contatos e leads diretamente nas suas páginas ou em sites externos.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const newF: FormItem = {
-                    id: `form-${Date.now()}`,
-                    name: `Novo Formulário de Captura #${forms.length + 1}`,
-                    type: "inline",
-                    status: "draft",
-                    submissions: 0,
-                    conversionRate: 0,
-                    createdAt: new Date().toISOString()
-                  };
-                  setForms((prev) => [newF, ...prev]);
-                  showToast("Novo formulário criado com sucesso!");
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Criar Formulário</span>
-              </button>
-            </div>
-
-            {forms.length === 0 ? (
-              <div className="py-16 text-center space-y-3 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 mt-4">
-                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 mx-auto shadow-2xs">
-                  <FileText className="h-6 w-6 text-slate-400" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-800">Nenhum formulário cadastrado</h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-                  Você ainda não criou nenhum formulário de captura ou pop-up. Clique no botão abaixo para criar seu primeiro formulário.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newF: FormItem = {
-                      id: `form-${Date.now()}`,
-                      name: `Formulário de Inscrição #${forms.length + 1}`,
-                      type: "inline",
-                      status: "draft",
-                      submissions: 0,
-                      conversionRate: 0,
-                      createdAt: new Date().toISOString()
-                    };
-                    setForms([newF]);
-                    showToast("Formulário criado com sucesso!");
-                  }}
-                  className="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Criar Primeiro Formulário</span>
-                </button>
-              </div>
-            ) : (
-              <div className="border border-slate-200 rounded-2xl overflow-hidden mt-4">
-                <table className="w-full border-collapse text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3 px-4">Nome do Formulário</th>
-                      <th className="py-3 px-4">Tipo</th>
-                      <th className="py-3 px-4 text-center">Status</th>
-                      <th className="py-3 px-4 text-center">Submissões</th>
-                      <th className="py-3 px-4 text-center">Taxa de Conversão</th>
-                      <th className="py-3 px-4 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {forms.map((form) => (
-                      <tr key={form.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-slate-800">
-                          {form.name}
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-500 capitalize">
-                          {form.type === "inline" ? "Incorporado (Inline)" : (form.type === "popup" ? "Pop-up / Modal" : "Barra Flutuante")}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            {form.status === "published" ? "Publicado" : "Rascunho"}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                          {form.submissions}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                          {form.conversionRate}%
-                        </td>
-                        <td className="py-3.5 px-4 text-right space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowEmbedCodeModal(form)}
-                            className="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors"
-                          >
-                            Obter Embed
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setForms(forms.filter((f) => f.id !== form.id));
-                              showToast("Formulário removido.");
-                            }}
-                            className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* TAB 3: DOMÍNIOS */}
+      {/* TAB: DOMÍNIOS */}
       {/* ======================================================== */}
       {activeTab === "dominios" && (
         <div className="space-y-6">
@@ -1153,16 +1197,28 @@ export default function PagesDashboard() {
                             <div className="flex items-center gap-2.5">
                               <Server className="h-4 w-4 text-slate-400" />
                               <span className="font-mono font-bold text-slate-800 text-xs">{dom.domain}</span>
+                              {dom.domain === "realizzareconect.com.br" && (
+                                <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.5 rounded-md">
+                                  Oficial
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="py-4 px-4 text-center">
-                            <div className="inline-flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50" />
-                              <span className="text-xs font-medium text-emerald-700">Conectado</span>
-                            </div>
+                            {dom.status === "connected" ? (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50" />
+                                <span className="text-xs font-bold text-emerald-700">Conectado</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200">
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                <span className="text-xs font-bold text-amber-700">Pendente</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-4 px-4 text-center text-slate-500 font-mono text-[11px]">
-                            {dom.cnameHost} → {dom.cnameTarget}
+                            {dom.cnameHost || "lp"} → {dom.cnameTarget || "cname.realizzareconect.com.br"}
                           </td>
                           <td className="py-4 px-4 text-right space-x-2">
                             <button
@@ -1180,7 +1236,7 @@ export default function PagesDashboard() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleTestDomainConnection(dom.id)}
+                              onClick={() => handleTestDomainConnection(dom.id, dom.domain)}
                               disabled={isTestingDomain === dom.id}
                               className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors cursor-pointer"
                             >
@@ -1192,6 +1248,16 @@ export default function PagesDashboard() {
                                 "Testar conexão"
                               )}
                             </button>
+                            {dom.domain !== "realizzareconect.com.br" && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDomain(dom.domain)}
+                                className="p-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors cursor-pointer"
+                                title="Remover domínio"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1702,6 +1768,20 @@ export default function PagesDashboard() {
                   </button>
                 </div>
 
+                {/* Gear button: Vincular Lista & Formulário */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetchLists();
+                    setShowListIntegrationModal(true);
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  title="Vincular Lista & Formulário"
+                >
+                  <Settings className="h-4 w-4 text-blue-400" />
+                  <span className="hidden sm:inline">Vincular Lista / Formulário</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handleSaveDesign}
@@ -2104,7 +2184,7 @@ export default function PagesDashboard() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Novo Caminho (Slug)</label>
                 <div className={`flex items-center bg-slate-50 border rounded-xl px-3 py-2 text-xs transition-colors ${isEditSlugTaken ? "border-rose-400 bg-rose-50/30" : "border-slate-200"}`}>
-                  <span className="text-slate-400 font-mono text-[11px] shrink-0">realizzareconect.com.br/p/</span>
+                  <span className="text-slate-400 font-mono text-[11px] shrink-0">realizzareconect.com.br/</span>
                   <input
                     type="text"
                     value={editUrlValue}
@@ -2136,7 +2216,7 @@ export default function PagesDashboard() {
                       const updated = {
                         ...editUrlModalPage,
                         slug: cleanEditSlug,
-                        url: `https://realizzareconect.com.br/p/${cleanEditSlug}`
+                        url: `https://realizzareconect.com.br/${cleanEditSlug}`
                       };
                       await savePageToAPI(updated);
                       setPages((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -2194,38 +2274,268 @@ export default function PagesDashboard() {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL: OBTER CÓDIGO EMBED DO FORMULÁRIO */}
+      {/* MODAL: VINCULAR LISTA & FORMULÁRIO (ENGRENAGEM) */}
       {/* ======================================================== */}
-      {showEmbedCodeModal && (
+      {showListIntegrationModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-150 pb-3">
-              <h3 className="text-base font-black text-slate-900">Código de Incorporação (Embed)</h3>
-              <button onClick={() => setShowEmbedCodeModal(null)} className="text-slate-400 hover:text-slate-600">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-6 text-slate-800">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-150 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                    <Settings className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900">Vincular Lista & Formulário da Página</h3>
+                </div>
+                <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
+                  Selecione uma lista de contatos para onde os leads capturados neste formulário serão direcionados. Cada envio de formulário cadastrará o lead no CRM, inscreverá na lista selecionada e contabilizará como conversão real desta página.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowListIntegrationModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-500">
-              Copie o código abaixo e cole no HTML da sua página onde deseja exibir o <strong>{showEmbedCodeModal.name}</strong>:
-            </p>
+            {/* Section 1: Seleção de Listas & Criar Nova Lista */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Listas Disponíveis na Plataforma</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Escolha a lista vinculada ao formulário desta landing page:
+                  </p>
+                </div>
 
-            <div className="bg-slate-900 text-slate-200 p-4 rounded-2xl font-mono text-xs overflow-x-auto">
-              {`<div id="rz-form-${showEmbedCodeModal.id}"></div>
-<script src="https://realizzareconect.com.br/api/tracking/page.js?form=${showEmbedCodeModal.id}"></script>`}
+                <button
+                  type="button"
+                  onClick={() => setShowCreateListModal(!showCreateListModal)}
+                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{showCreateListModal ? "Fechar Criação" : "+ Criar Nova Lista"}</span>
+                </button>
+              </div>
+
+              {/* Inline Form to Create New List */}
+              {showCreateListModal && (
+                <form
+                  onSubmit={handleCreateList}
+                  className="bg-slate-50 border-2 border-indigo-200 rounded-2xl p-4 space-y-3 animate-fadeIn shadow-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                      Criar Nova Lista no Realizzare Mail
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">Salva imediatamente no banco de dados</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Nome da Lista *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Leads Workshop de Edificações"
+                        value={newListName}
+                        onChange={(e) => setNewListName(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-indigo-600"
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Descrição (opcional)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Contatos capturados na LP de Edificações"
+                        value={newListDesc}
+                        onChange={(e) => setNewListDesc(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-indigo-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateListModal(false)}
+                      className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-white"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingList || !newListName.trim()}
+                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {isCreatingList ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      <span>Salvar e Selecionar Lista</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Lists Grid */}
+              {isLoadingLists ? (
+                <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                  Carregando listas...
+                </div>
+              ) : availableLists.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  Nenhuma lista cadastrada ainda. Clique em "+ Criar Nova Lista" acima.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
+                  {availableLists.map((list) => {
+                    const isSelected = selectedListId === list.id;
+                    return (
+                      <div
+                        key={list.id}
+                        onClick={() => setSelectedListId(list.id)}
+                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-2.5 ${
+                          isSelected
+                            ? "border-blue-600 bg-blue-50/20 shadow-xs ring-2 ring-blue-600/10"
+                            : "border-slate-200 hover:border-slate-300 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-slate-900">{list.name}</span>
+                              {isSelected && (
+                                <span className="bg-blue-600 text-white text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md">
+                                  Vinculada
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 line-clamp-1">
+                              {list.description || "Lista de transmissão da plataforma."}
+                            </p>
+                          </div>
+
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 shrink-0">
+                            {list.subscriber_count || 0} contatos
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px]">
+                          <span className="font-mono text-slate-400 truncate max-w-[170px]" title={list.id}>
+                            ID: {list.id}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(list.id);
+                              setCopiedListId(list.id);
+                              showToast(`ID da lista "${list.name}" copiado!`);
+                              setTimeout(() => setCopiedListId(null), 2000);
+                            }}
+                            className="px-2 py-0.5 rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors inline-flex items-center gap-1 font-bold cursor-pointer"
+                            title="Copiar ID da Lista"
+                          >
+                            {copiedListId === list.id ? (
+                              <>
+                                <Check className="h-3 w-3 text-emerald-600" />
+                                <span className="text-emerald-600">Copiado</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" />
+                                <span>Copiar ID</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            <div className="pt-2 flex justify-end">
+            {/* Section 2: Gerador de Formulário HTML */}
+            <div className="space-y-3 pt-2 border-t border-slate-150">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <Code className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Código HTML do Formulário para Inserir na Página</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Código pré-configurado com os campos necessários e a rota de submissão oficial.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(getFormHtmlCode());
+                      showToast("Código HTML do formulário copiado!");
+                    }}
+                    className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Copiar Código</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleInsertFormIntoHtml}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                    title="Insere automaticamente no HTML do editor"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Inserir no HTML da Página</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Redirect URL input */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-1">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase">
+                  URL de Redirecionamento após o cadastro (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formRedirectUrl}
+                  onChange={(e) => setFormRedirectUrl(e.target.value)}
+                  placeholder="https://realizzarecursos.com.br"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono font-medium focus:outline-none focus:border-indigo-600"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Para onde o visitante será direcionado após o preenchimento com sucesso.
+                </p>
+              </div>
+
+              {/* Code Snippet Box */}
+              <div className="relative">
+                <pre className="bg-slate-950 text-emerald-400 p-4 rounded-2xl font-mono text-[11px] overflow-x-auto max-h-48 leading-relaxed selection:bg-indigo-600 selection:text-white border border-slate-800">
+                  {getFormHtmlCode()}
+                </pre>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-2 flex justify-end border-t border-slate-150">
               <button
                 type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(`<div id="rz-form-${showEmbedCodeModal.id}"></div>\n<script src="https://realizzareconect.com.br/api/tracking/page.js?form=${showEmbedCodeModal.id}"></script>`);
-                  showToast("Código do formulário copiado!");
-                  setShowEmbedCodeModal(null);
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-xl font-bold shadow-md"
+                onClick={() => setShowListIntegrationModal(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
               >
-                Copiar e Fechar
+                Concluir
               </button>
             </div>
           </div>
