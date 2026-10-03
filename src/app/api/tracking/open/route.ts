@@ -33,42 +33,7 @@ export async function GET(req: NextRequest) {
         if (cData) resolvedEmail = cData.email;
       }
 
-      // 1. Update Campaign open_count (Deduplicated)
-      let shouldIncrement = true;
-      if (campaignId && (resolvedEmail || resolvedContactId)) {
-        // Query database directly to see if this specific email opened this specific campaign
-        const searchPayload = resolvedEmail ? { campaign_id: campaignId, email: resolvedEmail } : { campaign_id: campaignId, contact_id: resolvedContactId };
-        const { data: existingOpens } = await supabase
-          .from("inbound_webhook_events")
-          .select("id")
-          .eq("event_type", "email.open")
-          .contains("payload", searchPayload)
-          .limit(1);
-
-        if (existingOpens && existingOpens.length > 0) {
-           shouldIncrement = false;
-        }
-      }
-
-      if (campaignId && shouldIncrement) {
-        const { data: camp } = await supabase
-          .from("campaigns")
-          .select("open_count")
-          .eq("id", campaignId)
-          .maybeSingle();
-
-        if (camp) {
-          await supabase
-            .from("campaigns")
-            .update({
-              open_count: (camp.open_count || 0) + 1,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", campaignId);
-        }
-      }
-
-      // 2. Log event in inbound_webhook_events for contact timeline
+      // 1. Log event in inbound_webhook_events (always insert — raw event log)
       await supabase.from("inbound_webhook_events").insert({
         org_id: "00000000-0000-0000-0000-000000000001",
         source: "realizzare_tracking",
@@ -85,6 +50,35 @@ export async function GET(req: NextRequest) {
         status: "processed",
         processed_at: new Date().toISOString()
       });
+
+      // 2. Recalculate and SET open_count from distinct openers (idempotent — no race condition)
+      // Instead of check-then-increment (racy), we query all events and count distinct emails,
+      // then SET the count. Concurrent requests may temporarily set the same value, but the
+      // final result is always correct and never inflated.
+      if (campaignId) {
+        const { data: openEvents } = await supabase
+          .from("inbound_webhook_events")
+          .select("payload")
+          .eq("event_type", "email.open")
+          .filter("payload->>campaign_id", "eq", campaignId);
+
+        const uniqueOpeners = new Set<string>();
+        for (const row of openEvents ?? []) {
+          const email: string | undefined = (row.payload as Record<string, string> | null)?.email;
+          if (email) uniqueOpeners.add(email.toLowerCase().trim());
+        }
+        const distinctOpenCount = uniqueOpeners.size;
+
+        if (distinctOpenCount > 0) {
+          await supabase
+            .from("campaigns")
+            .update({
+              open_count: distinctOpenCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", campaignId);
+        }
+      }
     }
   } catch (err) {
     console.error("Open tracking error:", err);

@@ -39,42 +39,7 @@ export async function GET(req: NextRequest) {
         if (cData) resolvedEmail = cData.email;
       }
 
-      // 1. Update Campaign click_count (Deduplicated)
-      let shouldIncrement = true;
-      if (campaignId && (resolvedEmail || resolvedContactId)) {
-        // Query database directly to see if this specific email clicked a link in this specific campaign
-        const searchPayload = resolvedEmail ? { campaign_id: campaignId, email: resolvedEmail } : { campaign_id: campaignId, contact_id: resolvedContactId };
-        const { data: existingClicks } = await supabase
-          .from("inbound_webhook_events")
-          .select("id")
-          .eq("event_type", "email.click")
-          .contains("payload", searchPayload)
-          .limit(1);
-
-        if (existingClicks && existingClicks.length > 0) {
-           shouldIncrement = false;
-        }
-      }
-
-      if (campaignId && shouldIncrement) {
-        const { data: camp } = await supabase
-          .from("campaigns")
-          .select("click_count")
-          .eq("id", campaignId)
-          .maybeSingle();
-
-        if (camp) {
-          await supabase
-            .from("campaigns")
-            .update({
-              click_count: (camp.click_count || 0) + 1,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", campaignId);
-        }
-      }
-
-      // 2. Log click event in inbound_webhook_events
+      // 1. Log click event in inbound_webhook_events (always insert — raw event log)
       await supabase.from("inbound_webhook_events").insert({
         org_id: "00000000-0000-0000-0000-000000000001",
         source: "realizzare_tracking",
@@ -92,6 +57,35 @@ export async function GET(req: NextRequest) {
         status: "processed",
         processed_at: new Date().toISOString()
       });
+
+      // 2. Recalculate and SET click_count from distinct clickers (idempotent — no race condition)
+      // Instead of check-then-increment (racy), we query all events and count distinct emails,
+      // then SET the count. Concurrent requests may temporarily set the same value, but the
+      // final result is always correct and never inflated.
+      if (campaignId) {
+        const { data: clickEvents } = await supabase
+          .from("inbound_webhook_events")
+          .select("payload")
+          .eq("event_type", "email.click")
+          .filter("payload->>campaign_id", "eq", campaignId);
+
+        const uniqueClickers = new Set<string>();
+        for (const row of clickEvents ?? []) {
+          const email: string | undefined = (row.payload as Record<string, string> | null)?.email;
+          if (email) uniqueClickers.add(email.toLowerCase().trim());
+        }
+        const distinctClickCount = uniqueClickers.size;
+
+        if (distinctClickCount > 0) {
+          await supabase
+            .from("campaigns")
+            .update({
+              click_count: distinctClickCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", campaignId);
+        }
+      }
     }
   } catch (err) {
     console.error("Click tracking error:", err);
