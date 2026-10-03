@@ -88,7 +88,20 @@ export default function PagesDashboard() {
   const [showCreatePageModal, setShowCreatePageModal] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
-  const [newPageDomain, setNewPageDomain] = useState("realizzareconect.com.br");
+  const [newPageBaseDomain, setNewPageBaseDomain] = useState("realizzareconect.com.br");
+  const [newPageSubdomain, setNewPageSubdomain] = useState("lp");
+  const [newPageCustomSubdomain, setNewPageCustomSubdomain] = useState("");
+  const [newPageCustomBaseDomain, setNewPageCustomBaseDomain] = useState("");
+  const [copiedDnsKey, setCopiedDnsKey] = useState<string | null>(null);
+
+  const handleCopyDnsField = (key: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedDnsKey(key);
+    showToast(`"${text}" copiado para a área de transferência!`);
+    setTimeout(() => {
+      setCopiedDnsKey((prev) => (prev === key ? null : prev));
+    }, 2000);
+  };
 
   const [editingDesignPage, setEditingDesignPage] = useState<PageItem | null>(null);
   const [designHtml, setDesignHtml] = useState("");
@@ -147,17 +160,47 @@ export default function PagesDashboard() {
     })();
   }, []);
 
-  // Available domains for landing pages
-  const availableDomains = useMemo(() => {
-    const list = ["realizzareconect.com.br"];
+  // Base domains available for landing pages
+  const availableBaseDomains = useMemo(() => {
+    const defaultBases = [
+      "realizzareconect.com.br",
+      "realizzarecursos.com.br",
+      "realizzare.com.br"
+    ];
     domains.forEach((d) => {
       const name = typeof d === "string" ? d : d?.domain;
-      if (name && !list.includes(name)) {
-        list.push(name);
+      if (!name) return;
+      const parts = name.split(".");
+      const base = parts.length > 2 ? parts.slice(-3).join(".") : name;
+      if (base && !defaultBases.includes(base)) {
+        defaultBases.push(base);
       }
     });
-    return list;
+    return defaultBases;
   }, [domains]);
+
+  // Effective subdomain (prefix CNAME)
+  const effectiveSubdomain = useMemo(() => {
+    if (newPageSubdomain === "none") return "";
+    if (newPageSubdomain === "custom") {
+      return newPageCustomSubdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    }
+    return newPageSubdomain;
+  }, [newPageSubdomain, newPageCustomSubdomain]);
+
+  // Effective base domain
+  const effectiveBaseDomain = useMemo(() => {
+    if (newPageBaseDomain === "custom") {
+      return newPageCustomBaseDomain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    }
+    return newPageBaseDomain;
+  }, [newPageBaseDomain, newPageCustomBaseDomain]);
+
+  // Full host domain for the landing page
+  const fullDomain = useMemo(() => {
+    if (!effectiveSubdomain) return effectiveBaseDomain;
+    return `${effectiveSubdomain}.${effectiveBaseDomain}`;
+  }, [effectiveSubdomain, effectiveBaseDomain]);
 
   // Computed slug for new page
   const computedSlug = useMemo(() => {
@@ -283,7 +326,7 @@ export default function PagesDashboard() {
     }
 
     const slug = computedSlug;
-    const pageUrl = `https://${newPageDomain}/p/${slug}`;
+    const pageUrl = `https://${fullDomain}/p/${slug}`;
 
     const newPage: PageItem = {
       id: `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
@@ -346,12 +389,27 @@ export default function PagesDashboard() {
 </html>`
     };
 
+    // Auto-register domain/subdomain in domains list if not already present
+    if (fullDomain && !domains.some((d) => d.domain === fullDomain)) {
+      const newDomainEntry = {
+        id: `dom-${Date.now()}`,
+        domain: fullDomain,
+        baseDomain: effectiveBaseDomain,
+        status: effectiveBaseDomain === "realizzareconect.com.br" ? "connected" : "pending",
+        cnameHost: effectiveSubdomain || "@",
+        cnameTarget: "cname.realizzareconect.com.br",
+        lastCheck: "Recém adicionado"
+      };
+      setDomains((prev) => [newDomainEntry, ...prev]);
+    }
+
     await savePageToAPI(newPage);
     setPages((prev) => [newPage, ...prev]);
     setShowCreatePageModal(false);
     setNewPageName("");
     setNewPageSlug("");
-    setNewPageDomain("realizzareconect.com.br");
+    setNewPageCustomSubdomain("");
+    setNewPageCustomBaseDomain("");
     showToast(`Página "${newPage.name}" criada com sucesso!`);
   };
 
@@ -1106,7 +1164,20 @@ export default function PagesDashboard() {
                           <td className="py-4 px-4 text-center text-slate-500 font-mono text-[11px]">
                             {dom.cnameHost} → {dom.cnameTarget}
                           </td>
-                          <td className="py-4 px-4 text-right">
+                          <td className="py-4 px-4 text-right space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const text = `Tipo: CNAME | Nome: ${dom.cnameHost || "lp"} | Destino: ${dom.cnameTarget || "cname.realizzareconect.com.br"}`;
+                                navigator.clipboard.writeText(text);
+                                showToast(`Dados CNAME de "${dom.domain}" copiados!`);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                              title="Copiar dados CNAME para a área de transferência"
+                            >
+                              <Copy className="h-3 w-3" />
+                              <span>Copiar CNAME</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleTestDomainConnection(dom.id)}
@@ -1326,27 +1397,161 @@ export default function PagesDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">Domínio da Página</label>
-                <select
-                  value={newPageDomain}
-                  onChange={(e) => setNewPageDomain(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-blue-600 text-slate-800"
-                >
-                  {availableDomains.map((dom) => (
-                    <option key={dom} value={dom}>
-                      {dom} {dom === "realizzareconect.com.br" ? "(Domínio oficial da plataforma)" : "(Domínio personalizado)"}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  As landing pages rodam por padrão no subdomínio da plataforma ou em qualquer subdomínio conectado na aba &ldquo;Domínios&rdquo;.
-                </p>
+              {/* Seleção de Subdomínio (CNAME) e Domínio Base */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. Subdomínio (Prefixo CNAME) */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Subdomínio (Prefixo CNAME)
+                  </label>
+                  <select
+                    value={newPageSubdomain}
+                    onChange={(e) => setNewPageSubdomain(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-blue-600 text-slate-800"
+                  >
+                    <option value="lp">lp (Recomendado - Landing Pages)</option>
+                    <option value="conteudos">conteudos (Materiais & E-books)</option>
+                    <option value="cursos">cursos (Cursos & Matrículas)</option>
+                    <option value="paginas">paginas (Páginas Institucionais)</option>
+                    <option value="promo">promo (Ofertas & Campanhas)</option>
+                    <option value="none">(Sem subdomínio - Raiz direto)</option>
+                    <option value="custom">+ Criar outro subdomínio...</option>
+                  </select>
+
+                  {newPageSubdomain === "custom" && (
+                    <input
+                      type="text"
+                      placeholder="Ex: evento, ia, blackfriday"
+                      value={newPageCustomSubdomain}
+                      onChange={(e) => setNewPageCustomSubdomain(e.target.value)}
+                      className="mt-1.5 w-full bg-slate-50 border border-blue-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-blue-700 focus:outline-none focus:border-blue-600"
+                      autoFocus
+                    />
+                  )}
+                </div>
+
+                {/* 2. Domínio Base */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Domínio Base
+                  </label>
+                  <select
+                    value={newPageBaseDomain}
+                    onChange={(e) => setNewPageBaseDomain(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-blue-600 text-slate-800"
+                  >
+                    {availableBaseDomains.map((dom) => (
+                      <option key={dom} value={dom}>
+                        {dom} {dom === "realizzareconect.com.br" ? "(Plataforma Oficial)" : "(Domínio Próprio)"}
+                      </option>
+                    ))}
+                    <option value="custom">+ Adicionar outro domínio base...</option>
+                  </select>
+
+                  {newPageBaseDomain === "custom" && (
+                    <input
+                      type="text"
+                      placeholder="Ex: seudominio.com.br"
+                      value={newPageCustomBaseDomain}
+                      onChange={(e) => setNewPageCustomBaseDomain(e.target.value)}
+                      className="mt-1.5 w-full bg-slate-50 border border-blue-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-blue-700 focus:outline-none focus:border-blue-600"
+                      autoFocus
+                    />
+                  )}
+                </div>
               </div>
 
+              {/* Box de Instruções DNS CNAME com Botões Copiar */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                    <Server className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Registro DNS CNAME para adicionar no provedor</span>
+                  </div>
+                  {effectiveBaseDomain === "realizzareconect.com.br" ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Domínio Oficial
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" /> Requer CNAME no DNS
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  {/* Campo 1: Tipo */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">1. Tipo</span>
+                      <span className="font-mono font-black text-slate-800 text-xs">CNAME</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyDnsField("type", "CNAME")}
+                      className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
+                    >
+                      {copiedDnsKey === "type" ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                      <span>{copiedDnsKey === "type" ? "Copiado!" : "Copiar"}</span>
+                    </button>
+                  </div>
+
+                  {/* Campo 2: Nome / Host */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">2. Nome / Host</span>
+                      <span className="font-mono font-black text-blue-700 text-xs truncate block" title={effectiveSubdomain || "@"}>
+                        {effectiveSubdomain || "@"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyDnsField("host", effectiveSubdomain || "@")}
+                      className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
+                    >
+                      {copiedDnsKey === "host" ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                      <span>{copiedDnsKey === "host" ? "Copiado!" : "Copiar"}</span>
+                    </button>
+                  </div>
+
+                  {/* Campo 3: Destino / Valor */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">3. Destino / Apontamento</span>
+                      <span className="font-mono font-black text-slate-800 text-xs truncate block" title="cname.realizzareconect.com.br">
+                        cname.realizzareconect.com.br
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyDnsField("target", "cname.realizzareconect.com.br")}
+                      className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start cursor-pointer"
+                    >
+                      {copiedDnsKey === "target" ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                      <span>{copiedDnsKey === "target" ? "Copiado!" : "Copiar"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-500 leading-relaxed bg-white/70 p-2.5 rounded-xl border border-slate-150">
+                  {effectiveBaseDomain === "realizzareconect.com.br" ? (
+                    <p className="text-emerald-700 font-medium">
+                      💡 Domínio oficial da plataforma. Pronto para publicação com certificado SSL automático.
+                    </p>
+                  ) : (
+                    <p>
+                      💡 Adicione o registro CNAME acima no gerenciador de DNS de <strong className="text-slate-800">{effectiveBaseDomain}</strong> (ex: Cloudflare, Registro.br). O Realizzare Mail responderá em <strong className="text-indigo-600 font-mono">{fullDomain}</strong> com SSL automático!
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Caminho da URL (depois da barra /) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block font-bold text-slate-700 uppercase">Caminho da URL (Slug)</label>
+                  <label className="block font-bold text-slate-700 uppercase">
+                    Caminho da URL (depois da &quot;/&quot;)
+                  </label>
                   {computedSlug && (
                     <span className={`text-[11px] font-bold flex items-center gap-1 ${isSlugTaken ? "text-rose-600" : "text-emerald-600"}`}>
                       {isSlugTaken ? (
@@ -1362,7 +1567,7 @@ export default function PagesDashboard() {
                   )}
                 </div>
                 <div className={`flex items-center bg-slate-50 border rounded-xl px-3 py-2 text-xs transition-colors ${isSlugTaken ? "border-rose-400 bg-rose-50/30" : "border-slate-200"}`}>
-                  <span className="text-slate-400 font-mono text-[11px] shrink-0">{`https://${newPageDomain}/p/`}</span>
+                  <span className="text-slate-400 font-mono text-[11px] shrink-0 font-medium">{`https://${fullDomain}/p/`}</span>
                   <input
                     type="text"
                     placeholder="curso-ia-gratis"
@@ -1378,7 +1583,7 @@ export default function PagesDashboard() {
                 )}
                 {computedSlug && !isSlugTaken && (
                   <p className="text-[11px] text-slate-400 font-mono mt-1 truncate">
-                    Link final: <span className="text-indigo-600 font-bold">{`https://${newPageDomain}/p/${computedSlug}`}</span>
+                    Endereço final: <span className="text-indigo-600 font-bold">{`https://${fullDomain}/p/${computedSlug}`}</span>
                   </p>
                 )}
               </div>
@@ -1393,9 +1598,19 @@ export default function PagesDashboard() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!newPageName.trim() || isSlugTaken || !computedSlug}
+                  disabled={
+                    !newPageName.trim() ||
+                    isSlugTaken ||
+                    !computedSlug ||
+                    (newPageSubdomain === "custom" && !newPageCustomSubdomain.trim()) ||
+                    (newPageBaseDomain === "custom" && !newPageCustomBaseDomain.trim())
+                  }
                   className={`px-4 py-2 rounded-xl font-bold shadow-md transition-all ${
-                    !newPageName.trim() || isSlugTaken || !computedSlug
+                    !newPageName.trim() ||
+                    isSlugTaken ||
+                    !computedSlug ||
+                    (newPageSubdomain === "custom" && !newPageCustomSubdomain.trim()) ||
+                    (newPageBaseDomain === "custom" && !newPageCustomBaseDomain.trim())
                       ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
