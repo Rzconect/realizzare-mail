@@ -671,7 +671,14 @@ function EngagementRuleExpanded({
       <div className="flex flex-wrap items-center gap-2">
         <SearchableFieldDropdown
           value={rule.field}
-          onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
+          onChange={(val) => {
+      const defaultVal = 
+        val === "certificate_issued" ? "sim" :
+        (val === "courseStatus" || val === "course_status") ? "Matriculado" :
+        val === "payment_order_status" ? "paid" :
+        val === "status" ? "active" : "";
+      handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: defaultVal, operator: "eq" });
+    }}
           customFields={customFields}
         />
 
@@ -844,7 +851,11 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
         } catch (e) {}
       }
     }
-    contactValue = issued ? "sim" : "não";
+    // Check if contact has certificate issued
+    const hasCert = 
+      Boolean(contact.has_certificate) ||
+      (contact.enrollments || []).some((e: any) => e.certificate_issued === true);
+    contactValue = hasCert ? "sim" : "não";
   } else if (rule.field === "email_received") {
     contactValue = (contact.id === "c1" || contact.id === "c2" || contact.id === "c4" || contact.id === "c11") ? "sim" : "não";
   } else if (rule.field === "email_opened") {
@@ -3168,7 +3179,14 @@ function CreateCampaignForm() {
                               {/* Field Selection */}
                               <SearchableFieldDropdown
                                 value={rule.field}
-                                onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
+                                onChange={(val) => {
+      const defaultVal = 
+        val === "certificate_issued" ? "sim" :
+        (val === "courseStatus" || val === "course_status") ? "Matriculado" :
+        val === "payment_order_status" ? "paid" :
+        val === "status" ? "active" : "";
+      handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: defaultVal, operator: "eq" });
+    }}
                                 customFields={customFields}
                               />
 

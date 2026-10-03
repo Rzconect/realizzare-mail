@@ -67,9 +67,7 @@ export async function POST(req: Request) {
       for (const group of groups) {
         if (!group.rules || group.rules.length === 0) continue;
         
-        const op = group.logicalOperator === 'or' ? 'some' : 'every';
-        const groupPasses = group.rules[op]((rule: any) => evaluateRule(rule, contact, evaluationContext));
-        
+        const groupPasses = evaluateGroup(group, contact, evaluationContext);
         if (!groupPasses) {
           contactQualifies = false;
           break;
@@ -84,6 +82,86 @@ export async function POST(req: Request) {
     console.error('Segment evaluate route exception:', err);
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
+}
+
+function evaluateGroup(group: any, contact: any, data: any): boolean {
+  if (!group.rules || group.rules.length === 0) return true;
+
+  const isAnd = group.logicalOperator !== 'or';
+
+  // Correlated course evaluation when rules are AND-combined:
+  // e.g. "Curso Matriculado = Pedreiro" AND "Certificado Emitido? = Sim"
+  if (isAnd) {
+    const courseRule = group.rules.find((r: any) => r.field === 'course' || r.field === 'last_course');
+    const certRule = group.rules.find((r: any) => r.field === 'certificate_issued');
+    const statusRule = group.rules.find((r: any) => r.field === 'course_status' || r.field === 'courseStatus');
+
+    if (courseRule && (certRule || statusRule)) {
+      const targetCourse = String(courseRule.value || '').toLowerCase().trim();
+
+      // Find enrollments and course_events for this specific course
+      const myEnrollments = data.enrollments.filter((e: any) => {
+        if (e.contact_id !== contact.id) return false;
+        const cName = (e.courses?.name || '').toLowerCase().trim();
+        return cName.includes(targetCourse) || targetCourse.includes(cName);
+      });
+
+      const myEvents = data.courseEvents.filter((e: any) => {
+        if (e.contact_id !== contact.id) return false;
+        const cName = (e.metadata?.course_name || '').toLowerCase().trim();
+        return cName.includes(targetCourse) || targetCourse.includes(cName);
+      });
+
+      const hasThisCourse = myEnrollments.length > 0 || myEvents.length > 0;
+      if (courseRule.operator === 'neq') {
+        if (hasThisCourse) return false;
+      } else {
+        if (!hasThisCourse) return false;
+      }
+
+      // Check certificate for this specific course
+      if (certRule) {
+        const certTarget = String(certRule.value || 'sim').toLowerCase().trim();
+        const wantsCert = certTarget === 'sim' || certTarget === 'yes' || certTarget === 'true';
+
+        const hasCertForThisCourse = 
+          myEnrollments.some((e: any) => e.certificate_issued === true) ||
+          myEvents.some((e: any) => e.event_type === 'certificate_issued' || e.metadata?.code);
+
+        if (wantsCert && !hasCertForThisCourse) return false;
+        if (!wantsCert && hasCertForThisCourse) return false;
+      }
+
+      // Check status for this specific course
+      if (statusRule) {
+        const statusTarget = String(statusRule.value || '').toLowerCase().trim();
+
+        const isCompleted = myEnrollments.some((e: any) => e.status === 'completed' || e.progress >= 100 || e.certificate_issued) ||
+                            myEvents.some((e: any) => e.event_type === 'test_approved' || e.event_type === 'certificate_issued' || (e.metadata?.progress_percent ?? 0) >= 100);
+
+        const isInProgress = myEnrollments.some((e: any) => (e.progress > 0 && e.progress < 100) || e.status === 'in_progress') ||
+                             myEvents.some((e: any) => (e.metadata?.progress_percent ?? 0) > 0 && (e.metadata?.progress_percent ?? 0) < 100);
+
+        if (statusTarget.includes('concluido') || statusTarget.includes('finalizado') || statusTarget.includes('completed')) {
+          if (!isCompleted) return false;
+        } else if (statusTarget.includes('andamento') || statusTarget.includes('in_progress')) {
+          if (!isInProgress || isCompleted) return false;
+        } else if (statusTarget.includes('matriculado') || statusTarget.includes('enrolled')) {
+          if (!hasThisCourse) return false;
+        }
+      }
+
+      // Evaluate any OTHER rules in the group
+      const otherRules = group.rules.filter((r: any) => 
+        r !== courseRule && r !== certRule && r !== statusRule
+      );
+      return otherRules.every((r: any) => evaluateRule(r, contact, data));
+    }
+  }
+
+  // Standard evaluation
+  const op = isAnd ? 'every' : 'some';
+  return group.rules[op]((rule: any) => evaluateRule(rule, contact, data));
 }
 
 function evaluateRule(rule: any, contact: any, data: any): boolean {
@@ -184,7 +262,6 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
     }
     
     case 'last_course': {
-      // Find the single latest course enrollment or started event
       const myEnrollments = data.enrollments
         .filter((e: any) => e.contact_id === contact.id)
         .map((e: any) => ({ name: e.courses?.name || '', date: e.created_at || '' }));
@@ -204,6 +281,20 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
       return operator === 'neq' ? !matches : matches;
     }
     
+    case 'certificate_issued': {
+      const myEnrollments = data.enrollments.filter((e: any) => e.contact_id === contact.id);
+      const myEvents = data.courseEvents.filter((e: any) => e.contact_id === contact.id);
+      
+      const hasAnyCert = 
+        myEnrollments.some((e: any) => e.certificate_issued === true) ||
+        myEvents.some((e: any) => e.event_type === 'certificate_issued' || e.metadata?.code);
+
+      const targetVal = String(value || 'sim').toLowerCase().trim();
+      const wantsCert = targetVal === 'sim' || targetVal === 'yes' || targetVal === 'true';
+
+      return wantsCert ? hasAnyCert : !hasAnyCert;
+    }
+
     case 'course_status': {
       const myEnrollments = data.enrollments.filter((e: any) => e.contact_id === contact.id);
       const myEvents = data.courseEvents.filter((e: any) => e.contact_id === contact.id);
@@ -218,16 +309,16 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
 
       const hasEnrolled = myEnrollments.length > 0 || myEvents.length > 0;
 
-      if (targetVal === 'concluido' || targetVal === 'completed' || targetVal === 'finalizado' || targetVal === 'finished') {
+      if (targetVal.includes('concluido') || targetVal.includes('finalizado') || targetVal.includes('completed')) {
         return hasCompleted;
       }
-      if (targetVal === 'em_andamento' || targetVal === 'in_progress') {
+      if (targetVal.includes('andamento') || targetVal.includes('in_progress')) {
         return hasInProgress && !hasCompleted;
       }
-      if (targetVal === 'matriculado' || targetVal === 'enrolled') {
+      if (targetVal.includes('matriculado') || targetVal.includes('enrolled')) {
         return hasEnrolled;
       }
-      if (targetVal === 'nao_iniciado' || targetVal === 'not_started' || targetVal === 'sem_matricula') {
+      if (targetVal.includes('nao_iniciado') || targetVal.includes('not_started') || targetVal.includes('sem_matricula')) {
         return !hasEnrolled;
       }
       return false;
@@ -263,7 +354,6 @@ function evaluateRule(rule: any, contact: any, data: any): boolean {
         return hasFailedTable || hasFailedWh;
       }
 
-      // Default check: any purchase matching status
       return myPurchases.some((p: any) => compare(p.status, targetVal));
     }
 

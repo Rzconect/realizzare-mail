@@ -428,7 +428,14 @@ function EngagementRuleExpanded({
       <div className="flex flex-wrap items-center gap-2">
         <SearchableFieldDropdown
           value={rule.field}
-          onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
+          onChange={(val) => {
+      const defaultVal = 
+        val === "certificate_issued" ? "sim" :
+        (val === "courseStatus" || val === "course_status") ? "Matriculado" :
+        val === "payment_order_status" ? "paid" :
+        val === "status" ? "active" : "";
+      handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: defaultVal, operator: "eq" });
+    }}
           customFields={customFields}
         />
 
@@ -933,7 +940,11 @@ function evaluateRule(contact: any, rule: { field: string; operator: string; val
         } catch (e) {}
       }
     }
-    contactValue = issued ? "sim" : "não";
+    // Check if contact has certificate issued
+    const hasCert = 
+      Boolean(contact.has_certificate) ||
+      (contact.enrollments || []).some((e: any) => e.certificate_issued === true);
+    contactValue = hasCert ? "sim" : "não";
   } else if (rule.field === "email_received") {
     contactValue = (contact.id === "c1" || contact.id === "c2" || contact.id === "c4" || contact.id === "c11") ? "sim" : "não";
   } else if (rule.field === "email_opened") {
@@ -5229,7 +5240,14 @@ export default function ContactsPage() {
                                   <div className="flex items-center gap-3">
                                     <SearchableFieldDropdown
                                       value={rule.field}
-                                      onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: "", operator: "eq" })}
+                                      onChange={(val) => {
+      const defaultVal = 
+        val === "certificate_issued" ? "sim" :
+        (val === "courseStatus" || val === "course_status") ? "Matriculado" :
+        val === "payment_order_status" ? "paid" :
+        val === "status" ? "active" : "";
+      handleUpdateRuleInGroup(group.id, ruleIdx, { field: val, value: defaultVal, operator: "eq" });
+    }}
                                       customFields={customFields}
                                     />
 
@@ -5402,13 +5420,29 @@ export default function ContactsPage() {
                                         );
                                       }
 
-                                      if (rule.field === "course") {
+                                      if (rule.field === "course" || rule.field === "last_course") {
                                         return (
                                           <SegmentCourseDropdown
       value={rule.value}
       onChange={(val) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: val })}
       availableCoursesList={(window as any).__AVAILABLE_COURSES__ || []}
     />
+                                        );
+                                      }
+
+                                      if (rule.field === "courseStatus" || rule.field === "course_status") {
+                                        return (
+                                          <select
+                                            value={rule.value || "Matriculado"}
+                                            onChange={(e) => handleUpdateRuleInGroup(group.id, ruleIdx, { value: e.target.value })}
+                                            className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-indigo-500 font-medium cursor-pointer flex-1"
+                                          >
+                                            <option value="Matriculado">Matriculado</option>
+                                            <option value="Em Andamento">Em Andamento</option>
+                                            <option value="Concluído">Concluído</option>
+                                            <option value="Finalizado">Finalizado</option>
+                                            <option value="Não Iniciado / Sem Matrícula">Não Iniciado / Sem Matrícula</option>
+                                          </select>
                                         );
                                       }
 
